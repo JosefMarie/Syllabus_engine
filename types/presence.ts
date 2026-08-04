@@ -1,4 +1,4 @@
-export type PresenceState = 'actively_reading' | 'tab_unfocused' | 'offline';
+export type PresenceState = 'actively_reading' | 'idle' | 'tab_unfocused' | 'offline';
 
 export interface StudentPresenceRecord {
   userId: string;

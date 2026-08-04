@@ -83,8 +83,9 @@ export default function StudentProgressManager() {
   
   // Real-Time Attention & Presence counts
   const activeLearningCount = students.filter(s => presences[s.userId]?.state === 'actively_reading').length;
+  const idleCount = students.filter(s => presences[s.userId]?.state === 'idle').length;
   const tabUnfocusedCount = students.filter(s => presences[s.userId]?.state === 'tab_unfocused').length;
-  const offlineCount = students.length - (activeLearningCount + tabUnfocusedCount);
+  const offlineCount = students.length - (activeLearningCount + idleCount + tabUnfocusedCount);
 
   const handleSendMessage = async () => {
     if (!messageText.trim() || !messagingTarget) return;
@@ -142,7 +143,7 @@ export default function StudentProgressManager() {
             <span>Student Progress & Attention Monitoring Center</span>
           </h3>
           <p className="text-xs text-[#94A3B8]">
-            Real-time tracking of active student reading focus, tab switching alerts, and module completion progress.
+            Real-time tracking of active student reading focus, side-window defocus alerts, idle detection, and module completion.
           </p>
         </div>
 
@@ -178,43 +179,56 @@ export default function StudentProgressManager() {
       )}
 
       {/* Overview Stat Cards with Live Attention Status */}
-      <div className="grid gap-4 sm:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-5">
         <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5 shadow-lg flex items-center justify-between">
           <div>
             <span className="text-xs font-mono font-bold text-[#94A3B8] uppercase tracking-wider block mb-1">
-              Total Enrolled Students
+              Total Enrolled
             </span>
             <span className="text-3xl font-extrabold text-white font-mono">{students.length}</span>
-            <span className="text-[11px] text-[#94A3B8] block mt-1">Across all trades & levels</span>
+            <span className="text-[11px] text-[#94A3B8] block mt-1">Enrolled students</span>
           </div>
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#06B6D4]/20 text-[#06B6D4]">
-            <Users className="h-6 w-6" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#06B6D4]/20 text-[#06B6D4]">
+            <Users className="h-5 w-5" />
           </div>
         </div>
 
         <div className="rounded-2xl border border-[#10B981]/40 bg-[#10B981]/10 p-5 shadow-lg flex items-center justify-between">
           <div>
             <span className="text-xs font-mono font-bold text-[#10B981] uppercase tracking-wider block mb-1">
-              🟢 Actively Learning
+              🟢 Active Focus
             </span>
             <span className="text-3xl font-extrabold text-[#10B981] font-mono">{activeLearningCount}</span>
-            <span className="text-[11px] text-[#94A3B8] block mt-1">Tab active & focused</span>
+            <span className="text-[11px] text-[#94A3B8] block mt-1">Focused & interacting</span>
           </div>
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#10B981]/20 text-[#10B981]">
-            <Radio className="h-6 w-6 animate-pulse" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#10B981]/20 text-[#10B981]">
+            <Radio className="h-5 w-5 animate-pulse" />
           </div>
         </div>
 
         <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-5 shadow-lg flex items-center justify-between">
           <div>
             <span className="text-xs font-mono font-bold text-amber-400 uppercase tracking-wider block mb-1">
-              🟡 Switched Tab / Away
+              🟡 Side Window
             </span>
             <span className="text-3xl font-extrabold text-amber-400 font-mono">{tabUnfocusedCount}</span>
-            <span className="text-[11px] text-[#94A3B8] block mt-1">Left syllabus browser tab</span>
+            <span className="text-[11px] text-[#94A3B8] block mt-1">Clicked outside window</span>
           </div>
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
-            <EyeOff className="h-6 w-6" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
+            <EyeOff className="h-5 w-5" />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-orange-500/40 bg-orange-500/10 p-5 shadow-lg flex items-center justify-between">
+          <div>
+            <span className="text-xs font-mono font-bold text-orange-400 uppercase tracking-wider block mb-1">
+              🟠 Idle (&gt;30s)
+            </span>
+            <span className="text-3xl font-extrabold text-orange-400 font-mono">{idleCount}</span>
+            <span className="text-[11px] text-[#94A3B8] block mt-1">No mouse / key input</span>
+          </div>
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/20 text-orange-400">
+            <Clock className="h-5 w-5" />
           </div>
         </div>
 
@@ -226,8 +240,8 @@ export default function StudentProgressManager() {
             <span className="text-3xl font-extrabold text-slate-400 font-mono">{offlineCount}</span>
             <span className="text-[11px] text-[#94A3B8] block mt-1">Inactive &gt; 2 mins</span>
           </div>
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-700/30 text-slate-400">
-            <Clock className="h-6 w-6" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-700/30 text-slate-400">
+            <Clock className="h-5 w-5" />
           </div>
         </div>
       </div>
@@ -323,7 +337,7 @@ export default function StudentProgressManager() {
                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#10B981] opacity-75"></span>
                               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#10B981]"></span>
                             </span>
-                            <span>Actively Learning</span>
+                            <span>Actively Interacting</span>
                           </span>
                           {presence?.currentSubtopicTitle && (
                             <span className="text-[10px] text-[#94A3B8] line-clamp-1 mt-0.5 font-mono">
@@ -331,14 +345,24 @@ export default function StudentProgressManager() {
                             </span>
                           )}
                         </div>
+                      ) : presenceState === 'idle' ? (
+                        <div className="flex flex-col">
+                          <span className="inline-flex items-center space-x-1.5 text-xs font-bold text-orange-400">
+                            <span className="h-2.5 w-2.5 rounded-full bg-orange-400"></span>
+                            <span>Idle (No Input &gt;30s)</span>
+                          </span>
+                          <span className="text-[10px] text-[#94A3B8] mt-0.5 font-mono">
+                            Window open but no mouse/scroll
+                          </span>
+                        </div>
                       ) : presenceState === 'tab_unfocused' ? (
                         <div className="flex flex-col">
                           <span className="inline-flex items-center space-x-1.5 text-xs font-bold text-amber-400">
                             <span className="h-2.5 w-2.5 rounded-full bg-amber-400"></span>
-                            <span>Left Tab / Switched Away</span>
+                            <span>Side Window / Unfocused</span>
                           </span>
                           <span className="text-[10px] text-[#94A3B8] mt-0.5 font-mono">
-                            Unfocused / Inactive window
+                            Clicked outside student window
                           </span>
                         </div>
                       ) : (
