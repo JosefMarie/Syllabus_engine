@@ -1,0 +1,216 @@
+[debug] [2026-08-04T11:33:38.303Z] ----------------------------------------------------------------------
+[debug] [2026-08-04T11:33:38.306Z] Command:       /home/josef-marie/.nvm/versions/node/v24.18.0/bin/node /home/josef-marie/.nvm/versions/node/v24.18.0/bin/firebase init
+[debug] [2026-08-04T11:33:38.306Z] CLI Version:   15.25.1
+[debug] [2026-08-04T11:33:38.306Z] Platform:      linux
+[debug] [2026-08-04T11:33:38.306Z] Node Version:  v24.18.0
+[debug] [2026-08-04T11:33:38.307Z] Detected Agent: unknown
+[debug] [2026-08-04T11:33:38.307Z] Time:          Tue Aug 04 2026 13:33:38 GMT+0200 (Central Africa Time)
+[debug] [2026-08-04T11:33:38.307Z] ----------------------------------------------------------------------
+[debug] 
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /run/media/josef-marie/ba50bc44-bf6c-4b00-adce-613469ef3d02/Syllabus_engine
+
+Before we get started, keep in mind:
+
+  * You are currently outside your home directory
+
+[info] 
+=== Account Setup
+[info] 
+[info] Which account do you want to use for this project? Choose an account or add a new one now
+[info] 
+[debug] [2026-08-04T11:33:47.663Z] setProjectAccount(/run/media/josef-marie/ba50bc44-bf6c-4b00-adce-613469ef3d02/Syllabus_engine, layjoe0001@gmail.com)
+[info] 
+[info] ✔  Using account: layjoe0001@gmail.com 
+[info] 
+=== Project Setup
+[info] 
+[info] First, let's associate this project directory with a Firebase project.
+[info] You can create multiple project aliases by running firebase use --add, 
+[info] 
+[debug] [2026-08-04T11:33:47.719Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-04T11:33:47.720Z] > authorizing via signed-in user (layjoe0001@gmail.com)
+[debug] [2026-08-04T11:33:47.731Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:33:47.731Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:33:47.732Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/syllabus-ad688 [none]
+[debug] [2026-08-04T11:33:48.818Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/syllabus-ad688 200
+[debug] [2026-08-04T11:33:48.818Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/syllabus-ad688 {"projectId":"syllabus-ad688","projectNumber":"696281834171","displayName":"Syllabus","name":"projects/syllabus-ad688","resources":{"hostingSite":"syllabus-ad688"},"state":"ACTIVE","labels":{"firebase":"enabled"},"etag":"1_a05f51c9-beec-4755-9150-4c2581e1ecc6"}
+[info] i  Using project syllabus-ad688 (Syllabus) . 
+[info] 
+=== Hosting Setup
+[info] 
+[info] 
+=== App Hosting Setup
+[debug] [2026-08-04T11:33:51.197Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:33:51.197Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:33:51.197Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/syllabus-ad688/billingInfo [none]
+[debug] [2026-08-04T11:33:51.197Z] >>> [apiv2][(partial)header] GET https://cloudbilling.googleapis.com/v1/projects/syllabus-ad688/billingInfo  x-goog-user-project=syllabus-ad688
+[debug] [2026-08-04T11:33:52.466Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/syllabus-ad688/billingInfo 200
+[debug] [2026-08-04T11:33:52.466Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/syllabus-ad688/billingInfo {"name":"projects/syllabus-ad688/billingInfo","projectId":"syllabus-ad688","billingAccountName":"billingAccounts/01C4A7-91DEE3-7C90E1","billingEnabled":true}
+[debug] [2026-08-04T11:33:52.467Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:33:52.467Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:33:52.467Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/firebaseapphosting.googleapis.com [none]
+[debug] [2026-08-04T11:33:52.467Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/firebaseapphosting.googleapis.com  x-goog-user-project=syllabus-ad688
+[debug] [2026-08-04T11:33:54.622Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/firebaseapphosting.googleapis.com 200
+[debug] [2026-08-04T11:33:54.622Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/firebaseapphosting.googleapis.com [omitted]
+[debug] [2026-08-04T11:33:54.623Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:33:54.623Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:33:54.624Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/firebaseapphosting.googleapis.com:enable [none]
+[debug] [2026-08-04T11:33:54.624Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/firebaseapphosting.googleapis.com:enable  x-goog-user-project=syllabus-ad688
+[debug] [2026-08-04T11:33:55.574Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/firebaseapphosting.googleapis.com:enable 200
+[debug] [2026-08-04T11:33:55.574Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/firebaseapphosting.googleapis.com:enable [omitted]
+[debug] [2026-08-04T11:34:05.587Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:05.587Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:05.588Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:05.588Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:05.588Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:05.588Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:05.588Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:05.588Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:05.588Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:05.588Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:05.589Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:05.589Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:05.589Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/developerconnect.googleapis.com [none]
+[debug] [2026-08-04T11:34:05.589Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/developerconnect.googleapis.com  x-goog-user-project=syllabus-ad688
+[debug] [2026-08-04T11:34:05.590Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/cloudbuild.googleapis.com [none]
+[debug] [2026-08-04T11:34:05.591Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/cloudbuild.googleapis.com  x-goog-user-project=syllabus-ad688
+[debug] [2026-08-04T11:34:05.592Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/secretmanager.googleapis.com [none]
+[debug] [2026-08-04T11:34:05.592Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/secretmanager.googleapis.com  x-goog-user-project=syllabus-ad688
+[debug] [2026-08-04T11:34:05.593Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/run.googleapis.com [none]
+[debug] [2026-08-04T11:34:05.594Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/run.googleapis.com  x-goog-user-project=syllabus-ad688
+[debug] [2026-08-04T11:34:05.595Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/artifactregistry.googleapis.com [none]
+[debug] [2026-08-04T11:34:05.595Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/artifactregistry.googleapis.com  x-goog-user-project=syllabus-ad688
+[debug] [2026-08-04T11:34:05.596Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/iam.googleapis.com [none]
+[debug] [2026-08-04T11:34:05.596Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/iam.googleapis.com  x-goog-user-project=syllabus-ad688
+[debug] [2026-08-04T11:34:07.427Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/cloudbuild.googleapis.com 200
+[debug] [2026-08-04T11:34:07.427Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/cloudbuild.googleapis.com [omitted]
+[debug] [2026-08-04T11:34:07.435Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/developerconnect.googleapis.com 200
+[debug] [2026-08-04T11:34:07.435Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/developerconnect.googleapis.com [omitted]
+[debug] [2026-08-04T11:34:07.435Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:07.435Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:07.436Z] >>> [apiv2][query] POST https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/developerconnect.googleapis.com:enable [none]
+[debug] [2026-08-04T11:34:07.436Z] >>> [apiv2][(partial)header] POST https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/developerconnect.googleapis.com:enable  x-goog-user-project=syllabus-ad688
+[debug] [2026-08-04T11:34:07.438Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/iam.googleapis.com 200
+[debug] [2026-08-04T11:34:07.438Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/iam.googleapis.com [omitted]
+[debug] [2026-08-04T11:34:07.442Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/artifactregistry.googleapis.com 200
+[debug] [2026-08-04T11:34:07.442Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/artifactregistry.googleapis.com [omitted]
+[debug] [2026-08-04T11:34:07.447Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/secretmanager.googleapis.com 200
+[debug] [2026-08-04T11:34:07.447Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/secretmanager.googleapis.com [omitted]
+[debug] [2026-08-04T11:34:07.451Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/run.googleapis.com 200
+[debug] [2026-08-04T11:34:07.451Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/run.googleapis.com [omitted]
+[debug] [2026-08-04T11:34:08.369Z] <<< [apiv2][status] POST https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/developerconnect.googleapis.com:enable 200
+[debug] [2026-08-04T11:34:08.370Z] <<< [apiv2][body] POST https://serviceusage.googleapis.com/v1/projects/syllabus-ad688/services/developerconnect.googleapis.com:enable [omitted]
+[debug] [2026-08-04T11:34:18.384Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:18.385Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:18.385Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/syllabus-ad688/serviceAccounts/firebase-app-hosting-compute@syllabus-ad688.iam.gserviceaccount.com:testIamPermissions [none]
+[debug] [2026-08-04T11:34:18.385Z] >>> [apiv2][(partial)header] POST https://iam.googleapis.com/v1/projects/syllabus-ad688/serviceAccounts/firebase-app-hosting-compute@syllabus-ad688.iam.gserviceaccount.com:testIamPermissions  x-goog-user-project=syllabus-ad688
+[debug] [2026-08-04T11:34:18.385Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/syllabus-ad688/serviceAccounts/firebase-app-hosting-compute@syllabus-ad688.iam.gserviceaccount.com:testIamPermissions {"permissions":["iam.serviceAccounts.actAs"]}
+[debug] [2026-08-04T11:34:20.555Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/syllabus-ad688/serviceAccounts/firebase-app-hosting-compute@syllabus-ad688.iam.gserviceaccount.com:testIamPermissions 404
+[debug] [2026-08-04T11:34:20.555Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/syllabus-ad688/serviceAccounts/firebase-app-hosting-compute@syllabus-ad688.iam.gserviceaccount.com:testIamPermissions {"error":{"code":404,"message":"Unknown service account","status":"NOT_FOUND"}}
+[debug] [2026-08-04T11:34:20.556Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:20.556Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:20.556Z] >>> [apiv2][query] POST https://iam.googleapis.com/v1/projects/syllabus-ad688/serviceAccounts [none]
+[debug] [2026-08-04T11:34:20.556Z] >>> [apiv2][body] POST https://iam.googleapis.com/v1/projects/syllabus-ad688/serviceAccounts {"accountId":"firebase-app-hosting-compute","serviceAccount":{"displayName":"Firebase App Hosting compute service account","description":"Default service account used to run builds and deploys for Firebase App Hosting"}}
+[debug] [2026-08-04T11:34:22.716Z] <<< [apiv2][status] POST https://iam.googleapis.com/v1/projects/syllabus-ad688/serviceAccounts 200
+[debug] [2026-08-04T11:34:22.716Z] <<< [apiv2][body] POST https://iam.googleapis.com/v1/projects/syllabus-ad688/serviceAccounts [omitted]
+[debug] [2026-08-04T11:34:22.717Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:22.717Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:22.717Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/syllabus-ad688:getIamPolicy [none]
+[debug] [2026-08-04T11:34:25.479Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/syllabus-ad688:getIamPolicy 200
+[debug] [2026-08-04T11:34:25.480Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/syllabus-ad688:getIamPolicy {"version":1,"etag":"BwZYNwgUQLQ=","bindings":[{"role":"roles/cloudbuild.builds.builder","members":["serviceAccount:696281834171@cloudbuild.gserviceaccount.com"]},{"role":"roles/cloudbuild.serviceAgent","members":["serviceAccount:service-696281834171@gcp-sa-cloudbuild.iam.gserviceaccount.com"]},{"role":"roles/containerregistry.ServiceAgent","members":["serviceAccount:service-696281834171@containerregistry.iam.gserviceaccount.com"]},{"role":"roles/editor","members":["serviceAccount:696281834171-compute@developer.gserviceaccount.com"]},{"role":"roles/firebase.managementServiceAgent","members":["serviceAccount:service-696281834171@gcp-sa-firebase.iam.gserviceaccount.com"]},{"role":"roles/firebase.sdkAdminServiceAgent","members":["serviceAccount:firebase-adminsdk-fbsvc@syllabus-ad688.iam.gserviceaccount.com"]},{"role":"roles/firebaseauth.admin","members":["serviceAccount:firebase-adminsdk-fbsvc@syllabus-ad688.iam.gserviceaccount.com"]},{"role":"roles/firebaserules.system","members":["serviceAccount:service-696281834171@firebase-rules.iam.gserviceaccount.com"]},{"role":"roles/firestore.serviceAgent","members":["serviceAccount:service-696281834171@gcp-sa-firestore.iam.gserviceaccount.com"]},{"role":"roles/iam.serviceAccountTokenCreator","members":["serviceAccount:firebase-adminsdk-fbsvc@syllabus-ad688.iam.gserviceaccount.com"]},{"role":"roles/owner","members":["user:layjoe0001@gmail.com"]},{"role":"roles/run.serviceAgent","members":["serviceAccount:service-696281834171@serverless-robot-prod.iam.gserviceaccount.com"]}]}
+[debug] [2026-08-04T11:34:25.481Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:25.481Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:34:25.481Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/syllabus-ad688:setIamPolicy [none]
+[debug] [2026-08-04T11:34:25.481Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/syllabus-ad688:setIamPolicy {"policy":{"version":1,"etag":"BwZYNwgUQLQ=","bindings":[{"role":"roles/cloudbuild.builds.builder","members":["serviceAccount:696281834171@cloudbuild.gserviceaccount.com"]},{"role":"roles/cloudbuild.serviceAgent","members":["serviceAccount:service-696281834171@gcp-sa-cloudbuild.iam.gserviceaccount.com"]},{"role":"roles/containerregistry.ServiceAgent","members":["serviceAccount:service-696281834171@containerregistry.iam.gserviceaccount.com"]},{"role":"roles/editor","members":["serviceAccount:696281834171-compute@developer.gserviceaccount.com"]},{"role":"roles/firebase.managementServiceAgent","members":["serviceAccount:service-696281834171@gcp-sa-firebase.iam.gserviceaccount.com"]},{"role":"roles/firebase.sdkAdminServiceAgent","members":["serviceAccount:firebase-adminsdk-fbsvc@syllabus-ad688.iam.gserviceaccount.com","serviceAccount:firebase-app-hosting-compute@syllabus-ad688.iam.gserviceaccount.com"]},{"role":"roles/firebaseauth.admin","members":["serviceAccount:firebase-adminsdk-fbsvc@syllabus-ad688.iam.gserviceaccount.com"]},{"role":"roles/firebaserules.system","members":["serviceAccount:service-696281834171@firebase-rules.iam.gserviceaccount.com"]},{"role":"roles/firestore.serviceAgent","members":["serviceAccount:service-696281834171@gcp-sa-firestore.iam.gserviceaccount.com"]},{"role":"roles/iam.serviceAccountTokenCreator","members":["serviceAccount:firebase-adminsdk-fbsvc@syllabus-ad688.iam.gserviceaccount.com"]},{"role":"roles/owner","members":["user:layjoe0001@gmail.com"]},{"role":"roles/run.serviceAgent","members":["serviceAccount:service-696281834171@serverless-robot-prod.iam.gserviceaccount.com"]},{"role":"roles/firebaseapphosting.computeRunner","members":["serviceAccount:firebase-app-hosting-compute@syllabus-ad688.iam.gserviceaccount.com"]},{"role":"roles/developerconnect.readTokenAccessor","members":["serviceAccount:firebase-app-hosting-compute@syllabus-ad688.iam.gserviceaccount.com"]},{"role":"roles/storage.objectViewer","members":["serviceAccount:firebase-app-hosting-compute@syllabus-ad688.iam.gserviceaccount.com"]}]},"updateMask":"bindings"}
+[debug] [2026-08-04T11:34:26.496Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/syllabus-ad688:setIamPolicy 200
+[debug] [2026-08-04T11:34:26.496Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/syllabus-ad688:setIamPolicy {"version":1,"etag":"BwZYNwmBmgA=","bindings":[{"role":"roles/cloudbuild.builds.builder","members":["serviceAccount:696281834171@cloudbuild.gserviceaccount.com"]},{"role":"roles/cloudbuild.serviceAgent","members":["serviceAccount:service-696281834171@gcp-sa-cloudbuild.iam.gserviceaccount.com"]},{"role":"roles/containerregistry.ServiceAgent","members":["serviceAccount:service-696281834171@containerregistry.iam.gserviceaccount.com"]},{"role":"roles/developerconnect.readTokenAccessor","members":["serviceAccount:firebase-app-hosting-compute@syllabus-ad688.iam.gserviceaccount.com"]},{"role":"roles/editor","members":["serviceAccount:696281834171-compute@developer.gserviceaccount.com"]},{"role":"roles/firebase.managementServiceAgent","members":["serviceAccount:service-696281834171@gcp-sa-firebase.iam.gserviceaccount.com"]},{"role":"roles/firebase.sdkAdminServiceAgent","members":["serviceAccount:firebase-adminsdk-fbsvc@syllabus-ad688.iam.gserviceaccount.com","serviceAccount:firebase-app-hosting-compute@syllabus-ad688.iam.gserviceaccount.com"]},{"role":"roles/firebaseapphosting.computeRunner","members":["serviceAccount:firebase-app-hosting-compute@syllabus-ad688.iam.gserviceaccount.com"]},{"role":"roles/firebaseauth.admin","members":["serviceAccount:firebase-adminsdk-fbsvc@syllabus-ad688.iam.gserviceaccount.com"]},{"role":"roles/firebaserules.system","members":["serviceAccount:service-696281834171@firebase-rules.iam.gserviceaccount.com"]},{"role":"roles/firestore.serviceAgent","members":["serviceAccount:service-696281834171@gcp-sa-firestore.iam.gserviceaccount.com"]},{"role":"roles/iam.serviceAccountTokenCreator","members":["serviceAccount:firebase-adminsdk-fbsvc@syllabus-ad688.iam.gserviceaccount.com"]},{"role":"roles/owner","members":["user:layjoe0001@gmail.com"]},{"role":"roles/run.serviceAgent","members":["serviceAccount:service-696281834171@serverless-robot-prod.iam.gserviceaccount.com"]},{"role":"roles/storage.objectViewer","members":["serviceAccount:firebase-app-hosting-compute@syllabus-ad688.iam.gserviceaccount.com"]}]}
+[info] i  This command links your local project to Firebase App Hosting. You will be able to deploy your web app with `firebase deploy` after setup. 
+[debug] [2026-08-04T11:35:07.159Z] ExitPromptError: User force closed the prompt with SIGINT
+    at Interface.sigint (/home/josef-marie/.nvm/versions/node/v24.18.0/lib/node_modules/firebase-tools/node_modules/@inquirer/core/dist/commonjs/lib/create-prompt.js:101:37)
+    at Interface.emit (node:events:509:28)
+    at [_ttyWrite] [as _ttyWrite] (node:internal/readline/interface:1327:18)
+    at ReadStream.onkeypress (node:internal/readline/interface:284:20)
+    at ReadStream.emit (node:events:521:24)
+    at emitKeys (node:internal/readline/utils:371:14)
+    at emitKeys.next (<anonymous>)
+    at ReadStream.onData (node:internal/readline/emitKeypressEvents:64:36)
+    at ReadStream.emit (node:events:509:28)
+    at addChunk (node:internal/streams/readable:563:12)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-08-04T11:35:10.505Z] ----------------------------------------------------------------------
+[debug] [2026-08-04T11:35:10.506Z] Command:       /home/josef-marie/.nvm/versions/node/v24.18.0/bin/node /home/josef-marie/.nvm/versions/node/v24.18.0/bin/firebase init
+[debug] [2026-08-04T11:35:10.506Z] CLI Version:   15.25.1
+[debug] [2026-08-04T11:35:10.506Z] Platform:      linux
+[debug] [2026-08-04T11:35:10.506Z] Node Version:  v24.18.0
+[debug] [2026-08-04T11:35:10.506Z] Detected Agent: unknown
+[debug] [2026-08-04T11:35:10.506Z] Time:          Tue Aug 04 2026 13:35:10 GMT+0200 (Central Africa Time)
+[debug] [2026-08-04T11:35:10.506Z] ----------------------------------------------------------------------
+[debug] 
+[info] 
+     ######## #### ########  ######## ########     ###     ######  ########
+     ##        ##  ##     ## ##       ##     ##  ##   ##  ##       ##
+     ######    ##  ########  ######   ########  #########  ######  ######
+     ##        ##  ##    ##  ##       ##     ## ##     ##       ## ##
+     ##       #### ##     ## ######## ########  ##     ##  ######  ########
+
+You're about to initialize a Firebase project in this directory:
+
+  /run/media/josef-marie/ba50bc44-bf6c-4b00-adce-613469ef3d02/Syllabus_engine
+
+Before we get started, keep in mind:
+
+  * You are currently outside your home directory
+
+[info] 
+=== Account Setup
+[info] 
+[info] Which account do you want to use for this project? Choose an account or add a new one now
+[info] 
+[debug] [2026-08-04T11:35:18.777Z] setProjectAccount(/run/media/josef-marie/ba50bc44-bf6c-4b00-adce-613469ef3d02/Syllabus_engine, layjoe0001@gmail.com)
+[info] 
+[info] ✔  Using account: layjoe0001@gmail.com 
+[info] 
+=== Project Setup
+[info] 
+[info] First, let's associate this project directory with a Firebase project.
+[info] You can create multiple project aliases by running firebase use --add, 
+[info] 
+[debug] [2026-08-04T11:35:18.808Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-04T11:35:18.808Z] > authorizing via signed-in user (layjoe0001@gmail.com)
+[debug] [2026-08-04T11:35:18.814Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:35:18.815Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:35:18.815Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/syllabus-ad688 [none]
+[debug] [2026-08-04T11:35:19.546Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/syllabus-ad688 200
+[debug] [2026-08-04T11:35:19.546Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/syllabus-ad688 {"projectId":"syllabus-ad688","projectNumber":"696281834171","displayName":"Syllabus","name":"projects/syllabus-ad688","resources":{"hostingSite":"syllabus-ad688"},"state":"ACTIVE","labels":{"firebase":"enabled"},"etag":"1_a05f51c9-beec-4755-9150-4c2581e1ecc6"}
+[info] i  Using project syllabus-ad688 (Syllabus) . 
+[info] 
+=== Hosting Setup
+[info] 
+[debug] [2026-08-04T11:35:23.022Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:35:23.022Z] Checked if tokens are valid: true, expires at: 1785846326165
+[debug] [2026-08-04T11:35:23.023Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/syllabus-ad688 [none]
+[debug] [2026-08-04T11:35:23.636Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/syllabus-ad688 200
+[debug] [2026-08-04T11:35:23.636Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/syllabus-ad688 {"projectId":"syllabus-ad688","projectNumber":"696281834171","displayName":"Syllabus","name":"projects/syllabus-ad688","resources":{"hostingSite":"syllabus-ad688"},"state":"ACTIVE","labels":{"firebase":"enabled"},"etag":"1_a05f51c9-beec-4755-9150-4c2581e1ecc6"}
+[info] 
+[info] Your public directory is the folder (relative to your project directory) that
+[info] will contain Hosting assets to be uploaded with firebase deploy. If you
+[info] have a build process for your assets, use your build's output directory.
+[info] 
+[info] 
+[info] i  Didn't detect a .git folder. Assuming /run/media/josef-marie/ba50bc44-bf6c-4b00-adce-613469ef3d02/Syllabus_engine is the project root. 
+[info] i  Authorizing with GitHub to upload your service account to a GitHub repository's secrets store. 
+[info] 
+[info] Visit this URL on this device to log in:
+[info] https://github.com/login/oauth/authorize?client_id=89cf50f02ac6aaed3484&state=26987004&redirect_uri=http%3A%2F%2Flocalhost%3A9005&scope=read%3Auser%20repo%20public_repo
+[info] 
+[info] Waiting for authentication...
