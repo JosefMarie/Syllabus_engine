@@ -4,6 +4,8 @@ import React, { useState } from "react";
 import { Syllabus, LearningOutcome, IndicativeContent, Topic, Subtopic } from "@/types/syllabus";
 import { parseSyllabusWithGemini } from "@/lib/gemini";
 import { saveSyllabus, getAllTrades } from "@/lib/db";
+import { uploadFileToStorage } from "@/lib/storage";
+import MarkdownEditor from "./MarkdownEditor";
 import { useRouter } from "next/navigation";
 import { Trade, StudentLevel } from "@/types/auth";
 import { 
@@ -45,11 +47,11 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
   const [syllabus, setSyllabus] = useState<Syllabus>(
     initialSyllabus || {
       id: `syllabus-${Date.now()}`,
-      title: "New Modern Software Syllabus",
-      courseCode: "CS202",
+      title: "",
+      courseCode: "",
       department: "Computer Science & Engineering",
       instructor: "Instructor Name",
-      description: "Comprehensive software development syllabus.",
+      description: "",
       status: "draft",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -58,25 +60,25 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
           id: `lo-init-${Date.now()}`,
           code: "LO1",
           order: 1,
-          title: "Primary Learning Objective",
-          description: "Description of objective",
+          title: "",
+          description: "",
           indicativeContents: [
             {
               id: `ic-init-${Date.now()}`,
               code: "IC1.1",
               order: 1,
-              title: "Indicative Module Content",
+              title: "",
               topics: [
                 {
                   id: `top-init-${Date.now()}`,
                   order: 1,
-                  title: "Topic 1",
+                  title: "",
                   subtopics: [
                     {
                       id: `sub-init-${Date.now()}`,
                       order: 1,
-                      title: "Introduction to Subtopic",
-                      contentMarkdown: "### Welcome to the Course\nWrite markdown content here.",
+                      title: "",
+                      contentMarkdown: "",
                     }
                   ]
                 }
@@ -92,6 +94,63 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
   const [rawText, setRawText] = useState("");
   const [extracting, setExtracting] = useState(false);
   const [extractSuccess, setExtractSuccess] = useState<string | null>(null);
+  
+  // Drag and Drop File State
+  const [isDragging, setIsDragging] = useState(false);
+  const [extractingFile, setExtractingFile] = useState(false);
+
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+    setExtractingFile(true);
+    setExtractSuccess(null);
+
+    try {
+      let extractedText = "";
+
+      if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
+        // Dynamically import pdfjs-dist to avoid SSR issues
+        // @ts-ignore
+        const pdfjsLib = await import('pdfjs-dist');
+        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        
+        let fullText = '';
+        for (let i = 1; i <= pdf.numPages; i++) {
+          const page = await pdf.getPage(i);
+          const textContent = await page.getTextContent();
+          const pageText = textContent.items.map((item: any) => item.str).join(' ');
+          fullText += pageText + '\n';
+        }
+        extractedText = fullText;
+      } else if (file.type.includes("text") || file.name.endsWith(".txt") || file.name.endsWith(".md")) {
+        extractedText = await file.text();
+      } else {
+        throw new Error("Unsupported file format. Please upload PDF or Text documents.");
+      }
+
+      if (!extractedText.trim()) {
+        throw new Error("Extracted document is empty or could not be read.");
+      }
+
+      setRawText(extractedText);
+      setExtractSuccess("File text successfully extracted! Review the content below before parsing with AI.");
+
+      // Upload file to Firebase Storage in the background
+      uploadFileToStorage(file, "syllabi_docs")
+        .then((url) => {
+          setSyllabus(prev => ({ ...prev, documentUrl: url }));
+        })
+        .catch((err) => console.error("Failed to upload document to storage:", err));
+
+    } catch (err: any) {
+      console.error("Extraction error:", err);
+      alert(err.message || "An unexpected error occurred while parsing the file.");
+    } finally {
+      setExtractingFile(false);
+    }
+  };
 
   // Save Syllabus Action
   const [saving, setSaving] = useState(false);
@@ -298,12 +357,110 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
               Gemini 2.5 Pro will parse raw document text into the 5-level hierarchy, auto-extract technical terms into citations, and generate code runner snippets.
             </p>
 
+            {/* AI Metadata Inputs */}
+            <div className="mt-6 border-t border-[#334155] pt-6">
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono mb-4">
+                Target Syllabus Metadata
+              </h4>
+              <div className="grid gap-4 sm:grid-cols-2 mb-4">
+                <div>
+                  <label className="text-xs font-mono text-[#94A3B8]">Course Title</label>
+                  <input
+                    type="text"
+                    value={syllabus.title}
+                    onChange={(e) => setSyllabus({ ...syllabus, title: e.target.value })}
+                    className="mt-1 w-full rounded-lg border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-mono text-[#94A3B8]">Course Code</label>
+                  <input
+                    type="text"
+                    value={syllabus.courseCode}
+                    onChange={(e) => setSyllabus({ ...syllabus, courseCode: e.target.value })}
+                    className="mt-1 w-full rounded-lg border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                  />
+                </div>
+              </div>
+              
+              <div className="grid gap-4 sm:grid-cols-2 mb-6">
+                <div>
+                  <label className="text-xs font-mono text-[#94A3B8]">Assigned Trade</label>
+                  <select
+                    value={syllabus.tradeId || ''}
+                    onChange={(e) => setSyllabus({ ...syllabus, tradeId: e.target.value })}
+                    className="mt-1 w-full rounded-lg border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                  >
+                    <option value="">Select Trade...</option>
+                    {tradesList.map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="text-xs font-mono text-[#94A3B8]">Assigned Level</label>
+                  <select
+                    value={syllabus.level || 'Level 4'}
+                    onChange={(e) => setSyllabus({ ...syllabus, level: e.target.value as StudentLevel })}
+                    className="mt-1 w-full rounded-lg border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                  >
+                    <option value="Level 3">Level 3</option>
+                    <option value="Level 4">Level 4</option>
+                    <option value="Level 5">Level 5</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
             <div className="mt-4">
+              <div
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragging(true);
+                }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragging(false);
+                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    handleFileUpload(e.dataTransfer.files[0]);
+                  }
+                }}
+                className={`relative mb-4 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-colors ${
+                  isDragging 
+                    ? "border-[#06B6D4] bg-[#06B6D4]/10" 
+                    : "border-[#334155] bg-[#0B0F19] hover:border-[#475569] hover:bg-[#1E293B]/50"
+                }`}
+              >
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#1E293B] text-[#94A3B8]">
+                  <Upload className="h-6 w-6" />
+                </div>
+                <h4 className="text-sm font-bold text-white">
+                  {extractingFile ? "Extracting Text..." : "Drag and Drop Syllabus File"}
+                </h4>
+                <p className="mt-1 text-xs text-[#94A3B8]">
+                  Upload a PDF, TXT, or Markdown document to instantly extract its contents.
+                </p>
+                <input
+                  type="file"
+                  accept=".pdf,.txt,.md"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files.length > 0) {
+                      handleFileUpload(e.target.files[0]);
+                    }
+                  }}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  disabled={extractingFile}
+                />
+              </div>
+
               <textarea
                 rows={8}
                 value={rawText}
                 onChange={(e) => setRawText(e.target.value)}
-                placeholder="Paste course syllabus document text here (PDF, Word, or TXT content)..."
+                placeholder="Or paste course syllabus document text here manually..."
                 className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-4 text-xs font-mono text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
               />
             </div>
@@ -349,6 +506,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                   type="text"
                   value={syllabus.title}
                   onChange={(e) => setSyllabus({ ...syllabus, title: e.target.value })}
+                  placeholder="e.g. New Modern Software Syllabus"
                   className="mt-1 w-full rounded-lg border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
                 />
               </div>
@@ -359,6 +517,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                   type="text"
                   value={syllabus.courseCode}
                   onChange={(e) => setSyllabus({ ...syllabus, courseCode: e.target.value })}
+                  placeholder="e.g. CS202"
                   className="mt-1 w-full rounded-lg border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
                 />
               </div>
@@ -401,6 +560,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                 rows={3}
                 value={syllabus.description}
                 onChange={(e) => setSyllabus({ ...syllabus, description: e.target.value })}
+                placeholder="e.g. Comprehensive software development syllabus."
                 className="mt-1 w-full rounded-lg border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
               />
             </div>
@@ -437,6 +597,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                           learningOutcomes: syllabus.learningOutcomes.map(l => l.id === lo.id ? { ...l, code } : l)
                         });
                       }}
+                      placeholder="e.g. LO1"
                       className="w-20 rounded bg-[#0B0F19] px-2 py-1 font-mono text-xs font-bold text-[#06B6D4] border border-[#334155]"
                     />
                     <input
@@ -449,6 +610,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                           learningOutcomes: syllabus.learningOutcomes.map(l => l.id === lo.id ? { ...l, title } : l)
                         });
                       }}
+                      placeholder="e.g. Primary Learning Objective"
                       className="flex-1 rounded bg-[#0B0F19] px-3 py-1 text-sm font-bold text-white border border-[#334155]"
                     />
                   </div>
@@ -491,6 +653,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                                 )
                               });
                             }}
+                            placeholder="e.g. IC1.1"
                             className="w-20 rounded bg-[#0B0F19] px-2 py-1 font-mono text-xs text-[#F59E0B] border border-[#334155]"
                           />
                           <input
@@ -508,6 +671,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                                 )
                               });
                             }}
+                            placeholder="e.g. Indicative Module Content"
                             className="flex-1 rounded bg-[#0B0F19] px-3 py-1 text-xs font-semibold text-white border border-[#334155]"
                           />
                         </div>
@@ -546,6 +710,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                                       )
                                     });
                                   }}
+                                  placeholder="e.g. Topic 1"
                                   className="flex-1 rounded bg-[#0B0F19] px-2.5 py-1 text-xs font-semibold text-white border border-[#334155]"
                                 />
                               </div>
@@ -588,15 +753,16 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                                           )
                                         });
                                       }}
+                                      placeholder="e.g. Introduction to Subtopic"
                                       className="flex-1 rounded bg-[#1E293B] px-2.5 py-1 text-xs text-white border border-[#334155]"
                                     />
                                   </div>
 
-                                  <textarea
-                                    rows={3}
-                                    value={sub.contentMarkdown}
-                                    onChange={(e) => {
-                                      const contentMarkdown = e.target.value;
+                                  <MarkdownEditor
+                                    rows={5}
+                                    value={sub.contentMarkdown || ""}
+                                    placeholder="Subtopic Markdown Content... (Drag and drop images here!)"
+                                    onChange={(contentMarkdown) => {
                                       setSyllabus({
                                         ...syllabus,
                                         learningOutcomes: syllabus.learningOutcomes.map(l => 
@@ -617,8 +783,32 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                                         )
                                       });
                                     }}
-                                    placeholder="Subtopic Markdown Content..."
-                                    className="w-full rounded bg-[#1E293B] p-2 text-xs font-mono text-[#CBD5E1] border border-[#334155]"
+                                    onAddCitation={(citation) => {
+                                      setSyllabus({
+                                        ...syllabus,
+                                        learningOutcomes: syllabus.learningOutcomes.map(l => 
+                                          l.id === lo.id ? {
+                                            ...l,
+                                            indicativeContents: l.indicativeContents.map(i => 
+                                              i.id === ic.id ? {
+                                                ...i,
+                                                topics: i.topics.map(t => 
+                                                  t.id === top.id ? {
+                                                    ...t,
+                                                    subtopics: t.subtopics.map(s => 
+                                                      s.id === sub.id ? { 
+                                                        ...s, 
+                                                        citations: [...(s.citations || []), citation] 
+                                                      } : s
+                                                    )
+                                                  } : t
+                                                )
+                                              } : i
+                                            )
+                                          } : l
+                                        )
+                                      });
+                                    }}
                                   />
                                 </div>
                               ))}

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { Syllabus } from "@/types/syllabus";
 import { UserProfile, StudentLevel } from "@/types/auth";
 import { getAllSyllabi, getAllTrades } from "@/lib/db";
-import { getStoredSession, saveStoredSession, updateUserEmail } from "@/lib/auth";
+import { getStoredSession, saveStoredSession, updateUserEmail, logoutStudent } from "@/lib/auth";
 import { 
   BookOpen, 
   Sparkles, 
@@ -69,8 +69,10 @@ export default function CatalogPage() {
     loadData();
   }, []);
 
-  const handleLogout = () => {
-    saveStoredSession(null);
+  const handleLogout = async () => {
+    if (currentUser) {
+      await logoutStudent(currentUser, false);
+    }
     setCurrentUser(null);
   };
 

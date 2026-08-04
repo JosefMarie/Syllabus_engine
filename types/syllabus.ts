@@ -73,6 +73,7 @@ export interface Syllabus {
   tradeId?: string;
   level?: 'Level 3' | 'Level 4' | 'Level 5';
   status: 'draft' | 'published';
+  documentUrl?: string;
   createdAt: string;
   updatedAt: string;
   learningOutcomes: LearningOutcome[];

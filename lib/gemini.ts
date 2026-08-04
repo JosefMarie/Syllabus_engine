@@ -7,8 +7,15 @@ export async function parseSyllabusWithGemini(rawText: string): Promise<Syllabus
   if (apiKey) {
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      const prompt = `You are a Senior Full-Stack Software Engineer and UI/UX Architect.
-Parse the following course syllabus document text into a highly structured 5-level nested JSON object.
+      const prompt = `You are an expert Curriculum Architect and Data Extractor.
+Your task is to completely digitize the following course syllabus document text into a highly structured 5-level nested JSON object.
+
+CRITICAL INSTRUCTIONS (FAILURE TO COMPLY RESULTS IN TERMINATION):
+- DO NOT just extract one item. You MUST extract EVERY SINGLE Learning Outcome (LO) present in the text (e.g. LO1, LO2, LO3, etc).
+- For EVERY Learning Outcome, extract EVERY SINGLE Indicative Content (IC) belonging to it.
+- For EVERY Indicative Content, extract ALL Topics belonging to it.
+- For EVERY Topic, extract ALL Subtopics and generate exhaustive 'contentMarkdown' for them.
+- If your JSON arrays for learningOutcomes, indicativeContents, or topics only have 1 item when the text clearly has more, YOU HAVE FAILED.
 
 Strict 5-level hierarchy required:
 Level 1: Syllabus (title, courseCode, description)
@@ -27,7 +34,10 @@ ${rawText.slice(0, 15000)}`;
 
       const model = genAI.getGenerativeModel({
         model: "gemini-1.5-pro",
+        systemInstruction: "You are an expert curriculum data extractor. Your primary directive is EXHAUSTIVE extraction. You must read the entire document and extract all nodes in the hierarchy. Never stop at just one array item if more exist in the source.",
         generationConfig: {
+          maxOutputTokens: 8192,
+          temperature: 0.1,
           responseMimeType: "application/json",
           responseSchema: {
             type: SchemaType.OBJECT,

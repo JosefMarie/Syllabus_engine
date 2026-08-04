@@ -130,6 +130,31 @@ export async function logoutAdmin() {
   saveAdminSession(null);
 }
 
+export async function logoutStudent(user?: UserProfile | null, isAutoTimeout: boolean = false) {
+  const current = user || getStoredSession();
+  if (current) {
+    try {
+      const { updateStudentPresence } = await import("./presence");
+      await updateStudentPresence(current.uid, current.fullName, "offline");
+
+      await logActivity({
+        userId: current.uid,
+        userName: current.fullName,
+        userEmail: current.email || `${current.username} (No Email)`,
+        userLevel: current.level,
+        action: isAutoTimeout ? "AUTO_TIMEOUT_LOGOUT" : "STUDENT_LOGOUT",
+        details: isAutoTimeout
+          ? "Student session automatically logged out after 5 minutes of inactivity."
+          : "Student logged out of their session.",
+      });
+    } catch (e) {
+      console.warn("Logout presence / audit update error:", e);
+    }
+  }
+
+  saveStoredSession(null);
+}
+
 // ----------------------------------------------------
 // STUDENT AUTHENTICATION
 // ----------------------------------------------------

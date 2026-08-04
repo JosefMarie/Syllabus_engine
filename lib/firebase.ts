@@ -1,6 +1,7 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getFirestore, Firestore } from "firebase/firestore";
 import { getAuth, Auth, GoogleAuthProvider } from "firebase/auth";
+import { getStorage, FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -20,6 +21,7 @@ let app: FirebaseApp | null = null;
 let db: Firestore | null = null;
 let auth: Auth | null = null;
 let googleProvider: GoogleAuthProvider | null = null;
+let storage: FirebaseStorage | null = null;
 
 if (typeof window !== "undefined" || isFirebaseConfigured) {
   try {
@@ -27,6 +29,7 @@ if (typeof window !== "undefined" || isFirebaseConfigured) {
       app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
       db = getFirestore(app);
       auth = getAuth(app);
+      storage = getStorage(app);
       googleProvider = new GoogleAuthProvider();
     }
   } catch (error) {
@@ -34,4 +37,4 @@ if (typeof window !== "undefined" || isFirebaseConfigured) {
   }
 }
 
-export { app, db, auth, googleProvider };
+export { app, db, auth, googleProvider, storage };

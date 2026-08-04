@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { updateStudentPresence } from "@/lib/presence";
+import { logoutStudent } from "@/lib/auth";
 import { PresenceState } from "@/types/presence";
 import { AlertTriangle, Layers } from "lucide-react";
 
@@ -20,6 +21,7 @@ export default function PresenceTracker({
 }: PresenceTrackerProps) {
   const [multiWindowDetected, setMultiWindowDetected] = useState(false);
   const lastInteractionRef = useRef<number>(Date.now());
+  const isTimingOutRef = useRef(false);
 
   useEffect(() => {
     if (!userId) return;
@@ -49,6 +51,19 @@ export default function PresenceTracker({
     };
 
     const reportPresence = () => {
+      if (isTimingOutRef.current) return;
+
+      const secondsSinceLastInput = (Date.now() - lastInteractionRef.current) / 1000;
+      
+      // Auto 5-Minute Inactivity Session Timeout (300 seconds)
+      if (secondsSinceLastInput >= 300) {
+        isTimingOutRef.current = true;
+        logoutStudent({ uid: userId, fullName } as any, true).then(() => {
+          window.location.href = "/auth/login?reason=timeout";
+        });
+        return;
+      }
+
       const state = computePresenceState();
       updateStudentPresence(userId, fullName, state, subtopicTitle, syllabusTitle);
     };
