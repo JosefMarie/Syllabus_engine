@@ -3,12 +3,15 @@
 import React, { useEffect, useState } from "react";
 import { Syllabus, Subtopic, Citation } from "@/types/syllabus";
 import { getSyllabusById, getSubtopicProgress, toggleSubtopicProgress, logActivity } from "@/lib/db";
-import { getStoredSession } from "@/lib/auth";
+import { getStoredSession, getAdminSession } from "@/lib/auth";
 import SidebarTree from "@/components/viewer/SidebarTree";
 import SubtopicView from "@/components/viewer/SubtopicView";
 import CitationsDrawer from "@/components/viewer/CitationsDrawer";
 import Link from "next/link";
-import { ArrowLeft, ShieldCheck } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Lock, AlertTriangle, LogIn, UserPlus } from "lucide-react";
+import { UserProfile, StudentLevel } from "@/types/auth";
+import NotificationAlert from "@/components/common/NotificationAlert";
+import PresenceTracker from "@/components/common/PresenceTracker";
 
 export default function StudentViewerClient({ syllabusId }: { syllabusId: string }) {
   const [syllabus, setSyllabus] = useState<Syllabus | null>(null);
@@ -16,12 +19,19 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
   const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
   const [progressMap, setProgressMap] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
 
   // Flattened array of all subtopics for easy previous/next pagination
   const [allSubtopics, setAllSubtopics] = useState<Subtopic[]>([]);
 
   useEffect(() => {
     async function load() {
+      const user = getStoredSession();
+      const admin = getAdminSession();
+      setCurrentUser(user);
+      setIsAdminLoggedIn(Boolean(admin));
+
       const data = await getSyllabusById(syllabusId);
       if (data) {
         setSyllabus(data);
@@ -43,7 +53,9 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
         setAllSubtopics(list);
         if (list.length > 0) {
           setActiveSubtopic(list[0]);
-          trackSubtopicView(list[0], data);
+          if (user || admin) {
+            trackSubtopicView(list[0], data);
+          }
         }
       }
       setLoading(false);
@@ -54,16 +66,20 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
   const trackSubtopicView = (sub: Subtopic, syl?: Syllabus | null) => {
     const s = syl || syllabus;
     const user = getStoredSession();
-    logActivity({
-      userId: user?.uid || "guest",
-      userName: user?.fullName || "Guest Student",
-      userEmail: user?.email || "guest@student.edu",
-      userLevel: user?.level || "Guest",
-      action: "VIEW_SUBTOPIC",
-      details: `Viewed subtopic "${sub.title}" in ${s?.title || 'Syllabus'}`,
-      syllabusId: s?.id,
-      syllabusTitle: s?.title
-    });
+    const admin = getAdminSession();
+    
+    if (user || admin) {
+      logActivity({
+        userId: user?.uid || admin?.uid || "guest",
+        userName: user?.fullName || admin?.fullName || "Guest",
+        userEmail: user?.email || admin?.email || "guest@student.edu",
+        userLevel: user?.level || admin?.level || "Admin",
+        action: "VIEW_SUBTOPIC",
+        details: `Viewed subtopic "${sub.title}" in ${s?.title || 'Syllabus'}`,
+        syllabusId: s?.id,
+        syllabusTitle: s?.title
+      });
+    }
   };
 
   const handleSelectSubtopic = (sub: Subtopic) => {
@@ -71,17 +87,19 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
     trackSubtopicView(sub);
   };
 
-  const handleToggleComplete = (subtopicId: string) => {
-    const updated = toggleSubtopicProgress(subtopicId);
+  const handleToggleComplete = async (subtopicId: string) => {
+    const updated = await toggleSubtopicProgress(subtopicId);
     setProgressMap((prev) => ({ ...prev, [subtopicId]: updated }));
 
     const user = getStoredSession();
-    if (activeSubtopic) {
+    const admin = getAdminSession();
+
+    if (activeSubtopic && (user || admin)) {
       logActivity({
-        userId: user?.uid || "guest",
-        userName: user?.fullName || "Guest Student",
-        userEmail: user?.email || "guest@student.edu",
-        userLevel: user?.level || "Guest",
+        userId: user?.uid || admin?.uid || "guest",
+        userName: user?.fullName || admin?.fullName || "Guest",
+        userEmail: user?.email || admin?.email || "guest@student.edu",
+        userLevel: user?.level || admin?.level || "Admin",
         action: "VIEW_SUBTOPIC",
         details: `${updated ? 'Marked as Completed' : 'Unmarked'}: "${activeSubtopic.title}"`,
         syllabusId: syllabus?.id,
@@ -93,6 +111,22 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
   const currentIdx = activeSubtopic ? allSubtopics.findIndex((s) => s.id === activeSubtopic.id) : -1;
   const prevSubtopic = currentIdx > 0 ? allSubtopics[currentIdx - 1] : undefined;
   const nextSubtopic = currentIdx >= 0 && currentIdx < allSubtopics.length - 1 ? allSubtopics[currentIdx + 1] : undefined;
+
+  // Level validation helper
+  const isLevelAllowed = (): boolean => {
+    if (isAdminLoggedIn) return true; // Teachers can view all levels
+    if (!currentUser || currentUser.role !== "student") return false;
+    if (!syllabus?.level) return true;
+
+    const studentLevel = currentUser.level;
+    const sylLevel = syllabus.level;
+
+    if (studentLevel === "Level 3") return sylLevel === "Level 3";
+    if (studentLevel === "Level 4") return sylLevel === "Level 3" || sylLevel === "Level 4";
+    if (studentLevel === "Level 5") return true; // Level 5 can view 3, 4, 5
+
+    return true;
+  };
 
   if (loading) {
     return (
@@ -117,8 +151,101 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
     );
   }
 
+  // 1. GUEST USER PROTECTION: Not logged in
+  if (!currentUser && !isAdminLoggedIn) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-6 text-[#CBD5E1]">
+        <div className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#1E293B] p-8 text-center shadow-2xl space-y-5">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#06B6D4]/15 text-[#06B6D4] border border-[#06B6D4]/30">
+            <Lock className="h-8 w-8" />
+          </div>
+          <div>
+            <h2 className="text-xl font-extrabold text-white tracking-tight">
+              Authentication Required
+            </h2>
+            <p className="mt-2 text-xs text-[#94A3B8] leading-relaxed">
+              Please log in or register a student account to view <strong className="text-white">{syllabus.title}</strong>, explore learning outcomes, and track your subtopic notes.
+            </p>
+          </div>
+
+          <div className="grid gap-3 pt-2">
+            <Link
+              href="/auth/login"
+              className="inline-flex w-full items-center justify-center space-x-2 rounded-xl bg-[#06B6D4] py-3 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg"
+            >
+              <LogIn className="h-4 w-4" />
+              <span>Log In to Student Account</span>
+            </Link>
+
+            <Link
+              href="/auth/register"
+              className="inline-flex w-full items-center justify-center space-x-2 rounded-xl border border-[#334155] bg-[#0B0F19] py-3 text-xs font-semibold text-white hover:border-[#06B6D4] transition-all"
+            >
+              <UserPlus className="h-4 w-4 text-[#06B6D4]" />
+              <span>Register New Account</span>
+            </Link>
+
+            <Link
+              href="/"
+              className="mt-2 inline-flex items-center justify-center space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span>Return to Catalog</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 2. LEVEL HIERARCHY PROTECTION: Student level not permitted
+  if (!isLevelAllowed()) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-6 text-[#CBD5E1]">
+        <div className="w-full max-w-md rounded-2xl border border-rose-500/30 bg-[#1E293B] p-8 text-center shadow-2xl space-y-5">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30">
+            <AlertTriangle className="h-8 w-8" />
+          </div>
+          <div>
+            <h2 className="text-xl font-extrabold text-white tracking-tight">
+              Level Access Restricted
+            </h2>
+            <p className="mt-2 text-xs text-[#94A3B8] leading-relaxed">
+              Your account is approved for <strong className="text-[#10B981] font-mono">{currentUser?.level}</strong>. This syllabus requires <strong className="text-[#06B6D4] font-mono">{syllabus.level}</strong> authorization.
+            </p>
+          </div>
+
+          <div className="pt-2 space-y-3">
+            <p className="text-[11px] font-mono text-[#94A3B8] bg-[#0B0F19] p-3 rounded-xl border border-[#334155]">
+              Please contact your instructor or trade teacher to upgrade your student study level.
+            </p>
+
+            <Link
+              href="/"
+              className="inline-flex w-full items-center justify-center space-x-2 rounded-xl bg-[#06B6D4] py-3 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to Allowed Syllabi</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#0B0F19] text-[#CBD5E1]">
+      {currentUser && (
+        <>
+          <NotificationAlert userId={currentUser.uid} />
+          <PresenceTracker
+            userId={currentUser.uid}
+            fullName={currentUser.fullName}
+            subtopicTitle={activeSubtopic?.title}
+            syllabusTitle={syllabus?.title}
+          />
+        </>
+      )}
       {/* 5-Level Sidebar Navigation */}
       <SidebarTree
         syllabus={syllabus}
@@ -144,13 +271,15 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
           </div>
 
           <div className="flex items-center space-x-3">
-            <Link
-              href={`/admin/builder?id=${syllabus.id}`}
-              className="inline-flex items-center space-x-1.5 rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-1.5 text-xs font-semibold text-white hover:border-[#06B6D4] transition-all"
-            >
-              <ShieldCheck className="h-3.5 w-3.5 text-[#06B6D4]" />
-              <span className="hidden sm:inline">Edit in Admin Portal</span>
-            </Link>
+            {isAdminLoggedIn && (
+              <Link
+                href={`/admin/builder?id=${syllabus.id}`}
+                className="inline-flex items-center space-x-1.5 rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-1.5 text-xs font-semibold text-white hover:border-[#06B6D4] transition-all"
+              >
+                <ShieldCheck className="h-3.5 w-3.5 text-[#06B6D4]" />
+                <span className="hidden sm:inline">Edit in Admin Portal</span>
+              </Link>
+            )}
           </div>
         </header>
 

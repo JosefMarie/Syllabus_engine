@@ -1,5 +1,6 @@
 import { Syllabus, Citation } from "@/types/syllabus";
 import { Trade, UserProfile, AccountStatus } from "@/types/auth";
+import { StudentNotification, StudentProgressSummary } from "@/types/notification";
 import { DEMO_SYLLABI_LIST, DEMO_SYLLABUS } from "./demoData";
 import { db, isFirebaseConfigured } from "./firebase";
 import { 
@@ -8,8 +9,11 @@ import {
   getDocs, 
   getDoc, 
   setDoc, 
+  updateDoc,
   deleteDoc, 
-  query 
+  query,
+  where,
+  orderBy
 } from "firebase/firestore";
 
 const STORAGE_KEY = "syllabus_platform_syllabi_v1";
@@ -98,6 +102,12 @@ export async function getAllSyllabi(): Promise<Syllabus[]> {
         items.push({ id: docSnap.id, ...docSnap.data() } as Syllabus);
       });
       if (items.length > 0) return items;
+      
+      // Seed default demo syllabi to Firestore if collection is empty
+      for (const demoSyllabus of DEMO_SYLLABI_LIST) {
+        await setDoc(doc(db, "syllabi", demoSyllabus.id), demoSyllabus);
+      }
+      return DEMO_SYLLABI_LIST;
     } catch (err) {
       console.warn("Firestore fetch error, falling back to local store:", err);
     }
@@ -204,6 +214,12 @@ export async function getAllTrades(): Promise<Trade[]> {
         items.push({ id: docSnap.id, ...docSnap.data() } as Trade);
       });
       if (items.length > 0) return items;
+
+      // Seed default trades to Firestore if collection is empty
+      for (const t of DEFAULT_TRADES) {
+        await setDoc(doc(db, "trades", t.id), t);
+      }
+      return DEFAULT_TRADES;
     } catch (e) {
       console.warn("Firestore trades fetch error, using local trades:", e);
     }
@@ -269,7 +285,7 @@ export async function getAllUserProfiles(): Promise<UserProfile[]> {
       snapshot.forEach((docSnap) => {
         items.push({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
       });
-      if (items.length > 0) return items;
+      return items; // Return all user profiles fetched from Firestore
     } catch (e) {
       console.warn("Firestore userProfiles fetch error:", e);
     }
@@ -374,4 +390,152 @@ export async function logActivity(log: Omit<ActivityLog, "id" | "timestamp">): P
   }
 
   return fullLog;
+}
+
+// NOTIFICATION STORAGE & RETRIEVAL SYSTEM
+const NOTIFICATIONS_KEY = "syllabus_student_notifications";
+
+export async function sendStudentNotification(
+  userId: string,
+  senderName: string,
+  message: string
+): Promise<StudentNotification> {
+  const notif: StudentNotification = {
+    id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+    userId,
+    senderName,
+    message,
+    createdAt: new Date().toISOString(),
+    read: false,
+  };
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "notifications", notif.id), notif);
+    } catch (e) {
+      console.warn("Firestore sendNotification error:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem(NOTIFICATIONS_KEY);
+      const list: StudentNotification[] = saved ? JSON.parse(saved) : [];
+      list.unshift(notif);
+      localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(list));
+    } catch (e) {
+      console.error("Localstorage sendNotification error:", e);
+    }
+  }
+
+  return notif;
+}
+
+export async function getStudentNotifications(userId: string): Promise<StudentNotification[]> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(
+        collection(db, "notifications"),
+        where("userId", "==", userId),
+        orderBy("createdAt", "desc")
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        return snap.docs.map((d) => d.data() as StudentNotification);
+      }
+    } catch (e) {
+      console.warn("Firestore getStudentNotifications error:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem(NOTIFICATIONS_KEY);
+      const list: StudentNotification[] = saved ? JSON.parse(saved) : [];
+      return list
+        .filter((n) => n.userId === userId)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } catch (e) {
+      return [];
+    }
+  }
+
+  return [];
+}
+
+export async function markNotificationAsRead(id: string): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    try {
+      await updateDoc(doc(db, "notifications", id), { read: true });
+    } catch (e) {
+      console.warn("Firestore markNotificationAsRead error:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem(NOTIFICATIONS_KEY);
+      if (saved) {
+        const list: StudentNotification[] = JSON.parse(saved);
+        const updated = list.map((n) => (n.id === id ? { ...n, read: true } : n));
+        localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(updated));
+      }
+    } catch (e) {
+      console.error("Localstorage markNotificationAsRead error:", e);
+    }
+  }
+}
+
+export async function getStudentProgressSummaries(): Promise<StudentProgressSummary[]> {
+  const users = await getAllUserProfiles();
+  const students = users.filter((u) => u.role === "student");
+  const syllabi = await getAllSyllabi();
+  const activities = await getAllActivities();
+  const progressMap = getSubtopicProgress();
+
+  // Total count of subtopics in system
+  let totalSubtopics = 0;
+  syllabi.forEach((s) => {
+    s.learningOutcomes.forEach((lo) => {
+      lo.indicativeContents.forEach((ic) => {
+        ic.topics.forEach((top) => {
+          totalSubtopics += top.subtopics.length;
+        });
+      });
+    });
+  });
+
+  const completedIds = Object.keys(progressMap).filter((k) => progressMap[k]);
+  const completedCount = completedIds.length;
+
+  const summaries: StudentProgressSummary[] = [];
+
+  for (const s of students) {
+    const studentActs = activities.filter((a) => a.userId === s.uid);
+    const lastAct = studentActs.length > 0 ? studentActs[0].timestamp : s.createdAt;
+    const notifs = await getStudentNotifications(s.uid);
+    const unread = notifs.filter((n) => !n.read).length;
+
+    // Estimate progress based on activity or local progress map
+    const studentCompleted = completedCount;
+    const totalCount = Math.max(totalSubtopics, 1);
+    const percent = Math.min(100, Math.round((studentCompleted / totalCount) * 100));
+
+    summaries.push({
+      userId: s.uid,
+      fullName: s.fullName,
+      email: s.email,
+      username: s.username,
+      tradeId: s.tradeId,
+      level: s.level,
+      status: s.status,
+      completedSubtopicsCount: studentCompleted,
+      totalSubtopicsCount: totalCount,
+      progressPercent: percent,
+      lastActive: lastAct,
+      unreadNotificationsCount: unread,
+    });
+  }
+
+  return summaries;
 }

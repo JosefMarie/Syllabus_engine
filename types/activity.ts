@@ -13,7 +13,8 @@ export type ActivityActionType =
   | "REJECT_STUDENT"
   | "CREATE_TRADE"
   | "DELETE_TRADE"
-  | "SAVE_SYLLABUS";
+  | "SAVE_SYLLABUS"
+  | "SEND_STUDENT_MESSAGE";
 
 export interface ActivityLog {
   id: string;

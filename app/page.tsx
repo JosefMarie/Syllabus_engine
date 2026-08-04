@@ -23,16 +23,24 @@ import {
   Filter,
   Mail,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Lock
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import NotificationAlert from "@/components/common/NotificationAlert";
+import PresenceTracker from "@/components/common/PresenceTracker";
 
 export default function CatalogPage() {
+  const router = useRouter();
   const [syllabi, setSyllabi] = useState<Syllabus[]>([]);
   const [tradesMap, setTradesMap] = useState<Record<string, string>>({});
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+
+  // Auth requirement modal for unauthenticated viewers
+  const [authPromptSyl, setAuthPromptSyl] = useState<Syllabus | null>(null);
 
   // Email prompt state
   const [newEmail, setNewEmail] = useState("");
@@ -40,19 +48,13 @@ export default function CatalogPage() {
   const [emailSuccessMsg, setEmailSuccessMsg] = useState<string | null>(null);
   const [emailErrMsg, setEmailErrMsg] = useState<string | null>(null);
 
-  // Level Filter state for logged in students
-  const [activeLevelFilter, setActiveLevelFilter] = useState<StudentLevel>("Level 4");
+  // Level Filter state for logged in students ("all" or specific level)
+  const [activeLevelFilter, setActiveLevelFilter] = useState<string>("all");
 
   useEffect(() => {
     async function loadData() {
       const user = getStoredSession();
       setCurrentUser(user);
-
-      if (user) {
-        if (user.level === "Level 3") setActiveLevelFilter("Level 3");
-        else if (user.level === "Level 4") setActiveLevelFilter("Level 4");
-        else if (user.level === "Level 5") setActiveLevelFilter("Level 5");
-      }
 
       const data = await getAllSyllabi();
       setSyllabi(data);
@@ -90,21 +92,7 @@ export default function CatalogPage() {
     setUpdatingEmail(false);
   };
 
-  // Level access rules logic
-  let filtered = syllabi.filter((s) => 
-    s.title.toLowerCase().includes(search.toLowerCase()) ||
-    s.courseCode.toLowerCase().includes(search.toLowerCase()) ||
-    s.description.toLowerCase().includes(search.toLowerCase())
-  );
-
-  if (currentUser && currentUser.role === "student") {
-    filtered = filtered.filter((s) => {
-      const matchesTrade = !s.tradeId || s.tradeId === currentUser.tradeId;
-      const matchesLevel = !s.level || s.level === activeLevelFilter;
-      return matchesTrade && matchesLevel;
-    });
-  }
-
+  // Permitted levels based on student level hierarchy
   const getPermittedLevels = (): StudentLevel[] => {
     if (!currentUser || currentUser.role !== "student") return ["Level 3", "Level 4", "Level 5"];
     if (currentUser.level === "Level 3") return ["Level 3"];
@@ -113,8 +101,34 @@ export default function CatalogPage() {
     return ["Level 3", "Level 4", "Level 5"];
   };
 
+  // Syllabi filtering logic
+  let filtered = syllabi.filter((s) => 
+    s.title.toLowerCase().includes(search.toLowerCase()) ||
+    s.courseCode.toLowerCase().includes(search.toLowerCase()) ||
+    s.description.toLowerCase().includes(search.toLowerCase())
+  );
+
+  if (currentUser && currentUser.role === "student") {
+    const permittedLevels = getPermittedLevels();
+    filtered = filtered.filter((s) => {
+      // Must be within student's permitted level hierarchy
+      const isLevelPermitted = !s.level || permittedLevels.includes(s.level as StudentLevel);
+      
+      // Match active level filter button selection ("all" or specific level)
+      const matchesActiveFilter = activeLevelFilter === "all" || !s.level || s.level === activeLevelFilter;
+
+      return isLevelPermitted && matchesActiveFilter;
+    });
+  }
+
   return (
     <div className="min-h-screen bg-[#0B0F19] text-[#CBD5E1]">
+      {currentUser && (
+        <>
+          <NotificationAlert userId={currentUser.uid} />
+          <PresenceTracker userId={currentUser.uid} fullName={currentUser.fullName} />
+        </>
+      )}
       {/* Top Header */}
       <header className="sticky top-0 z-30 border-b border-[#334155] bg-[#0B0F19]/90 px-6 py-4 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
@@ -166,13 +180,15 @@ export default function CatalogPage() {
               </div>
             )}
 
-            <Link
-              href="/admin/login"
-              className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3 py-2 text-xs font-semibold text-white hover:border-[#06B6D4] transition-all"
-            >
-              <ShieldCheck className="h-4 w-4 text-[#06B6D4]" />
-              <span className="hidden sm:inline">Teacher Portal</span>
-            </Link>
+            {(!currentUser || currentUser.role === 'teacher') && (
+              <Link
+                href="/admin/login"
+                className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3 py-2 text-xs font-semibold text-white hover:border-[#06B6D4] transition-all"
+              >
+                <ShieldCheck className="h-4 w-4 text-[#06B6D4]" />
+                <span className="hidden sm:inline">Teacher Portal</span>
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -263,10 +279,21 @@ export default function CatalogPage() {
               </div>
             </div>
 
-            <div className="mt-4 flex items-center space-x-2">
+            <div className="mt-4 flex flex-wrap items-center gap-2">
               <span className="text-xs font-mono text-[#94A3B8] mr-2 flex items-center gap-1">
                 <Filter className="h-3.5 w-3.5 text-[#06B6D4]" /> Select Level View:
               </span>
+
+              <button
+                onClick={() => setActiveLevelFilter("all")}
+                className={`rounded-xl px-4 py-2 text-xs font-mono font-bold transition-all ${
+                  activeLevelFilter === "all"
+                    ? 'bg-[#06B6D4] text-slate-950 shadow-lg'
+                    : 'bg-[#0B0F19] text-[#94A3B8] hover:text-white border border-[#334155]'
+                }`}
+              >
+                All Accessible Levels
+              </button>
 
               {getPermittedLevels().map((lvl) => (
                 <button
@@ -303,10 +330,16 @@ export default function CatalogPage() {
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((syl) => (
-              <Link
+              <div
                 key={syl.id}
-                href={`/syllabus/${syl.id}`}
-                className="group flex flex-col justify-between rounded-2xl border border-[#334155] bg-[#1E293B] p-6 shadow-xl hover:border-[#06B6D4] hover:shadow-[#06B6D4]/10 transition-all"
+                onClick={() => {
+                  if (!currentUser) {
+                    setAuthPromptSyl(syl);
+                  } else {
+                    router.push(`/syllabus/${syl.id}`);
+                  }
+                }}
+                className="group flex flex-col justify-between rounded-2xl border border-[#334155] bg-[#1E293B] p-6 shadow-xl hover:border-[#06B6D4] hover:shadow-[#06B6D4]/10 transition-all cursor-pointer"
               >
                 <div>
                   <div className="flex items-center justify-between mb-3">
@@ -332,11 +365,56 @@ export default function CatalogPage() {
                   <span>Explore Syllabus</span>
                   <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
         )}
       </main>
+
+      {/* AUTHENTICATION REQUIRED MODAL FOR GUESTS */}
+      {authPromptSyl && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+          <div className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#1E293B] p-7 text-center shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#06B6D4]/15 text-[#06B6D4] border border-[#06B6D4]/30">
+              <Lock className="h-8 w-8" />
+            </div>
+
+            <div>
+              <h3 className="text-xl font-extrabold text-white tracking-tight">
+                Student Authentication Required
+              </h3>
+              <p className="mt-2 text-xs text-[#94A3B8] leading-relaxed">
+                To view syllabus modules, learning outcomes, and topic breakdown for <strong className="text-white">{authPromptSyl.title}</strong> ({authPromptSyl.courseCode}), please log in or register your student account.
+              </p>
+            </div>
+
+            <div className="grid gap-3 pt-2">
+              <Link
+                href="/auth/login"
+                className="inline-flex w-full items-center justify-center space-x-2 rounded-xl bg-[#06B6D4] py-3 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg"
+              >
+                <LogIn className="h-4 w-4" />
+                <span>Log In to Access Content</span>
+              </Link>
+
+              <Link
+                href="/auth/register"
+                className="inline-flex w-full items-center justify-center space-x-2 rounded-xl border border-[#334155] bg-[#0B0F19] py-3 text-xs font-semibold text-white hover:border-[#06B6D4] transition-all"
+              >
+                <UserPlus className="h-4 w-4 text-[#06B6D4]" />
+                <span>Register Student Account</span>
+              </Link>
+            </div>
+
+            <button
+              onClick={() => setAuthPromptSyl(null)}
+              className="text-xs font-mono text-[#94A3B8] hover:text-white pt-2 transition-colors"
+            >
+              Close Window
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

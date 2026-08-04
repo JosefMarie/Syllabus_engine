@@ -52,8 +52,60 @@ export default function StudentApprovals() {
     return true;
   });
 
+  const pendingCount = users.filter(u => u.status === 'pending_approval').length;
+  const approvedCount = users.filter(u => u.status === 'approved').length;
+  const rejectedCount = users.filter(u => u.status === 'rejected').length;
+
   return (
     <div className="space-y-6">
+      {/* Top Statistical Overview Cards */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-2xl border border-[#F59E0B]/30 bg-[#F59E0B]/10 p-5 shadow-lg flex items-center justify-between">
+          <div>
+            <span className="text-xs font-mono font-bold text-[#F59E0B] uppercase tracking-wider block mb-1">
+              Pending Verification
+            </span>
+            <span className="text-3xl font-extrabold text-white font-mono">
+              {pendingCount}
+            </span>
+            <span className="text-[11px] text-[#94A3B8] block mt-1">Students awaiting access</span>
+          </div>
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F59E0B]/20 text-[#F59E0B]">
+            <Clock className="h-6 w-6" />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#10B981]/30 bg-[#10B981]/10 p-5 shadow-lg flex items-center justify-between">
+          <div>
+            <span className="text-xs font-mono font-bold text-[#10B981] uppercase tracking-wider block mb-1">
+              Approved Accounts
+            </span>
+            <span className="text-3xl font-extrabold text-white font-mono">
+              {approvedCount}
+            </span>
+            <span className="text-[11px] text-[#94A3B8] block mt-1">Active syllabus access</span>
+          </div>
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#10B981]/20 text-[#10B981]">
+            <CheckCircle2 className="h-6 w-6" />
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-5 shadow-lg flex items-center justify-between">
+          <div>
+            <span className="text-xs font-mono font-bold text-rose-400 uppercase tracking-wider block mb-1">
+              Rejected Requests
+            </span>
+            <span className="text-3xl font-extrabold text-white font-mono">
+              {rejectedCount}
+            </span>
+            <span className="text-[11px] text-[#94A3B8] block mt-1">Denied registration</span>
+          </div>
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-500/20 text-rose-400">
+            <ShieldAlert className="h-6 w-6" />
+          </div>
+        </div>
+      </div>
+
       {/* Header & Filter Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#334155] pb-4 gap-4">
         <div>
@@ -70,7 +122,7 @@ export default function StudentApprovals() {
               filter === 'pending' ? 'bg-[#F59E0B]/20 text-[#F59E0B]' : 'text-[#94A3B8]'
             }`}
           >
-            Pending ({users.filter(u => u.status === 'pending_approval').length})
+            Pending ({pendingCount})
           </button>
           <button
             onClick={() => setFilter('approved')}
@@ -78,7 +130,7 @@ export default function StudentApprovals() {
               filter === 'approved' ? 'bg-[#10B981]/20 text-[#10B981]' : 'text-[#94A3B8]'
             }`}
           >
-            Approved ({users.filter(u => u.status === 'approved').length})
+            Approved ({approvedCount})
           </button>
           <button
             onClick={() => setFilter('all')}

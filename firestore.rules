@@ -2,14 +2,8 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Syllabi collection rules
-    match /syllabi/{syllabusId} {
-      allow read, write: if true;
-    }
-
-    // User Reading Progress tracking rules
-    match /userProgress/{userId} {
+    // Allow full read and write access to all platform collections (syllabi, userProfiles, trades, notifications, presence, activities)
+    match /{document=**} {
       allow read, write: if true;
     }
   }
