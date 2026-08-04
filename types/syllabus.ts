@@ -70,6 +70,8 @@ export interface Syllabus {
   department?: string;
   instructor?: string;
   semester?: string;
+  tradeId?: string;
+  level?: 'Level 3' | 'Level 4' | 'Level 5';
   status: 'draft' | 'published';
   createdAt: string;
   updatedAt: string;

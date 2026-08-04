@@ -2,9 +2,10 @@
 
 import React, { useState } from "react";
 import { Syllabus, LearningOutcome, IndicativeContent, Topic, Subtopic } from "@/types/syllabus";
-import { extractSyllabusAction } from "@/app/actions/extractSyllabus";
-import { saveSyllabus } from "@/lib/db";
+import { parseSyllabusWithGemini } from "@/lib/gemini";
+import { saveSyllabus, getAllTrades } from "@/lib/db";
 import { useRouter } from "next/navigation";
+import { Trade, StudentLevel } from "@/types/auth";
 import { 
   Sparkles, 
   Plus, 
@@ -30,6 +31,15 @@ interface Props {
 export default function SyllabusBuilder({ initialSyllabus }: Props) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<'scratch' | 'ai'>('ai');
+  const [tradesList, setTradesList] = useState<Trade[]>([]);
+
+  React.useEffect(() => {
+    async function loadTrades() {
+      const list = await getAllTrades();
+      setTradesList(list);
+    }
+    loadTrades();
+  }, []);
 
   // Syllabus Form State
   const [syllabus, setSyllabus] = useState<Syllabus>(
@@ -102,7 +112,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
     setExtracting(true);
     setExtractSuccess(null);
     try {
-      const result = await extractSyllabusAction(rawText);
+      const result = await parseSyllabusWithGemini(rawText);
       setSyllabus(result.syllabus);
       setExtractSuccess(`Successfully extracted ${result.extractedCount.los} LOs, ${result.extractedCount.ics} ICs, and ${result.extractedCount.citations} citations!`);
       setActiveTab('scratch');
@@ -351,6 +361,37 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                   onChange={(e) => setSyllabus({ ...syllabus, courseCode: e.target.value })}
                   className="mt-1 w-full rounded-lg border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
                 />
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="text-xs font-mono text-[#94A3B8]">Assigned Trade</label>
+                <select
+                  value={syllabus.tradeId || ''}
+                  onChange={(e) => setSyllabus({ ...syllabus, tradeId: e.target.value })}
+                  className="mt-1 w-full rounded-lg border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                >
+                  <option value="">Select Trade...</option>
+                  {tradesList.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="text-xs font-mono text-[#94A3B8]">Assigned Level</label>
+                <select
+                  value={syllabus.level || 'Level 4'}
+                  onChange={(e) => setSyllabus({ ...syllabus, level: e.target.value as StudentLevel })}
+                  className="mt-1 w-full rounded-lg border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                >
+                  <option value="Level 3">Level 3</option>
+                  <option value="Level 4">Level 4</option>
+                  <option value="Level 5">Level 5</option>
+                </select>
               </div>
             </div>
 

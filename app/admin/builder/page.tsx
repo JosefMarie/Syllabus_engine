@@ -3,19 +3,27 @@
 import React, { useEffect, useState, Suspense } from "react";
 import { Syllabus } from "@/types/syllabus";
 import { getSyllabusById } from "@/lib/db";
+import { getAdminSession } from "@/lib/auth";
 import SyllabusBuilder from "@/components/admin/SyllabusBuilder";
 import Link from "next/link";
 import { ArrowLeft, ShieldCheck } from "lucide-react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 
 function BuilderContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get("id");
 
   const [syllabus, setSyllabus] = useState<Syllabus | null>(null);
-  const [loading, setLoading] = useState(Boolean(id));
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const admin = getAdminSession();
+    if (!admin) {
+      router.push("/admin/login");
+      return;
+    }
+
     if (id) {
       async function load() {
         const found = await getSyllabusById(id!);
@@ -23,8 +31,10 @@ function BuilderContent() {
         setLoading(false);
       }
       load();
+    } else {
+      setLoading(false);
     }
-  }, [id]);
+  }, [id, router]);
 
   if (loading) {
     return (
