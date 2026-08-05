@@ -8,7 +8,9 @@ import SidebarTree from "@/components/viewer/SidebarTree";
 import SubtopicView from "@/components/viewer/SubtopicView";
 import CitationsDrawer from "@/components/viewer/CitationsDrawer";
 import Link from "next/link";
-import { ArrowLeft, ShieldCheck, Lock, AlertTriangle, LogIn, UserPlus } from "lucide-react";
+import ContentProtection from "@/components/common/ContentProtection";
+import { downloadSyllabusAsJSON, downloadSyllabusAsText } from "@/lib/exportSyllabus";
+import { ArrowLeft, ShieldCheck, Lock, AlertTriangle, LogIn, UserPlus, Download, FileText, FileCode } from "lucide-react";
 import { UserProfile, StudentLevel } from "@/types/auth";
 import NotificationAlert from "@/components/common/NotificationAlert";
 import PresenceTracker from "@/components/common/PresenceTracker";
@@ -21,6 +23,7 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
+  const [showDownloadMenu, setShowDownloadMenu] = useState(false);
 
   // Flattened array of all subtopics for easy previous/next pagination
   const [allSubtopics, setAllSubtopics] = useState<Subtopic[]>([]);
@@ -234,80 +237,123 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#0B0F19] text-[#CBD5E1]">
-      {currentUser && (
-        <>
-          <NotificationAlert userId={currentUser.uid} />
-          <PresenceTracker
-            userId={currentUser.uid}
-            fullName={currentUser.fullName}
-            subtopicTitle={activeSubtopic?.title}
-            syllabusTitle={syllabus?.title}
-          />
-        </>
-      )}
-      {/* 5-Level Sidebar Navigation */}
-      <SidebarTree
-        syllabus={syllabus}
-        activeSubtopicId={activeSubtopic?.id || null}
-        onSelectSubtopic={handleSelectSubtopic}
-        progressMap={progressMap}
-      />
-
-      {/* Main Workspace Pane */}
-      <div className="flex flex-1 flex-col overflow-y-auto">
-        {/* Top Sticky Header */}
-        <header className="sticky top-0 z-20 flex items-center justify-between border-b border-[#334155] bg-[#0B0F19]/90 px-6 py-3 backdrop-blur-md">
-          <div className="flex items-center space-x-3">
-            <Link
-              href="/"
-              className="inline-flex items-center space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Catalog</span>
-            </Link>
-            <span className="text-[#334155]">/</span>
-            <span className="text-xs font-mono text-[#06B6D4] font-semibold">{syllabus.courseCode}</span>
-          </div>
-
-          <div className="flex items-center space-x-3">
-            {isAdminLoggedIn && (
-              <Link
-                href={`/admin/builder?id=${syllabus.id}`}
-                className="inline-flex items-center space-x-1.5 rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-1.5 text-xs font-semibold text-white hover:border-[#06B6D4] transition-all"
-              >
-                <ShieldCheck className="h-3.5 w-3.5 text-[#06B6D4]" />
-                <span className="hidden sm:inline">Edit in Admin Portal</span>
-              </Link>
-            )}
-          </div>
-        </header>
-
-        {/* Content Pane */}
-        <main className="flex-1 pb-16">
-          {activeSubtopic ? (
-            <SubtopicView
-              subtopic={activeSubtopic}
-              citationsMap={syllabus.citationsDictionary || {}}
-              onSelectCitation={(cit) => setActiveCitation(cit)}
-              isCompleted={Boolean(progressMap[activeSubtopic.id])}
-              onToggleComplete={() => handleToggleComplete(activeSubtopic.id)}
-              onPrevSubtopic={prevSubtopic ? () => handleSelectSubtopic(prevSubtopic) : undefined}
-              onNextSubtopic={nextSubtopic ? () => handleSelectSubtopic(nextSubtopic) : undefined}
+    <ContentProtection
+      isProtected={!isAdminLoggedIn}
+      userFullName={currentUser?.fullName}
+      userEmail={currentUser?.email}
+    >
+      <div className="flex h-screen overflow-hidden bg-[#0B0F19] text-[#CBD5E1]">
+        {currentUser && (
+          <>
+            <NotificationAlert userId={currentUser.uid} />
+            <PresenceTracker
+              userId={currentUser.uid}
+              fullName={currentUser.fullName}
+              subtopicTitle={activeSubtopic?.title}
+              syllabusTitle={syllabus?.title}
             />
-          ) : (
-            <div className="py-20 text-center text-[#94A3B8]">
-              Select a subtopic from the 5-level hierarchy sidebar to view course content.
-            </div>
-          )}
-        </main>
-      </div>
+          </>
+        )}
+        {/* 5-Level Sidebar Navigation */}
+        <SidebarTree
+          syllabus={syllabus}
+          activeSubtopicId={activeSubtopic?.id || null}
+          onSelectSubtopic={handleSelectSubtopic}
+          progressMap={progressMap}
+        />
 
-      {/* Citations Side Drawer / Mobile Bottom Sheet */}
-      <CitationsDrawer
-        citation={activeCitation}
-        onClose={() => setActiveCitation(null)}
-      />
-    </div>
+        {/* Main Workspace Pane */}
+        <div className="flex flex-1 flex-col overflow-y-auto">
+          {/* Top Sticky Header */}
+          <header className="sticky top-0 z-20 flex items-center justify-between border-b border-[#334155] bg-[#0B0F19]/90 px-6 py-3 backdrop-blur-md">
+            <div className="flex items-center space-x-3">
+              <Link
+                href="/"
+                className="inline-flex items-center space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                <span>Catalog</span>
+              </Link>
+              <span className="text-[#334155]">/</span>
+              <span className="text-xs font-mono text-[#06B6D4] font-semibold">{syllabus.courseCode}</span>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              {isAdminLoggedIn && (
+                <>
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowDownloadMenu(!showDownloadMenu)}
+                      className="inline-flex items-center space-x-1.5 rounded-lg border border-[#06B6D4]/40 bg-[#06B6D4]/10 px-3 py-1.5 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4]/20 transition-all"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      <span>Download Syllabus</span>
+                    </button>
+
+                    {showDownloadMenu && (
+                      <div className="absolute right-0 mt-2 w-52 rounded-xl border border-[#334155] bg-[#1E293B] p-1.5 shadow-2xl z-30">
+                        <button
+                          onClick={() => {
+                            downloadSyllabusAsText(syllabus);
+                            setShowDownloadMenu(false);
+                          }}
+                          className="flex w-full items-center space-x-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[#CBD5E1] hover:bg-[#0B0F19] hover:text-white transition-colors"
+                        >
+                          <FileText className="h-3.5 w-3.5 text-[#06B6D4]" />
+                          <span>Formatted Document (.txt)</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            downloadSyllabusAsJSON(syllabus);
+                            setShowDownloadMenu(false);
+                          }}
+                          className="flex w-full items-center space-x-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[#CBD5E1] hover:bg-[#0B0F19] hover:text-white transition-colors"
+                        >
+                          <FileCode className="h-3.5 w-3.5 text-[#10B981]" />
+                          <span>Raw JSON Data (.json)</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <Link
+                    href={`/admin/builder?id=${syllabus.id}`}
+                    className="inline-flex items-center space-x-1.5 rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-1.5 text-xs font-semibold text-white hover:border-[#06B6D4] transition-all"
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5 text-[#06B6D4]" />
+                    <span className="hidden sm:inline">Edit in Admin Portal</span>
+                  </Link>
+                </>
+              )}
+            </div>
+          </header>
+
+          {/* Content Pane */}
+          <main className="flex-1 pb-16">
+            {activeSubtopic ? (
+              <SubtopicView
+                subtopic={activeSubtopic}
+                citationsMap={syllabus.citationsDictionary || {}}
+                onSelectCitation={(cit) => setActiveCitation(cit)}
+                isCompleted={Boolean(progressMap[activeSubtopic.id])}
+                onToggleComplete={() => handleToggleComplete(activeSubtopic.id)}
+                onPrevSubtopic={prevSubtopic ? () => handleSelectSubtopic(prevSubtopic) : undefined}
+                onNextSubtopic={nextSubtopic ? () => handleSelectSubtopic(nextSubtopic) : undefined}
+              />
+            ) : (
+              <div className="py-20 text-center text-[#94A3B8]">
+                Select a subtopic from the 5-level hierarchy sidebar to view course content.
+              </div>
+            )}
+          </main>
+        </div>
+
+        {/* Citations Side Drawer / Mobile Bottom Sheet */}
+        <CitationsDrawer
+          citation={activeCitation}
+          onClose={() => setActiveCitation(null)}
+        />
+      </div>
+    </ContentProtection>
   );
 }

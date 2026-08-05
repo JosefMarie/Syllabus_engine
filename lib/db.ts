@@ -177,27 +177,84 @@ export async function deleteSyllabus(id: string): Promise<boolean> {
   return true;
 }
 
+const CURRENT_USER_KEY = "syllabus_platform_current_user_v1";
+
+function getActiveUserId(): string | undefined {
+  if (typeof window === "undefined") return undefined;
+  try {
+    const raw = localStorage.getItem(CURRENT_USER_KEY);
+    if (!raw) return undefined;
+    const u = JSON.parse(raw);
+    return u?.uid;
+  } catch (e) {
+    return undefined;
+  }
+}
+
 // Student Reading Progress tracking
-export function getSubtopicProgress(): Record<string, boolean> {
+export function getSubtopicProgress(userId?: string): Record<string, boolean> {
   if (typeof window === "undefined") return {};
   try {
-    const raw = localStorage.getItem(PROGRESS_KEY);
+    const uid = userId || getActiveUserId();
+    const key = uid ? `${PROGRESS_KEY}_${uid}` : PROGRESS_KEY;
+    const raw = localStorage.getItem(key);
     return raw ? JSON.parse(raw) : {};
   } catch (e) {
     return {};
   }
 }
 
-export function toggleSubtopicProgress(subtopicId: string): boolean {
+export async function getSubtopicProgressAsync(userId?: string): Promise<Record<string, boolean>> {
+  const uid = userId || getActiveUserId();
+  let localMap = getSubtopicProgress(uid);
+
+  if (isFirebaseConfigured && db && uid) {
+    try {
+      const docRef = doc(db, "studentProgress", uid);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        const firestoreMap = snap.data()?.progressMap || {};
+        localMap = { ...localMap, ...firestoreMap };
+        if (typeof window !== "undefined") {
+          const key = `${PROGRESS_KEY}_${uid}`;
+          localStorage.setItem(key, JSON.stringify(localMap));
+        }
+      }
+    } catch (e) {
+      console.error("Firestore getSubtopicProgress error:", e);
+    }
+  }
+
+  return localMap;
+}
+
+export async function toggleSubtopicProgress(subtopicId: string, userId?: string): Promise<boolean> {
   if (typeof window === "undefined") return false;
-  const current = getSubtopicProgress();
+  const uid = userId || getActiveUserId();
+  const key = uid ? `${PROGRESS_KEY}_${uid}` : PROGRESS_KEY;
+  const current = getSubtopicProgress(uid);
   const nextState = !current[subtopicId];
   current[subtopicId] = nextState;
+  
   try {
-    localStorage.setItem(PROGRESS_KEY, JSON.stringify(current));
+    localStorage.setItem(key, JSON.stringify(current));
   } catch (e) {
-    console.error("Error saving progress state:", e);
+    console.error("Error saving progress state locally:", e);
   }
+
+  if (isFirebaseConfigured && db && uid) {
+    try {
+      const docRef = doc(db, "studentProgress", uid);
+      await setDoc(docRef, {
+        userId: uid,
+        progressMap: current,
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (e) {
+      console.error("Firestore toggleSubtopicProgress error:", e);
+    }
+  }
+
   return nextState;
 }
 
@@ -491,22 +548,6 @@ export async function getStudentProgressSummaries(): Promise<StudentProgressSumm
   const students = users.filter((u) => u.role === "student");
   const syllabi = await getAllSyllabi();
   const activities = await getAllActivities();
-  const progressMap = getSubtopicProgress();
-
-  // Total count of subtopics in system
-  let totalSubtopics = 0;
-  syllabi.forEach((s) => {
-    s.learningOutcomes.forEach((lo) => {
-      lo.indicativeContents.forEach((ic) => {
-        ic.topics.forEach((top) => {
-          totalSubtopics += top.subtopics.length;
-        });
-      });
-    });
-  });
-
-  const completedIds = Object.keys(progressMap).filter((k) => progressMap[k]);
-  const completedCount = completedIds.length;
 
   const summaries: StudentProgressSummary[] = [];
 
@@ -515,11 +556,39 @@ export async function getStudentProgressSummaries(): Promise<StudentProgressSumm
     const lastAct = studentActs.length > 0 ? studentActs[0].timestamp : s.createdAt;
     const notifs = await getStudentNotifications(s.uid);
     const unread = notifs.filter((n) => !n.read).length;
+    const progressMap = await getSubtopicProgressAsync(s.uid);
+    const completedInActs = studentActs.filter(a => a.details && a.details.includes("Marked as Completed"));
 
-    // Estimate progress based on activity or local progress map
-    const studentCompleted = completedCount;
+    // Track subtopic progress ONLY for syllabi belonging to student's exact level
+    const studentLevelSyllabi = syllabi.filter((syl) => 
+      syl.status === "published" &&
+      syl.level === s.level &&
+      (!s.tradeId || s.tradeId === "all" || syl.tradeId === s.tradeId)
+    );
+
+    let totalSubtopics = 0;
+    let completedSubtopics = 0;
+
+    studentLevelSyllabi.forEach((syl) => {
+      syl.learningOutcomes.forEach((lo) => {
+        lo.indicativeContents.forEach((ic) => {
+          ic.topics.forEach((top) => {
+            top.subtopics.forEach((sub) => {
+              totalSubtopics++;
+              const isDoneInMap = progressMap[sub.id];
+              const isDoneInLogs = completedInActs.some(a => a.details.includes(`"${sub.title}"`));
+
+              if (isDoneInMap || isDoneInLogs) {
+                completedSubtopics++;
+              }
+            });
+          });
+        });
+      });
+    });
+
     const totalCount = Math.max(totalSubtopics, 1);
-    const percent = Math.min(100, Math.round((studentCompleted / totalCount) * 100));
+    const percent = Math.min(100, Math.round((completedSubtopics / totalCount) * 100));
 
     summaries.push({
       userId: s.uid,
@@ -529,7 +598,7 @@ export async function getStudentProgressSummaries(): Promise<StudentProgressSumm
       tradeId: s.tradeId,
       level: s.level,
       status: s.status,
-      completedSubtopicsCount: studentCompleted,
+      completedSubtopicsCount: completedSubtopics,
       totalSubtopicsCount: totalCount,
       progressPercent: percent,
       lastActive: lastAct,

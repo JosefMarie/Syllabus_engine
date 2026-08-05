@@ -1,19 +1,13 @@
-import React from "react";
-import StudentViewerClient from "@/components/viewer/StudentViewerClient";
-
 export async function generateStaticParams() {
-  return [
-    { id: "cs100-fundamentals" },
-    { id: "cs101-fullstack-ai" },
-    { id: "cs102-advanced-ai" }
-  ];
+  // Return a dummy path so static export succeeds without failing on unknown dynamic paths
+  return [{ id: "legacy" }];
 }
 
-export default async function StudentViewerPage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
-  const resolvedParams = await params;
-  return <StudentViewerClient syllabusId={resolvedParams.id} />;
+export default function LegacySyllabus() {
+  return (
+    <div className="p-8 text-white flex flex-col items-center justify-center min-h-screen bg-[#0B0F19]">
+      <h1>This route has been deprecated.</h1>
+      <p>Please use the new Syllabus Viewer using /syllabus/view?id=...</p>
+    </div>
+  );
 }

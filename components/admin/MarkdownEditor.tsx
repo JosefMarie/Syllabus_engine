@@ -120,11 +120,6 @@ export default function MarkdownEditor({
       ...citationData 
     });
 
-    // Format the text visually in the markdown to indicate it has a citation
-    // Using HTML for underline and Markdown for bold/italic as user requested:
-    // "a highlighted, bold, italic and underlined text"
-    applyFormat(`<u>***`, `***</u>`);
-
     setCitationModalOpen(false);
   };
 
@@ -178,8 +173,8 @@ export default function MarkdownEditor({
 
       {/* Citation Custom Modal */}
       {citationModalOpen && (
-        <div className="absolute inset-0 bg-[#0B0F19]/80 backdrop-blur-sm flex items-center justify-center p-4 z-10">
-          <div className="bg-[#1E293B] border border-[#334155] rounded-xl p-5 w-full max-w-sm shadow-2xl">
+        <div className="fixed inset-0 bg-[#0B0F19]/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-[#1E293B] border border-[#334155] rounded-xl p-5 w-full max-w-sm shadow-2xl my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h4 className="text-sm font-bold text-white">Add Citation</h4>
               <button onClick={() => setCitationModalOpen(false)} className="text-[#94A3B8] hover:text-white">

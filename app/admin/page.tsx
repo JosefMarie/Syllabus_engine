@@ -10,6 +10,7 @@ import StudentApprovals from "@/components/admin/StudentApprovals";
 import ActivityLogger from "@/components/admin/ActivityLogger";
 import StudentProgressManager from "@/components/admin/StudentProgressManager";
 import { useRouter } from "next/navigation";
+import { downloadSyllabusAsJSON, downloadSyllabusAsText, downloadAllSyllabiAsJSON } from "@/lib/exportSyllabus";
 import { 
   ShieldCheck, 
   Plus, 
@@ -22,7 +23,10 @@ import {
   BookOpen,
   LogOut,
   Activity,
-  Users
+  Users,
+  Download,
+  FileText,
+  FileCode
 } from "lucide-react";
 import Link from "next/link";
 
@@ -203,6 +207,14 @@ export default function AdminDashboardPage() {
               </div>
 
               <div className="flex items-center space-x-3 text-xs font-mono">
+                <button
+                  onClick={() => downloadAllSyllabiAsJSON(syllabi)}
+                  className="inline-flex items-center space-x-1.5 rounded-lg border border-[#06B6D4]/40 bg-[#06B6D4]/10 px-3 py-1 font-sans text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4]/20 transition-all"
+                  title="Export all course syllabi as a single JSON backup"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Export All (JSON)</span>
+                </button>
                 <span className="rounded-lg bg-[#10B981]/15 px-3 py-1 text-[#10B981] border border-[#10B981]/30">
                   Published: {syllabi.filter(s => s.status === 'published').length}
                 </span>
@@ -270,19 +282,37 @@ export default function AdminDashboardPage() {
                       </div>
                     </div>
 
-                    <div className="mt-6 flex items-center justify-end space-x-2 border-t border-[#334155] pt-4">
+                    <div className="mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-[#334155] pt-4">
+                      <button
+                        onClick={() => downloadSyllabusAsText(syllabus)}
+                        className="inline-flex items-center space-x-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-2.5 py-1.5 text-xs font-semibold text-[#06B6D4] hover:border-[#06B6D4]"
+                        title="Download Formatted Text Document (.txt)"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        <span>Doc</span>
+                      </button>
+
+                      <button
+                        onClick={() => downloadSyllabusAsJSON(syllabus)}
+                        className="inline-flex items-center space-x-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-2.5 py-1.5 text-xs font-semibold text-[#10B981] hover:border-[#10B981]"
+                        title="Download Raw JSON Data (.json)"
+                      >
+                        <FileCode className="h-3.5 w-3.5" />
+                        <span>JSON</span>
+                      </button>
+
                       <Link
-                        href={`/syllabus/${syllabus.id}`}
+                        href={`/syllabus/view?id=${syllabus.id}`}
                         target="_blank"
-                        className="inline-flex items-center space-x-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white"
+                        className="inline-flex items-center space-x-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-2.5 py-1.5 text-xs font-semibold text-[#CBD5E1] hover:text-white"
                       >
                         <Eye className="h-3.5 w-3.5" />
-                        <span>Preview</span>
+                        <span>View</span>
                       </Link>
 
                       <Link
                         href={`/admin/builder?id=${syllabus.id}`}
-                        className="inline-flex items-center space-x-1 rounded-xl bg-[#06B6D4]/10 px-3 py-2 text-xs font-semibold text-[#06B6D4] hover:bg-[#06B6D4]/20 border border-[#06B6D4]/30"
+                        className="inline-flex items-center space-x-1 rounded-xl bg-[#06B6D4]/10 px-2.5 py-1.5 text-xs font-semibold text-[#06B6D4] hover:bg-[#06B6D4]/20 border border-[#06B6D4]/30"
                       >
                         <Edit3 className="h-3.5 w-3.5" />
                         <span>Edit</span>

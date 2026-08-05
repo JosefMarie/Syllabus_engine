@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Syllabus } from "@/types/syllabus";
 import { UserProfile, StudentLevel } from "@/types/auth";
-import { getAllSyllabi, getAllTrades } from "@/lib/db";
+import { getAllSyllabi, getAllTrades, getSubtopicProgress, getSubtopicProgressAsync } from "@/lib/db";
 import { getStoredSession, saveStoredSession, updateUserEmail, logoutStudent } from "@/lib/auth";
 import { 
   BookOpen, 
@@ -50,11 +50,18 @@ export default function CatalogPage() {
 
   // Level Filter state for logged in students ("all" or specific level)
   const [activeLevelFilter, setActiveLevelFilter] = useState<string>("all");
+  const [studentProgressMap, setStudentProgressMap] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     async function loadData() {
       const user = getStoredSession();
       setCurrentUser(user);
+
+      if (user && user.role === "student" && user.level) {
+        setActiveLevelFilter(user.level);
+        const map = await getSubtopicProgressAsync(user.uid);
+        setStudentProgressMap(map);
+      }
 
       const data = await getAllSyllabi();
       setSyllabi(data);
@@ -122,6 +129,36 @@ export default function CatalogPage() {
       return isLevelPermitted && matchesActiveFilter;
     });
   }
+
+  // Compute level-specific progress stats for logged-in student
+  let levelTotalSubtopics = 0;
+  let levelCompletedSubtopics = 0;
+
+  if (currentUser && currentUser.role === "student") {
+    const progressMap = Object.keys(studentProgressMap).length > 0 ? studentProgressMap : getSubtopicProgress(currentUser.uid);
+    const studentLevelSyllabi = syllabi.filter((syl) => 
+      syl.status === "published" &&
+      syl.level === currentUser.level &&
+      (!currentUser.tradeId || currentUser.tradeId === "all" || syl.tradeId === currentUser.tradeId)
+    );
+
+    studentLevelSyllabi.forEach((syl) => {
+      syl.learningOutcomes.forEach((lo) => {
+        lo.indicativeContents.forEach((ic) => {
+          ic.topics.forEach((top) => {
+            top.subtopics.forEach((sub) => {
+              levelTotalSubtopics++;
+              if (progressMap[sub.id]) levelCompletedSubtopics++;
+            });
+          });
+        });
+      });
+    });
+  }
+
+  const levelProgressPercent = levelTotalSubtopics > 0 
+    ? Math.round((levelCompletedSubtopics / levelTotalSubtopics) * 100) 
+    : 0;
 
   return (
     <div className="min-h-screen bg-[#0B0F19] text-[#CBD5E1]">
@@ -281,6 +318,24 @@ export default function CatalogPage() {
               </div>
             </div>
 
+            {/* Level-Specific Subtopic Progress Bar */}
+            <div className="mt-4 p-3 rounded-xl border border-[#334155] bg-[#0B0F19]">
+              <div className="flex items-center justify-between text-xs font-mono mb-1.5">
+                <span className="text-[#CBD5E1]">
+                  <strong className="text-[#06B6D4]">{currentUser.level}</strong> Required Academic Progress
+                </span>
+                <span className="text-[#10B981] font-bold">
+                  {levelCompletedSubtopics} / {levelTotalSubtopics} Subtopics ({levelProgressPercent}%)
+                </span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-[#1E293B]">
+                <div 
+                  className="h-full bg-gradient-to-r from-[#06B6D4] to-[#10B981] transition-all duration-300"
+                  style={{ width: `${levelProgressPercent}%` }}
+                />
+              </div>
+            </div>
+
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <span className="text-xs font-mono text-[#94A3B8] mr-2 flex items-center gap-1">
                 <Filter className="h-3.5 w-3.5 text-[#06B6D4]" /> Select Level View:
@@ -338,7 +393,7 @@ export default function CatalogPage() {
                   if (!currentUser) {
                     setAuthPromptSyl(syl);
                   } else {
-                    router.push(`/syllabus/${syl.id}`);
+                    router.push(`/syllabus/view?id=${syl.id}`);
                   }
                 }}
                 className="group flex flex-col justify-between rounded-2xl border border-[#334155] bg-[#1E293B] p-6 shadow-xl hover:border-[#06B6D4] hover:shadow-[#06B6D4]/10 transition-all cursor-pointer"

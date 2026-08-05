@@ -45,8 +45,8 @@ export default function SubtopicView({
           <span
             key={idx}
             onClick={() => onSelectCitation(citation)}
-            className="citation-highlight"
-            title={`Click for Gemini Deep-Dive Citation: ${citation.term}`}
+            className="font-bold italic underline decoration-[#F59E0B] decoration-2 underline-offset-4 text-[#F59E0B] cursor-pointer hover:bg-[#F59E0B]/20 rounded px-1 transition-colors"
+            title={`Click for Explanation: ${citation.term}`}
           >
             {part}
           </span>
@@ -54,6 +54,24 @@ export default function SubtopicView({
       }
       return part;
     });
+  };
+
+  const recursivelyRenderCitations = (node: React.ReactNode): React.ReactNode => {
+    if (typeof node === "string") {
+      return renderMarkdownWithCitations(node);
+    }
+    if (Array.isArray(node)) {
+      return node.map((n, i) => <React.Fragment key={i}>{recursivelyRenderCitations(n)}</React.Fragment>);
+    }
+    if (React.isValidElement<{ children?: React.ReactNode }>(node)) {
+      if (node.props && node.props.children) {
+        return React.cloneElement(node, {
+          ...node.props,
+          children: recursivelyRenderCitations(node.props.children)
+        });
+      }
+    }
+    return node;
   };
 
   return (
@@ -98,20 +116,23 @@ export default function SubtopicView({
         <ReactMarkdown 
           remarkPlugins={[remarkGfm]}
           components={{
-            p: ({ children }) => {
-              if (typeof children === "string") {
-                return <p className="my-4">{renderMarkdownWithCitations(children)}</p>;
-              }
-              return <p className="my-4">{children}</p>;
-            },
-            h3: ({ children }) => <h3 className="text-xl font-bold text-white mt-8 mb-4 border-b border-[#334155] pb-2">{children}</h3>,
+            p: ({ children }) => <p className="my-4">{recursivelyRenderCitations(children)}</p>,
+            h3: ({ children }) => <h3 className="text-xl font-bold text-white mt-8 mb-4 border-b border-[#334155] pb-2">{recursivelyRenderCitations(children)}</h3>,
             blockquote: ({ children }) => (
               <blockquote className="my-4 border-l-4 border-[#06B6D4] bg-[#1E293B]/50 p-4 rounded-r-lg italic text-[#CBD5E1]">
-                {children}
+                {recursivelyRenderCitations(children)}
               </blockquote>
             ),
-            ul: ({ children }) => <ul className="my-4 list-disc pl-6 space-y-2">{children}</ul>,
-            ol: ({ children }) => <ol className="my-4 list-decimal pl-6 space-y-2">{children}</ol>,
+            ul: ({ children }) => <ul className="my-4 list-disc pl-6 space-y-2">{recursivelyRenderCitations(children)}</ul>,
+            ol: ({ children }) => <ol className="my-4 list-decimal pl-6 space-y-2">{recursivelyRenderCitations(children)}</ol>,
+            li: ({ children }) => <li>{recursivelyRenderCitations(children)}</li>,
+            img: ({ src, alt }) => (
+              <img 
+                src={src} 
+                alt={alt || "Syllabus image"} 
+                className="my-6 max-h-96 w-auto rounded-xl border border-[#334155] object-contain shadow-xl bg-[#0B0F19]"
+              />
+            ),
           }}
         >
           {subtopic.contentMarkdown}

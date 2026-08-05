@@ -6,8 +6,10 @@ import { parseSyllabusWithGemini } from "@/lib/gemini";
 import { saveSyllabus, getAllTrades } from "@/lib/db";
 import { uploadFileToStorage } from "@/lib/storage";
 import MarkdownEditor from "./MarkdownEditor";
+import SandpackPlayground from "@/components/viewer/SandpackPlayground";
 import { useRouter } from "next/navigation";
 import { Trade, StudentLevel } from "@/types/auth";
+import { downloadSyllabusAsJSON, downloadSyllabusAsText } from "@/lib/exportSyllabus";
 import { 
   Sparkles, 
   Plus, 
@@ -23,7 +25,9 @@ import {
   CheckCircle2,
   Upload,
   Eye,
-  Sliders
+  Sliders,
+  Terminal,
+  Download
 } from "lucide-react";
 
 interface Props {
@@ -155,13 +159,20 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
   // Save Syllabus Action
   const [saving, setSaving] = useState(false);
 
-  const handleSave = async () => {
+  const handleSave = async (targetStatus: 'draft' | 'published' = 'published') => {
     setSaving(true);
     try {
-      const saved = await saveSyllabus(syllabus);
-      router.push(`/syllabus/${saved.id}`);
-    } catch (e) {
-      console.error("Save error:", e);
+      const updatedSyllabus = { ...syllabus, status: targetStatus };
+      const saved = await saveSyllabus(updatedSyllabus);
+      if (targetStatus === 'draft') {
+        alert("Syllabus Saved as Draft!");
+        router.push("/admin");
+      } else {
+        alert("Syllabus Published!");
+        router.push(`/syllabus/view?id=${saved.id}`);
+      }
+    } catch (err: any) {
+      console.error("Save error:", err);
       setSaving(false);
     }
   };
@@ -284,30 +295,37 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
         </div>
 
         <div className="flex items-center space-x-3">
-          {/* Draft vs Published Toggle */}
-          <div className="flex items-center rounded-xl bg-[#1E293B] p-1 border border-[#334155]">
-            <button
-              onClick={() => setSyllabus({ ...syllabus, status: 'draft' })}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                syllabus.status === 'draft' ? 'bg-[#F59E0B]/20 text-[#F59E0B]' : 'text-[#94A3B8]'
-              }`}
-            >
-              Draft Mode
-            </button>
-            <button
-              onClick={() => setSyllabus({ ...syllabus, status: 'published' })}
-              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                syllabus.status === 'published' ? 'bg-[#10B981]/20 text-[#10B981]' : 'text-[#94A3B8]'
-              }`}
-            >
-              Published
-            </button>
-          </div>
+          <button
+            onClick={() => downloadSyllabusAsText(syllabus)}
+            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3.5 py-2.5 text-xs font-bold text-[#06B6D4] hover:bg-[#334155] transition-all shadow-md"
+            title="Download Formatted Text Document (.txt)"
+          >
+            <Download className="h-4 w-4" />
+            <span>Download Doc</span>
+          </button>
 
           <button
-            onClick={handleSave}
+            onClick={() => downloadSyllabusAsJSON(syllabus)}
+            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3.5 py-2.5 text-xs font-bold text-[#10B981] hover:bg-[#334155] transition-all shadow-md"
+            title="Download Raw JSON Data (.json)"
+          >
+            <FileCode className="h-4 w-4" />
+            <span>Download JSON</span>
+          </button>
+
+          <button
+            onClick={() => handleSave('draft')}
             disabled={saving}
-            className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-5 py-2.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg"
+            className="inline-flex items-center space-x-2 rounded-xl border border-[#334155] bg-[#1E293B] px-4 py-2.5 text-xs font-bold text-[#CBD5E1] hover:bg-[#334155] hover:text-white transition-all shadow-md disabled:opacity-50"
+          >
+            <FileText className="h-4 w-4 text-[#F59E0B]" />
+            <span>{saving ? 'Saving...' : 'Save as Draft'}</span>
+          </button>
+
+          <button
+            onClick={() => handleSave('published')}
+            disabled={saving}
+            className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-5 py-2.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg disabled:opacity-50"
           >
             <Save className="h-4 w-4" />
             <span>{saving ? 'Saving...' : 'Save & Publish'}</span>
@@ -810,6 +828,178 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                                       });
                                     }}
                                   />
+
+                                  {/* Interactive JS Code Playground Management */}
+                                  {!sub.codeSnippet ? (
+                                    <div className="mt-3">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setSyllabus({
+                                            ...syllabus,
+                                            learningOutcomes: syllabus.learningOutcomes.map(l => 
+                                              l.id === lo.id ? {
+                                                ...l,
+                                                indicativeContents: l.indicativeContents.map(i => 
+                                                  i.id === ic.id ? {
+                                                    ...i,
+                                                    topics: i.topics.map(t => 
+                                                      t.id === top.id ? {
+                                                        ...t,
+                                                        subtopics: t.subtopics.map(s => 
+                                                          s.id === sub.id ? { 
+                                                            ...s, 
+                                                            codeSnippet: {
+                                                              id: `snippet-${Date.now()}`,
+                                                              title: "Interactive JS Code Playground",
+                                                              language: "javascript",
+                                                              template: "vanilla",
+                                                              code: `// JavaScript Code Terminal Example\n// Try changing values below!\n\nfunction checkLogicGate(a, b) {\n  const andResult = a && b;\n  const orResult = a || b;\n  return { AND: andResult, OR: orResult };\n}\n\nconsole.log("Logic Gate Test (1, 0):", checkLogicGate(1, 0));\n`
+                                                            } 
+                                                          } : s
+                                                        )
+                                                      } : t
+                                                    )
+                                                  } : i
+                                                )
+                                              } : l
+                                            )
+                                          });
+                                        }}
+                                        className="w-full py-2 px-3 border border-dashed border-[#06B6D4]/40 hover:border-[#06B6D4] bg-[#06B6D4]/5 hover:bg-[#06B6D4]/10 rounded-xl text-xs font-bold text-[#06B6D4] transition-all flex items-center justify-center space-x-2"
+                                      >
+                                        <Terminal className="w-4 h-4" />
+                                        <span>+ Attach Interactive JS Code Playground</span>
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="mt-4 p-4 rounded-xl border border-[#334155] bg-[#0B0F19]/80 space-y-3">
+                                      <div className="flex items-center justify-between border-b border-[#334155] pb-2">
+                                        <div className="flex items-center space-x-2">
+                                          <Terminal className="w-4 h-4 text-[#06B6D4]" />
+                                          <span className="text-xs font-bold text-white uppercase tracking-wider">
+                                            Interactive JS Terminal Playground
+                                          </span>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setSyllabus({
+                                              ...syllabus,
+                                              learningOutcomes: syllabus.learningOutcomes.map(l => 
+                                                l.id === lo.id ? {
+                                                  ...l,
+                                                  indicativeContents: l.indicativeContents.map(i => 
+                                                    i.id === ic.id ? {
+                                                      ...i,
+                                                      topics: i.topics.map(t => 
+                                                        t.id === top.id ? {
+                                                          ...t,
+                                                          subtopics: t.subtopics.map(s => 
+                                                            s.id === sub.id ? { ...s, codeSnippet: undefined } : s
+                                                          )
+                                                        } : t
+                                                      )
+                                                    } : i
+                                                  )
+                                                } : l
+                                              )
+                                            });
+                                          }}
+                                          className="text-xs font-bold text-[#F43F5E] hover:text-[#E11D48] flex items-center space-x-1"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5" />
+                                          <span>Remove Playground</span>
+                                        </button>
+                                      </div>
+
+                                      <div>
+                                        <label className="text-[10px] uppercase font-bold text-[#94A3B8] block mb-1">
+                                          Playground Title
+                                        </label>
+                                        <input 
+                                          type="text"
+                                          value={sub.codeSnippet.title || ""}
+                                          onChange={(e) => {
+                                            const newTitle = e.target.value;
+                                            setSyllabus({
+                                              ...syllabus,
+                                              learningOutcomes: syllabus.learningOutcomes.map(l => 
+                                                l.id === lo.id ? {
+                                                  ...l,
+                                                  indicativeContents: l.indicativeContents.map(i => 
+                                                    i.id === ic.id ? {
+                                                      ...i,
+                                                      topics: i.topics.map(t => 
+                                                        t.id === top.id ? {
+                                                          ...t,
+                                                          subtopics: t.subtopics.map(s => 
+                                                            s.id === sub.id && s.codeSnippet ? { 
+                                                              ...s, 
+                                                              codeSnippet: { ...s.codeSnippet, title: newTitle } 
+                                                            } : s
+                                                          )
+                                                        } : t
+                                                      )
+                                                    } : i
+                                                  )
+                                                } : l
+                                              )
+                                            });
+                                          }}
+                                          placeholder="e.g. Logic Gates & Binary Expressions"
+                                          className="w-full rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-1.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                                        />
+                                      </div>
+
+                                      <div>
+                                        <label className="text-[10px] uppercase font-bold text-[#94A3B8] block mb-1">
+                                          Initial JavaScript Starter Code
+                                        </label>
+                                        <textarea 
+                                          rows={5}
+                                          value={sub.codeSnippet.code || ""}
+                                          onChange={(e) => {
+                                            const newCode = e.target.value;
+                                            setSyllabus({
+                                              ...syllabus,
+                                              learningOutcomes: syllabus.learningOutcomes.map(l => 
+                                                l.id === lo.id ? {
+                                                  ...l,
+                                                  indicativeContents: l.indicativeContents.map(i => 
+                                                    i.id === ic.id ? {
+                                                      ...i,
+                                                      topics: i.topics.map(t => 
+                                                        t.id === top.id ? {
+                                                          ...t,
+                                                          subtopics: t.subtopics.map(s => 
+                                                            s.id === sub.id && s.codeSnippet ? { 
+                                                              ...s, 
+                                                              codeSnippet: { ...s.codeSnippet, code: newCode } 
+                                                            } : s
+                                                          )
+                                                        } : t
+                                                      )
+                                                    } : i
+                                                  )
+                                                } : l
+                                              )
+                                            });
+                                          }}
+                                          placeholder="// Write starter JavaScript code here..."
+                                          className="w-full rounded-lg border border-[#334155] bg-[#0F172A] p-2.5 text-xs font-mono text-[#06B6D4] focus:border-[#06B6D4] focus:outline-none"
+                                        />
+                                      </div>
+
+                                      {/* Realtime Live Preview in Admin */}
+                                      <div className="pt-2">
+                                        <span className="text-[10px] uppercase font-bold text-[#10B981] block mb-2">
+                                          Live Student Preview (Sandpack Interactive Terminal)
+                                        </span>
+                                        <SandpackPlayground snippet={sub.codeSnippet} />
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                             </div>

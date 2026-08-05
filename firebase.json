@@ -18,5 +18,9 @@
   },
   "firestore": {
     "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules",
+    "bucket": "syllabus-ad688.firebasestorage.app"
   }
 }
