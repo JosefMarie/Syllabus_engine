@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Trade } from "@/types/auth";
 import { getAllTrades, saveTrade, deleteTrade } from "@/lib/db";
-import { Plus, Trash2, Layers, Briefcase, CheckCircle2 } from "lucide-react";
+import { Plus, Trash2, Briefcase, AlertTriangle } from "lucide-react";
 
 export default function TradesManager() {
   const [trades, setTrades] = useState<Trade[]>([]);
@@ -13,6 +13,9 @@ export default function TradesManager() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Inline Delete State
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
@@ -42,11 +45,10 @@ export default function TradesManager() {
     setSaving(false);
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Delete this Trade? Syllabi and students assigned to this trade will remain in database.")) {
-      setTrades((prev) => prev.filter((t) => t.id !== id));
-      await deleteTrade(id);
-    }
+  const executeDelete = async (id: string) => {
+    setTrades((prev) => prev.filter((t) => t.id !== id));
+    setConfirmDeleteId(null);
+    await deleteTrade(id);
   };
 
   return (
@@ -114,10 +116,10 @@ export default function TradesManager() {
             {trades.map((t) => (
               <div
                 key={t.id}
-                className="flex items-start justify-between rounded-xl border border-[#334155] bg-[#1E293B] p-4 shadow-md"
+                className="flex items-start justify-between rounded-xl border border-[#334155] bg-[#1E293B] p-4 shadow-md gap-3"
               >
-                <div>
-                  <h5 className="text-sm font-bold text-white">{t.name}</h5>
+                <div className="flex-1 min-w-0">
+                  <h5 className="text-sm font-bold text-white truncate">{t.name}</h5>
                   <p className="mt-1 text-xs text-[#94A3B8] line-clamp-2">{t.description || "No description."}</p>
                   
                   <div className="mt-3 flex items-center space-x-2 text-[10px] font-mono text-[#06B6D4]">
@@ -127,12 +129,36 @@ export default function TradesManager() {
                   </div>
                 </div>
 
-                <button
-                  onClick={() => handleDelete(t.id)}
-                  className="rounded-lg bg-rose-500/10 p-1.5 text-rose-400 hover:bg-rose-500/20"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+                <div className="shrink-0 pt-0.5">
+                  {confirmDeleteId === t.id ? (
+                    <div className="flex items-center space-x-2">
+                      <button
+                        type="button"
+                        onClick={() => executeDelete(t.id)}
+                        className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-rose-700 transition-all shadow-md flex items-center space-x-1"
+                      >
+                        <AlertTriangle className="h-3.5 w-3.5" />
+                        <span>Delete</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDeleteId(null)}
+                        className="rounded-lg bg-[#334155] px-2.5 py-1.5 text-xs text-[#CBD5E1] hover:text-white transition-all"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDeleteId(t.id)}
+                      title="Delete Academic Trade"
+                      className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-2 text-rose-400 hover:bg-rose-500 hover:text-white transition-all shadow-md cursor-pointer"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

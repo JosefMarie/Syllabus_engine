@@ -163,7 +163,11 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
       if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
         // @ts-ignore
         const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+        try {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+        } catch (e) {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
+        }
 
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
@@ -189,13 +193,16 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
       }
 
       setRawText(extractedText);
-      setExtractSuccess("File text successfully extracted! Review the content below before parsing with AI.");
+      setExtractSuccess("Document text read! Starting AI 5-level hierarchy extraction...");
 
       uploadFileToStorage(file, "syllabi_docs")
         .then((url) => {
           setSyllabus(prev => ({ ...prev, documentUrl: url }));
         })
         .catch((err) => console.error("Failed to upload document to storage:", err));
+
+      // Auto trigger AI extraction for instant seamless result
+      await handleExtractAI(extractedText);
 
     } catch (err: any) {
       console.error("Extraction error:", err);
@@ -228,17 +235,18 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
 
   const [extractionStatusStep, setExtractionStatusStep] = useState<string | null>(null);
 
-  const handleExtractAI = async () => {
-    if (!rawText.trim()) return;
+  const handleExtractAI = async (textOverride?: string) => {
+    const textToProcess = textOverride || rawText;
+    if (!textToProcess.trim()) return;
     setExtracting(true);
     setExtractSuccess(null);
-    setExtractionStatusStep("Step 1/3: Reading multi-page document text...");
+    setExtractionStatusStep("Step 1/3: Reading document text...");
 
     try {
       setTimeout(() => setExtractionStatusStep("Step 2/3: Parsing 5-Level Hierarchy (LOs, ICs, Key Readings)..."), 800);
-      setTimeout(() => setExtractionStatusStep("Step 3/3: Auto-extracting Acronym Citations & Executable Code Snippets..."), 1600);
+      setTimeout(() => setExtractionStatusStep("Step 3/3: Auto-extracting Acronym Citations & Formatting..."), 1600);
 
-      const result = await parseSyllabusWithGemini(rawText);
+      const result = await parseSyllabusWithGemini(textToProcess);
       setSyllabus(result.syllabus);
       
       const successMsg = `Successfully extracted ${result.extractedCount.los} LOs, ${result.extractedCount.ics} ICs, ${result.extractedCount.topics} Topics, ${result.extractedCount.subtopics} Subtopics, and ${result.extractedCount.citations} Automatic Acronym Citations across the entire document!`;
@@ -651,7 +659,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
               </div>
 
               <button
-                onClick={handleExtractAI}
+                onClick={() => handleExtractAI()}
                 disabled={extracting || !rawText.trim()}
                 className="inline-flex items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-[#06B6D4] to-[#10B981] px-6 py-3 text-xs font-bold text-slate-950 hover:opacity-90 transition-all shadow-xl disabled:opacity-50"
               >

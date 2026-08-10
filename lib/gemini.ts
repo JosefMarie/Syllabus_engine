@@ -126,8 +126,8 @@ function preprocessTextHeadings(text: string): string {
 export async function parseSyllabusWithGemini(rawText: string): Promise<SyllabusExtractionResult> {
   const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
 
-  if (apiKey && apiKey.startsWith("AIzaSy")) {
-    const modelsToTry = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
+  if (apiKey && apiKey.trim().length > 10) {
+    const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
 
     for (const modelName of modelsToTry) {
       try {
@@ -337,12 +337,23 @@ function formatExtractedData(raw: any): SyllabusExtractionResult {
     };
   });
 
+  const searchStr = `${raw.courseCode || ""} ${raw.title || ""} ${raw.description || ""}`.toLowerCase();
+  let level: "Level 3" | "Level 4" | "Level 5" = "Level 4";
+  if (/level\s*3|cert(ificate)?\s*3|cert(ificate)?\s*iii|\b\w*3\d{2}\w*\b/i.test(searchStr)) {
+    level = "Level 3";
+  } else if (/level\s*5|cert(ificate)?\s*5|cert(ificate)?\s*v|\b\w*5\d{2}\w*\b/i.test(searchStr)) {
+    level = "Level 5";
+  } else if (/level\s*4|cert(ificate)?\s*4|cert(ificate)?\s*iv|\b\w*4\d{2}\w*\b/i.test(searchStr)) {
+    level = "Level 4";
+  }
+
   const syllabus: Syllabus = {
     id,
     title: raw.title || "Data Structure and Algorithm Fundamentals",
     courseCode: raw.courseCode || "SWDDA401",
     department: raw.department || "Software Engineering",
     description: raw.description || "Trainee Manual Curriculum Syllabus.",
+    level,
     status: "draft",
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),

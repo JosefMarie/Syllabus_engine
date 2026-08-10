@@ -91,7 +91,7 @@ function LoginForm() {
             required
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
-            placeholder="student@school.edu or alex_j"
+            placeholder="josef.marie@school.edu or josef_m"
             className="mt-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
           />
         </div>

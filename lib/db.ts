@@ -310,15 +310,20 @@ export async function getAllTrades(): Promise<Trade[]> {
       const snapshot = await getDocs(collection(db, "trades"));
       const items: Trade[] = [];
       snapshot.forEach((docSnap) => {
-        items.push({ id: docSnap.id, ...docSnap.data() } as Trade);
+        if (docSnap.id === "_meta") return;
+        const data = docSnap.data();
+        items.push({ ...data, id: data.id || docSnap.id } as Trade);
       });
 
-      const isInit = typeof window !== "undefined" && localStorage.getItem(TRADES_INIT_KEY);
-      if (items.length > 0 || isInit) {
+      const metaSnap = await getDoc(doc(db, "trades", "_meta"));
+      const isInitLocal = typeof window !== "undefined" && localStorage.getItem(TRADES_INIT_KEY);
+
+      if (items.length > 0 || metaSnap.exists() || isInitLocal) {
         return items;
       }
 
-      // First-time seeding ONLY
+      // First-time initialization ONLY: set _meta doc and seed default trades
+      await setDoc(doc(db, "trades", "_meta"), { initialized: true });
       for (const trade of DEFAULT_TRADES) {
         await setDoc(doc(db, "trades", trade.id), trade);
       }
@@ -351,6 +356,7 @@ export async function saveTrade(trade: Trade): Promise<Trade> {
   const sanitized = sanitizeForFirestore(trade);
   if (isFirebaseConfigured && db) {
     try {
+      await setDoc(doc(db, "trades", "_meta"), { initialized: true });
       await setDoc(doc(db, "trades", trade.id), sanitized);
     } catch (err) {
       console.warn("Firestore save trade error:", err);
@@ -380,7 +386,20 @@ export async function saveTrade(trade: Trade): Promise<Trade> {
 export async function deleteTrade(id: string): Promise<boolean> {
   if (isFirebaseConfigured && db) {
     try {
+      // Set meta doc so empty collection doesn't re-seed default trades
+      await setDoc(doc(db, "trades", "_meta"), { initialized: true });
+
+      // 1. Delete directly by document ID matching id
       await deleteDoc(doc(db, "trades", id));
+
+      // 2. Query and delete any docs where field 'id' matches (handles auto-generated Firestore doc IDs)
+      const q = query(collection(db, "trades"), where("id", "==", id));
+      const qSnap = await getDocs(q);
+      for (const docSnap of qSnap.docs) {
+        if (docSnap.id !== "_meta") {
+          await deleteDoc(doc(db, "trades", docSnap.id));
+        }
+      }
     } catch (err) {
       console.warn("Firestore delete trade error:", err);
     }
@@ -442,12 +461,45 @@ export async function getAllStudentProgressSummaries(): Promise<StudentProgressS
   const users = await getAllUserProfiles();
   const students = users.filter(u => u.role === 'student');
 
+  const allSyllabi = await getAllSyllabi();
+  const publishedSyllabi = allSyllabi.filter(s => s.status === 'published' || !s.status);
+
   const summaries: StudentProgressSummary[] = [];
   for (const student of students) {
     const pMap = await getStudentProgressMap(student.uid);
-    const completedCount = Object.values(pMap).filter(Boolean).length;
     const notifs = await getStudentNotifications(student.uid);
     const unreadCount = notifs.filter(n => !n.read && !(n as any).isRead).length;
+
+    // Filter published syllabi applicable to this student's level & trade
+    const studentSyllabi = publishedSyllabi.filter(syl => {
+      const sylLevel = syl.level || (syl.courseCode?.includes("5") ? "Level 5" : syl.courseCode?.includes("3") ? "Level 3" : "Level 4");
+      const matchesLevel = !student.level || sylLevel === student.level;
+      const matchesTrade = !student.tradeId || student.tradeId === "all" || syl.tradeId === student.tradeId;
+      return matchesLevel && matchesTrade;
+    });
+
+    // Extract all valid subtopics from matching published syllabi
+    let totalSubtopicsCount = 0;
+    let completedSubtopicsCount = 0;
+
+    studentSyllabi.forEach(syl => {
+      syl.learningOutcomes.forEach(lo => {
+        lo.indicativeContents.forEach(ic => {
+          ic.topics.forEach(top => {
+            top.subtopics.forEach(sub => {
+              totalSubtopicsCount++;
+              if (pMap[sub.id]) {
+                completedSubtopicsCount++;
+              }
+            });
+          });
+        });
+      });
+    });
+
+    const progressPercent = totalSubtopicsCount > 0
+      ? Math.min(100, Math.round((completedSubtopicsCount / totalSubtopicsCount) * 100))
+      : 0;
 
     summaries.push({
       userId: student.uid,
@@ -457,9 +509,9 @@ export async function getAllStudentProgressSummaries(): Promise<StudentProgressS
       tradeId: student.tradeId,
       level: student.level,
       status: student.status,
-      completedSubtopicsCount: completedCount,
-      totalSubtopicsCount: 20,
-      progressPercent: Math.min(100, Math.round((completedCount / 20) * 100)),
+      completedSubtopicsCount,
+      totalSubtopicsCount,
+      progressPercent,
       lastActive: student.createdAt || new Date().toISOString(),
       unreadNotificationsCount: unreadCount
     });

@@ -93,7 +93,7 @@ export default function ActivityLogger() {
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#94A3B8]" />
           <input
             type="text"
-            placeholder="Search student name, email or action details..."
+            placeholder="Search student name (e.g. Josef Marie), email or action details..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full rounded-xl border border-[#334155] bg-[#1E293B] py-2 pl-9 pr-3 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"

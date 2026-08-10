@@ -79,7 +79,7 @@ export default function StudentProgressManager() {
     return matchesSearch && matchesTrade && matchesLevel;
   });
 
-  const behindCount = students.filter((s) => s.progressPercent < 30).length;
+  const behindCount = students.filter((s) => s.totalSubtopicsCount > 0 && s.progressPercent < 30).length;
   
   // Real-Time Attention & Presence counts
   const activeLearningCount = students.filter(s => presences[s.userId]?.state === 'actively_reading').length;
@@ -254,7 +254,7 @@ export default function StudentProgressManager() {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Filter students by name, email, or username..."
+            placeholder="Filter students by name (e.g. Josef Marie), email, or username..."
             className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] pl-10 pr-4 py-2 text-xs text-white placeholder-[#94A3B8] focus:border-[#06B6D4] focus:outline-none"
           />
         </div>
@@ -393,19 +393,26 @@ export default function StudentProgressManager() {
                       <div className="h-2 w-full rounded-full bg-[#0B0F19] overflow-hidden border border-[#334155]">
                         <div
                           className={`h-full transition-all ${
-                            st.progressPercent < 30
+                            st.totalSubtopicsCount === 0
+                              ? 'bg-slate-700'
+                              : st.progressPercent < 30
                               ? 'bg-amber-500'
                               : st.progressPercent >= 70
                               ? 'bg-[#10B981]'
                               : 'bg-[#06B6D4]'
                           }`}
-                          style={{ width: `${Math.max(5, st.progressPercent)}%` }}
+                          style={{ width: `${st.totalSubtopicsCount === 0 ? 0 : Math.max(5, st.progressPercent)}%` }}
                         />
                       </div>
                     </td>
 
                     <td className="px-6 py-4">
-                      {st.progressPercent < 30 ? (
+                      {st.totalSubtopicsCount === 0 ? (
+                        <span className="inline-flex items-center space-x-1 rounded-full bg-slate-700/30 px-2.5 py-1 text-[11px] font-bold text-slate-400 border border-slate-600/30">
+                          <Clock className="h-3 w-3" />
+                          <span>No Published Syllabi</span>
+                        </span>
+                      ) : st.progressPercent < 30 ? (
                         <span className="inline-flex items-center space-x-1 rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-bold text-amber-400 border border-amber-500/30">
                           <AlertTriangle className="h-3 w-3" />
                           <span>Behind</span>
@@ -472,7 +479,7 @@ export default function StudentProgressManager() {
                 value={messageText}
                 onChange={(e) => setMessageText(e.target.value)}
                 rows={4}
-                placeholder="Write message to student..."
+                placeholder="Write message to student (e.g. Hi Josef Marie, great work on LO1!)..."
                 className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] p-3 text-xs text-white placeholder-[#94A3B8] focus:border-[#06B6D4] focus:outline-none leading-relaxed"
               />
             </div>

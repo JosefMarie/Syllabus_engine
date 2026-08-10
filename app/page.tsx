@@ -102,6 +102,14 @@ export default function CatalogPage() {
   };
 
   // Permitted levels based on student level hierarchy
+  const resolveSyllabusLevel = (s: Syllabus): StudentLevel => {
+    if (s.level) return s.level as StudentLevel;
+    const str = `${s.courseCode} ${s.title} ${s.description}`.toLowerCase();
+    if (/level\s*5|cert(ificate)?\s*5|cert(ificate)?\s*v|\b\w*5\d{2}\w*\b/i.test(str)) return "Level 5";
+    if (/level\s*3|cert(ificate)?\s*3|cert(ificate)?\s*iii|\b\w*3\d{2}\w*\b/i.test(str)) return "Level 3";
+    return "Level 4";
+  };
+
   const getPermittedLevels = (): StudentLevel[] => {
     if (!currentUser || currentUser.role !== "student") return ["Level 3", "Level 4", "Level 5"];
     if (currentUser.level === "Level 3") return ["Level 3"];
@@ -110,21 +118,31 @@ export default function CatalogPage() {
     return ["Level 3", "Level 4", "Level 5"];
   };
 
-  // Syllabi filtering logic
-  let filtered = syllabi.filter((s) => 
-    s.title.toLowerCase().includes(search.toLowerCase()) ||
-    s.courseCode.toLowerCase().includes(search.toLowerCase()) ||
-    s.description.toLowerCase().includes(search.toLowerCase())
-  );
+  // Syllabi filtering logic: ONLY show published syllabi to catalog viewers (Drafts hidden)
+  let filtered = syllabi.filter((s) => {
+    // 1. MUST BE PUBLISHED (or legacy without status) -> DRAFT IS STUCTLY HIDDEN FROM CATALOG
+    const isPublished = !s.status || s.status === "published";
+    if (!isPublished) return false;
+
+    // 2. Search filter matching
+    const matchesSearch = 
+      s.title.toLowerCase().includes(search.toLowerCase()) ||
+      s.courseCode.toLowerCase().includes(search.toLowerCase()) ||
+      s.description.toLowerCase().includes(search.toLowerCase());
+
+    return matchesSearch;
+  });
 
   if (currentUser && currentUser.role === "student") {
     const permittedLevels = getPermittedLevels();
     filtered = filtered.filter((s) => {
+      const sLevel = resolveSyllabusLevel(s);
+
       // Must be within student's permitted level hierarchy
-      const isLevelPermitted = !s.level || permittedLevels.includes(s.level as StudentLevel);
+      const isLevelPermitted = permittedLevels.includes(sLevel);
       
-      // Match active level filter button selection ("all" or specific level)
-      const matchesActiveFilter = activeLevelFilter === "all" || !s.level || s.level === activeLevelFilter;
+      // Match active level filter button selection ("all" or specific level tab)
+      const matchesActiveFilter = activeLevelFilter === "all" || sLevel === activeLevelFilter;
 
       return isLevelPermitted && matchesActiveFilter;
     });
@@ -137,8 +155,8 @@ export default function CatalogPage() {
   if (currentUser && currentUser.role === "student") {
     const progressMap = Object.keys(studentProgressMap).length > 0 ? studentProgressMap : getSubtopicProgress(currentUser.uid);
     const studentLevelSyllabi = syllabi.filter((syl) => 
-      syl.status === "published" &&
-      syl.level === currentUser.level &&
+      (syl.status === "published" || !syl.status) &&
+      resolveSyllabusLevel(syl) === currentUser.level &&
       (!currentUser.tradeId || currentUser.tradeId === "all" || syl.tradeId === currentUser.tradeId)
     );
 
@@ -253,7 +271,7 @@ export default function CatalogPage() {
                 <input
                   type="email"
                   required
-                  placeholder="Enter email address..."
+                  placeholder="josef.marie@school.edu"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
                   className="rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-1.5 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
