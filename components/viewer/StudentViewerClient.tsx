@@ -91,8 +91,9 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
   };
 
   const handleToggleComplete = async (subtopicId: string) => {
-    const updated = await toggleSubtopicProgress(subtopicId);
-    setProgressMap((prev) => ({ ...prev, [subtopicId]: updated }));
+    const updatedMap = await toggleSubtopicProgress(subtopicId);
+    setProgressMap(updatedMap);
+    const isCompletedNow = Boolean(updatedMap[subtopicId]);
 
     const user = getStoredSession();
     const admin = getAdminSession();
@@ -104,7 +105,7 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
         userEmail: user?.email || admin?.email || "guest@student.edu",
         userLevel: user?.level || admin?.level || "Admin",
         action: "VIEW_SUBTOPIC",
-        details: `${updated ? 'Marked as Completed' : 'Unmarked'}: "${activeSubtopic.title}"`,
+        details: `${isCompletedNow ? 'Marked as Completed' : 'Unmarked'}: "${activeSubtopic.title}"`,
         syllabusId: syllabus?.id,
         syllabusTitle: syllabus?.title
       });
@@ -339,6 +340,8 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
                 onToggleComplete={() => handleToggleComplete(activeSubtopic.id)}
                 onPrevSubtopic={prevSubtopic ? () => handleSelectSubtopic(prevSubtopic) : undefined}
                 onNextSubtopic={nextSubtopic ? () => handleSelectSubtopic(nextSubtopic) : undefined}
+                currentIndex={currentIdx + 1}
+                totalSubtopics={allSubtopics.length}
               />
             ) : (
               <div className="py-20 text-center text-[#94A3B8]">

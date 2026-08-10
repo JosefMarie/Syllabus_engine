@@ -1,7 +1,22 @@
 "use client";
 
 import React, { useRef, useState } from "react";
-import { Bold, Italic, Underline, List, ListOrdered, Quote, X } from "lucide-react";
+import { 
+  Bold, 
+  Italic, 
+  Underline, 
+  Superscript, 
+  Subscript, 
+  AlignLeft, 
+  AlignCenter, 
+  AlignRight, 
+  AlignJustify, 
+  Indent, 
+  List, 
+  ListOrdered, 
+  Quote, 
+  X 
+} from "lucide-react";
 import { uploadFileToStorage } from "@/lib/storage";
 
 interface Citation {
@@ -127,14 +142,44 @@ export default function MarkdownEditor({
     <div className="flex flex-col w-full rounded-xl border border-[#334155] bg-[#0B0F19] overflow-hidden relative">
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-1 border-b border-[#334155] bg-[#1E293B] p-2">
-        <button type="button" onClick={() => applyFormat("**", "**")} className="p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155] rounded transition-colors" title="Bold">
+        <button type="button" onClick={() => applyFormat("**", "**")} className="p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155] rounded transition-colors" title="Bold (**text**)">
           <Bold className="h-4 w-4" />
         </button>
-        <button type="button" onClick={() => applyFormat("*", "*")} className="p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155] rounded transition-colors" title="Italic">
+        <button type="button" onClick={() => applyFormat("*", "*")} className="p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155] rounded transition-colors" title="Italic (*text*)">
           <Italic className="h-4 w-4" />
         </button>
-        <button type="button" onClick={() => applyFormat("<u>", "</u>")} className="p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155] rounded transition-colors" title="Underline">
+        <button type="button" onClick={() => applyFormat("<u>", "</u>")} className="p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155] rounded transition-colors" title="Underline (<u>text</u>)">
           <Underline className="h-4 w-4" />
+        </button>
+
+        <div className="w-px h-5 bg-[#334155] mx-1"></div>
+
+        <button type="button" onClick={() => applyFormat("<sup>", "</sup>")} className="p-1.5 text-[#94A3B8] hover:text-[#06B6D4] hover:bg-[#334155] rounded transition-colors font-bold text-xs" title="Superscript (<sup>X²</sup>)">
+          <Superscript className="h-4 w-4" />
+        </button>
+        <button type="button" onClick={() => applyFormat("<sub>", "</sub>")} className="p-1.5 text-[#94A3B8] hover:text-[#06B6D4] hover:bg-[#334155] rounded transition-colors font-bold text-xs" title="Subscript (<sub>X₂</sub>)">
+          <Subscript className="h-4 w-4" />
+        </button>
+        
+        <div className="w-px h-5 bg-[#334155] mx-1"></div>
+
+        <button type="button" onClick={() => applyFormat('<div align="left">\n', '\n</div>')} className="p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155] rounded transition-colors" title="Align Left">
+          <AlignLeft className="h-4 w-4" />
+        </button>
+        <button type="button" onClick={() => applyFormat('<div align="center">\n', '\n</div>')} className="p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155] rounded transition-colors" title="Align Center">
+          <AlignCenter className="h-4 w-4" />
+        </button>
+        <button type="button" onClick={() => applyFormat('<div align="right">\n', '\n</div>')} className="p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155] rounded transition-colors" title="Align Right">
+          <AlignRight className="h-4 w-4" />
+        </button>
+        <button type="button" onClick={() => applyFormat('<div align="justify">\n', '\n</div>')} className="p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155] rounded transition-colors" title="Align Justify">
+          <AlignJustify className="h-4 w-4" />
+        </button>
+
+        <div className="w-px h-5 bg-[#334155] mx-1"></div>
+
+        <button type="button" onClick={() => applyFormat('<div style="margin-left: 24px">\n', '\n</div>')} className="p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155] rounded transition-colors" title="Indent Block">
+          <Indent className="h-4 w-4" />
         </button>
         
         <div className="w-px h-5 bg-[#334155] mx-1"></div>

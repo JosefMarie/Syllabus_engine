@@ -44,8 +44,8 @@ export default function TradesManager() {
 
   const handleDelete = async (id: string) => {
     if (confirm("Delete this Trade? Syllabi and students assigned to this trade will remain in database.")) {
+      setTrades((prev) => prev.filter((t) => t.id !== id));
       await deleteTrade(id);
-      setTrades(trades.filter(t => t.id !== id));
     }
   };
 

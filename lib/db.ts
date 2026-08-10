@@ -1,6 +1,7 @@
 import { Syllabus, Citation } from "@/types/syllabus";
 import { Trade, UserProfile, AccountStatus } from "@/types/auth";
 import { StudentNotification, StudentProgressSummary } from "@/types/notification";
+import { ActivityLog } from "@/types/activity";
 import { DEMO_SYLLABI_LIST, DEMO_SYLLABUS } from "./demoData";
 import { db, isFirebaseConfigured } from "./firebase";
 import { 
@@ -20,6 +21,7 @@ const STORAGE_KEY = "syllabus_platform_syllabi_v1";
 const PROGRESS_KEY = "syllabus_platform_progress_v1";
 const TRADES_KEY = "syllabus_platform_trades_v1";
 const USERS_KEY = "syllabus_platform_users_v1";
+const ACTIVITIES_KEY = "syllabus_platform_activities_v1";
 
 const DEFAULT_TRADES: Trade[] = [
   {
@@ -41,6 +43,28 @@ const DEFAULT_TRADES: Trade[] = [
     createdAt: new Date().toISOString()
   }
 ];
+
+/**
+ * Sanitizes object by converting undefined values to null or deleting them,
+ * preventing Firestore 'invalid data: undefined' rejection errors.
+ */
+function sanitizeForFirestore(obj: any): any {
+  if (obj === null || obj === undefined) return null;
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeForFirestore);
+  }
+  if (typeof obj === "object") {
+    const clean: any = {};
+    for (const key of Object.keys(obj)) {
+      const val = obj[key];
+      if (val !== undefined) {
+        clean[key] = sanitizeForFirestore(val);
+      }
+    }
+    return clean;
+  }
+  return obj;
+}
 
 // Helper to load local storage syllabi
 function getLocalSyllabi(): Syllabus[] {
@@ -93,26 +117,30 @@ export function buildCitationsDictionary(syllabus: Syllabus): Record<string, Cit
 }
 
 export async function getAllSyllabi(): Promise<Syllabus[]> {
+  const firestoreMap = new Map<string, Syllabus>();
+
   if (isFirebaseConfigured && db) {
     try {
       const q = query(collection(db, "syllabi"));
       const snapshot = await getDocs(q);
-      const items: Syllabus[] = [];
       snapshot.forEach((docSnap) => {
-        items.push({ id: docSnap.id, ...docSnap.data() } as Syllabus);
+        firestoreMap.set(docSnap.id, { id: docSnap.id, ...docSnap.data() } as Syllabus);
       });
-      if (items.length > 0) return items;
-      
-      // Seed default demo syllabi to Firestore if collection is empty
-      for (const demoSyllabus of DEMO_SYLLABI_LIST) {
-        await setDoc(doc(db, "syllabi", demoSyllabus.id), demoSyllabus);
-      }
-      return DEMO_SYLLABI_LIST;
     } catch (err) {
       console.warn("Firestore fetch error, falling back to local store:", err);
     }
   }
-  return getLocalSyllabi();
+
+  const localList = getLocalSyllabi();
+  
+  // Merge items: combine Firestore items with local storage items
+  const mergedMap = new Map<string, Syllabus>();
+  firestoreMap.forEach((val, key) => mergedMap.set(key, val));
+  localList.forEach((val) => mergedMap.set(val.id, val));
+
+  const items = Array.from(mergedMap.values());
+  if (items.length === 0) return DEMO_SYLLABI_LIST;
+  return items;
 }
 
 export async function getSyllabusById(id: string): Promise<Syllabus | null> {
@@ -139,15 +167,17 @@ export async function getSyllabusById(id: string): Promise<Syllabus | null> {
 }
 
 export async function saveSyllabus(syllabus: Syllabus): Promise<Syllabus> {
-  const updated = {
+  const updated: Syllabus = {
     ...syllabus,
     updatedAt: new Date().toISOString(),
     citationsDictionary: buildCitationsDictionary(syllabus),
   };
 
+  const sanitized = sanitizeForFirestore(updated);
+
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, "syllabi", updated.id), updated);
+      await setDoc(doc(db, "syllabi", updated.id), sanitized);
     } catch (err) {
       console.warn("Firestore save error, saving locally:", err);
     }
@@ -179,172 +209,36 @@ export async function deleteSyllabus(id: string): Promise<boolean> {
 
 const CURRENT_USER_KEY = "syllabus_platform_current_user_v1";
 
-function getActiveUserId(): string | undefined {
-  if (typeof window === "undefined") return undefined;
+export function getLocalCurrentUser(): UserProfile | null {
+  if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(CURRENT_USER_KEY);
-    if (!raw) return undefined;
-    const u = JSON.parse(raw);
-    return u?.uid;
+    return raw ? JSON.parse(raw) : null;
   } catch (e) {
-    return undefined;
+    return null;
   }
 }
 
-// Student Reading Progress tracking
-export function getSubtopicProgress(userId?: string): Record<string, boolean> {
-  if (typeof window === "undefined") return {};
-  try {
-    const uid = userId || getActiveUserId();
-    const key = uid ? `${PROGRESS_KEY}_${uid}` : PROGRESS_KEY;
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : {};
-  } catch (e) {
-    return {};
+export function saveLocalCurrentUser(user: UserProfile | null) {
+  if (typeof window === "undefined") return;
+  if (!user) {
+    localStorage.removeItem(CURRENT_USER_KEY);
+  } else {
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
   }
 }
 
-export async function getSubtopicProgressAsync(userId?: string): Promise<Record<string, boolean>> {
-  const uid = userId || getActiveUserId();
-  let localMap = getSubtopicProgress(uid);
-
-  if (isFirebaseConfigured && db && uid) {
-    try {
-      const docRef = doc(db, "studentProgress", uid);
-      const snap = await getDoc(docRef);
-      if (snap.exists()) {
-        const firestoreMap = snap.data()?.progressMap || {};
-        localMap = { ...localMap, ...firestoreMap };
-        if (typeof window !== "undefined") {
-          const key = `${PROGRESS_KEY}_${uid}`;
-          localStorage.setItem(key, JSON.stringify(localMap));
-        }
-      }
-    } catch (e) {
-      console.error("Firestore getSubtopicProgress error:", e);
-    }
-  }
-
-  return localMap;
-}
-
-export async function toggleSubtopicProgress(subtopicId: string, userId?: string): Promise<boolean> {
-  if (typeof window === "undefined") return false;
-  const uid = userId || getActiveUserId();
-  const key = uid ? `${PROGRESS_KEY}_${uid}` : PROGRESS_KEY;
-  const current = getSubtopicProgress(uid);
-  const nextState = !current[subtopicId];
-  current[subtopicId] = nextState;
-  
-  try {
-    localStorage.setItem(key, JSON.stringify(current));
-  } catch (e) {
-    console.error("Error saving progress state locally:", e);
-  }
-
-  if (isFirebaseConfigured && db && uid) {
-    try {
-      const docRef = doc(db, "studentProgress", uid);
-      await setDoc(docRef, {
-        userId: uid,
-        progressMap: current,
-        updatedAt: new Date().toISOString()
-      }, { merge: true });
-    } catch (e) {
-      console.error("Firestore toggleSubtopicProgress error:", e);
-    }
-  }
-
-  return nextState;
-}
-
-// ----------------------------------------------------
-// TRADES MANAGEMENT (Teacher Created)
-// ----------------------------------------------------
-export async function getAllTrades(): Promise<Trade[]> {
-  if (isFirebaseConfigured && db) {
-    try {
-      const q = query(collection(db, "trades"));
-      const snapshot = await getDocs(q);
-      const items: Trade[] = [];
-      snapshot.forEach((docSnap) => {
-        items.push({ id: docSnap.id, ...docSnap.data() } as Trade);
-      });
-      if (items.length > 0) return items;
-
-      // Seed default trades to Firestore if collection is empty
-      for (const t of DEFAULT_TRADES) {
-        await setDoc(doc(db, "trades", t.id), t);
-      }
-      return DEFAULT_TRADES;
-    } catch (e) {
-      console.warn("Firestore trades fetch error, using local trades:", e);
-    }
-  }
-
-  if (typeof window === "undefined") return DEFAULT_TRADES;
-  try {
-    const saved = localStorage.getItem(TRADES_KEY);
-    if (!saved) {
-      localStorage.setItem(TRADES_KEY, JSON.stringify(DEFAULT_TRADES));
-      return DEFAULT_TRADES;
-    }
-    return JSON.parse(saved);
-  } catch (e) {
-    return DEFAULT_TRADES;
-  }
-}
-
-export async function saveTrade(trade: Trade): Promise<Trade> {
-  if (isFirebaseConfigured && db) {
-    try {
-      await setDoc(doc(db, "trades", trade.id), trade);
-    } catch (e) {
-      console.warn("Firestore saveTrade error:", e);
-    }
-  }
-
-  const list = await getAllTrades();
-  const idx = list.findIndex(t => t.id === trade.id);
-  if (idx >= 0) list[idx] = trade;
-  else list.unshift(trade);
-  if (typeof window !== "undefined") {
-    localStorage.setItem(TRADES_KEY, JSON.stringify(list));
-  }
-  return trade;
-}
-
-export async function deleteTrade(id: string): Promise<boolean> {
-  if (isFirebaseConfigured && db) {
-    try {
-      await deleteDoc(doc(db, "trades", id));
-    } catch (e) {
-      console.warn("Firestore deleteTrade error:", e);
-    }
-  }
-
-  const list = (await getAllTrades()).filter(t => t.id !== id);
-  if (typeof window !== "undefined") {
-    localStorage.setItem(TRADES_KEY, JSON.stringify(list));
-  }
-  return true;
-}
-
-// ----------------------------------------------------
-// USER & STUDENT APPROVAL MANAGEMENT
-// ----------------------------------------------------
 export async function getAllUserProfiles(): Promise<UserProfile[]> {
   if (isFirebaseConfigured && db) {
     try {
-      const q = query(collection(db, "userProfiles"));
-      const snapshot = await getDocs(q);
+      const snapshot = await getDocs(collection(db, "users"));
       const items: UserProfile[] = [];
       snapshot.forEach((docSnap) => {
         items.push({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
       });
-      return items; // Return all user profiles fetched from Firestore
-    } catch (e) {
-      console.warn("Firestore userProfiles fetch error:", e);
+      if (items.length > 0) return items;
+    } catch (err) {
+      console.warn("Firestore fetch users error:", err);
     }
   }
 
@@ -357,120 +251,259 @@ export async function getAllUserProfiles(): Promise<UserProfile[]> {
   }
 }
 
-export async function registerUserProfile(profile: UserProfile): Promise<UserProfile> {
+export async function saveUserProfile(profile: UserProfile): Promise<void> {
+  const sanitized = sanitizeForFirestore(profile);
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, "userProfiles", profile.uid), profile);
-    } catch (e) {
-      console.warn("Firestore user profile save error:", e);
+      await setDoc(doc(db, "users", profile.uid), sanitized);
+    } catch (err) {
+      console.warn("Firestore save user error:", err);
     }
   }
 
-  const users = await getAllUserProfiles();
-  const idx = users.findIndex(u => u.uid === profile.uid);
-  if (idx >= 0) users[idx] = profile;
-  else users.push(profile);
-  if (typeof window !== "undefined") {
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  }
-  return profile;
-}
-
-export async function updateStudentStatus(uid: string, status: AccountStatus): Promise<boolean> {
-  const users = await getAllUserProfiles();
-  const user = users.find(u => u.uid === uid);
-  if (user) {
-    user.status = status;
-    await registerUserProfile(user);
-    return true;
-  }
-  return false;
-}
-
-// ----------------------------------------------------
-// ACTIVITY & AUDIT LOGGING MANAGEMENT
-// ----------------------------------------------------
-import { ActivityLog } from "@/types/activity";
-const ACTIVITIES_KEY = "syllabus_platform_activities_v1";
-
-export async function getAllActivities(): Promise<ActivityLog[]> {
-  if (isFirebaseConfigured && db) {
-    try {
-      const q = query(collection(db, "activities"));
-      const snapshot = await getDocs(q);
-      const items: ActivityLog[] = [];
-      snapshot.forEach((docSnap) => {
-        items.push({ id: docSnap.id, ...docSnap.data() } as ActivityLog);
-      });
-      if (items.length > 0) {
-        return items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      }
-    } catch (e) {
-      console.warn("Firestore activities fetch error:", e);
-    }
-  }
-
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return;
   try {
-    const saved = localStorage.getItem(ACTIVITIES_KEY);
-    const list: ActivityLog[] = saved ? JSON.parse(saved) : [];
-    return list.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    const saved = localStorage.getItem(USERS_KEY);
+    const users: UserProfile[] = saved ? JSON.parse(saved) : [];
+    const idx = users.findIndex((u) => u.uid === profile.uid);
+    if (idx >= 0) {
+      users[idx] = profile;
+    } else {
+      users.push(profile);
+    }
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+  } catch (e) {
+    console.error("Error saving user profile locally:", e);
+  }
+}
+
+export async function updateUserStatus(uid: string, status: AccountStatus): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    try {
+      await updateDoc(doc(db, "users", uid), { status });
+    } catch (err) {
+      console.warn("Firestore update status error:", err);
+    }
+  }
+
+  if (typeof window === "undefined") return;
+  try {
+    const saved = localStorage.getItem(USERS_KEY);
+    if (saved) {
+      const users: UserProfile[] = JSON.parse(saved);
+      const idx = users.findIndex((u) => u.uid === uid);
+      if (idx >= 0) {
+        users[idx].status = status;
+        localStorage.setItem(USERS_KEY, JSON.stringify(users));
+      }
+    }
+  } catch (e) {
+    console.error("Error updating user status locally:", e);
+  }
+}
+
+const TRADES_INIT_KEY = "syllabus_platform_trades_init_v1";
+
+export async function getAllTrades(): Promise<Trade[]> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const snapshot = await getDocs(collection(db, "trades"));
+      const items: Trade[] = [];
+      snapshot.forEach((docSnap) => {
+        items.push({ id: docSnap.id, ...docSnap.data() } as Trade);
+      });
+
+      const isInit = typeof window !== "undefined" && localStorage.getItem(TRADES_INIT_KEY);
+      if (items.length > 0 || isInit) {
+        return items;
+      }
+
+      // First-time seeding ONLY
+      for (const trade of DEFAULT_TRADES) {
+        await setDoc(doc(db, "trades", trade.id), trade);
+      }
+      if (typeof window !== "undefined") {
+        localStorage.setItem(TRADES_INIT_KEY, "true");
+        localStorage.setItem(TRADES_KEY, JSON.stringify(DEFAULT_TRADES));
+      }
+      return DEFAULT_TRADES;
+    } catch (err) {
+      console.warn("Firestore fetch trades error:", err);
+    }
+  }
+
+  if (typeof window === "undefined") return DEFAULT_TRADES;
+  try {
+    const isInit = localStorage.getItem(TRADES_INIT_KEY);
+    const saved = localStorage.getItem(TRADES_KEY);
+    if (!saved && !isInit) {
+      localStorage.setItem(TRADES_INIT_KEY, "true");
+      localStorage.setItem(TRADES_KEY, JSON.stringify(DEFAULT_TRADES));
+      return DEFAULT_TRADES;
+    }
+    return saved ? JSON.parse(saved) : [];
   } catch (e) {
     return [];
   }
 }
 
-export async function logActivity(log: Omit<ActivityLog, "id" | "timestamp">): Promise<ActivityLog> {
-  const fullLog: ActivityLog = {
-    ...log,
-    id: `act-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-    timestamp: new Date().toISOString(),
-  };
-
+export async function saveTrade(trade: Trade): Promise<Trade> {
+  const sanitized = sanitizeForFirestore(trade);
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, "activities", fullLog.id), fullLog);
-    } catch (e) {
-      console.warn("Firestore logActivity error:", e);
+      await setDoc(doc(db, "trades", trade.id), sanitized);
+    } catch (err) {
+      console.warn("Firestore save trade error:", err);
+    }
+  }
+
+  let list: Trade[] = [];
+  if (typeof window !== "undefined") {
+    localStorage.setItem(TRADES_INIT_KEY, "true");
+    const saved = localStorage.getItem(TRADES_KEY);
+    if (saved) {
+      try { list = JSON.parse(saved); } catch (e) {}
+    }
+  }
+  const idx = list.findIndex((t) => t.id === trade.id);
+  if (idx >= 0) {
+    list[idx] = trade;
+  } else {
+    list.unshift(trade);
+  }
+  if (typeof window !== "undefined") {
+    localStorage.setItem(TRADES_KEY, JSON.stringify(list));
+  }
+  return trade;
+}
+
+export async function deleteTrade(id: string): Promise<boolean> {
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, "trades", id));
+    } catch (err) {
+      console.warn("Firestore delete trade error:", err);
     }
   }
 
   if (typeof window !== "undefined") {
+    localStorage.setItem(TRADES_INIT_KEY, "true");
+    const saved = localStorage.getItem(TRADES_KEY);
+    if (saved) {
+      try {
+        const list = JSON.parse(saved).filter((t: Trade) => t.id !== id);
+        localStorage.setItem(TRADES_KEY, JSON.stringify(list));
+      } catch (e) {}
+    }
+  }
+  return true;
+}
+
+export async function getStudentProgressMap(userId: string): Promise<Record<string, boolean>> {
+  if (isFirebaseConfigured && db) {
     try {
-      const existing = await getAllActivities();
-      existing.unshift(fullLog);
-      // Keep latest 200 activity logs
-      localStorage.setItem(ACTIVITIES_KEY, JSON.stringify(existing.slice(0, 200)));
-    } catch (e) {
-      console.error("Localstorage logActivity error:", e);
+      const docRef = doc(db, "userProgress", userId);
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        return docSnap.data().progressMap || {};
+      }
+    } catch (err) {
+      console.warn("Firestore progress fetch error:", err);
     }
   }
 
-  return fullLog;
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(`${PROGRESS_KEY}_${userId}`);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
 }
 
-// NOTIFICATION STORAGE & RETRIEVAL SYSTEM
-const NOTIFICATIONS_KEY = "syllabus_student_notifications";
+export async function saveStudentProgressMap(userId: string, progressMap: Record<string, boolean>): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "userProgress", userId), { progressMap, updatedAt: new Date().toISOString() }, { merge: true });
+    } catch (err) {
+      console.warn("Firestore progress save error:", err);
+    }
+  }
 
-export async function sendStudentNotification(
-  userId: string,
-  senderName: string,
-  message: string
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(`${PROGRESS_KEY}_${userId}`, JSON.stringify(progressMap));
+  } catch (e) {
+    console.error("Error saving progress map locally:", e);
+  }
+}
+
+export async function getAllStudentProgressSummaries(): Promise<StudentProgressSummary[]> {
+  const users = await getAllUserProfiles();
+  const students = users.filter(u => u.role === 'student');
+
+  const summaries: StudentProgressSummary[] = [];
+  for (const student of students) {
+    const pMap = await getStudentProgressMap(student.uid);
+    const completedCount = Object.values(pMap).filter(Boolean).length;
+    const notifs = await getStudentNotifications(student.uid);
+    const unreadCount = notifs.filter(n => !n.read && !(n as any).isRead).length;
+
+    summaries.push({
+      userId: student.uid,
+      fullName: student.fullName,
+      email: student.email,
+      username: student.username,
+      tradeId: student.tradeId,
+      level: student.level,
+      status: student.status,
+      completedSubtopicsCount: completedCount,
+      totalSubtopicsCount: 20,
+      progressPercent: Math.min(100, Math.round((completedCount / 20) * 100)),
+      lastActive: student.createdAt || new Date().toISOString(),
+      unreadNotificationsCount: unreadCount
+    });
+  }
+  return summaries;
+}
+
+const NOTIFICATIONS_KEY = "syllabus_platform_notifications_v1";
+
+export async function sendNotificationToStudent(
+  studentUidOrNotification: string | Omit<StudentNotification, 'id' | 'createdAt'>,
+  senderNameArg?: string,
+  messageArg?: string
 ): Promise<StudentNotification> {
-  const notif: StudentNotification = {
-    id: `notif-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-    userId,
-    senderName,
-    message,
+  let notificationData: any;
+
+  if (typeof studentUidOrNotification === 'string') {
+    notificationData = {
+      userId: studentUidOrNotification,
+      senderName: senderNameArg || "Teacher Admin",
+      message: messageArg || "",
+      read: false,
+    };
+  } else {
+    notificationData = {
+      ...studentUidOrNotification,
+      read: false,
+    };
+  }
+
+  const newNotif: StudentNotification = {
+    ...notificationData,
+    id: `notif-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     createdAt: new Date().toISOString(),
-    read: false,
+    read: false
   };
+
+  const sanitized = sanitizeForFirestore(newNotif);
 
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, "notifications", notif.id), notif);
-    } catch (e) {
-      console.warn("Firestore sendNotification error:", e);
+      await setDoc(doc(db, "studentNotifications", newNotif.id), sanitized);
+    } catch (err) {
+      console.warn("Firestore notification save error:", err);
     }
   }
 
@@ -478,54 +511,50 @@ export async function sendStudentNotification(
     try {
       const saved = localStorage.getItem(NOTIFICATIONS_KEY);
       const list: StudentNotification[] = saved ? JSON.parse(saved) : [];
-      list.unshift(notif);
+      list.unshift(newNotif);
       localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(list));
     } catch (e) {
-      console.error("Localstorage sendNotification error:", e);
+      console.error("Local notification save error:", e);
     }
   }
 
-  return notif;
+  return newNotif;
 }
 
-export async function getStudentNotifications(userId: string): Promise<StudentNotification[]> {
+export async function getStudentNotifications(studentUid: string): Promise<StudentNotification[]> {
   if (isFirebaseConfigured && db) {
     try {
       const q = query(
-        collection(db, "notifications"),
-        where("userId", "==", userId),
-        orderBy("createdAt", "desc")
+        collection(db, "studentNotifications"),
+        where("userId", "==", studentUid)
       );
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        return snap.docs.map((d) => d.data() as StudentNotification);
-      }
-    } catch (e) {
-      console.warn("Firestore getStudentNotifications error:", e);
+      const snapshot = await getDocs(q);
+      const items: StudentNotification[] = [];
+      snapshot.forEach((docSnap) => {
+        items.push({ id: docSnap.id, ...docSnap.data() } as StudentNotification);
+      });
+      if (items.length > 0) return items;
+    } catch (err) {
+      console.warn("Firestore notifications fetch error:", err);
     }
   }
 
-  if (typeof window !== "undefined") {
-    try {
-      const saved = localStorage.getItem(NOTIFICATIONS_KEY);
-      const list: StudentNotification[] = saved ? JSON.parse(saved) : [];
-      return list
-        .filter((n) => n.userId === userId)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    } catch (e) {
-      return [];
-    }
+  if (typeof window === "undefined") return [];
+  try {
+    const saved = localStorage.getItem(NOTIFICATIONS_KEY);
+    const list: StudentNotification[] = saved ? JSON.parse(saved) : [];
+    return list.filter(n => n.userId === studentUid || (n as any).studentUid === studentUid);
+  } catch (e) {
+    return [];
   }
-
-  return [];
 }
 
 export async function markNotificationAsRead(id: string): Promise<void> {
   if (isFirebaseConfigured && db) {
     try {
-      await updateDoc(doc(db, "notifications", id), { read: true });
-    } catch (e) {
-      console.warn("Firestore markNotificationAsRead error:", e);
+      await updateDoc(doc(db, "studentNotifications", id), { read: true, isRead: true });
+    } catch (err) {
+      console.warn("Firestore update notification error:", err);
     }
   }
 
@@ -534,77 +563,112 @@ export async function markNotificationAsRead(id: string): Promise<void> {
       const saved = localStorage.getItem(NOTIFICATIONS_KEY);
       if (saved) {
         const list: StudentNotification[] = JSON.parse(saved);
-        const updated = list.map((n) => (n.id === id ? { ...n, read: true } : n));
-        localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(updated));
+        const idx = list.findIndex(n => n.id === id);
+        if (idx >= 0) {
+          list[idx].read = true;
+          (list[idx] as any).isRead = true;
+          localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(list));
+        }
       }
     } catch (e) {
-      console.error("Localstorage markNotificationAsRead error:", e);
+      console.error("Local update notification error:", e);
     }
   }
 }
 
-export async function getStudentProgressSummaries(): Promise<StudentProgressSummary[]> {
-  const users = await getAllUserProfiles();
-  const students = users.filter((u) => u.role === "student");
-  const syllabi = await getAllSyllabi();
-  const activities = await getAllActivities();
+export async function logActivity(entry: Omit<ActivityLog, 'id' | 'timestamp'>): Promise<ActivityLog> {
+  const newLog: ActivityLog = {
+    ...entry,
+    id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    timestamp: new Date().toISOString()
+  };
 
-  const summaries: StudentProgressSummary[] = [];
+  const sanitized = sanitizeForFirestore(newLog);
 
-  for (const s of students) {
-    const studentActs = activities.filter((a) => a.userId === s.uid);
-    const lastAct = studentActs.length > 0 ? studentActs[0].timestamp : s.createdAt;
-    const notifs = await getStudentNotifications(s.uid);
-    const unread = notifs.filter((n) => !n.read).length;
-    const progressMap = await getSubtopicProgressAsync(s.uid);
-    const completedInActs = studentActs.filter(a => a.details && a.details.includes("Marked as Completed"));
-
-    // Track subtopic progress ONLY for syllabi belonging to student's exact level
-    const studentLevelSyllabi = syllabi.filter((syl) => 
-      syl.status === "published" &&
-      syl.level === s.level &&
-      (!s.tradeId || s.tradeId === "all" || syl.tradeId === s.tradeId)
-    );
-
-    let totalSubtopics = 0;
-    let completedSubtopics = 0;
-
-    studentLevelSyllabi.forEach((syl) => {
-      syl.learningOutcomes.forEach((lo) => {
-        lo.indicativeContents.forEach((ic) => {
-          ic.topics.forEach((top) => {
-            top.subtopics.forEach((sub) => {
-              totalSubtopics++;
-              const isDoneInMap = progressMap[sub.id];
-              const isDoneInLogs = completedInActs.some(a => a.details.includes(`"${sub.title}"`));
-
-              if (isDoneInMap || isDoneInLogs) {
-                completedSubtopics++;
-              }
-            });
-          });
-        });
-      });
-    });
-
-    const totalCount = Math.max(totalSubtopics, 1);
-    const percent = Math.min(100, Math.round((completedSubtopics / totalCount) * 100));
-
-    summaries.push({
-      userId: s.uid,
-      fullName: s.fullName,
-      email: s.email,
-      username: s.username,
-      tradeId: s.tradeId,
-      level: s.level,
-      status: s.status,
-      completedSubtopicsCount: completedSubtopics,
-      totalSubtopicsCount: totalCount,
-      progressPercent: percent,
-      lastActive: lastAct,
-      unreadNotificationsCount: unread,
-    });
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "activityLogs", newLog.id), sanitized);
+    } catch (err) {
+      console.warn("Firestore activity log error:", err);
+    }
   }
 
-  return summaries;
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem(ACTIVITIES_KEY);
+      const list: ActivityLog[] = saved ? JSON.parse(saved) : [];
+      list.unshift(newLog);
+      localStorage.setItem(ACTIVITIES_KEY, JSON.stringify(list.slice(0, 200)));
+    } catch (e) {
+      console.error("Local activity log error:", e);
+    }
+  }
+
+  return newLog;
 }
+
+export async function getAllActivityLogs(): Promise<ActivityLog[]> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(collection(db, "activityLogs"), orderBy("timestamp", "desc"));
+      const snapshot = await getDocs(q);
+      const items: ActivityLog[] = [];
+      snapshot.forEach((docSnap) => {
+        items.push({ id: docSnap.id, ...docSnap.data() } as ActivityLog);
+      });
+      if (items.length > 0) return items;
+    } catch (err) {
+      console.warn("Firestore fetch activities error:", err);
+    }
+  }
+
+  if (typeof window === "undefined") return [];
+  try {
+    const saved = localStorage.getItem(ACTIVITIES_KEY);
+    return saved ? JSON.parse(saved) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+// Progress and user management aliases
+export function getSubtopicProgress(userId?: string): Record<string, boolean> {
+  if (typeof window === "undefined") return {};
+  try {
+    const user = userId ? null : getLocalCurrentUser();
+    const uid = userId || user?.uid || "guest";
+    const raw = localStorage.getItem(`${PROGRESS_KEY}_${uid}`);
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+export async function getSubtopicProgressAsync(userId: string): Promise<Record<string, boolean>> {
+  return getStudentProgressMap(userId);
+}
+
+export function toggleSubtopicProgress(userIdOrSubtopicId: string, maybeSubtopicId?: string): Record<string, boolean> {
+  let uid: string;
+  let subtopicId: string;
+
+  if (maybeSubtopicId) {
+    uid = userIdOrSubtopicId;
+    subtopicId = maybeSubtopicId;
+  } else {
+    const user = getLocalCurrentUser();
+    uid = user?.uid || "guest";
+    subtopicId = userIdOrSubtopicId;
+  }
+
+  const current = getSubtopicProgress(uid);
+  const updated = { ...current, [subtopicId]: !current[subtopicId] };
+  saveStudentProgressMap(uid, updated);
+  return updated;
+}
+
+export const registerUserProfile = saveUserProfile;
+export const updateStudentStatus = updateUserStatus;
+export const getStudentProgressSummaries = getAllStudentProgressSummaries;
+export const sendStudentNotification = sendNotificationToStudent;
+export const getAllActivities = getAllActivityLogs;
