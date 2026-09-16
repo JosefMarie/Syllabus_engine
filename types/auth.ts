@@ -20,4 +20,8 @@ export interface UserProfile {
   status: AccountStatus;
   passwordHash?: string; // Stored in demo mode
   createdAt: string;
+  unfocusedCount?: number;
+  suspensionReason?: string;
+  sessionIssuedAt?: number;
+  sessionExpiresAt?: number;
 }

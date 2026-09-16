@@ -12,6 +12,7 @@
   --color-brand-cyan: #06B6D4;      /* Active LOs, CTAs, highlight borders */
   --color-brand-emerald: #10B981;   /* Code run status, completion checks */
   --color-accent-citation: #F59E0B; /* Dotted underline for deep-dive terms */
+  --color-accent-bold: #FACC15;     /* Vibrant yellow for bold key educational concepts */
 
   /* Text Contrast Tokens */
   --color-text-main: #FFFFFF;       /* Headers, Titles, Code highlights */
@@ -116,3 +117,198 @@ code, pre, .font-mono {
   border-top-left-radius: 20px;
   border-top-right-radius: 20px;
 }
+
+/* ========================================================================= */
+/* BOLDED KEY CONCEPTS & CITATIONS STYLING                                   */
+/* ========================================================================= */
+
+.prose strong,
+.prose b,
+.markdown-preview strong,
+.markdown-preview b,
+.syllabus-content strong,
+.syllabus-content b {
+  color: #CA8A04 !important;
+  font-weight: 800 !important;
+}
+
+/* ========================================================================= */
+/* VISUAL WORD PROCESSOR & WHITE DOCUMENT PAPER MODE                         */
+/* Dynamic auto-expanding sheet, static document flow, black text, yellow bold */
+/* ========================================================================= */
+
+.visual-word-sheet,
+.visual-editor [contenteditable="true"] {
+  background-color: #FFFFFF !important;
+  color: #000000 !important;
+  font-family: var(--font-sans);
+  position: relative !important;
+  display: block !important;
+  width: 100% !important;
+  height: auto !important;
+  min-height: 280px;
+  overflow-y: visible !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+}
+
+/* CRITICAL: Force all elements into natural dynamic flow (prevents fixed/absolute overlap) */
+.visual-word-sheet *,
+.visual-editor [contenteditable="true"] * {
+  position: static !important;
+  top: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  right: auto !important;
+  float: none !important;
+  transform: none !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+/* Ensure all regular text inside white sheet defaults to solid black */
+.visual-word-sheet p,
+.visual-word-sheet div,
+.visual-word-sheet span:not(.citation-highlight):not(.text-yellow):not(.badge),
+.visual-word-sheet li,
+.visual-word-sheet ul,
+.visual-word-sheet ol,
+.visual-word-sheet h1,
+.visual-word-sheet h2,
+.visual-word-sheet h3,
+.visual-word-sheet h4,
+.visual-word-sheet h5,
+.visual-word-sheet h6,
+.visual-word-sheet td,
+.visual-word-sheet th,
+.visual-editor [contenteditable="true"] p,
+.visual-editor [contenteditable="true"] div,
+.visual-editor [contenteditable="true"] span:not(.citation-highlight),
+.visual-editor [contenteditable="true"] li,
+.visual-editor [contenteditable="true"] ul,
+.visual-editor [contenteditable="true"] ol,
+.visual-editor [contenteditable="true"] h1,
+.visual-editor [contenteditable="true"] h2,
+.visual-editor [contenteditable="true"] h3,
+.visual-editor [contenteditable="true"] h4 {
+  color: #000000 !important;
+}
+
+/* Ensure paragraph and block elements have natural spacing, auto height, and text wrapping */
+.visual-word-sheet p,
+.visual-word-sheet div:not(.sandpack-wrapper),
+.visual-editor [contenteditable="true"] p,
+.visual-editor [contenteditable="true"] div {
+  display: block !important;
+  height: auto !important;
+  min-height: auto !important;
+  line-height: 1.65 !important;
+  margin-top: 0.35rem !important;
+  margin-bottom: 0.35rem !important;
+  clear: both !important;
+  white-space: pre-wrap !important;
+}
+
+.visual-word-sheet span,
+.visual-editor [contenteditable="true"] span {
+  display: inline !important;
+  height: auto !important;
+  line-height: inherit !important;
+}
+
+.visual-word-sheet pre,
+.visual-editor [contenteditable="true"] pre {
+  display: block !important;
+  white-space: pre-wrap !important;
+  word-break: break-all !important;
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+  padding: 0.75rem !important;
+  border-radius: 0.5rem !important;
+  border: 1px solid #E2E8F0 !important;
+  margin: 0.5rem 0 !important;
+}
+
+/* Override pasted inline dark backgrounds */
+.visual-word-sheet [style*="background-color"],
+.visual-editor [contenteditable="true"] [style*="background-color"] {
+  background-color: transparent !important;
+}
+
+/* Yellow Bold on White Sheet (rich high-contrast golden yellow) */
+.visual-word-sheet strong,
+.visual-word-sheet b,
+.visual-word-sheet strong *,
+.visual-word-sheet b *,
+.visual-editor [contenteditable="true"] strong,
+.visual-editor [contenteditable="true"] b,
+.visual-editor [contenteditable="true"] strong *,
+.visual-editor [contenteditable="true"] b * {
+  color: #CA8A04 !important; /* Vibrant golden yellow with 4.5:1 contrast on white */
+  font-weight: 800 !important;
+  text-shadow: 0 0 1px rgba(202, 138, 4, 0.2);
+}
+
+/* Orange Citations on White Sheet */
+.visual-word-sheet .citation-highlight,
+.visual-word-sheet .citation-highlight *,
+.visual-editor [contenteditable="true"] .citation-highlight,
+.visual-editor [contenteditable="true"] .citation-highlight * {
+  color: #EA580C !important; /* High contrast orange on white */
+  text-decoration: underline dotted #EA580C 2px !important;
+  text-underline-offset: 4px;
+  font-weight: 700 !important;
+  background-color: rgba(234, 88, 12, 0.08) !important;
+  padding: 0 4px;
+  border-radius: 4px;
+}
+
+/* Underline */
+.visual-word-sheet u,
+.visual-editor [contenteditable="true"] u {
+  text-decoration: underline;
+  text-decoration-color: #06B6D4;
+  text-underline-offset: 4px;
+  color: #000000 !important;
+}
+
+/* Indented Blocks on White Sheet */
+.visual-word-sheet .visual-indent,
+.visual-word-sheet blockquote,
+.visual-editor [contenteditable="true"] .visual-indent,
+.visual-editor [contenteditable="true"] blockquote {
+  border-left: 3px solid #06B6D4 !important;
+  margin-left: 20px !important;
+  padding-left: 14px !important;
+  background-color: rgba(6, 182, 212, 0.05) !important;
+  border-radius: 0 8px 8px 0;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  color: #000000 !important;
+}
+
+/* Code Snippets on White Sheet */
+.visual-word-sheet code,
+.visual-editor [contenteditable="true"] code {
+  background-color: #F1F5F9 !important;
+  color: #0F172A !important;
+  border: 1px solid #CBD5E1 !important;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+}
+
+/* Placeholder on Empty White Contenteditable */
+.visual-editor [contenteditable="true"]:empty:before {
+  content: attr(data-placeholder);
+  color: #94A3B8 !important;
+  pointer-events: none;
+  display: block;
+}
+
+.visual-editor [contenteditable="true"]:focus {
+  outline: none;
+}
+
+

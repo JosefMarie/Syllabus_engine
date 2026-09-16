@@ -1,0 +1,622 @@
+[debug] [2026-09-16T15:31:30.119Z] ----------------------------------------------------------------------
+[debug] [2026-09-16T15:31:30.123Z] Command:       /home/josef-marie/.nvm/versions/node/v24.18.0/bin/node /home/josef-marie/.nvm/versions/node/v24.18.0/bin/firebase deploy --only hosting
+[debug] [2026-09-16T15:31:30.124Z] CLI Version:   15.29.0
+[debug] [2026-09-16T15:31:30.124Z] Platform:      linux
+[debug] [2026-09-16T15:31:30.124Z] Node Version:  v24.18.0
+[debug] [2026-09-16T15:31:30.125Z] Detected Agent: antigravity
+[debug] [2026-09-16T15:31:30.125Z] Time:          Wed Sep 16 2026 17:31:30 GMT+0200 (Central Africa Time)
+[debug] [2026-09-16T15:31:30.125Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-16T15:31:32.349Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-09-16T15:31:32.350Z] > authorizing via signed-in user (layjoe0001@gmail.com)
+[debug] [2026-09-16T15:31:32.351Z] [iam] checking project syllabus-ad688 for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-09-16T15:31:32.377Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:31:32.377Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:31:32.379Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/syllabus-ad688:testIamPermissions [none]
+[debug] [2026-09-16T15:31:32.380Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/syllabus-ad688:testIamPermissions  x-goog-user-project=syllabus-ad688
+[debug] [2026-09-16T15:31:32.380Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/syllabus-ad688:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-09-16T15:31:42.908Z] *** [apiv2] error from fetch(https://cloudresourcemanager.googleapis.com/v1/projects/syllabus-ad688:testIamPermissions, {"headers":{},"method":"POST","body":"{\"permissions\":[\"firebase.projects.get\",\"firebasehosting.sites.update\"]}"}): ConnectTimeoutError: Connect Timeout Error (attempted address: cloudresourcemanager.googleapis.com:443, timeout: 10000ms)
+[debug] [2026-09-16T15:31:42.910Z] [iam] error while checking permissions, command may fail: Failed to make request to https://cloudresourcemanager.googleapis.com/v1/projects/syllabus-ad688:testIamPermissions
+[debug] [2026-09-16T15:31:42.911Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:31:42.911Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:31:42.911Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/syllabus-ad688 [none]
+[debug] [2026-09-16T15:31:50.721Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/syllabus-ad688 200
+[debug] [2026-09-16T15:31:50.721Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/syllabus-ad688 {"projectId":"syllabus-ad688","projectNumber":"696281834171","displayName":"Syllabus","name":"projects/syllabus-ad688","resources":{"hostingSite":"syllabus-ad688"},"state":"ACTIVE","labels":{"firebase":"enabled","firebase/storage-default-bucket":"created"},"etag":"1_e28f5afa-5150-46fa-8ca4-ed0ade2b3462"}
+[info] 
+[info] === Deploying to 'syllabus-ad688'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-09-16T15:31:50.732Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:31:50.732Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:31:50.732Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/syllabus-ad688/sites/syllabus-ad688 [none]
+[debug] [2026-09-16T15:31:53.185Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/syllabus-ad688/sites/syllabus-ad688 200
+[debug] [2026-09-16T15:31:53.185Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/syllabus-ad688/sites/syllabus-ad688 {"name":"projects/syllabus-ad688/sites/syllabus-ad688","defaultUrl":"https://syllabus-ad688.web.app","type":"DEFAULT_SITE"}
+[debug] [2026-09-16T15:31:53.192Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:31:53.193Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:31:53.194Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/versions [none]
+[debug] [2026-09-16T15:31:53.195Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-09-16T15:31:54.852Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/versions 200
+[debug] [2026-09-16T15:31:54.853Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/versions {"name":"projects/696281834171/sites/syllabus-ad688/versions/64b34a1580c76bad","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[syllabus-ad688]: beginning deploy... 
+[info] i  hosting[syllabus-ad688]: found 69 files in out 
+[debug] [2026-09-16T15:32:04.793Z] [hosting] uploading with 200 concurrency
+[debug] [2026-09-16T15:32:05.093Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:05.094Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:05.096Z] [hosting] hash cache [b3V0] stored for 69 files
+[debug] [2026-09-16T15:32:05.096Z] [hosting][hash queue][FINAL] {"max":293,"min":48,"avg":94.3768115942029,"active":0,"complete":69,"success":69,"errored":0,"retried":0,"total":69,"elapsed":301}
+[debug] [2026-09-16T15:32:05.097Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/696281834171/sites/syllabus-ad688/versions/64b34a1580c76bad:populateFiles [none]
+[debug] [2026-09-16T15:32:05.098Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/696281834171/sites/syllabus-ad688/versions/64b34a1580c76bad:populateFiles {"files":{"/sw.js":"4412f0373437a00f519a12424e55ff2de34b43bdd7edb9e34450fa0747a8c1c0","/manifest.json":"7c5283620e8103ea7236ddc58de48ef7879af660e7fc0dee11658b69823ee22a","/index.txt":"4979236f0d55918fa5361245539b7348bb2ede34b61d8f1c3a19dd7ab25f64c5","/admin.txt":"31cb46fdc17550836989ad5651bc17a312d76412ddeee5d3b047ffe65e84b89c","/admin.html":"c5927e1dd7b8ba6ef0b7e982d60e7c52349049794640b4af6ec4c78b032b43e6","/index.html":"1b3c71aea2790c35ecd1c8d7249aab32c3c84fe10d5a81d705daa1f42e6f2f7b","/syllabus/view.txt":"4200af2900da38a76166cacdd186db6d45c6e426d45e7fa0097d6985a17f7b0f","/404.html":"1a0a2594cdd69afcb4b403f0e482d920f3829564efd3cfab61cdea653619e835","/syllabus/view.html":"94a35d4af3170a5008e34069190846f0d02463782d3127d693d3531ce3f22d15","/icons/icon.svg":"821e8bb445d90b5f65fbe15c48ca0e7d0e5f39dbf1c02dc5861d482213330654","/syllabus/legacy.txt":"1ec4e3251e73ee7dc28e9d54f441b6d91a8fa4104685eb6c9945fea2b98213ed","/syllabus/legacy.html":"e276de2394b5efdae67c49da737fe8408fe599a33b492162f2baf1e6cc850f73","/auth/register.txt":"03c5c1d3b5cf572365a4b2f5b946a60d6f653fde9c0b5c48765002f76e0eaa3a","/auth/login.txt":"502e88465e994785179f9d2055cedb2b32c44aa2b8aae85dc178c26f9783db48","/admin/login.txt":"6fa50701c390b4672f41c6fb35664611e9c95c6e25caf41b990dd11851eb23dd","/auth/register.html":"34c6367db864240a9bdb7da29eddd991b9f4f57c787f696783f95b17882fb384","/auth/login.html":"5e79722b91f7e7ecf078477a730d1d2e704462deaa8f7a6ee29bab6c70ef98ab","/admin/builder.txt":"81903219692ca9cc030c1217dc62576567ebe4cf3b0bfc563ffa9fbd731c44a6","/_next/static/chunks/webpack-10117319f3999848.js":"5bce7cb296879fcba931f543036eeae3a8e917adabb9a79ce99f26778b3e9897","/admin/login.html":"9764c29d866968d1e0333ed5e4efe7c81d47509ee91a45f503c08ca31849cc0e","/_next/static/chunks/main-app-343a4000cc612dcf.js":"9214f91d9b3bc3d1409733e7751218c2891fb7f1f8cd757ebe330e025e0d6c1e","/admin/builder.html":"2a53a5dc16a58df1888110d21ff2aba056469ee20f4c335ab318af5426bf7fbd","/_next/static/chunks/961.279cca2df716b41f.js":"6cee540c73ff323547bf98eba8bc4fd064216da4550388ae688d3ff8a0660852","/_next/static/chunks/970.714c62292bbf661d.js":"b6958939b9e8904a47274e34f0a8e64ff8308ca8110d2f230af0582532571298","/_next/static/chunks/885-b4dc3b65d37e1a6d.js":"afe29743c32c938309cb10522079ad06f3fc459af9c54c5b5747b652d9b4be91","/_next/static/chunks/758-e613e905d72565a9.js":"f15a694a799645285299db19c411ff039919f8ce68aee05f0e590f4fb6c1186d","/_next/static/chunks/517.051a8548b4ab38b7.js":"b04f2ff316b4a2d681d55d95aad4dee5e825f8016b6d8d7d8cc5b49b6b51bc05","/_next/static/chunks/75.0a8098f2f613a6da.js":"6ab8f7d70dceb75c92ded338f9231acbf9459216f63f9e64c0bdf0ae298819cc","/_next/static/chunks/502-19ab755977d32c55.js":"3a47a0f7c011b0fc6d015a29e70fb8b2babbe1a8004dc1b1e11aca447f94b23d","/_next/static/chunks/460-6b500bca1142875e.js":"b3981408afe9a0b477ad4506e97c4a18e03cbc4ac10b3e101f0d19c9f37d510e","/_next/static/chunks/430.82ab84a83bcc71f4.js":"4e8b2c02e1b104498aaab82b77d354f2b251812c416e305d19061cd2bb3a7def","/_next/static/chunks/284-badf6202640cd36f.js":"21d716cf6df1f23eac123abab6d31f3416f52bafdbdea045e8ef9431c448aa7d","/_next/static/css/ad0e60f9ce02d291.css":"1c7619322ba1d98c255749a1afb1e9fa181b9b1f8bc76875869f7e4045b0593f","/_next/static/chunks/e58a7f8f-79932d715c0b7473.js":"f41c879f182b436c8dc10801a2f3bac9f63290539a0ec1b73aa8caa9113c6451","/_next/static/chunks/ae6eea6a-4b3bce25113e217a.js":"94634f6ada893fbb76f4d70818f6559c5d37b559dc3fa0b9c47a20f4e528a717","/_next/static/chunks/polyfills-42372ed130431b0a.js":"45b36f93bb08c52e360d14b0e8449c88770aa8cf5d59bff1c76cbe6e198fe7c5","/_next/static/chunks/main-82491bd411ab3142.js":"585baff478b0dfc35e1a9f48a32deee1fd916245dc1e8f3dd3ac7b5547581992","/_next/static/chunks/235.cbab0f6689bcdca0.js":"782e22895c62c16dea1a5debad11ea6978bd2c3ae4246abddeaa1c62b93c7080","/_next/static/chunks/pages/_error-cb2a52f75f2162e2.js":"9fc5f3ba8c3e04e24083cf4f7bbf011e0e73fcfca2b9ca464c93b64d97de398a","/_next/static/chunks/pages/_app-7d307437aca18ad4.js":"8cf77d8daa321a88c71491c9852ad1b21ffb617f065783a3ffe299705eb43430","/_next/static/chunks/216-30e29add4534a109.js":"f7bcddce6587c29f2adcb450ac66bbebf8938436a83470622fa098091a9b116d","/_next/static/chunks/app/layout-8c947af55bc8f875.js":"e2b8cf8276a7696c1cfa575d0c0d91dcb50f71e65caa9eb9b5fbd481c53e3244","/_next/static/chunks/app/page-d3dc6da3557c69dd.js":"89322829eb34e6b3a305190dad89321388da6e8c1c0ff3e1dabad3d374cc80fc","/_next/static/chunks/app/syllabus/[id]/page-99c345c6673dc093.js":"22da432a9a337babb62999855137608c68a06c7a4644f70d13aa732edab15f4f","/_next/static/chunks/app/auth/login/page-bd5eec0aa9d9a1c1.js":"a17e4c79d6bc47e64c6fd4749667e5ec46d49c68c30fe07c5e279cf8edb0c0e8","/_next/static/chunks/app/api/extract-file/route-99c345c6673dc093.js":"22da432a9a337babb62999855137608c68a06c7a4644f70d13aa732edab15f4f","/_next/static/chunks/app/auth/register/page-e0df7743c8c11795.js":"26175c312d23de2e028671364a1e3bdd35329130dd4aa886ffb6fbd0ac07fbe7","/_next/static/chunks/app/syllabus/view/page-8de052652a3b8a3b.js":"9d61e088884bbeb347f721963b041e37642623a641535c80b2f606e27f3146a8","/_next/static/chunks/app/admin/login/page-2fafbbcb71fd8e32.js":"2e5adb1aacb426b5f55cf8f7d883267b9bb7168eb69f6f5dd2a43f9b2e89e876","/_next/static/chunks/app/_not-found/page-a49fc78fcd9d7a5b.js":"5349c750d60861c2eedded53d3e91baebb3d52992ee310c147c67c4a37ee1dec","/_next/static/BQBIM9k91_ycahqgh1uCp/_ssgManifest.js":"929820d6c0cb029613614ba4e03c4fc2985a57ea63e316aaea41a9af9db096cb","/_next/static/BQBIM9k91_ycahqgh1uCp/_buildManifest.js":"f075823c11f837735b4a4d20c02d6049953a28f3f7ea81b2ab73b7660d58b116","/_next/static/chunks/496-3b249c672c7cca87.js":"88989a8a9a59e5da18b76605b1ee63fa7441a1f8e639babe13204e08207d92d2","/_next/static/chunks/65fb8c99.8350c756d1d8b5ba.js":"f6f73c890107250dab8b6e2c0cfb5331de5ebdf184f3fe727e18eb788c4ac126","/_next/static/chunks/290-1317f728c087ef17.js":"5a8f78affc187814dfb826ef75053e84b9c6a5d861f923b3cfee2a168fd347c1","/_next/static/chunks/framework-085cf39580498177.js":"160268f0efa8c5a66046db4ff4d79219fd400ba293a49c975fe2979345638ce6","/_next/static/chunks/app/admin/page-800439b683390371.js":"7704e643296569b9a9ac237e42780d52724b43bbc1475423e709d9ca77606be8","/_next/static/chunks/app/admin/builder/page-f54655eae699c848.js":"c13dc632df919b2c88d008cee12e3df3906a78d1e62f0f804a4fe615b4149873","/_next/static/chunks/bc9e92e6-b913fa337a3f10cf.js":"5c0133d866ced2cafe8966a1e61a6f9502f78c54d10589aaed93890a169b559f","/_next/static/chunks/4bd1b696-c023c6e3521b1417.js":"4ac0243493401ad65affe92d51e094b395dfef5e13585e781a4538520ed84b65","/_next/static/chunks/363642f4-55f42ad6e2d7ac79.js":"305f65496c49d85688df3504726b5eebaee7adda3da4b81d7751cdc32d21ed6c","/_next/static/chunks/255-300d9cc44f394368.js":"d6818748548d4205e93c3016b86169eb676ff5e6351323515c8d53248900f913","/_next/static/chunks/035175d8.b2d635f27d5cb153.js":"c1910701cf70884dfcec24727127d2b02a8420649d8b797b8f4716e9a5bdb77b","/_next/static/chunks/7a49ec60.015611551ff9315d.js":"b02ffcd1c4138dc238ff43f5450a0c8bdb23c573eb2593b9812456bf42f97796","/_next/static/chunks/927-1205a54cd654378e.js":"fee8cefedac333420f2b7500fd36e545cb3355e2f52479c8803c093d7985a2bb","/icons/icon-32.png":"d06df340391889214c5b90ee499acc12dd1715cdb5d445089730ef7f013481a3","/icons/icon-192.png":"03685b2890282e9e53e160bb9aab8faefdbb144cdd5b9d034801b868bf274e83","/icons/icon-512.png":"e6ba4cac4b829d1a33483463a658c6cbfc71b73f1d330a7d541cfcdfbf97dd48","/icons/icon.png":"fd0a3f34d0874b47d1ef06b734eb0aa90666d5b0194653ec539db8e17709869b"}}
+[info] i  hosting: adding files to version [0/69] (0%) 
+[info] i  hosting: adding files to version [0/69] (0%) 
+[info] i  hosting: adding files to version [0/69] (0%) 
+[info] i  hosting: adding files to version [0/69] (0%) 
+[debug] [2026-09-16T15:32:14.004Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/696281834171/sites/syllabus-ad688/versions/64b34a1580c76bad:populateFiles 200
+[debug] [2026-09-16T15:32:14.004Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/696281834171/sites/syllabus-ad688/versions/64b34a1580c76bad:populateFiles {"uploadRequiredHashes":["2e5adb1aacb426b5f55cf8f7d883267b9bb7168eb69f6f5dd2a43f9b2e89e876","89322829eb34e6b3a305190dad89321388da6e8c1c0ff3e1dabad3d374cc80fc","31cb46fdc17550836989ad5651bc17a312d76412ddeee5d3b047ffe65e84b89c","94a35d4af3170a5008e34069190846f0d02463782d3127d693d3531ce3f22d15","94634f6ada893fbb76f4d70818f6559c5d37b559dc3fa0b9c47a20f4e528a717","5a8f78affc187814dfb826ef75053e84b9c6a5d861f923b3cfee2a168fd347c1","e276de2394b5efdae67c49da737fe8408fe599a33b492162f2baf1e6cc850f73","4200af2900da38a76166cacdd186db6d45c6e426d45e7fa0097d6985a17f7b0f","a17e4c79d6bc47e64c6fd4749667e5ec46d49c68c30fe07c5e279cf8edb0c0e8","1c7619322ba1d98c255749a1afb1e9fa181b9b1f8bc76875869f7e4045b0593f","5e79722b91f7e7ecf078477a730d1d2e704462deaa8f7a6ee29bab6c70ef98ab","7704e643296569b9a9ac237e42780d52724b43bbc1475423e709d9ca77606be8","6fa50701c390b4672f41c6fb35664611e9c95c6e25caf41b990dd11851eb23dd","2a53a5dc16a58df1888110d21ff2aba056469ee20f4c335ab318af5426bf7fbd","26175c312d23de2e028671364a1e3bdd35329130dd4aa886ffb6fbd0ac07fbe7","c5927e1dd7b8ba6ef0b7e982d60e7c52349049794640b4af6ec4c78b032b43e6","1ec4e3251e73ee7dc28e9d54f441b6d91a8fa4104685eb6c9945fea2b98213ed","34c6367db864240a9bdb7da29eddd991b9f4f57c787f696783f95b17882fb384","c13dc632df919b2c88d008cee12e3df3906a78d1e62f0f804a4fe615b4149873","3a47a0f7c011b0fc6d015a29e70fb8b2babbe1a8004dc1b1e11aca447f94b23d","03c5c1d3b5cf572365a4b2f5b946a60d6f653fde9c0b5c48765002f76e0eaa3a","81903219692ca9cc030c1217dc62576567ebe4cf3b0bfc563ffa9fbd731c44a6","1b3c71aea2790c35ecd1c8d7249aab32c3c84fe10d5a81d705daa1f42e6f2f7b","4979236f0d55918fa5361245539b7348bb2ede34b61d8f1c3a19dd7ab25f64c5","9764c29d866968d1e0333ed5e4efe7c81d47509ee91a45f503c08ca31849cc0e","502e88465e994785179f9d2055cedb2b32c44aa2b8aae85dc178c26f9783db48","1a0a2594cdd69afcb4b403f0e482d920f3829564efd3cfab61cdea653619e835","9d61e088884bbeb347f721963b041e37642623a641535c80b2f606e27f3146a8","afe29743c32c938309cb10522079ad06f3fc459af9c54c5b5747b652d9b4be91"],"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files"}
+[debug] [2026-09-16T15:32:14.006Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.006Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.007Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.007Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.008Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.008Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.008Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.008Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.009Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.009Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.010Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.010Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.011Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.011Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.011Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.011Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.012Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.012Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.013Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.013Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.013Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.013Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.014Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.014Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.014Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.014Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.015Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.015Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.015Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.016Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.016Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.016Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.017Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.017Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.017Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.017Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.018Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.018Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.018Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.018Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.019Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.019Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.021Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.021Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.022Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.022Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.022Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.022Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.022Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.022Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.023Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.023Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.023Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.023Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.023Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.023Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.023Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.023Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:14.024Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/2e5adb1aacb426b5f55cf8f7d883267b9bb7168eb69f6f5dd2a43f9b2e89e876 [none]
+[debug] [2026-09-16T15:32:14.024Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/2e5adb1aacb426b5f55cf8f7d883267b9bb7168eb69f6f5dd2a43f9b2e89e876 [stream]
+[debug] [2026-09-16T15:32:14.026Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/89322829eb34e6b3a305190dad89321388da6e8c1c0ff3e1dabad3d374cc80fc [none]
+[debug] [2026-09-16T15:32:14.026Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/89322829eb34e6b3a305190dad89321388da6e8c1c0ff3e1dabad3d374cc80fc [stream]
+[debug] [2026-09-16T15:32:14.027Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/31cb46fdc17550836989ad5651bc17a312d76412ddeee5d3b047ffe65e84b89c [none]
+[debug] [2026-09-16T15:32:14.027Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/31cb46fdc17550836989ad5651bc17a312d76412ddeee5d3b047ffe65e84b89c [stream]
+[debug] [2026-09-16T15:32:14.028Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/94a35d4af3170a5008e34069190846f0d02463782d3127d693d3531ce3f22d15 [none]
+[debug] [2026-09-16T15:32:14.028Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/94a35d4af3170a5008e34069190846f0d02463782d3127d693d3531ce3f22d15 [stream]
+[debug] [2026-09-16T15:32:14.030Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/94634f6ada893fbb76f4d70818f6559c5d37b559dc3fa0b9c47a20f4e528a717 [none]
+[debug] [2026-09-16T15:32:14.030Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/94634f6ada893fbb76f4d70818f6559c5d37b559dc3fa0b9c47a20f4e528a717 [stream]
+[debug] [2026-09-16T15:32:14.030Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/5a8f78affc187814dfb826ef75053e84b9c6a5d861f923b3cfee2a168fd347c1 [none]
+[debug] [2026-09-16T15:32:14.031Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/5a8f78affc187814dfb826ef75053e84b9c6a5d861f923b3cfee2a168fd347c1 [stream]
+[debug] [2026-09-16T15:32:14.031Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/e276de2394b5efdae67c49da737fe8408fe599a33b492162f2baf1e6cc850f73 [none]
+[debug] [2026-09-16T15:32:14.031Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/e276de2394b5efdae67c49da737fe8408fe599a33b492162f2baf1e6cc850f73 [stream]
+[debug] [2026-09-16T15:32:14.032Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/4200af2900da38a76166cacdd186db6d45c6e426d45e7fa0097d6985a17f7b0f [none]
+[debug] [2026-09-16T15:32:14.032Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/4200af2900da38a76166cacdd186db6d45c6e426d45e7fa0097d6985a17f7b0f [stream]
+[debug] [2026-09-16T15:32:14.033Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/a17e4c79d6bc47e64c6fd4749667e5ec46d49c68c30fe07c5e279cf8edb0c0e8 [none]
+[debug] [2026-09-16T15:32:14.033Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/a17e4c79d6bc47e64c6fd4749667e5ec46d49c68c30fe07c5e279cf8edb0c0e8 [stream]
+[debug] [2026-09-16T15:32:14.033Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/1c7619322ba1d98c255749a1afb1e9fa181b9b1f8bc76875869f7e4045b0593f [none]
+[debug] [2026-09-16T15:32:14.034Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/1c7619322ba1d98c255749a1afb1e9fa181b9b1f8bc76875869f7e4045b0593f [stream]
+[debug] [2026-09-16T15:32:14.036Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/5e79722b91f7e7ecf078477a730d1d2e704462deaa8f7a6ee29bab6c70ef98ab [none]
+[debug] [2026-09-16T15:32:14.036Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/5e79722b91f7e7ecf078477a730d1d2e704462deaa8f7a6ee29bab6c70ef98ab [stream]
+[debug] [2026-09-16T15:32:14.037Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/7704e643296569b9a9ac237e42780d52724b43bbc1475423e709d9ca77606be8 [none]
+[debug] [2026-09-16T15:32:14.037Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/7704e643296569b9a9ac237e42780d52724b43bbc1475423e709d9ca77606be8 [stream]
+[debug] [2026-09-16T15:32:14.038Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/6fa50701c390b4672f41c6fb35664611e9c95c6e25caf41b990dd11851eb23dd [none]
+[debug] [2026-09-16T15:32:14.038Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/6fa50701c390b4672f41c6fb35664611e9c95c6e25caf41b990dd11851eb23dd [stream]
+[debug] [2026-09-16T15:32:14.038Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/2a53a5dc16a58df1888110d21ff2aba056469ee20f4c335ab318af5426bf7fbd [none]
+[debug] [2026-09-16T15:32:14.038Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/2a53a5dc16a58df1888110d21ff2aba056469ee20f4c335ab318af5426bf7fbd [stream]
+[debug] [2026-09-16T15:32:14.039Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/26175c312d23de2e028671364a1e3bdd35329130dd4aa886ffb6fbd0ac07fbe7 [none]
+[debug] [2026-09-16T15:32:14.039Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/26175c312d23de2e028671364a1e3bdd35329130dd4aa886ffb6fbd0ac07fbe7 [stream]
+[debug] [2026-09-16T15:32:14.039Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/c5927e1dd7b8ba6ef0b7e982d60e7c52349049794640b4af6ec4c78b032b43e6 [none]
+[debug] [2026-09-16T15:32:14.039Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/c5927e1dd7b8ba6ef0b7e982d60e7c52349049794640b4af6ec4c78b032b43e6 [stream]
+[debug] [2026-09-16T15:32:14.040Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/1ec4e3251e73ee7dc28e9d54f441b6d91a8fa4104685eb6c9945fea2b98213ed [none]
+[debug] [2026-09-16T15:32:14.040Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/1ec4e3251e73ee7dc28e9d54f441b6d91a8fa4104685eb6c9945fea2b98213ed [stream]
+[debug] [2026-09-16T15:32:14.040Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/34c6367db864240a9bdb7da29eddd991b9f4f57c787f696783f95b17882fb384 [none]
+[debug] [2026-09-16T15:32:14.040Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/34c6367db864240a9bdb7da29eddd991b9f4f57c787f696783f95b17882fb384 [stream]
+[debug] [2026-09-16T15:32:14.041Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/c13dc632df919b2c88d008cee12e3df3906a78d1e62f0f804a4fe615b4149873 [none]
+[debug] [2026-09-16T15:32:14.041Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/c13dc632df919b2c88d008cee12e3df3906a78d1e62f0f804a4fe615b4149873 [stream]
+[debug] [2026-09-16T15:32:14.041Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/3a47a0f7c011b0fc6d015a29e70fb8b2babbe1a8004dc1b1e11aca447f94b23d [none]
+[debug] [2026-09-16T15:32:14.041Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/3a47a0f7c011b0fc6d015a29e70fb8b2babbe1a8004dc1b1e11aca447f94b23d [stream]
+[debug] [2026-09-16T15:32:14.042Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/03c5c1d3b5cf572365a4b2f5b946a60d6f653fde9c0b5c48765002f76e0eaa3a [none]
+[debug] [2026-09-16T15:32:14.042Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/03c5c1d3b5cf572365a4b2f5b946a60d6f653fde9c0b5c48765002f76e0eaa3a [stream]
+[debug] [2026-09-16T15:32:14.042Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/81903219692ca9cc030c1217dc62576567ebe4cf3b0bfc563ffa9fbd731c44a6 [none]
+[debug] [2026-09-16T15:32:14.042Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/81903219692ca9cc030c1217dc62576567ebe4cf3b0bfc563ffa9fbd731c44a6 [stream]
+[debug] [2026-09-16T15:32:14.043Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/1b3c71aea2790c35ecd1c8d7249aab32c3c84fe10d5a81d705daa1f42e6f2f7b [none]
+[debug] [2026-09-16T15:32:14.043Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/1b3c71aea2790c35ecd1c8d7249aab32c3c84fe10d5a81d705daa1f42e6f2f7b [stream]
+[debug] [2026-09-16T15:32:14.046Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/4979236f0d55918fa5361245539b7348bb2ede34b61d8f1c3a19dd7ab25f64c5 [none]
+[debug] [2026-09-16T15:32:14.047Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/4979236f0d55918fa5361245539b7348bb2ede34b61d8f1c3a19dd7ab25f64c5 [stream]
+[debug] [2026-09-16T15:32:14.047Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/9764c29d866968d1e0333ed5e4efe7c81d47509ee91a45f503c08ca31849cc0e [none]
+[debug] [2026-09-16T15:32:14.047Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/9764c29d866968d1e0333ed5e4efe7c81d47509ee91a45f503c08ca31849cc0e [stream]
+[debug] [2026-09-16T15:32:14.048Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/502e88465e994785179f9d2055cedb2b32c44aa2b8aae85dc178c26f9783db48 [none]
+[debug] [2026-09-16T15:32:14.048Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/502e88465e994785179f9d2055cedb2b32c44aa2b8aae85dc178c26f9783db48 [stream]
+[debug] [2026-09-16T15:32:14.048Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/1a0a2594cdd69afcb4b403f0e482d920f3829564efd3cfab61cdea653619e835 [none]
+[debug] [2026-09-16T15:32:14.048Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/1a0a2594cdd69afcb4b403f0e482d920f3829564efd3cfab61cdea653619e835 [stream]
+[debug] [2026-09-16T15:32:14.049Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/9d61e088884bbeb347f721963b041e37642623a641535c80b2f606e27f3146a8 [none]
+[debug] [2026-09-16T15:32:14.049Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/9d61e088884bbeb347f721963b041e37642623a641535c80b2f606e27f3146a8 [stream]
+[debug] [2026-09-16T15:32:14.049Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/afe29743c32c938309cb10522079ad06f3fc459af9c54c5b5747b652d9b4be91 [none]
+[debug] [2026-09-16T15:32:14.049Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/afe29743c32c938309cb10522079ad06f3fc459af9c54c5b5747b652d9b4be91 [stream]
+[debug] [2026-09-16T15:32:14.071Z] [hosting][populate queue][FINAL] {"max":8931,"min":8931,"avg":8931,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":8979}
+[debug] [2026-09-16T15:32:14.072Z] [hosting] uploads queued: 29
+[info] i  hosting: uploading new files [0/29] (0%) 
+[debug] [2026-09-16T15:32:15.983Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/1c7619322ba1d98c255749a1afb1e9fa181b9b1f8bc76875869f7e4045b0593f 200
+[debug] [2026-09-16T15:32:15.983Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/1c7619322ba1d98c255749a1afb1e9fa181b9b1f8bc76875869f7e4045b0593f [stream]
+[debug] [2026-09-16T15:32:16.058Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/c13dc632df919b2c88d008cee12e3df3906a78d1e62f0f804a4fe615b4149873 200
+[debug] [2026-09-16T15:32:16.058Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/c13dc632df919b2c88d008cee12e3df3906a78d1e62f0f804a4fe615b4149873 [stream]
+[debug] [2026-09-16T15:32:16.073Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/4979236f0d55918fa5361245539b7348bb2ede34b61d8f1c3a19dd7ab25f64c5 200
+[debug] [2026-09-16T15:32:16.073Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/4979236f0d55918fa5361245539b7348bb2ede34b61d8f1c3a19dd7ab25f64c5 [stream]
+[debug] [2026-09-16T15:32:16.104Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/89322829eb34e6b3a305190dad89321388da6e8c1c0ff3e1dabad3d374cc80fc 200
+[debug] [2026-09-16T15:32:16.104Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/89322829eb34e6b3a305190dad89321388da6e8c1c0ff3e1dabad3d374cc80fc [stream]
+[debug] [2026-09-16T15:32:16.176Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/9d61e088884bbeb347f721963b041e37642623a641535c80b2f606e27f3146a8 200
+[debug] [2026-09-16T15:32:16.176Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/9d61e088884bbeb347f721963b041e37642623a641535c80b2f606e27f3146a8 [stream]
+[debug] [2026-09-16T15:32:16.180Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/1b3c71aea2790c35ecd1c8d7249aab32c3c84fe10d5a81d705daa1f42e6f2f7b 200
+[debug] [2026-09-16T15:32:16.181Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/1b3c71aea2790c35ecd1c8d7249aab32c3c84fe10d5a81d705daa1f42e6f2f7b [stream]
+[debug] [2026-09-16T15:32:16.322Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/4200af2900da38a76166cacdd186db6d45c6e426d45e7fa0097d6985a17f7b0f 200
+[debug] [2026-09-16T15:32:16.323Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/4200af2900da38a76166cacdd186db6d45c6e426d45e7fa0097d6985a17f7b0f [stream]
+[debug] [2026-09-16T15:32:16.437Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/31cb46fdc17550836989ad5651bc17a312d76412ddeee5d3b047ffe65e84b89c 200
+[debug] [2026-09-16T15:32:16.437Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/31cb46fdc17550836989ad5651bc17a312d76412ddeee5d3b047ffe65e84b89c [stream]
+[debug] [2026-09-16T15:32:16.560Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/9764c29d866968d1e0333ed5e4efe7c81d47509ee91a45f503c08ca31849cc0e 200
+[debug] [2026-09-16T15:32:16.560Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/9764c29d866968d1e0333ed5e4efe7c81d47509ee91a45f503c08ca31849cc0e [stream]
+[debug] [2026-09-16T15:32:16.574Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/34c6367db864240a9bdb7da29eddd991b9f4f57c787f696783f95b17882fb384 200
+[debug] [2026-09-16T15:32:16.574Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/34c6367db864240a9bdb7da29eddd991b9f4f57c787f696783f95b17882fb384 [stream]
+[debug] [2026-09-16T15:32:16.679Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/c5927e1dd7b8ba6ef0b7e982d60e7c52349049794640b4af6ec4c78b032b43e6 200
+[debug] [2026-09-16T15:32:16.679Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/c5927e1dd7b8ba6ef0b7e982d60e7c52349049794640b4af6ec4c78b032b43e6 [stream]
+[debug] [2026-09-16T15:32:16.759Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/502e88465e994785179f9d2055cedb2b32c44aa2b8aae85dc178c26f9783db48 200
+[debug] [2026-09-16T15:32:16.759Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/502e88465e994785179f9d2055cedb2b32c44aa2b8aae85dc178c26f9783db48 [stream]
+[info] i  hosting: uploading new files [12/29] (41%) 
+[debug] [2026-09-16T15:32:16.874Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/81903219692ca9cc030c1217dc62576567ebe4cf3b0bfc563ffa9fbd731c44a6 200
+[debug] [2026-09-16T15:32:16.874Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/81903219692ca9cc030c1217dc62576567ebe4cf3b0bfc563ffa9fbd731c44a6 [stream]
+[debug] [2026-09-16T15:32:16.926Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/2a53a5dc16a58df1888110d21ff2aba056469ee20f4c335ab318af5426bf7fbd 200
+[debug] [2026-09-16T15:32:16.926Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/2a53a5dc16a58df1888110d21ff2aba056469ee20f4c335ab318af5426bf7fbd [stream]
+[debug] [2026-09-16T15:32:17.088Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/1a0a2594cdd69afcb4b403f0e482d920f3829564efd3cfab61cdea653619e835 200
+[debug] [2026-09-16T15:32:17.089Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/1a0a2594cdd69afcb4b403f0e482d920f3829564efd3cfab61cdea653619e835 [stream]
+[debug] [2026-09-16T15:32:17.162Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/2e5adb1aacb426b5f55cf8f7d883267b9bb7168eb69f6f5dd2a43f9b2e89e876 200
+[debug] [2026-09-16T15:32:17.162Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/2e5adb1aacb426b5f55cf8f7d883267b9bb7168eb69f6f5dd2a43f9b2e89e876 [stream]
+[debug] [2026-09-16T15:32:17.213Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/6fa50701c390b4672f41c6fb35664611e9c95c6e25caf41b990dd11851eb23dd 200
+[debug] [2026-09-16T15:32:17.213Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/6fa50701c390b4672f41c6fb35664611e9c95c6e25caf41b990dd11851eb23dd [stream]
+[debug] [2026-09-16T15:32:17.320Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/26175c312d23de2e028671364a1e3bdd35329130dd4aa886ffb6fbd0ac07fbe7 200
+[debug] [2026-09-16T15:32:17.320Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/26175c312d23de2e028671364a1e3bdd35329130dd4aa886ffb6fbd0ac07fbe7 [stream]
+[debug] [2026-09-16T15:32:17.390Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/5e79722b91f7e7ecf078477a730d1d2e704462deaa8f7a6ee29bab6c70ef98ab 200
+[debug] [2026-09-16T15:32:17.390Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/5e79722b91f7e7ecf078477a730d1d2e704462deaa8f7a6ee29bab6c70ef98ab [stream]
+[debug] [2026-09-16T15:32:17.442Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/a17e4c79d6bc47e64c6fd4749667e5ec46d49c68c30fe07c5e279cf8edb0c0e8 200
+[debug] [2026-09-16T15:32:17.442Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/a17e4c79d6bc47e64c6fd4749667e5ec46d49c68c30fe07c5e279cf8edb0c0e8 [stream]
+[debug] [2026-09-16T15:32:17.706Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/03c5c1d3b5cf572365a4b2f5b946a60d6f653fde9c0b5c48765002f76e0eaa3a 200
+[debug] [2026-09-16T15:32:17.706Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/03c5c1d3b5cf572365a4b2f5b946a60d6f653fde9c0b5c48765002f76e0eaa3a [stream]
+[debug] [2026-09-16T15:32:17.716Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/3a47a0f7c011b0fc6d015a29e70fb8b2babbe1a8004dc1b1e11aca447f94b23d 200
+[debug] [2026-09-16T15:32:17.716Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/3a47a0f7c011b0fc6d015a29e70fb8b2babbe1a8004dc1b1e11aca447f94b23d [stream]
+[debug] [2026-09-16T15:32:17.991Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/94634f6ada893fbb76f4d70818f6559c5d37b559dc3fa0b9c47a20f4e528a717 200
+[debug] [2026-09-16T15:32:17.991Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/94634f6ada893fbb76f4d70818f6559c5d37b559dc3fa0b9c47a20f4e528a717 [stream]
+[debug] [2026-09-16T15:32:18.182Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/1ec4e3251e73ee7dc28e9d54f441b6d91a8fa4104685eb6c9945fea2b98213ed 200
+[debug] [2026-09-16T15:32:18.183Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/1ec4e3251e73ee7dc28e9d54f441b6d91a8fa4104685eb6c9945fea2b98213ed [stream]
+[debug] [2026-09-16T15:32:18.353Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/afe29743c32c938309cb10522079ad06f3fc459af9c54c5b5747b652d9b4be91 200
+[debug] [2026-09-16T15:32:18.354Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/afe29743c32c938309cb10522079ad06f3fc459af9c54c5b5747b652d9b4be91 [stream]
+[debug] [2026-09-16T15:32:18.429Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/94a35d4af3170a5008e34069190846f0d02463782d3127d693d3531ce3f22d15 200
+[debug] [2026-09-16T15:32:18.429Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/94a35d4af3170a5008e34069190846f0d02463782d3127d693d3531ce3f22d15 [stream]
+[info] i  hosting: uploading new files [26/29] (89%) 
+[debug] [2026-09-16T15:32:19.215Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/e276de2394b5efdae67c49da737fe8408fe599a33b492162f2baf1e6cc850f73 200
+[debug] [2026-09-16T15:32:19.215Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/e276de2394b5efdae67c49da737fe8408fe599a33b492162f2baf1e6cc850f73 [stream]
+[debug] [2026-09-16T15:32:19.702Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/7704e643296569b9a9ac237e42780d52724b43bbc1475423e709d9ca77606be8 200
+[debug] [2026-09-16T15:32:19.702Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/7704e643296569b9a9ac237e42780d52724b43bbc1475423e709d9ca77606be8 [stream]
+[info] i  hosting: uploading new files [28/29] (96%) 
+[info] i  hosting: uploading new files [28/29] (96%) 
+[info] i  hosting: uploading new files [28/29] (96%) 
+[debug] [2026-09-16T15:32:26.117Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/5a8f78affc187814dfb826ef75053e84b9c6a5d861f923b3cfee2a168fd347c1 200
+[debug] [2026-09-16T15:32:26.117Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/64b34a1580c76bad/files/5a8f78affc187814dfb826ef75053e84b9c6a5d861f923b3cfee2a168fd347c1 [stream]
+[debug] [2026-09-16T15:32:26.118Z] [hosting][upload queue][FINAL] {"max":12109,"min":1971,"avg":3458.896551724138,"active":0,"complete":29,"success":29,"errored":0,"retried":0,"total":29,"elapsed":12113}
+[info] i  hosting: upload complete 
+[info] ✔  hosting[syllabus-ad688]: file upload complete 
+[debug] [2026-09-16T15:32:26.119Z] [hosting] deploy completed after 21356ms
+[debug] [2026-09-16T15:32:26.119Z] [
+  {
+    "config": {
+      "site": "syllabus-ad688",
+      "public": "out",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "cleanUrls": true,
+      "trailingSlash": false,
+      "headers": [
+        {
+          "source": "**/*.@(html|json)",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache, no-store, must-revalidate"
+            }
+          ]
+        },
+        {
+          "source": "_next/static/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
+            }
+          ]
+        }
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ]
+    },
+    "version": "projects/696281834171/sites/syllabus-ad688/versions/64b34a1580c76bad"
+  }
+]
+[info] i  hosting[syllabus-ad688]: finalizing version... 
+[debug] [2026-09-16T15:32:26.122Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:26.123Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:26.124Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/versions/64b34a1580c76bad updateMask=status%2Cconfig
+[debug] [2026-09-16T15:32:26.125Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/versions/64b34a1580c76bad {"status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}],"headers":[{"glob":"**/*.@(html|json)","headers":{"Cache-Control":"no-cache, no-store, must-revalidate"}},{"glob":"_next/static/**","headers":{"Cache-Control":"public, max-age=31536000, immutable"}}],"cleanUrls":true,"trailingSlashBehavior":"REMOVE"}}
+[debug] [2026-09-16T15:32:29.026Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/versions/64b34a1580c76bad 200
+[debug] [2026-09-16T15:32:29.026Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/versions/64b34a1580c76bad {"name":"projects/696281834171/sites/syllabus-ad688/versions/64b34a1580c76bad","status":"FINALIZED","config":{"headers":[{"headers":{"Cache-Control":"no-cache, no-store, must-revalidate"},"glob":"**/*.@(html|json)"},{"headers":{"Cache-Control":"public, max-age=31536000, immutable"},"glob":"_next/static/**"}],"rewrites":[{"glob":"**","path":"/index.html"}],"cleanUrls":true,"trailingSlashBehavior":"REMOVE"},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-09-16T15:31:53.694599Z","createUser":{"email":"layjoe0001@gmail.com"},"finalizeTime":"2026-09-16T15:32:28.776195Z","finalizeUser":{"email":"layjoe0001@gmail.com"}}
+[debug] [2026-09-16T15:32:29.026Z] [hosting] finalized version for syllabus-ad688:[object Object]
+[info] ✔  hosting[syllabus-ad688]: version finalized 
+[info] i  hosting[syllabus-ad688]: releasing new version... 
+[debug] [2026-09-16T15:32:29.027Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:29.028Z] Checked if tokens are valid: true, expires at: 1789573953863
+[debug] [2026-09-16T15:32:29.028Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/channels/live/releases versionName=projects%2F696281834171%2Fsites%2Fsyllabus-ad688%2Fversions%2F64b34a1580c76bad
+[debug] [2026-09-16T15:32:29.028Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/channels/live/releases {}
+[debug] [2026-09-16T15:32:30.546Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/channels/live/releases 200
+[debug] [2026-09-16T15:32:30.547Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/channels/live/releases {"name":"projects/696281834171/sites/syllabus-ad688/channels/live/releases/1789572749311000","version":{"name":"projects/696281834171/sites/syllabus-ad688/versions/64b34a1580c76bad","status":"FINALIZED","config":{"headers":[{"headers":{"Cache-Control":"no-cache, no-store, must-revalidate"},"glob":"**/*.@(html|json)"},{"headers":{"Cache-Control":"public, max-age=31536000, immutable"},"glob":"_next/static/**"}],"rewrites":[{"glob":"**","path":"/index.html"}],"cleanUrls":true,"trailingSlashBehavior":"REMOVE"},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-09-16T15:31:53.694599Z","createUser":{"email":"layjoe0001@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLT7gKrk91FMC8pvO0RWmN9hJTjNeJk85zD-GAUauzaOQyOPQ=mo"},"finalizeTime":"2026-09-16T15:32:28.776195Z","finalizeUser":{"email":"layjoe0001@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLT7gKrk91FMC8pvO0RWmN9hJTjNeJk85zD-GAUauzaOQyOPQ=mo"}},"type":"DEPLOY","releaseTime":"2026-09-16T15:32:29.311Z","releaseUser":{"email":"layjoe0001@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLT7gKrk91FMC8pvO0RWmN9hJTjNeJk85zD-GAUauzaOQyOPQ=mo"}}
+[debug] [2026-09-16T15:32:30.548Z] [hosting] release: {"name":"projects/696281834171/sites/syllabus-ad688/channels/live/releases/1789572749311000","version":{"name":"projects/696281834171/sites/syllabus-ad688/versions/64b34a1580c76bad","status":"FINALIZED","config":{"headers":[{"headers":{"Cache-Control":"no-cache, no-store, must-revalidate"},"glob":"**/*.@(html|json)"},{"headers":{"Cache-Control":"public, max-age=31536000, immutable"},"glob":"_next/static/**"}],"rewrites":[{"glob":"**","path":"/index.html"}],"cleanUrls":true,"trailingSlashBehavior":"REMOVE"},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-09-16T15:31:53.694599Z","createUser":{"email":"layjoe0001@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLT7gKrk91FMC8pvO0RWmN9hJTjNeJk85zD-GAUauzaOQyOPQ=mo"},"finalizeTime":"2026-09-16T15:32:28.776195Z","finalizeUser":{"email":"layjoe0001@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLT7gKrk91FMC8pvO0RWmN9hJTjNeJk85zD-GAUauzaOQyOPQ=mo"}},"type":"DEPLOY","releaseTime":"2026-09-16T15:32:29.311Z","releaseUser":{"email":"layjoe0001@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLT7gKrk91FMC8pvO0RWmN9hJTjNeJk85zD-GAUauzaOQyOPQ=mo"}}
+[info] ✔  hosting[syllabus-ad688]: release complete 
+[info] 
+[info] ✔  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/syllabus-ad688/overview
+[info] Hosting URL: https://syllabus-ad688.web.app
+[debug] [2026-09-16T15:32:40.559Z] Error: Timed out.
+    at Timeout._onTimeout (/home/josef-marie/.nvm/versions/node/v24.18.0/lib/node_modules/firebase-tools/lib/utils.js:296:49)
+    at listOnTimeout (node:internal/timers:605:17)
+    at process.processTimers (node:internal/timers:541:7)
+[error] 
+[error] Error: An unexpected error has occurred.
+[debug] [2026-09-16T16:13:38.826Z] ----------------------------------------------------------------------
+[debug] [2026-09-16T16:13:38.831Z] Command:       /home/josef-marie/.nvm/versions/node/v24.18.0/bin/node /home/josef-marie/.nvm/versions/node/v24.18.0/bin/firebase deploy --only hosting
+[debug] [2026-09-16T16:13:38.831Z] CLI Version:   15.29.0
+[debug] [2026-09-16T16:13:38.832Z] Platform:      linux
+[debug] [2026-09-16T16:13:38.832Z] Node Version:  v24.18.0
+[debug] [2026-09-16T16:13:38.832Z] Detected Agent: antigravity
+[debug] [2026-09-16T16:13:38.832Z] Time:          Wed Sep 16 2026 18:13:38 GMT+0200 (Central Africa Time)
+[debug] [2026-09-16T16:13:38.832Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-09-16T16:13:41.518Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-09-16T16:13:41.519Z] > authorizing via signed-in user (layjoe0001@gmail.com)
+[debug] [2026-09-16T16:13:41.519Z] [iam] checking project syllabus-ad688 for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-09-16T16:13:41.572Z] Checked if tokens are valid: false, expires at: 1789573953863
+[debug] [2026-09-16T16:13:41.572Z] Checked if tokens are valid: false, expires at: 1789573953863
+[debug] [2026-09-16T16:13:41.572Z] > refreshing access token with scopes: []
+[debug] [2026-09-16T16:13:41.577Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-09-16T16:13:41.578Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-09-16T16:13:42.932Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-09-16T16:13:42.932Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-09-16T16:13:42.949Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/syllabus-ad688:testIamPermissions [none]
+[debug] [2026-09-16T16:13:42.949Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/syllabus-ad688:testIamPermissions  x-goog-user-project=syllabus-ad688
+[debug] [2026-09-16T16:13:42.949Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/syllabus-ad688:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-09-16T16:13:45.565Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/syllabus-ad688:testIamPermissions 200
+[debug] [2026-09-16T16:13:45.566Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/syllabus-ad688:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-09-16T16:13:45.567Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:13:45.567Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:13:45.568Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/syllabus-ad688 [none]
+[debug] [2026-09-16T16:13:54.147Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/syllabus-ad688 200
+[debug] [2026-09-16T16:13:54.147Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/syllabus-ad688 {"projectId":"syllabus-ad688","projectNumber":"696281834171","displayName":"Syllabus","name":"projects/syllabus-ad688","resources":{"hostingSite":"syllabus-ad688"},"state":"ACTIVE","labels":{"firebase":"enabled","firebase/storage-default-bucket":"created"},"etag":"1_e28f5afa-5150-46fa-8ca4-ed0ade2b3462"}
+[info] 
+[info] === Deploying to 'syllabus-ad688'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-09-16T16:13:54.157Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:13:54.157Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:13:54.157Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/syllabus-ad688/sites/syllabus-ad688 [none]
+[debug] [2026-09-16T16:13:56.690Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/syllabus-ad688/sites/syllabus-ad688 200
+[debug] [2026-09-16T16:13:56.690Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/syllabus-ad688/sites/syllabus-ad688 {"name":"projects/syllabus-ad688/sites/syllabus-ad688","defaultUrl":"https://syllabus-ad688.web.app","type":"DEFAULT_SITE"}
+[debug] [2026-09-16T16:13:56.694Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:13:56.694Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:13:56.696Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/versions [none]
+[debug] [2026-09-16T16:13:56.696Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-09-16T16:13:58.513Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/versions 200
+[debug] [2026-09-16T16:13:58.514Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/versions {"name":"projects/696281834171/sites/syllabus-ad688/versions/3e976a22671faa9e","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[syllabus-ad688]: beginning deploy... 
+[info] i  hosting[syllabus-ad688]: found 70 files in out 
+[debug] [2026-09-16T16:14:03.560Z] [hosting] uploading with 200 concurrency
+[debug] [2026-09-16T16:14:03.842Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:03.842Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:03.844Z] [hosting] hash cache [b3V0] stored for 70 files
+[debug] [2026-09-16T16:14:03.844Z] [hosting][hash queue][FINAL] {"max":274,"min":53,"avg":83.24285714285716,"active":0,"complete":70,"success":70,"errored":0,"retried":0,"total":70,"elapsed":282}
+[debug] [2026-09-16T16:14:03.844Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/696281834171/sites/syllabus-ad688/versions/3e976a22671faa9e:populateFiles [none]
+[debug] [2026-09-16T16:14:03.845Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/696281834171/sites/syllabus-ad688/versions/3e976a22671faa9e:populateFiles {"files":{"/manifest.json":"7c5283620e8103ea7236ddc58de48ef7879af660e7fc0dee11658b69823ee22a","/sw.js":"6f02cc2f60a15d7f95cffdf72c88129654b4e96d6e9079a6b0e022e46ffe3efb","/index.txt":"2561bf6402271e46fd458330e5a4fc173394671a85facb42cb1e8adeae806e60","/admin.txt":"25951f4f0ff8457f24bad50b2dc31a02abfb386c05b5200fbe75f64aa95ebd8f","/index.html":"1632d9c32bb3dd514ae5fe76f0e7a56665a16dae1d3fb8e1cd462bcb14e2ce54","/404.html":"dc24d55d487e18a7ebd8eb6cef1a4d544130b9eba22f87e6e76d741147fa60ac","/icons/icon.svg":"821e8bb445d90b5f65fbe15c48ca0e7d0e5f39dbf1c02dc5861d482213330654","/admin.html":"bb8329040684cd3c028b60c39c7daf15287a87f0abc72e5f7459f429a79e375a","/syllabus/view.txt":"88591d4d563f0bbbb5a5d1040bafbf172230a179c07e034af8fc42b6c2633797","/syllabus/legacy.html":"41895100eb0a4b2ad91ec1c5db0826eb367ea065f0aadd2fdef5e67f3650aad6","/syllabus/legacy.txt":"f56ce1a798d4d0e45ae355608972ea0d76e9508c1405eb931449e069494ff22c","/syllabus/view.html":"b196c27424d9069662f0201f09aad29a095aa4112346d7bb527a71067dacdb2b","/auth/register.txt":"8ca72ab38f1c5a1d2ee9272dbe2b602028be462da9c7ab2dc1989108aeae597f","/auth/login.txt":"1988377bf0cbc778d78fcf453ffbeb6ce9780c2105353e6009d622fe9d270084","/auth/register.html":"d5dc8c6fcbde7f46f965d882e18fea563b64a70e4a34c26e659b9b56eb5d58c9","/auth/login.html":"d8afb1d145c46a83645df812478bbedba9a8d7993464c13e38964f03eea75169","/admin/login.txt":"a2b9e90d11a27d47b0a77788b82e796582e5e04e66606ca5dc621fc405315f85","/admin/builder.txt":"085c0d1112b848d8f3578c5b28b1ca42ef8445b1f7b2953cec29636c26fad0aa","/admin/login.html":"aadde26c8c047ebfa7fee13ebeeecde6413f85646c58c0fad69a5a4359919deb","/admin/builder.html":"ad67a0af2c8cade9ef5f48b30e662fe184363d60764af8cfac718062d6b77589","/_next/static/chunks/main-app-343a4000cc612dcf.js":"9214f91d9b3bc3d1409733e7751218c2891fb7f1f8cd757ebe330e025e0d6c1e","/_next/static/chunks/webpack-10117319f3999848.js":"5bce7cb296879fcba931f543036eeae3a8e917adabb9a79ce99f26778b3e9897","/_next/static/chunks/961.279cca2df716b41f.js":"6cee540c73ff323547bf98eba8bc4fd064216da4550388ae688d3ff8a0660852","/_next/static/chunks/970.714c62292bbf661d.js":"b6958939b9e8904a47274e34f0a8e64ff8308ca8110d2f230af0582532571298","/_next/static/chunks/885-b4dc3b65d37e1a6d.js":"afe29743c32c938309cb10522079ad06f3fc459af9c54c5b5747b652d9b4be91","/_next/static/chunks/75.0a8098f2f613a6da.js":"6ab8f7d70dceb75c92ded338f9231acbf9459216f63f9e64c0bdf0ae298819cc","/_next/static/chunks/517.051a8548b4ab38b7.js":"b04f2ff316b4a2d681d55d95aad4dee5e825f8016b6d8d7d8cc5b49b6b51bc05","/_next/static/chunks/502-c8f6fa161eb60db0.js":"4f3e0566fbd5fd743a72d4ecf9c6ce888ad126263faa2cf80d50bae635d06922","/_next/static/chunks/460-6b500bca1142875e.js":"b3981408afe9a0b477ad4506e97c4a18e03cbc4ac10b3e101f0d19c9f37d510e","/_next/static/chunks/430.82ab84a83bcc71f4.js":"4e8b2c02e1b104498aaab82b77d354f2b251812c416e305d19061cd2bb3a7def","/_next/static/chunks/370-186085e6f55de8e1.js":"ae8a9e300dc5be2d53e882759276714ac83a3c0abbd8f69a3f4bf7cdad9f118c","/_next/static/chunks/284-badf6202640cd36f.js":"21d716cf6df1f23eac123abab6d31f3416f52bafdbdea045e8ef9431c448aa7d","/_next/static/css/667ae4c359fd4df1.css":"606f24722a05812b3295e1b7a4922eb8ff99ae075e19b421a7257716bd2984a2","/_next/static/chunks/e58a7f8f-79932d715c0b7473.js":"f41c879f182b436c8dc10801a2f3bac9f63290539a0ec1b73aa8caa9113c6451","/_next/static/chunks/ae6eea6a-4b3bce25113e217a.js":"94634f6ada893fbb76f4d70818f6559c5d37b559dc3fa0b9c47a20f4e528a717","/_next/static/chunks/polyfills-42372ed130431b0a.js":"45b36f93bb08c52e360d14b0e8449c88770aa8cf5d59bff1c76cbe6e198fe7c5","/_next/static/chunks/main-82491bd411ab3142.js":"585baff478b0dfc35e1a9f48a32deee1fd916245dc1e8f3dd3ac7b5547581992","/_next/static/chunks/235.cbab0f6689bcdca0.js":"782e22895c62c16dea1a5debad11ea6978bd2c3ae4246abddeaa1c62b93c7080","/_next/static/chunks/162-7c3ca5057da93d6b.js":"712ca48a7408dfc34fd8cd9ba933a873a26424930fdd7b58a91e935d5d524e51","/_next/static/chunks/pages/_error-cb2a52f75f2162e2.js":"9fc5f3ba8c3e04e24083cf4f7bbf011e0e73fcfca2b9ca464c93b64d97de398a","/_next/static/chunks/pages/_app-7d307437aca18ad4.js":"8cf77d8daa321a88c71491c9852ad1b21ffb617f065783a3ffe299705eb43430","/_next/static/chunks/216-30e29add4534a109.js":"f7bcddce6587c29f2adcb450ac66bbebf8938436a83470622fa098091a9b116d","/_next/static/chunks/app/layout-2e1825403c78c0a6.js":"a020f05125acb1c497429e68694e6acdf270815602a5d1fa3eb018342a876e13","/_next/static/chunks/app/page-b1baef3efab8aeac.js":"048a1c7d87bf8b412cfc96cef849908f1122a6b7d1aeaa17b11043e011e64e37","/_next/static/chunks/app/syllabus/[id]/page-99c345c6673dc093.js":"22da432a9a337babb62999855137608c68a06c7a4644f70d13aa732edab15f4f","/_next/static/chunks/app/auth/register/page-29a734755cedc148.js":"a96e89ab379819f495f2c5ec7ed8a3f6335bbd025d38e00df909523a36125987","/_next/static/chunks/app/auth/login/page-51df7b4a2bbf4238.js":"177ae25dd4092ed6c80e453d4cc84b9d832d5653bd56e0049473d93c3e8e0d45","/_next/static/chunks/app/api/extract-file/route-99c345c6673dc093.js":"22da432a9a337babb62999855137608c68a06c7a4644f70d13aa732edab15f4f","/_next/static/chunks/app/admin/login/page-f2d6ce056ee24fee.js":"a53f51f9a63b4441df046e207545d63995f8b333fb7fa3f6762ec08f73151cc9","/_next/static/chunks/app/_not-found/page-a49fc78fcd9d7a5b.js":"5349c750d60861c2eedded53d3e91baebb3d52992ee310c147c67c4a37ee1dec","/_next/static/6cL4ZzanBmEbSnd8tthzk/_ssgManifest.js":"929820d6c0cb029613614ba4e03c4fc2985a57ea63e316aaea41a9af9db096cb","/_next/static/6cL4ZzanBmEbSnd8tthzk/_buildManifest.js":"f075823c11f837735b4a4d20c02d6049953a28f3f7ea81b2ab73b7660d58b116","/_next/static/chunks/app/syllabus/view/page-8de052652a3b8a3b.js":"9d61e088884bbeb347f721963b041e37642623a641535c80b2f606e27f3146a8","/_next/static/chunks/65fb8c99.8350c756d1d8b5ba.js":"f6f73c890107250dab8b6e2c0cfb5331de5ebdf184f3fe727e18eb788c4ac126","/_next/static/chunks/290-1317f728c087ef17.js":"5a8f78affc187814dfb826ef75053e84b9c6a5d861f923b3cfee2a168fd347c1","/_next/static/chunks/496-3b249c672c7cca87.js":"88989a8a9a59e5da18b76605b1ee63fa7441a1f8e639babe13204e08207d92d2","/_next/static/chunks/framework-085cf39580498177.js":"160268f0efa8c5a66046db4ff4d79219fd400ba293a49c975fe2979345638ce6","/_next/static/chunks/bc9e92e6-b913fa337a3f10cf.js":"5c0133d866ced2cafe8966a1e61a6f9502f78c54d10589aaed93890a169b559f","/_next/static/chunks/app/admin/builder/page-8ab26a9edd40054a.js":"317957d96dfe610a1993d72686c44bff4e8a715ffd6b8517c22f3bbc00872645","/_next/static/chunks/app/admin/page-e63e56377477733f.js":"9ecf20747e0bcc79444ca388d53e0e96fbadc20740d1958adba2fd31a4efca4e","/_next/static/chunks/4bd1b696-c023c6e3521b1417.js":"4ac0243493401ad65affe92d51e094b395dfef5e13585e781a4538520ed84b65","/_next/static/chunks/363642f4-55f42ad6e2d7ac79.js":"305f65496c49d85688df3504726b5eebaee7adda3da4b81d7751cdc32d21ed6c","/_next/static/chunks/255-300d9cc44f394368.js":"d6818748548d4205e93c3016b86169eb676ff5e6351323515c8d53248900f913","/_next/static/chunks/035175d8.b2d635f27d5cb153.js":"c1910701cf70884dfcec24727127d2b02a8420649d8b797b8f4716e9a5bdb77b","/_next/static/chunks/7a49ec60.015611551ff9315d.js":"b02ffcd1c4138dc238ff43f5450a0c8bdb23c573eb2593b9812456bf42f97796","/_next/static/chunks/927-1205a54cd654378e.js":"fee8cefedac333420f2b7500fd36e545cb3355e2f52479c8803c093d7985a2bb","/icons/icon-32.png":"d06df340391889214c5b90ee499acc12dd1715cdb5d445089730ef7f013481a3","/icons/icon-192.png":"03685b2890282e9e53e160bb9aab8faefdbb144cdd5b9d034801b868bf274e83","/icons/icon-512.png":"e6ba4cac4b829d1a33483463a658c6cbfc71b73f1d330a7d541cfcdfbf97dd48","/icons/icon.png":"fd0a3f34d0874b47d1ef06b734eb0aa90666d5b0194653ec539db8e17709869b"}}
+[info] i  hosting: adding files to version [0/70] (0%) 
+[info] i  hosting: adding files to version [0/70] (0%) 
+[debug] [2026-09-16T16:14:08.504Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/696281834171/sites/syllabus-ad688/versions/3e976a22671faa9e:populateFiles 200
+[debug] [2026-09-16T16:14:08.504Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/696281834171/sites/syllabus-ad688/versions/3e976a22671faa9e:populateFiles {"uploadRequiredHashes":["a020f05125acb1c497429e68694e6acdf270815602a5d1fa3eb018342a876e13","d5dc8c6fcbde7f46f965d882e18fea563b64a70e4a34c26e659b9b56eb5d58c9","25951f4f0ff8457f24bad50b2dc31a02abfb386c05b5200fbe75f64aa95ebd8f","f56ce1a798d4d0e45ae355608972ea0d76e9508c1405eb931449e069494ff22c","dc24d55d487e18a7ebd8eb6cef1a4d544130b9eba22f87e6e76d741147fa60ac","b196c27424d9069662f0201f09aad29a095aa4112346d7bb527a71067dacdb2b","2561bf6402271e46fd458330e5a4fc173394671a85facb42cb1e8adeae806e60","bb8329040684cd3c028b60c39c7daf15287a87f0abc72e5f7459f429a79e375a","8ca72ab38f1c5a1d2ee9272dbe2b602028be462da9c7ab2dc1989108aeae597f","1632d9c32bb3dd514ae5fe76f0e7a56665a16dae1d3fb8e1cd462bcb14e2ce54","606f24722a05812b3295e1b7a4922eb8ff99ae075e19b421a7257716bd2984a2","1988377bf0cbc778d78fcf453ffbeb6ce9780c2105353e6009d622fe9d270084","085c0d1112b848d8f3578c5b28b1ca42ef8445b1f7b2953cec29636c26fad0aa","a53f51f9a63b4441df046e207545d63995f8b333fb7fa3f6762ec08f73151cc9","6f02cc2f60a15d7f95cffdf72c88129654b4e96d6e9079a6b0e022e46ffe3efb","a2b9e90d11a27d47b0a77788b82e796582e5e04e66606ca5dc621fc405315f85","a96e89ab379819f495f2c5ec7ed8a3f6335bbd025d38e00df909523a36125987","aadde26c8c047ebfa7fee13ebeeecde6413f85646c58c0fad69a5a4359919deb","ad67a0af2c8cade9ef5f48b30e662fe184363d60764af8cfac718062d6b77589","4f3e0566fbd5fd743a72d4ecf9c6ce888ad126263faa2cf80d50bae635d06922","ae8a9e300dc5be2d53e882759276714ac83a3c0abbd8f69a3f4bf7cdad9f118c","d8afb1d145c46a83645df812478bbedba9a8d7993464c13e38964f03eea75169","88591d4d563f0bbbb5a5d1040bafbf172230a179c07e034af8fc42b6c2633797","048a1c7d87bf8b412cfc96cef849908f1122a6b7d1aeaa17b11043e011e64e37","9ecf20747e0bcc79444ca388d53e0e96fbadc20740d1958adba2fd31a4efca4e","177ae25dd4092ed6c80e453d4cc84b9d832d5653bd56e0049473d93c3e8e0d45","41895100eb0a4b2ad91ec1c5db0826eb367ea065f0aadd2fdef5e67f3650aad6","317957d96dfe610a1993d72686c44bff4e8a715ffd6b8517c22f3bbc00872645","712ca48a7408dfc34fd8cd9ba933a873a26424930fdd7b58a91e935d5d524e51"],"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files"}
+[debug] [2026-09-16T16:14:08.505Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.506Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.506Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.506Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.506Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.506Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.507Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.507Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.507Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.507Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.507Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.507Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.507Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.508Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.508Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.508Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.508Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.509Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.509Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.509Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.509Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.510Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.510Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.510Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.510Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.511Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.511Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.511Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.511Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.511Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.512Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.512Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.512Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.512Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.513Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.513Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.513Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.513Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.515Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.515Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.515Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.516Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.516Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.516Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.517Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.517Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.517Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.517Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.518Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.518Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.518Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.518Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.519Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.519Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.519Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.519Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.519Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.519Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:08.520Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/a020f05125acb1c497429e68694e6acdf270815602a5d1fa3eb018342a876e13 [none]
+[debug] [2026-09-16T16:14:08.520Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/a020f05125acb1c497429e68694e6acdf270815602a5d1fa3eb018342a876e13 [stream]
+[debug] [2026-09-16T16:14:08.521Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/d5dc8c6fcbde7f46f965d882e18fea563b64a70e4a34c26e659b9b56eb5d58c9 [none]
+[debug] [2026-09-16T16:14:08.521Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/d5dc8c6fcbde7f46f965d882e18fea563b64a70e4a34c26e659b9b56eb5d58c9 [stream]
+[debug] [2026-09-16T16:14:08.523Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/25951f4f0ff8457f24bad50b2dc31a02abfb386c05b5200fbe75f64aa95ebd8f [none]
+[debug] [2026-09-16T16:14:08.523Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/25951f4f0ff8457f24bad50b2dc31a02abfb386c05b5200fbe75f64aa95ebd8f [stream]
+[debug] [2026-09-16T16:14:08.524Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/f56ce1a798d4d0e45ae355608972ea0d76e9508c1405eb931449e069494ff22c [none]
+[debug] [2026-09-16T16:14:08.524Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/f56ce1a798d4d0e45ae355608972ea0d76e9508c1405eb931449e069494ff22c [stream]
+[debug] [2026-09-16T16:14:08.525Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/dc24d55d487e18a7ebd8eb6cef1a4d544130b9eba22f87e6e76d741147fa60ac [none]
+[debug] [2026-09-16T16:14:08.525Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/dc24d55d487e18a7ebd8eb6cef1a4d544130b9eba22f87e6e76d741147fa60ac [stream]
+[debug] [2026-09-16T16:14:08.526Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/b196c27424d9069662f0201f09aad29a095aa4112346d7bb527a71067dacdb2b [none]
+[debug] [2026-09-16T16:14:08.526Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/b196c27424d9069662f0201f09aad29a095aa4112346d7bb527a71067dacdb2b [stream]
+[debug] [2026-09-16T16:14:08.526Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/2561bf6402271e46fd458330e5a4fc173394671a85facb42cb1e8adeae806e60 [none]
+[debug] [2026-09-16T16:14:08.527Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/2561bf6402271e46fd458330e5a4fc173394671a85facb42cb1e8adeae806e60 [stream]
+[debug] [2026-09-16T16:14:08.527Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/bb8329040684cd3c028b60c39c7daf15287a87f0abc72e5f7459f429a79e375a [none]
+[debug] [2026-09-16T16:14:08.527Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/bb8329040684cd3c028b60c39c7daf15287a87f0abc72e5f7459f429a79e375a [stream]
+[debug] [2026-09-16T16:14:08.531Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/8ca72ab38f1c5a1d2ee9272dbe2b602028be462da9c7ab2dc1989108aeae597f [none]
+[debug] [2026-09-16T16:14:08.531Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/8ca72ab38f1c5a1d2ee9272dbe2b602028be462da9c7ab2dc1989108aeae597f [stream]
+[debug] [2026-09-16T16:14:08.532Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/1632d9c32bb3dd514ae5fe76f0e7a56665a16dae1d3fb8e1cd462bcb14e2ce54 [none]
+[debug] [2026-09-16T16:14:08.532Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/1632d9c32bb3dd514ae5fe76f0e7a56665a16dae1d3fb8e1cd462bcb14e2ce54 [stream]
+[debug] [2026-09-16T16:14:08.532Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/606f24722a05812b3295e1b7a4922eb8ff99ae075e19b421a7257716bd2984a2 [none]
+[debug] [2026-09-16T16:14:08.532Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/606f24722a05812b3295e1b7a4922eb8ff99ae075e19b421a7257716bd2984a2 [stream]
+[debug] [2026-09-16T16:14:08.533Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/1988377bf0cbc778d78fcf453ffbeb6ce9780c2105353e6009d622fe9d270084 [none]
+[debug] [2026-09-16T16:14:08.533Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/1988377bf0cbc778d78fcf453ffbeb6ce9780c2105353e6009d622fe9d270084 [stream]
+[debug] [2026-09-16T16:14:08.534Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/085c0d1112b848d8f3578c5b28b1ca42ef8445b1f7b2953cec29636c26fad0aa [none]
+[debug] [2026-09-16T16:14:08.534Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/085c0d1112b848d8f3578c5b28b1ca42ef8445b1f7b2953cec29636c26fad0aa [stream]
+[debug] [2026-09-16T16:14:08.534Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/a53f51f9a63b4441df046e207545d63995f8b333fb7fa3f6762ec08f73151cc9 [none]
+[debug] [2026-09-16T16:14:08.535Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/a53f51f9a63b4441df046e207545d63995f8b333fb7fa3f6762ec08f73151cc9 [stream]
+[debug] [2026-09-16T16:14:08.535Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/6f02cc2f60a15d7f95cffdf72c88129654b4e96d6e9079a6b0e022e46ffe3efb [none]
+[debug] [2026-09-16T16:14:08.535Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/6f02cc2f60a15d7f95cffdf72c88129654b4e96d6e9079a6b0e022e46ffe3efb [stream]
+[debug] [2026-09-16T16:14:08.536Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/a2b9e90d11a27d47b0a77788b82e796582e5e04e66606ca5dc621fc405315f85 [none]
+[debug] [2026-09-16T16:14:08.536Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/a2b9e90d11a27d47b0a77788b82e796582e5e04e66606ca5dc621fc405315f85 [stream]
+[debug] [2026-09-16T16:14:08.536Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/a96e89ab379819f495f2c5ec7ed8a3f6335bbd025d38e00df909523a36125987 [none]
+[debug] [2026-09-16T16:14:08.536Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/a96e89ab379819f495f2c5ec7ed8a3f6335bbd025d38e00df909523a36125987 [stream]
+[debug] [2026-09-16T16:14:08.537Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/aadde26c8c047ebfa7fee13ebeeecde6413f85646c58c0fad69a5a4359919deb [none]
+[debug] [2026-09-16T16:14:08.537Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/aadde26c8c047ebfa7fee13ebeeecde6413f85646c58c0fad69a5a4359919deb [stream]
+[debug] [2026-09-16T16:14:08.537Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/ad67a0af2c8cade9ef5f48b30e662fe184363d60764af8cfac718062d6b77589 [none]
+[debug] [2026-09-16T16:14:08.538Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/ad67a0af2c8cade9ef5f48b30e662fe184363d60764af8cfac718062d6b77589 [stream]
+[debug] [2026-09-16T16:14:08.538Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/4f3e0566fbd5fd743a72d4ecf9c6ce888ad126263faa2cf80d50bae635d06922 [none]
+[debug] [2026-09-16T16:14:08.538Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/4f3e0566fbd5fd743a72d4ecf9c6ce888ad126263faa2cf80d50bae635d06922 [stream]
+[debug] [2026-09-16T16:14:08.539Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/ae8a9e300dc5be2d53e882759276714ac83a3c0abbd8f69a3f4bf7cdad9f118c [none]
+[debug] [2026-09-16T16:14:08.539Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/ae8a9e300dc5be2d53e882759276714ac83a3c0abbd8f69a3f4bf7cdad9f118c [stream]
+[debug] [2026-09-16T16:14:08.541Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/d8afb1d145c46a83645df812478bbedba9a8d7993464c13e38964f03eea75169 [none]
+[debug] [2026-09-16T16:14:08.541Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/d8afb1d145c46a83645df812478bbedba9a8d7993464c13e38964f03eea75169 [stream]
+[debug] [2026-09-16T16:14:08.542Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/88591d4d563f0bbbb5a5d1040bafbf172230a179c07e034af8fc42b6c2633797 [none]
+[debug] [2026-09-16T16:14:08.542Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/88591d4d563f0bbbb5a5d1040bafbf172230a179c07e034af8fc42b6c2633797 [stream]
+[debug] [2026-09-16T16:14:08.543Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/048a1c7d87bf8b412cfc96cef849908f1122a6b7d1aeaa17b11043e011e64e37 [none]
+[debug] [2026-09-16T16:14:08.543Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/048a1c7d87bf8b412cfc96cef849908f1122a6b7d1aeaa17b11043e011e64e37 [stream]
+[debug] [2026-09-16T16:14:08.543Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/9ecf20747e0bcc79444ca388d53e0e96fbadc20740d1958adba2fd31a4efca4e [none]
+[debug] [2026-09-16T16:14:08.543Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/9ecf20747e0bcc79444ca388d53e0e96fbadc20740d1958adba2fd31a4efca4e [stream]
+[debug] [2026-09-16T16:14:08.544Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/177ae25dd4092ed6c80e453d4cc84b9d832d5653bd56e0049473d93c3e8e0d45 [none]
+[debug] [2026-09-16T16:14:08.544Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/177ae25dd4092ed6c80e453d4cc84b9d832d5653bd56e0049473d93c3e8e0d45 [stream]
+[debug] [2026-09-16T16:14:08.545Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/41895100eb0a4b2ad91ec1c5db0826eb367ea065f0aadd2fdef5e67f3650aad6 [none]
+[debug] [2026-09-16T16:14:08.545Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/41895100eb0a4b2ad91ec1c5db0826eb367ea065f0aadd2fdef5e67f3650aad6 [stream]
+[debug] [2026-09-16T16:14:08.545Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/317957d96dfe610a1993d72686c44bff4e8a715ffd6b8517c22f3bbc00872645 [none]
+[debug] [2026-09-16T16:14:08.545Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/317957d96dfe610a1993d72686c44bff4e8a715ffd6b8517c22f3bbc00872645 [stream]
+[debug] [2026-09-16T16:14:08.546Z] >>> [apiv2][query] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/712ca48a7408dfc34fd8cd9ba933a873a26424930fdd7b58a91e935d5d524e51 [none]
+[debug] [2026-09-16T16:14:08.546Z] >>> [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/712ca48a7408dfc34fd8cd9ba933a873a26424930fdd7b58a91e935d5d524e51 [stream]
+[debug] [2026-09-16T16:14:08.578Z] [hosting][populate queue][FINAL] {"max":4677,"min":4677,"avg":4677,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":4736}
+[debug] [2026-09-16T16:14:08.578Z] [hosting] uploads queued: 29
+[info] i  hosting: uploading new files [0/29] (0%) 
+[debug] [2026-09-16T16:14:10.352Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/a96e89ab379819f495f2c5ec7ed8a3f6335bbd025d38e00df909523a36125987 200
+[debug] [2026-09-16T16:14:10.353Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/a96e89ab379819f495f2c5ec7ed8a3f6335bbd025d38e00df909523a36125987 [stream]
+[debug] [2026-09-16T16:14:10.631Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/d5dc8c6fcbde7f46f965d882e18fea563b64a70e4a34c26e659b9b56eb5d58c9 200
+[debug] [2026-09-16T16:14:10.631Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/d5dc8c6fcbde7f46f965d882e18fea563b64a70e4a34c26e659b9b56eb5d58c9 [stream]
+[debug] [2026-09-16T16:14:10.795Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/4f3e0566fbd5fd743a72d4ecf9c6ce888ad126263faa2cf80d50bae635d06922 200
+[debug] [2026-09-16T16:14:10.795Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/4f3e0566fbd5fd743a72d4ecf9c6ce888ad126263faa2cf80d50bae635d06922 [stream]
+[debug] [2026-09-16T16:14:10.848Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/317957d96dfe610a1993d72686c44bff4e8a715ffd6b8517c22f3bbc00872645 200
+[debug] [2026-09-16T16:14:10.848Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/317957d96dfe610a1993d72686c44bff4e8a715ffd6b8517c22f3bbc00872645 [stream]
+[debug] [2026-09-16T16:14:10.982Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/bb8329040684cd3c028b60c39c7daf15287a87f0abc72e5f7459f429a79e375a 200
+[debug] [2026-09-16T16:14:10.982Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/bb8329040684cd3c028b60c39c7daf15287a87f0abc72e5f7459f429a79e375a [stream]
+[debug] [2026-09-16T16:14:11.055Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/ae8a9e300dc5be2d53e882759276714ac83a3c0abbd8f69a3f4bf7cdad9f118c 200
+[debug] [2026-09-16T16:14:11.055Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/ae8a9e300dc5be2d53e882759276714ac83a3c0abbd8f69a3f4bf7cdad9f118c [stream]
+[debug] [2026-09-16T16:14:11.257Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/f56ce1a798d4d0e45ae355608972ea0d76e9508c1405eb931449e069494ff22c 200
+[debug] [2026-09-16T16:14:11.258Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/f56ce1a798d4d0e45ae355608972ea0d76e9508c1405eb931449e069494ff22c [stream]
+[debug] [2026-09-16T16:14:11.288Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/88591d4d563f0bbbb5a5d1040bafbf172230a179c07e034af8fc42b6c2633797 200
+[debug] [2026-09-16T16:14:11.288Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/88591d4d563f0bbbb5a5d1040bafbf172230a179c07e034af8fc42b6c2633797 [stream]
+[debug] [2026-09-16T16:14:11.467Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/a2b9e90d11a27d47b0a77788b82e796582e5e04e66606ca5dc621fc405315f85 200
+[debug] [2026-09-16T16:14:11.467Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/a2b9e90d11a27d47b0a77788b82e796582e5e04e66606ca5dc621fc405315f85 [stream]
+[debug] [2026-09-16T16:14:11.514Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/d8afb1d145c46a83645df812478bbedba9a8d7993464c13e38964f03eea75169 200
+[debug] [2026-09-16T16:14:11.515Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/d8afb1d145c46a83645df812478bbedba9a8d7993464c13e38964f03eea75169 [stream]
+[info] i  hosting: uploading new files [10/29] (34%) 
+[debug] [2026-09-16T16:14:11.572Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/25951f4f0ff8457f24bad50b2dc31a02abfb386c05b5200fbe75f64aa95ebd8f 200
+[debug] [2026-09-16T16:14:11.573Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/25951f4f0ff8457f24bad50b2dc31a02abfb386c05b5200fbe75f64aa95ebd8f [stream]
+[debug] [2026-09-16T16:14:11.669Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/177ae25dd4092ed6c80e453d4cc84b9d832d5653bd56e0049473d93c3e8e0d45 200
+[debug] [2026-09-16T16:14:11.670Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/177ae25dd4092ed6c80e453d4cc84b9d832d5653bd56e0049473d93c3e8e0d45 [stream]
+[debug] [2026-09-16T16:14:11.781Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/606f24722a05812b3295e1b7a4922eb8ff99ae075e19b421a7257716bd2984a2 200
+[debug] [2026-09-16T16:14:11.782Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/606f24722a05812b3295e1b7a4922eb8ff99ae075e19b421a7257716bd2984a2 [stream]
+[debug] [2026-09-16T16:14:11.847Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/b196c27424d9069662f0201f09aad29a095aa4112346d7bb527a71067dacdb2b 200
+[debug] [2026-09-16T16:14:11.847Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/b196c27424d9069662f0201f09aad29a095aa4112346d7bb527a71067dacdb2b [stream]
+[debug] [2026-09-16T16:14:12.031Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/a020f05125acb1c497429e68694e6acdf270815602a5d1fa3eb018342a876e13 200
+[debug] [2026-09-16T16:14:12.031Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/a020f05125acb1c497429e68694e6acdf270815602a5d1fa3eb018342a876e13 [stream]
+[debug] [2026-09-16T16:14:12.201Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/1632d9c32bb3dd514ae5fe76f0e7a56665a16dae1d3fb8e1cd462bcb14e2ce54 200
+[debug] [2026-09-16T16:14:12.202Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/1632d9c32bb3dd514ae5fe76f0e7a56665a16dae1d3fb8e1cd462bcb14e2ce54 [stream]
+[debug] [2026-09-16T16:14:12.218Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/712ca48a7408dfc34fd8cd9ba933a873a26424930fdd7b58a91e935d5d524e51 200
+[debug] [2026-09-16T16:14:12.218Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/712ca48a7408dfc34fd8cd9ba933a873a26424930fdd7b58a91e935d5d524e51 [stream]
+[debug] [2026-09-16T16:14:12.396Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/9ecf20747e0bcc79444ca388d53e0e96fbadc20740d1958adba2fd31a4efca4e 200
+[debug] [2026-09-16T16:14:12.397Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/9ecf20747e0bcc79444ca388d53e0e96fbadc20740d1958adba2fd31a4efca4e [stream]
+[debug] [2026-09-16T16:14:12.541Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/2561bf6402271e46fd458330e5a4fc173394671a85facb42cb1e8adeae806e60 200
+[debug] [2026-09-16T16:14:12.541Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/2561bf6402271e46fd458330e5a4fc173394671a85facb42cb1e8adeae806e60 [stream]
+[debug] [2026-09-16T16:14:12.870Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/048a1c7d87bf8b412cfc96cef849908f1122a6b7d1aeaa17b11043e011e64e37 200
+[debug] [2026-09-16T16:14:12.871Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/048a1c7d87bf8b412cfc96cef849908f1122a6b7d1aeaa17b11043e011e64e37 [stream]
+[debug] [2026-09-16T16:14:13.089Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/a53f51f9a63b4441df046e207545d63995f8b333fb7fa3f6762ec08f73151cc9 200
+[debug] [2026-09-16T16:14:13.089Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/a53f51f9a63b4441df046e207545d63995f8b333fb7fa3f6762ec08f73151cc9 [stream]
+[debug] [2026-09-16T16:14:13.398Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/ad67a0af2c8cade9ef5f48b30e662fe184363d60764af8cfac718062d6b77589 200
+[debug] [2026-09-16T16:14:13.398Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/ad67a0af2c8cade9ef5f48b30e662fe184363d60764af8cfac718062d6b77589 [stream]
+[debug] [2026-09-16T16:14:13.554Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/8ca72ab38f1c5a1d2ee9272dbe2b602028be462da9c7ab2dc1989108aeae597f 200
+[debug] [2026-09-16T16:14:13.554Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/8ca72ab38f1c5a1d2ee9272dbe2b602028be462da9c7ab2dc1989108aeae597f [stream]
+[info] i  hosting: uploading new files [23/29] (79%) 
+[debug] [2026-09-16T16:14:13.566Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/aadde26c8c047ebfa7fee13ebeeecde6413f85646c58c0fad69a5a4359919deb 200
+[debug] [2026-09-16T16:14:13.566Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/aadde26c8c047ebfa7fee13ebeeecde6413f85646c58c0fad69a5a4359919deb [stream]
+[debug] [2026-09-16T16:14:14.061Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/6f02cc2f60a15d7f95cffdf72c88129654b4e96d6e9079a6b0e022e46ffe3efb 200
+[debug] [2026-09-16T16:14:14.062Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/6f02cc2f60a15d7f95cffdf72c88129654b4e96d6e9079a6b0e022e46ffe3efb [stream]
+[debug] [2026-09-16T16:14:14.090Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/1988377bf0cbc778d78fcf453ffbeb6ce9780c2105353e6009d622fe9d270084 200
+[debug] [2026-09-16T16:14:14.091Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/1988377bf0cbc778d78fcf453ffbeb6ce9780c2105353e6009d622fe9d270084 [stream]
+[debug] [2026-09-16T16:14:14.242Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/41895100eb0a4b2ad91ec1c5db0826eb367ea065f0aadd2fdef5e67f3650aad6 200
+[debug] [2026-09-16T16:14:14.243Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/41895100eb0a4b2ad91ec1c5db0826eb367ea065f0aadd2fdef5e67f3650aad6 [stream]
+[debug] [2026-09-16T16:14:14.440Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/085c0d1112b848d8f3578c5b28b1ca42ef8445b1f7b2953cec29636c26fad0aa 200
+[debug] [2026-09-16T16:14:14.440Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/085c0d1112b848d8f3578c5b28b1ca42ef8445b1f7b2953cec29636c26fad0aa [stream]
+[debug] [2026-09-16T16:14:14.526Z] <<< [apiv2][status] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/dc24d55d487e18a7ebd8eb6cef1a4d544130b9eba22f87e6e76d741147fa60ac 200
+[debug] [2026-09-16T16:14:14.526Z] <<< [apiv2][body] POST https://upload-firebasehosting.googleapis.com/upload/sites/syllabus-ad688/versions/3e976a22671faa9e/files/dc24d55d487e18a7ebd8eb6cef1a4d544130b9eba22f87e6e76d741147fa60ac [stream]
+[debug] [2026-09-16T16:14:14.527Z] [hosting][upload queue][FINAL] {"max":6019,"min":1841,"avg":3774.655172413793,"active":0,"complete":29,"success":29,"errored":0,"retried":0,"total":29,"elapsed":6022}
+[info] i  hosting: upload complete 
+[info] ✔  hosting[syllabus-ad688]: file upload complete 
+[debug] [2026-09-16T16:14:14.528Z] [hosting] deploy completed after 11003ms
+[debug] [2026-09-16T16:14:14.529Z] [
+  {
+    "config": {
+      "site": "syllabus-ad688",
+      "public": "out",
+      "ignore": [
+        "firebase.json",
+        "**/.*",
+        "**/node_modules/**"
+      ],
+      "cleanUrls": true,
+      "trailingSlash": false,
+      "headers": [
+        {
+          "source": "**/*.@(html|json)",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache, no-store, must-revalidate"
+            }
+          ]
+        },
+        {
+          "source": "_next/static/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
+            }
+          ]
+        }
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ]
+    },
+    "version": "projects/696281834171/sites/syllabus-ad688/versions/3e976a22671faa9e"
+  }
+]
+[info] i  hosting[syllabus-ad688]: finalizing version... 
+[debug] [2026-09-16T16:14:14.535Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:14.535Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:14.537Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/versions/3e976a22671faa9e updateMask=status%2Cconfig
+[debug] [2026-09-16T16:14:14.538Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/versions/3e976a22671faa9e {"status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}],"headers":[{"glob":"**/*.@(html|json)","headers":{"Cache-Control":"no-cache, no-store, must-revalidate"}},{"glob":"_next/static/**","headers":{"Cache-Control":"public, max-age=31536000, immutable"}}],"cleanUrls":true,"trailingSlashBehavior":"REMOVE"}}
+[debug] [2026-09-16T16:14:20.605Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/versions/3e976a22671faa9e 200
+[debug] [2026-09-16T16:14:20.605Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/versions/3e976a22671faa9e {"name":"projects/696281834171/sites/syllabus-ad688/versions/3e976a22671faa9e","status":"FINALIZED","config":{"headers":[{"headers":{"Cache-Control":"no-cache, no-store, must-revalidate"},"glob":"**/*.@(html|json)"},{"headers":{"Cache-Control":"public, max-age=31536000, immutable"},"glob":"_next/static/**"}],"rewrites":[{"glob":"**","path":"/index.html"}],"cleanUrls":true,"trailingSlashBehavior":"REMOVE"},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-09-16T16:13:57.204364Z","createUser":{"email":"layjoe0001@gmail.com"},"finalizeTime":"2026-09-16T16:14:18.334307Z","finalizeUser":{"email":"layjoe0001@gmail.com"}}
+[debug] [2026-09-16T16:14:20.605Z] [hosting] finalized version for syllabus-ad688:[object Object]
+[info] ✔  hosting[syllabus-ad688]: version finalized 
+[info] i  hosting[syllabus-ad688]: releasing new version... 
+[debug] [2026-09-16T16:14:20.606Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:20.606Z] Checked if tokens are valid: true, expires at: 1789578821933
+[debug] [2026-09-16T16:14:20.606Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/channels/live/releases versionName=projects%2F696281834171%2Fsites%2Fsyllabus-ad688%2Fversions%2F3e976a22671faa9e
+[debug] [2026-09-16T16:14:20.606Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/channels/live/releases {}
+[debug] [2026-09-16T16:14:22.159Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/channels/live/releases 200
+[debug] [2026-09-16T16:14:22.160Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/syllabus-ad688/channels/live/releases {"name":"projects/696281834171/sites/syllabus-ad688/channels/live/releases/1789575260865000","version":{"name":"projects/696281834171/sites/syllabus-ad688/versions/3e976a22671faa9e","status":"FINALIZED","config":{"headers":[{"headers":{"Cache-Control":"no-cache, no-store, must-revalidate"},"glob":"**/*.@(html|json)"},{"headers":{"Cache-Control":"public, max-age=31536000, immutable"},"glob":"_next/static/**"}],"rewrites":[{"glob":"**","path":"/index.html"}],"cleanUrls":true,"trailingSlashBehavior":"REMOVE"},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-09-16T16:13:57.204364Z","createUser":{"email":"layjoe0001@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLT7gKrk91FMC8pvO0RWmN9hJTjNeJk85zD-GAUauzaOQyOPQ=mo"},"finalizeTime":"2026-09-16T16:14:18.334307Z","finalizeUser":{"email":"layjoe0001@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLT7gKrk91FMC8pvO0RWmN9hJTjNeJk85zD-GAUauzaOQyOPQ=mo"}},"type":"DEPLOY","releaseTime":"2026-09-16T16:14:20.865Z","releaseUser":{"email":"layjoe0001@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLT7gKrk91FMC8pvO0RWmN9hJTjNeJk85zD-GAUauzaOQyOPQ=mo"}}
+[debug] [2026-09-16T16:14:22.160Z] [hosting] release: {"name":"projects/696281834171/sites/syllabus-ad688/channels/live/releases/1789575260865000","version":{"name":"projects/696281834171/sites/syllabus-ad688/versions/3e976a22671faa9e","status":"FINALIZED","config":{"headers":[{"headers":{"Cache-Control":"no-cache, no-store, must-revalidate"},"glob":"**/*.@(html|json)"},{"headers":{"Cache-Control":"public, max-age=31536000, immutable"},"glob":"_next/static/**"}],"rewrites":[{"glob":"**","path":"/index.html"}],"cleanUrls":true,"trailingSlashBehavior":"REMOVE"},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-09-16T16:13:57.204364Z","createUser":{"email":"layjoe0001@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLT7gKrk91FMC8pvO0RWmN9hJTjNeJk85zD-GAUauzaOQyOPQ=mo"},"finalizeTime":"2026-09-16T16:14:18.334307Z","finalizeUser":{"email":"layjoe0001@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLT7gKrk91FMC8pvO0RWmN9hJTjNeJk85zD-GAUauzaOQyOPQ=mo"}},"type":"DEPLOY","releaseTime":"2026-09-16T16:14:20.865Z","releaseUser":{"email":"layjoe0001@gmail.com","imageUrl":"https://lh3.googleusercontent.com/a/ACg8ocLT7gKrk91FMC8pvO0RWmN9hJTjNeJk85zD-GAUauzaOQyOPQ=mo"}}
+[info] ✔  hosting[syllabus-ad688]: release complete 
+[info] 
+[info] ✔  Deploy complete! 
+[info] 
+[info] Project Console: https://console.firebase.google.com/project/syllabus-ad688/overview
+[info] Hosting URL: https://syllabus-ad688.web.app
+[debug] [2026-09-16T16:14:32.173Z] Error: Timed out.
+    at Timeout._onTimeout (/home/josef-marie/.nvm/versions/node/v24.18.0/lib/node_modules/firebase-tools/lib/utils.js:296:49)
+    at listOnTimeout (node:internal/timers:605:17)
+    at process.processTimers (node:internal/timers:541:7)
+[error] 
+[error] Error: An unexpected error has occurred.

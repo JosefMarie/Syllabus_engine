@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { ActivityLog, ActivityActionType } from "@/types/activity";
-import { getAllActivities } from "@/lib/db";
+import { getAllActivities, clearAllActivityLogs } from "@/lib/db";
 import { 
   Activity, 
   Search, 
@@ -14,12 +14,14 @@ import {
   Terminal,
   ShieldCheck,
   RefreshCw,
-  Sparkles
+  Sparkles,
+  Trash2
 } from "lucide-react";
 
 export default function ActivityLogger() {
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [clearing, setClearing] = useState(false);
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState<string>("ALL");
 
@@ -28,6 +30,16 @@ export default function ActivityLogger() {
     const data = await getAllActivities();
     setActivities(data);
     setLoading(false);
+  };
+
+  const handleClearLogs = async () => {
+    const ok = window.confirm("Are you sure you want to clear all activity logs and start fresh?");
+    if (!ok) return;
+
+    setClearing(true);
+    await clearAllActivityLogs();
+    setActivities([]);
+    setClearing(false);
   };
 
   useEffect(() => {
@@ -56,9 +68,14 @@ export default function ActivityLogger() {
       case "VIEW_SYLLABUS":
         return <span className="rounded-full bg-[#10B981]/15 px-2.5 py-0.5 text-[10px] font-mono font-bold text-[#10B981] border border-[#10B981]/30 flex items-center gap-1"><BookOpen className="h-3 w-3" /> Subtopic View</span>;
       case "APPROVE_STUDENT":
+      case "APPROVE_STUDENT_BATCH":
         return <span className="rounded-full bg-[#10B981]/20 px-2.5 py-0.5 text-[10px] font-mono font-bold text-emerald-300 border border-[#10B981]/40 flex items-center gap-1"><UserCheck className="h-3 w-3" /> Approved</span>;
       case "REJECT_STUDENT":
         return <span className="rounded-full bg-rose-500/15 px-2.5 py-0.5 text-[10px] font-mono font-bold text-rose-400 border border-rose-500/30 flex items-center gap-1">Rejected</span>;
+      case "RESET_FOCUS_STRIKES":
+        return <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-mono font-bold text-amber-400 border border-amber-500/30 flex items-center gap-1">Strikes Cleared</span>;
+      case "STUDENT_SUSPENDED_FOCUS":
+        return <span className="rounded-full bg-rose-500/20 px-2.5 py-0.5 text-[10px] font-mono font-bold text-rose-300 border border-rose-500/40 flex items-center gap-1">Auto-Suspended</span>;
       default:
         return <span className="rounded-full bg-[#334155] px-2.5 py-0.5 text-[10px] font-mono text-white">{action}</span>;
     }
@@ -78,13 +95,25 @@ export default function ActivityLogger() {
           </p>
         </div>
 
-        <button
-          onClick={loadLogs}
-          className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3.5 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white transition-all shadow-md shrink-0"
-        >
-          <RefreshCw className="h-3.5 w-3.5 text-[#06B6D4]" />
-          <span>Refresh Logs</span>
-        </button>
+        <div className="flex items-center space-x-2 shrink-0">
+          <button
+            onClick={handleClearLogs}
+            disabled={clearing}
+            title="Clear all activity logs from database"
+            className="inline-flex items-center space-x-1.5 rounded-xl border border-rose-500/30 bg-[#1E293B] px-3.5 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 hover:text-white transition-all shadow-md"
+          >
+            <Trash2 className="h-3.5 w-3.5 text-rose-400" />
+            <span>{clearing ? "Clearing..." : "Clear Audit Logs"}</span>
+          </button>
+
+          <button
+            onClick={loadLogs}
+            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3.5 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white transition-all shadow-md"
+          >
+            <RefreshCw className="h-3.5 w-3.5 text-[#06B6D4]" />
+            <span>Refresh Logs</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter and Search Bar */}

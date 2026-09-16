@@ -8,4 +8,6 @@ export interface StudentPresenceRecord {
   syllabusTitle?: string;
   lastActive: string; // ISO String timestamp
   lastFocused: string; // ISO String timestamp
+  unfocusedCount?: number;
+  unfocusedDurationSeconds?: number;
 }

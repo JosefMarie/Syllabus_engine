@@ -22,4 +22,6 @@ export interface StudentProgressSummary {
   progressPercent: number;
   lastActive: string;
   unreadNotificationsCount: number;
+  unfocusedCount?: number;
+  suspensionReason?: string;
 }

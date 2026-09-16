@@ -10,13 +10,16 @@ export type ActivityActionType =
   | "ASK_AI"
   | "SWITCH_LEVEL"
   | "APPROVE_STUDENT"
+  | "APPROVE_STUDENT_BATCH"
   | "REJECT_STUDENT"
   | "CREATE_TRADE"
   | "DELETE_TRADE"
   | "SAVE_SYLLABUS"
   | "SEND_STUDENT_MESSAGE"
   | "STUDENT_LOGOUT"
-  | "AUTO_TIMEOUT_LOGOUT";
+  | "AUTO_TIMEOUT_LOGOUT"
+  | "RESET_FOCUS_STRIKES"
+  | "STUDENT_SUSPENDED_FOCUS";
 
 export interface ActivityLog {
   id: string;

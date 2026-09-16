@@ -109,7 +109,7 @@ export default function ContentProtection({
       >
         {Array.from({ length: 12 }).map((_, i) => (
           <div key={i} className="m-8 rotate-[-25deg] text-center font-mono text-xs font-black tracking-widest text-white uppercase">
-            RESTRICTED CONTENT • PREPARED FOR {userFullName.toUpperCase()} ({userEmail}) • PROHIBITED FROM REPRODUCTION
+            RESTRICTED CONTENT • PREPARED FOR {(userFullName || "STUDENT").toUpperCase()} ({userEmail || "student@institution.edu"}) • PROHIBITED FROM REPRODUCTION
           </div>
         ))}
       </div>

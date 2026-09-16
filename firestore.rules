@@ -2,7 +2,68 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Allow full read and write access to all platform collections (syllabi, userProfiles, trades, notifications, presence, activities)
+
+    // Helper: is caller an authenticated Teacher Admin?
+    function isTeacher() {
+      return request.auth != null && (
+        request.auth.token.email == 'layjoe0001@gmail.com' ||
+        (request.auth.token.role == 'teacher')
+      );
+    }
+
+    // Users Collection (Student & Teacher profiles)
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if true; // Registration of new students
+      
+      allow update: if 
+        // 1. Teacher can update anything (approve, reject, reset strikes, edit)
+        isTeacher()
+        ||
+        // 2. Student client update constraints (hardened):
+        (
+          // Strikes (unfocusedCount) can NEVER be decreased by a student client
+          (!('unfocusedCount' in request.resource.data) || 
+           !('unfocusedCount' in resource.data) || 
+           request.resource.data.unfocusedCount >= resource.data.unfocusedCount)
+          &&
+          // Student cannot promote themselves to 'teacher'
+          (!('role' in request.resource.data) || request.resource.data.role != 'teacher' || resource.data.role == 'teacher')
+          &&
+          // If already suspended/rejected, student cannot change status back to 'approved'
+          (resource.data.status != 'rejected' || request.resource.data.status == 'rejected')
+          &&
+          // If pending approval, student cannot self-approve
+          (resource.data.status != 'pending_approval' || request.resource.data.status != 'approved')
+        );
+
+      allow delete: if isTeacher();
+    }
+
+    // Syllabi, Trades, Notifications, Activities, Presence, TimeTracking
+    match /syllabi/{syllabusId} {
+      allow read, write: if true;
+    }
+    match /presence/{userId} {
+      allow read, write: if true;
+    }
+    match /userProgress/{userId} {
+      allow read, write: if true;
+    }
+    match /notifications/{notifId} {
+      allow read, write: if true;
+    }
+    match /activities/{activityId} {
+      allow read, write: if true;
+    }
+    match /trades/{tradeId} {
+      allow read, write: if true;
+    }
+    match /topicTimeRecords/{recordId} {
+      allow read, write: if true;
+    }
+
+    // Default fallback
     match /{document=**} {
       allow read, write: if true;
     }

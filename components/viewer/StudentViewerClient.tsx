@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { Syllabus, Subtopic, Citation } from "@/types/syllabus";
-import { getSyllabusById, getSubtopicProgress, toggleSubtopicProgress, logActivity } from "@/lib/db";
+import { getSyllabusById, getSubtopicProgress, toggleSubtopicProgress, logActivity, saveLastReadSubtopic, getLastReadSubtopic, subscribeToUserProfile } from "@/lib/db";
 import { getStoredSession, getAdminSession } from "@/lib/auth";
 import SidebarTree from "@/components/viewer/SidebarTree";
 import SubtopicView from "@/components/viewer/SubtopicView";
@@ -10,10 +10,11 @@ import CitationsDrawer from "@/components/viewer/CitationsDrawer";
 import Link from "next/link";
 import ContentProtection from "@/components/common/ContentProtection";
 import { downloadSyllabusAsJSON, downloadSyllabusAsText } from "@/lib/exportSyllabus";
-import { ArrowLeft, ShieldCheck, Lock, AlertTriangle, LogIn, UserPlus, Download, FileText, FileCode } from "lucide-react";
+import { ArrowLeft, ShieldCheck, Lock, AlertTriangle, LogIn, UserPlus, Download, FileText, FileCode, CheckCircle2, AlertCircle, ArrowRight, Eye, RotateCcw, BookOpen } from "lucide-react";
 import { UserProfile, StudentLevel } from "@/types/auth";
 import NotificationAlert from "@/components/common/NotificationAlert";
 import PresenceTracker from "@/components/common/PresenceTracker";
+import DisciplinaryLockdown from "@/components/common/DisciplinaryLockdown";
 
 export default function StudentViewerClient({ syllabusId }: { syllabusId: string }) {
   const [syllabus, setSyllabus] = useState<Syllabus | null>(null);
@@ -24,30 +25,55 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
+  const [resumeNotice, setResumeNotice] = useState<string | null>(null);
 
   // Flattened array of all subtopics for easy previous/next pagination
   const [allSubtopics, setAllSubtopics] = useState<Subtopic[]>([]);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  const activeTopicInfo = React.useMemo(() => {
+    if (!syllabus || !activeSubtopic) return null;
+    for (const lo of (syllabus.learningOutcomes || [])) {
+      for (const ic of (lo?.indicativeContents || [])) {
+        for (const top of (ic?.topics || [])) {
+          if ((top?.subtopics || []).some((sub) => sub?.id === activeSubtopic.id)) {
+            return {
+              topicId: top.id,
+              topicTitle: top.title,
+            };
+          }
+        }
+      }
+    }
+    return null;
+  }, [syllabus, activeSubtopic]);
 
   useEffect(() => {
+    let isMounted = true;
     async function load() {
+      setLoading(true);
       const user = getStoredSession();
       const admin = getAdminSession();
-      setCurrentUser(user);
-      setIsAdminLoggedIn(Boolean(admin));
+      if (isMounted) {
+        setCurrentUser(user);
+        setIsAdminLoggedIn(Boolean(admin));
+      }
 
       const data = await getSyllabusById(syllabusId);
+      if (!isMounted) return;
+
       if (data) {
         setSyllabus(data);
         const progress = getSubtopicProgress();
         setProgressMap(progress);
 
-        // Collect subtopics across 5 levels
+        // Collect subtopics across 5 levels defensively
         const list: Subtopic[] = [];
-        data.learningOutcomes.forEach((lo) => {
-          lo.indicativeContents.forEach((ic) => {
-            ic.topics.forEach((top) => {
-              top.subtopics.forEach((sub) => {
-                list.push(sub);
+        (data.learningOutcomes || []).forEach((lo) => {
+          (lo?.indicativeContents || []).forEach((ic) => {
+            (ic?.topics || []).forEach((top) => {
+              (top?.subtopics || []).forEach((sub) => {
+                if (sub) list.push(sub);
               });
             });
           });
@@ -55,16 +81,61 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
 
         setAllSubtopics(list);
         if (list.length > 0) {
-          setActiveSubtopic(list[0]);
+          // Check for saved reading position or first uncompleted subtopic
+          const lastReadId = await getLastReadSubtopic(syllabusId, user?.uid);
+          let targetSubtopic = list[0];
+
+          if (lastReadId) {
+            const found = list.find((s) => s.id === lastReadId);
+            if (found) {
+              targetSubtopic = found;
+              setResumeNotice(`Resumed where you left off: "${found.title}"`);
+            }
+          } else {
+            const firstIncomplete = list.find((s) => !progress[s.id]);
+            if (firstIncomplete && Object.values(progress).some(Boolean)) {
+              targetSubtopic = firstIncomplete;
+              setResumeNotice(`Continuing your course: "${firstIncomplete.title}"`);
+            }
+          }
+
+          setActiveSubtopic(targetSubtopic);
           if (user || admin) {
-            trackSubtopicView(list[0], data);
+            trackSubtopicView(targetSubtopic, data);
           }
         }
       }
       setLoading(false);
     }
     load();
-  }, [syllabusId]);
+    return () => {
+      isMounted = false;
+    };
+  }, [syllabusId, reloadKey]);
+
+  // Real-time listener for current user profile (status changes, strike resets, re-approvals)
+  useEffect(() => {
+    const session = getStoredSession();
+    if (!session?.uid) return;
+
+    const unsubscribe = subscribeToUserProfile(session.uid, (freshUser) => {
+      if (freshUser) {
+        setCurrentUser(freshUser);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  // Auto-dismiss resume toast after 5 seconds
+  useEffect(() => {
+    if (resumeNotice) {
+      const timer = setTimeout(() => setResumeNotice(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [resumeNotice]);
 
   const trackSubtopicView = (sub: Subtopic, syl?: Syllabus | null) => {
     const s = syl || syllabus;
@@ -88,11 +159,13 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
   const handleSelectSubtopic = (sub: Subtopic) => {
     setActiveSubtopic(sub);
     trackSubtopicView(sub);
+    saveLastReadSubtopic(syllabusId, sub.id, currentUser?.uid);
   };
 
   const handleToggleComplete = async (subtopicId: string) => {
     const updatedMap = await toggleSubtopicProgress(subtopicId);
     setProgressMap(updatedMap);
+    saveLastReadSubtopic(syllabusId, subtopicId, currentUser?.uid);
     const isCompletedNow = Boolean(updatedMap[subtopicId]);
 
     const user = getStoredSession();
@@ -145,12 +218,34 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
 
   if (!syllabus) {
     return (
-      <div className="flex h-screen w-screen flex-col items-center justify-center bg-[#0B0F19] text-[#CBD5E1]">
-        <h2 className="text-2xl font-bold text-white mb-2">Syllabus Not Found</h2>
-        <p className="text-sm text-[#94A3B8] mb-6">The requested syllabus ID could not be retrieved.</p>
-        <Link href="/" className="rounded-xl bg-[#06B6D4] px-4 py-2 text-xs font-semibold text-slate-950">
-          Back to Catalogue
-        </Link>
+      <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-6 text-[#CBD5E1]">
+        <div className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#1E293B] p-8 text-center shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200">
+          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30">
+            <BookOpen className="h-7 w-7" />
+          </div>
+          <h2 className="text-xl font-bold text-white">Course Curriculum Not Loaded</h2>
+          <p className="text-xs text-[#94A3B8] leading-relaxed">
+            The course data could not be retrieved from the server. This may happen on slower connections or if the document is still syncing.
+          </p>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <button
+              onClick={() => {
+                setLoading(true);
+                setReloadKey(k => k + 1);
+              }}
+              className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-4 py-2.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md active:scale-95"
+            >
+              <RotateCcw className="h-4 w-4" />
+              <span>Retry Loading Course</span>
+            </button>
+            <Link
+              href="/"
+              className="rounded-xl border border-[#334155] bg-[#0B0F19] px-4 py-2.5 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-[#06B6D4] transition-all"
+            >
+              Back to Catalog
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -237,6 +332,62 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
     );
   }
 
+  // 3. ACCOUNT STATUS PROTECTION: Account suspended / rejected (e.g. 10 side-window violations)
+  if (currentUser && currentUser.status === "rejected" && !isAdminLoggedIn) {
+    return (
+      <DisciplinaryLockdown
+        studentName={currentUser.fullName}
+        studentUsername={currentUser.username}
+        reason={currentUser.suspensionReason}
+        violationsCount={currentUser.unfocusedCount || 10}
+      />
+    );
+  }
+
+  if (currentUser && currentUser.status === "pending_approval" && !isAdminLoggedIn) {
+    const wasReset = (currentUser.unfocusedCount || 0) === 0;
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-6 text-[#CBD5E1]">
+        <div className="w-full max-w-md rounded-2xl border border-amber-500/40 bg-[#1E293B] p-8 text-center shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
+            <AlertTriangle className="h-8 w-8" />
+          </div>
+          <div>
+            <div className="inline-flex items-center space-x-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-mono font-bold text-amber-400 border border-amber-500/30 mb-3">
+              <span>{wasReset ? "Strikes Reset • Pending Approval" : "Pending Verification"}</span>
+            </div>
+            <h2 className="text-xl font-extrabold text-white tracking-tight">
+              {wasReset ? "Account Reset By Instructor" : "Registration Under Review"}
+            </h2>
+            <p className="mt-2 text-xs text-[#CBD5E1] leading-relaxed">
+              {wasReset 
+                ? "Your side-window focus strikes have been reset to 0/10 by your teacher. Your account is now pending faculty approval. As soon as your teacher approves, your study session will automatically resume right here."
+                : "Your account registration is awaiting faculty verification. Once approved, you will have immediate access to your accredited syllabus."}
+            </p>
+          </div>
+
+          <div className="flex items-center justify-center space-x-2 text-xs font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 py-2 px-4 rounded-xl mx-auto">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="font-mono text-[11px]">Auto-resumes when instructor approves...</span>
+          </div>
+
+          <div className="pt-2">
+            <Link
+              href="/"
+              className="inline-flex w-full items-center justify-center space-x-2 rounded-xl bg-slate-800 py-3 text-xs font-bold text-[#CBD5E1] hover:bg-slate-700 transition-all border border-slate-700"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to Home</span>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ContentProtection
       isProtected={!isAdminLoggedIn}
@@ -250,8 +401,16 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
             <PresenceTracker
               userId={currentUser.uid}
               fullName={currentUser.fullName}
-              subtopicTitle={activeSubtopic?.title}
+              email={currentUser.email}
+              username={currentUser.username}
+              tradeId={currentUser.tradeId}
+              level={currentUser.level}
+              syllabusId={syllabus?.id}
               syllabusTitle={syllabus?.title}
+              topicId={activeTopicInfo?.topicId}
+              topicTitle={activeTopicInfo?.topicTitle}
+              subtopicId={activeSubtopic?.id}
+              subtopicTitle={activeSubtopic?.title}
             />
           </>
         )}
@@ -276,7 +435,7 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
                 <span>Catalog</span>
               </Link>
               <span className="text-[#334155]">/</span>
-              <span className="text-xs font-mono text-[#06B6D4] font-semibold">{syllabus.courseCode}</span>
+              <span className="text-xs font-mono text-[#06B6D4] font-semibold">{syllabus?.courseCode || "Syllabus"}</span>
             </div>
 
             <div className="flex items-center space-x-3">
@@ -344,8 +503,111 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
                 totalSubtopics={allSubtopics.length}
               />
             ) : (
-              <div className="py-20 text-center text-[#94A3B8]">
-                Select a subtopic from the 5-level hierarchy sidebar to view course content.
+              <div className="max-w-4xl mx-auto py-10 px-6 space-y-6">
+                {/* Hello & Study Focus Welcome Card */}
+                <div className="rounded-2xl border border-[#334155] bg-[#1E293B]/90 backdrop-blur-md p-6 sm:p-8 shadow-2xl relative overflow-hidden space-y-6">
+                  <div className="absolute top-0 right-0 h-44 w-44 bg-gradient-to-bl from-[#06B6D4]/15 to-transparent rounded-full blur-2xl pointer-events-none" />
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#334155]/80 pb-5">
+                    <div>
+                      <div className="inline-flex items-center space-x-2 rounded-full border border-[#06B6D4]/30 bg-[#06B6D4]/10 px-3 py-0.5 text-xs font-mono text-[#06B6D4] mb-2.5">
+                        <span>{syllabus?.courseCode}</span>
+                        <span>•</span>
+                        <span>{syllabus?.level || 'Academic Syllabus'}</span>
+                      </div>
+                      <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                        Hello, {currentUser?.fullName || 'Student'}! 👋
+                      </h2>
+                      <p className="text-sm text-[#94A3B8] mt-1">
+                        Welcome to <strong className="text-white">{syllabus?.title}</strong>
+                      </p>
+                    </div>
+
+                    {/* Live Focus Standing Badge */}
+                    {currentUser && (
+                      <div className="shrink-0">
+                        {(currentUser.unfocusedCount || 0) >= 10 ? (
+                          <span className="inline-flex items-center space-x-1.5 rounded-full bg-rose-500/20 border border-rose-500/40 px-3.5 py-1.5 text-xs font-mono font-bold text-rose-300">
+                            <AlertTriangle className="h-4 w-4" />
+                            <span>Account Suspended (10/10 Violations)</span>
+                          </span>
+                        ) : (currentUser.unfocusedCount || 0) > 0 ? (
+                          <span className="inline-flex items-center space-x-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 px-3.5 py-1.5 text-xs font-mono font-bold text-amber-300">
+                            <AlertTriangle className="h-4 w-4" />
+                            <span>{currentUser.unfocusedCount} / 10 Side Windows</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center space-x-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-3.5 py-1.5 text-xs font-mono font-bold text-emerald-400">
+                            <CheckCircle2 className="h-4 w-4" />
+                            <span>0 / 10 Strikes (Good Standing)</span>
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {syllabus?.description && (
+                    <p className="text-xs text-[#CBD5E1] leading-relaxed bg-[#0B0F19]/60 p-4 rounded-xl border border-[#334155]/60">
+                      {syllabus.description}
+                    </p>
+                  )}
+
+                  {/* Focus & Side-Window Instructions */}
+                  <div className="space-y-3">
+                    <h4 className="text-xs font-mono uppercase tracking-wider text-[#06B6D4] font-bold flex items-center gap-1.5">
+                      <Eye className="h-4 w-4" />
+                      <span>Classroom Study Instructions & Side-Window Rules</span>
+                    </h4>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs">
+                      <div className="rounded-xl bg-[#0B0F19] border border-[#334155] p-4 space-y-1.5">
+                        <div className="font-bold text-[#06B6D4] flex items-center space-x-2">
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#06B6D4]/20 text-[11px] font-mono">1</span>
+                          <span>Active Focus Mandatory</span>
+                        </div>
+                        <p className="text-[#94A3B8] text-[11px] leading-relaxed">
+                          Keep this tab open and in front of you. Your reading and topic study time is actively counted while this window remains in focus.
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl bg-[#0B0F19] border border-amber-500/30 p-4 space-y-1.5">
+                        <div className="font-bold text-amber-400 flex items-center space-x-2">
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-[11px] font-mono">2</span>
+                          <span>Side Windows Monitored</span>
+                        </div>
+                        <p className="text-[#94A3B8] text-[11px] leading-relaxed">
+                          Clicking outside this tab, opening side windows, or minimizing registers an inattention strike immediately.
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl bg-[#0B0F19] border border-rose-500/40 bg-rose-950/10 p-4 space-y-1.5">
+                        <div className="font-bold text-rose-400 flex items-center space-x-2">
+                          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500/20 text-[11px] font-mono">3</span>
+                          <span>10 Strikes Rejection</span>
+                        </div>
+                        <p className="text-[#CBD5E1] text-[11px] leading-relaxed">
+                          Accumulating <strong>10 side-window strikes</strong> automatically rejects and suspends your account. You will be locked out until your teacher approves your account again.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Getting Started Action */}
+                  <div className="pt-2 rounded-xl bg-[#0B0F19]/70 border border-[#334155] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="text-xs text-[#94A3B8]">
+                      Ready to begin? Select any topic or subtopic from the hierarchy on the left.
+                    </div>
+                    {allSubtopics.length > 0 && (
+                      <button
+                        onClick={() => handleSelectSubtopic(allSubtopics[0])}
+                        className="inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4] px-4 py-2.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg shrink-0"
+                      >
+                        <span>Start First Topic</span>
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </main>
@@ -356,6 +618,25 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
           citation={activeCitation}
           onClose={() => setActiveCitation(null)}
         />
+
+        {/* Reading Position Auto-Resume Notification Toast */}
+        {resumeNotice && (
+          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl border border-[#06B6D4]/40 bg-[#1E293B]/95 px-4 py-3 text-xs text-white shadow-2xl backdrop-blur-md transition-all">
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#06B6D4] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#06B6D4]"></span>
+            </span>
+            <span className="font-mono text-[#06B6D4] font-bold">Auto-Resume:</span>
+            <span className="max-w-xs truncate">{resumeNotice}</span>
+            <button 
+              onClick={() => setResumeNotice(null)} 
+              className="ml-2 text-slate-400 hover:text-white text-base leading-none p-0.5"
+              title="Dismiss"
+            >
+              ×
+            </button>
+          </div>
+        )}
       </div>
     </ContentProtection>
   );

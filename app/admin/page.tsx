@@ -4,11 +4,12 @@ import React, { useEffect, useState } from "react";
 import { Syllabus } from "@/types/syllabus";
 import { UserProfile } from "@/types/auth";
 import { getAllSyllabi, deleteSyllabus, getAllUserProfiles } from "@/lib/db";
-import { getAdminSession, logoutAdmin } from "@/lib/auth";
+import { getAdminSession, logoutAdmin, getStoredSession, subscribeToAdminSessionRevocation, revokeAllAdminSessions } from "@/lib/auth";
 import TradesManager from "@/components/admin/TradesManager";
 import StudentApprovals from "@/components/admin/StudentApprovals";
 import ActivityLogger from "@/components/admin/ActivityLogger";
 import StudentProgressManager from "@/components/admin/StudentProgressManager";
+import AdminPresenceAlert from "@/components/admin/AdminPresenceAlert";
 import { useRouter } from "next/navigation";
 import { downloadSyllabusAsJSON, downloadSyllabusAsText, downloadAllSyllabiAsJSON } from "@/lib/exportSyllabus";
 import { 
@@ -26,7 +27,10 @@ import {
   Users,
   Download,
   FileText,
-  FileCode
+  FileCode,
+  Lock,
+  AlertTriangle,
+  Smartphone
 } from "lucide-react";
 import Link from "next/link";
 
@@ -39,30 +43,80 @@ export default function AdminDashboardPage() {
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
+  const [studentSession, setStudentSession] = useState<UserProfile | null>(null);
+
   useEffect(() => {
-    async function init() {
-      const currentAdmin = getAdminSession();
-      if (!currentAdmin) {
+    let isMounted = true;
+
+    // Real-time listener: kick out this device if session was revoked centrally
+    const unsubRevocation = subscribeToAdminSessionRevocation(() => {
+      if (isMounted) {
+        setAdminUser(null);
         router.push("/admin/login");
-        return;
       }
-      setAdminUser(currentAdmin);
+    });
 
-      const data = await getAllSyllabi();
-      setSyllabi(data);
+    async function init() {
+      try {
+        const currentAdmin = getAdminSession();
+        const currentStudent = getStoredSession();
 
-      const userProfiles = await getAllUserProfiles();
-      const pending = userProfiles.filter(u => u.status === 'pending_approval').length;
-      setPendingCount(pending);
+        if (!currentAdmin || currentAdmin.role !== "teacher") {
+          if (isMounted) {
+            setStudentSession(currentStudent);
+            setAdminUser(null);
+            setLoading(false);
+          }
+          return;
+        }
+        if (isMounted) setAdminUser(currentAdmin);
 
-      setLoading(false);
+        // Fetch syllabi safely
+        try {
+          const data = await getAllSyllabi();
+          if (isMounted) setSyllabi(data);
+        } catch (e) {
+          console.warn("Error fetching syllabi for admin:", e);
+        }
+
+        // Fetch student profiles safely
+        try {
+          const userProfiles = await getAllUserProfiles();
+          const pending = userProfiles.filter(u => u.status === 'pending_approval').length;
+          if (isMounted) setPendingCount(pending);
+        } catch (e) {
+          console.warn("Error fetching profiles for admin:", e);
+        }
+      } catch (globalErr) {
+        console.error("Admin dashboard initialization error:", globalErr);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
     }
+
     init();
+
+    // 4-second safety timer: guarantee loading spinner never locks the screen permanently
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false);
+    }, 4000);
+
+    return () => {
+      isMounted = false;
+      unsubRevocation();
+      clearTimeout(safetyTimer);
+    };
   }, [router]);
 
   const handleLogout = async () => {
     await logoutAdmin();
     router.push("/admin/login");
+  };
+
+  const handleRevokeAll = async () => {
+    if (confirm("Are you sure you want to log out all other devices? This will instantly disconnect all phones, tablets, and student computers currently holding an admin session.")) {
+      await revokeAllAdminSessions("Instructor requested all devices log out");
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -72,12 +126,59 @@ export default function AdminDashboardPage() {
     }
   };
 
-  if (!adminUser && loading) {
+  if (loading) {
     return (
       <div className="flex h-screen w-screen items-center justify-center bg-[#0B0F19] text-[#CBD5E1]">
         <div className="text-center">
           <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-3" />
           <p className="text-xs font-mono text-[#94A3B8]">Authenticating Admin Session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!adminUser) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-4 text-[#CBD5E1]">
+        <div className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#1E293B] p-8 text-center shadow-2xl space-y-6 animate-in fade-in zoom-in duration-200">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30">
+            <Lock className="h-8 w-8" />
+          </div>
+
+          <div>
+            <div className="inline-flex items-center space-x-1.5 rounded-full bg-amber-500/10 px-3 py-1 text-xs font-mono font-bold text-amber-400 border border-amber-500/30 mb-3">
+              <AlertTriangle className="h-3.5 w-3.5" />
+              <span>Teacher Access Restricted</span>
+            </div>
+            <h2 className="text-xl font-extrabold text-white tracking-tight">
+              Teacher Admin Portal
+            </h2>
+            <p className="mt-2 text-xs text-[#94A3B8] leading-relaxed">
+              {studentSession
+                ? `You are signed in as student "${studentSession.fullName}". The teacher management portal is restricted to authorized faculty.`
+                : "This teacher management dashboard is reserved for authorized instructors and school administrators."}
+            </p>
+          </div>
+
+          <div className="space-y-3 pt-2">
+            <Link
+              href="/"
+              className="inline-flex w-full items-center justify-center space-x-2 rounded-xl bg-[#06B6D4] py-3 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Back to Course Catalog</span>
+            </Link>
+
+            {!studentSession && (
+              <Link
+                href="/admin/login"
+                className="inline-flex w-full items-center justify-center space-x-2 rounded-xl border border-[#334155] bg-[#0B0F19] py-3 text-xs font-semibold text-white hover:border-[#06B6D4] transition-all"
+              >
+                <ShieldCheck className="h-4 w-4 text-[#06B6D4]" />
+                <span>Instructor Login</span>
+              </Link>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -89,8 +190,12 @@ export default function AdminDashboardPage() {
       <header className="sticky top-0 z-30 border-b border-[#334155] bg-[#0B0F19]/90 px-6 py-4 backdrop-blur-md">
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <div className="flex items-center space-x-3">
-            <Link href="/" className="text-[#94A3B8] hover:text-white transition-colors">
-              <ArrowLeft className="h-5 w-5" />
+            <Link
+              href="/"
+              className="inline-flex items-center space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors bg-[#1E293B] px-3 py-1.5 rounded-lg border border-[#334155]"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              <span>Catalog</span>
             </Link>
             <span className="text-[#334155]">/</span>
             <div className="flex items-center space-x-2">
@@ -102,17 +207,29 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="flex items-center space-x-3">
-            <span className="hidden sm:inline text-xs font-mono text-[#94A3B8]">
+            <span className="hidden lg:inline text-xs font-mono text-[#94A3B8]">
               Logged in: <strong className="text-white">{adminUser?.email}</strong>
             </span>
+
+            {/* Real-time Student Attention & Side Window Alert System */}
+            <AdminPresenceAlert adminUser={adminUser} />
 
             <Link
               href="/admin/builder"
               className="inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4] px-3.5 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg"
             >
               <Plus className="h-4 w-4" />
-              <span>New Syllabus</span>
+              <span className="hidden sm:inline">New Syllabus</span>
             </Link>
+
+            <button
+              onClick={handleRevokeAll}
+              title="Instantly disconnects all phones, tablets, and computers across the school"
+              className="inline-flex items-center space-x-1.5 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 hover:text-white transition-all"
+            >
+              <Smartphone className="h-3.5 w-3.5 text-rose-400" />
+              <span className="hidden md:inline">Log Out All Devices</span>
+            </button>
 
             <button
               onClick={handleLogout}

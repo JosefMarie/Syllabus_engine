@@ -103,6 +103,13 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
     }
   );
 
+  // Synchronize state whenever initialSyllabus loads or changes
+  React.useEffect(() => {
+    if (initialSyllabus) {
+      setSyllabus(initialSyllabus);
+    }
+  }, [initialSyllabus?.id, initialSyllabus?.updatedAt]);
+
   // Auto expand initially
   React.useEffect(() => {
     if (syllabus.learningOutcomes.length > 0) {
@@ -216,19 +223,33 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
   const [saving, setSaving] = useState(false);
 
   const handleSave = async (targetStatus: 'draft' | 'published' = 'published') => {
+    if (!syllabus.title || !syllabus.title.trim()) {
+      alert("Please enter a Course Title before saving.");
+      return;
+    }
+
     setSaving(true);
     try {
-      const updatedSyllabus = { ...syllabus, status: targetStatus };
+      const updatedSyllabus: Syllabus = { 
+        ...syllabus, 
+        courseCode: (syllabus.courseCode || "").trim() || `CRS-${Math.floor(100 + Math.random() * 900)}`,
+        status: targetStatus,
+        updatedAt: new Date().toISOString()
+      };
+      setSyllabus(updatedSyllabus);
       const saved = await saveSyllabus(updatedSyllabus);
+      setSyllabus(saved);
       if (targetStatus === 'draft') {
-        alert("Syllabus Saved as Draft!");
+        alert("Syllabus Saved as Draft successfully!");
         router.push("/admin");
       } else {
-        alert("Syllabus Published!");
+        alert("Syllabus Published Successfully!");
         router.push(`/syllabus/view?id=${saved.id}`);
       }
     } catch (err: any) {
       console.error("Save error:", err);
+      alert(`Save error: ${err?.message || err}`);
+    } finally {
       setSaving(false);
     }
   };
@@ -247,7 +268,15 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
       setTimeout(() => setExtractionStatusStep("Step 3/3: Auto-extracting Acronym Citations & Formatting..."), 1600);
 
       const result = await parseSyllabusWithGemini(textToProcess);
-      setSyllabus(result.syllabus);
+      setSyllabus(prev => ({
+        ...result.syllabus,
+        id: prev.id || result.syllabus.id,
+        createdAt: prev.createdAt || result.syllabus.createdAt,
+        tradeId: prev.tradeId || result.syllabus.tradeId,
+        level: prev.level || result.syllabus.level,
+        status: prev.status || 'draft',
+        documentUrl: prev.documentUrl || result.syllabus.documentUrl,
+      }));
       
       const successMsg = `Successfully extracted ${result.extractedCount.los} LOs, ${result.extractedCount.ics} ICs, ${result.extractedCount.topics} Topics, ${result.extractedCount.subtopics} Subtopics, and ${result.extractedCount.citations} Automatic Acronym Citations across the entire document!`;
       setExtractSuccess(successMsg);
@@ -1314,6 +1343,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                   <MarkdownEditor
                     rows={8}
                     value={selectedCtx.subtopic.contentMarkdown || ""}
+                    citationsMap={syllabus.citationsDictionary || {}}
                     placeholder="Write comprehensive course content... Drag & drop diagrams/images directly into the editor!"
                     onChange={(contentMarkdown) => {
                       setSyllabus({

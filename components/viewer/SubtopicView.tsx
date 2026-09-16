@@ -7,7 +7,7 @@ import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
 import SandpackPlayground from "./SandpackPlayground";
 import ImageLightbox from "./ImageLightbox";
-import { CheckCircle2, Circle, BookOpen, Monitor, AlignLeft, ChevronLeft, ChevronRight, Sparkles, Lightbulb, ListOrdered, CheckSquare } from "lucide-react";
+import { CheckCircle2, Circle, BookOpen, Monitor, AlignLeft, ChevronLeft, ChevronRight, Sparkles, Lightbulb, ZoomIn, X, Image as ImageIcon } from "lucide-react";
 
 interface Props {
   subtopic: Subtopic;
@@ -53,7 +53,8 @@ export default function SubtopicView({
 
   // Highlight terms in text based on citations map
   const renderMarkdownWithCitations = (content: string) => {
-    const termKeys = Object.keys(citationsMap);
+    if (!content) return "";
+    const termKeys = citationsMap ? Object.keys(citationsMap) : [];
     if (termKeys.length === 0) return content;
 
     const pattern = new RegExp(`\\b(${termKeys.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join("|")})\\b`, "gi");
@@ -66,7 +67,7 @@ export default function SubtopicView({
           <span
             key={idx}
             onClick={() => onSelectCitation(citation)}
-            className="font-bold italic underline decoration-[#F59E0B] decoration-2 underline-offset-4 text-[#F59E0B] cursor-pointer hover:bg-[#F59E0B]/20 rounded px-1 transition-colors"
+            className="font-bold italic underline decoration-[#EA580C] decoration-2 underline-offset-4 text-[#EA580C] cursor-pointer hover:bg-orange-100 rounded px-1 transition-colors citation-highlight"
             title={`Click for Explanation: ${citation.term}`}
           >
             {part}
@@ -81,7 +82,7 @@ export default function SubtopicView({
   const parseInlineHtmlAndCitations = (text: string): React.ReactNode => {
     if (!text) return text;
 
-    const tagRegex = /<(u|ins|sup|sub|div|span)([^>]*)>([\s\S]*?)<\/\1>/gi;
+    const tagRegex = /<(u|ins|sup|sub|div|span|strong|b|blockquote)([^>]*)>([\s\S]*?)<\/\1>/gi;
     if (!tagRegex.test(text)) {
       return renderMarkdownWithCitations(text);
     }
@@ -103,7 +104,19 @@ export default function SubtopicView({
       const tagLower = tagName.toLowerCase();
       const parsedInner = parseInlineHtmlAndCitations(innerContent);
 
-      if (tagLower === "u" || tagLower === "ins") {
+      if (tagLower === "strong" || tagLower === "b") {
+        parts.push(
+          <strong key={matchIndex} className="font-bold text-[#CA8A04]">
+            {parsedInner}
+          </strong>
+        );
+      } else if (tagLower === "blockquote") {
+        parts.push(
+          <blockquote key={matchIndex} className="my-3 pl-4 border-l-2 border-[#06B6D4]/50 bg-[#06B6D4]/5 p-2 rounded-r-lg text-sm text-[#CBD5E1]">
+            {parsedInner}
+          </blockquote>
+        );
+      } else if (tagLower === "u" || tagLower === "ins") {
         parts.push(
           <u key={matchIndex} className="underline underline-offset-4 decoration-[#06B6D4] decoration-2 text-white font-medium">
             {parsedInner}
@@ -176,11 +189,110 @@ export default function SubtopicView({
     return node;
   };
 
+  const safeUrlTransform = (url: string) => {
+    if (!url) return "";
+    const clean = url.trim();
+    if (/^(javascript|vbscript):/i.test(clean)) {
+      return "";
+    }
+    return clean;
+  };
+
+  function MarkdownImage({ src, alt }: { src?: string; alt?: string }) {
+    const [hasError, setHasError] = useState(false);
+    const [isZoomed, setIsZoomed] = useState(false);
+
+    // Clean up data URLs that may have accidental whitespace or linebreaks
+    const cleanSrc = React.useMemo(() => {
+      if (!src) return "";
+      const trimmed = src.trim();
+      if (trimmed.startsWith("data:image/")) {
+        const commaIdx = trimmed.indexOf(",");
+        if (commaIdx !== -1) {
+          const prefix = trimmed.slice(0, commaIdx + 1);
+          const base64Data = trimmed.slice(commaIdx + 1).replace(/\s+/g, "");
+          return prefix + base64Data;
+        }
+      }
+      return trimmed;
+    }, [src]);
+
+    if (hasError || !cleanSrc) {
+      return (
+        <div className="my-4 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-4 text-center max-w-lg mx-auto">
+          <div className="flex items-center justify-center text-slate-400 mb-1">
+            <ImageIcon className="w-6 h-6" />
+          </div>
+          <p className="text-xs font-mono text-slate-500">{alt || "Educational illustration not available"}</p>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <figure className="my-5 max-w-2xl mx-auto rounded-xl border border-slate-200 bg-white p-2.5 shadow-xs group">
+          <div 
+            onClick={() => setIsZoomed(true)} 
+            className="relative overflow-hidden rounded-lg cursor-zoom-in bg-slate-50 flex items-center justify-center"
+          >
+            <img
+              src={cleanSrc}
+              alt={alt || "Curriculum Visual"}
+              onError={() => setHasError(true)}
+              className="max-h-96 w-auto object-contain mx-auto transition-transform duration-200 group-hover:scale-[1.01]"
+              loading="lazy"
+            />
+            <div className="absolute bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white text-[10px] font-mono px-2 py-1 rounded-md flex items-center gap-1 backdrop-blur-xs">
+              <ZoomIn className="w-3 h-3" />
+              <span>Click to Zoom</span>
+            </div>
+          </div>
+          {alt && alt !== "Syllabus image" && alt !== "Curriculum Visual" && (
+            <figcaption className="mt-2 text-center text-xs font-mono text-slate-500 italic">
+              {alt}
+            </figcaption>
+          )}
+        </figure>
+
+        {isZoomed && (
+          <div 
+            onClick={() => setIsZoomed(false)} 
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4 backdrop-blur-sm cursor-zoom-out"
+          >
+            <div className="relative max-h-[92vh] max-w-[92vw] overflow-hidden rounded-2xl bg-white p-2 shadow-2xl">
+              <button 
+                onClick={() => setIsZoomed(false)} 
+                className="absolute top-3 right-3 z-10 rounded-full bg-black/70 text-white p-1.5 hover:bg-black transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              <img 
+                src={cleanSrc} 
+                alt={alt || "Zoomed view"} 
+                className="max-h-[85vh] max-w-[90vw] object-contain mx-auto rounded-xl"
+              />
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
   // Custom components for ReactMarkdown to make lists & sections visually engaging
   const slideMarkdownComponents = {
-    p: ({ children }: any) => <p className="my-4 text-[#CBD5E1] text-base leading-relaxed">{recursivelyRenderCitations(children)}</p>,
-    u: ({ children }: any) => <u className="underline underline-offset-4 decoration-[#06B6D4] decoration-2 text-white font-medium">{recursivelyRenderCitations(children)}</u>,
-    ins: ({ children }: any) => <u className="underline underline-offset-4 decoration-[#06B6D4] decoration-2 text-white font-medium">{recursivelyRenderCitations(children)}</u>,
+    p: ({ children }: any) => <p className="my-4 text-black text-base leading-relaxed">{recursivelyRenderCitations(children)}</p>,
+    strong: ({ children }: any) => (
+      <strong className="font-bold text-[#CA8A04]">
+        {recursivelyRenderCitations(children)}
+      </strong>
+    ),
+    b: ({ children }: any) => (
+      <strong className="font-bold text-[#CA8A04]">
+        {recursivelyRenderCitations(children)}
+      </strong>
+    ),
+    u: ({ children }: any) => <u className="underline underline-offset-4 decoration-[#06B6D4] decoration-2 text-black font-medium">{recursivelyRenderCitations(children)}</u>,
+    ins: ({ children }: any) => <u className="underline underline-offset-4 decoration-[#06B6D4] decoration-2 text-black font-medium">{recursivelyRenderCitations(children)}</u>,
     sup: ({ children }: any) => <sup className="text-[0.75em] leading-none align-super font-mono text-[#06B6D4] font-bold px-0.5">{recursivelyRenderCitations(children)}</sup>,
     sub: ({ children }: any) => <sub className="text-[0.75em] leading-none align-sub font-mono text-[#06B6D4] font-bold px-0.5">{recursivelyRenderCitations(children)}</sub>,
     div: ({ align, style, children, className }: any) => {
@@ -191,7 +303,7 @@ export default function SubtopicView({
       else if (align === "left" || style?.textAlign === "left") alignClass = "text-left my-2 w-full block";
 
       let indentClass = "";
-      if (style?.marginLeft || style?.paddingLeft || className?.includes("indent")) {
+      if (style?.marginLeft || style?.paddingLeft || className?.includes("indent") || className?.includes("visual-indent")) {
         indentClass = "pl-6 border-l-2 border-[#06B6D4]/40 bg-[#06B6D4]/5 p-3 rounded-r-xl my-3";
       }
 
@@ -215,60 +327,31 @@ export default function SubtopicView({
     },
     h3: ({ children }: any) => (
       <div className="mt-8 mb-4 border-l-4 border-[#06B6D4] bg-[#06B6D4]/10 p-3 rounded-r-xl">
-        <h3 className="text-lg md:text-xl font-bold text-white tracking-tight flex items-center gap-2">
+        <h3 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-[#06B6D4]" />
           <span>{recursivelyRenderCitations(children)}</span>
         </h3>
       </div>
     ),
     blockquote: ({ children }: any) => (
-      <div className="my-6 rounded-2xl border border-[#06B6D4]/40 bg-gradient-to-r from-[#06B6D4]/15 to-[#10B981]/15 p-5 shadow-lg">
+      <div className="my-6 rounded-2xl border border-[#06B6D4]/40 bg-gradient-to-r from-[#06B6D4]/10 to-[#10B981]/10 p-5 shadow-xs">
         <div className="flex items-center space-x-2 text-xs font-mono font-bold text-[#06B6D4] uppercase tracking-wider mb-2">
-          <Lightbulb className="w-4 h-4 text-[#F59E0B]" />
+          <Lightbulb className="w-4 h-4 text-[#EA580C]" />
           <span>Key Curriculum Insight</span>
         </div>
-        <div className="italic text-white text-sm md:text-base leading-relaxed">
+        <div className="italic text-slate-900 text-sm md:text-base leading-relaxed">
           {recursivelyRenderCitations(children)}
         </div>
       </div>
     ),
-    // Numbered lists -> Smart Sequential Cards
-    ol: ({ children }: any) => (
-      <div className="my-6 space-y-3">
-        <div className="flex items-center space-x-2 text-xs font-mono text-[#06B6D4] font-bold uppercase tracking-wider mb-2">
-          <ListOrdered className="w-4 h-4" />
-          <span>Sequential Learning Steps</span>
-        </div>
-        <ol className="grid gap-3 sm:grid-cols-1 md:grid-cols-2">{children}</ol>
-      </div>
+    ol: ({ children }: any) => <div className="my-3 space-y-2">{children}</div>,
+    ul: ({ children }: any) => <div className="my-3 space-y-2">{children}</div>,
+    li: ({ children }: any) => (
+      <p className="my-2 text-black text-sm md:text-base leading-relaxed">
+        {recursivelyRenderCitations(children)}
+      </p>
     ),
-    // Unordered lists -> Smart Feature Grid Cards
-    ul: ({ children }: any) => (
-      <div className="my-6 space-y-3">
-        <div className="flex items-center space-x-2 text-xs font-mono text-[#10B981] font-bold uppercase tracking-wider mb-2">
-          <CheckSquare className="w-4 h-4" />
-          <span>Core Concepts & Checklist</span>
-        </div>
-        <ul className="grid gap-3 sm:grid-cols-1 md:grid-cols-2">{children}</ul>
-      </div>
-    ),
-    li: ({ children, index }: any) => (
-      <li className="flex items-start space-x-3 rounded-xl border border-[#334155] bg-[#0B0F19]/90 p-4 shadow-md hover:border-[#06B6D4]/60 hover:bg-[#06B6D4]/5 transition-all group list-none">
-        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-[#06B6D4]/15 text-[11px] font-mono font-bold text-[#06B6D4] border border-[#06B6D4]/30 mt-0.5 group-hover:scale-110 transition-transform">
-          ✦
-        </div>
-        <div className="text-xs md:text-sm text-[#CBD5E1] leading-relaxed flex-1">
-          {recursivelyRenderCitations(children)}
-        </div>
-      </li>
-    ),
-    img: ({ src, alt }: any) => (
-      <img 
-        src={src} 
-        alt={alt || "Syllabus image"} 
-        className="my-6 max-h-96 w-auto rounded-2xl border border-[#334155] object-contain shadow-2xl bg-[#0B0F19]"
-      />
-    ),
+    img: ({ src, alt }: any) => <MarkdownImage src={src} alt={alt} />,
   };
 
   return (
@@ -346,13 +429,15 @@ export default function SubtopicView({
               </h1>
             </div>
 
-            {/* Slide Smart Markdown Content (Engaging Lists & Cards) */}
-            <div className="prose prose-invert max-w-none text-[#CBD5E1] leading-relaxed text-sm md:text-base">
+            {/* Slide Smart Markdown Content (Rendered on White Paper Sheet) */}
+            <div className="bg-white rounded-2xl p-6 sm:p-8 text-black shadow-lg border border-slate-200 visual-word-sheet my-4">
               <ReactMarkdown 
                 remarkPlugins={[remarkGfm]}
+                rehypePlugins={[rehypeRaw]}
+                urlTransform={safeUrlTransform}
                 components={slideMarkdownComponents}
               >
-                {subtopic.contentMarkdown}
+                {subtopic?.contentMarkdown || ""}
               </ReactMarkdown>
             </div>
 
@@ -463,13 +548,15 @@ export default function SubtopicView({
             </button>
           </div>
 
-          <div className="prose prose-invert max-w-none text-[#CBD5E1] leading-relaxed">
+          {/* Document Smart Markdown Content (Rendered on White Paper Sheet) */}
+          <div className="bg-white rounded-2xl p-6 sm:p-10 text-black shadow-xl border border-slate-200 visual-word-sheet">
             <ReactMarkdown 
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeRaw]}
+              urlTransform={safeUrlTransform}
               components={slideMarkdownComponents}
             >
-              {subtopic.contentMarkdown}
+              {subtopic?.contentMarkdown || ""}
             </ReactMarkdown>
           </div>
 
