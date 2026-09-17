@@ -291,7 +291,7 @@ export default function CatalogPage() {
                 <div className="hidden sm:flex flex-col text-right">
                   <span className="text-xs font-bold text-white">{currentUser.fullName}</span>
                   <span className="text-[10px] font-mono text-[#06B6D4]">
-                    {currentUser.role === 'teacher' ? 'Teacher Admin' : `${currentUser.level} • ${tradesMap[currentUser.tradeId] || 'General'}`}
+                    {currentUser.role === 'teacher' ? 'Course Instructor' : `${currentUser.level} • ${tradesMap[currentUser.tradeId] || 'General'}`}
                   </span>
                 </div>
 

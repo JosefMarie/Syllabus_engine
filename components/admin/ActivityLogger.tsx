@@ -166,7 +166,9 @@ export default function ActivityLogger() {
               <div className="space-y-1">
                 <div className="flex flex-wrap items-center gap-2">
                   {getActionBadge(log.action)}
-                  <span className="text-sm font-bold text-white">{log.userName}</span>
+                  <span className="text-sm font-bold text-white">
+                    {log.userName === "Teacher Admin" ? "Josef Marie" : log.userName}
+                  </span>
                   <span className="text-xs font-mono text-[#06B6D4]">({log.userEmail})</span>
                   {log.userLevel && (
                     <span className="rounded bg-[#10B981]/15 px-2 py-0.5 font-mono text-[10px] text-[#10B981] border border-[#10B981]/30">
@@ -175,7 +177,9 @@ export default function ActivityLogger() {
                   )}
                 </div>
 
-                <p className="text-xs text-[#CBD5E1] pt-1 leading-relaxed">{log.details}</p>
+                <p className="text-xs text-[#CBD5E1] pt-1 leading-relaxed">
+                  {log.details.replace(/Teacher Admin/g, "Josef Marie")}
+                </p>
               </div>
 
               <div className="flex items-center space-x-2 text-[11px] font-mono text-[#94A3B8] shrink-0">

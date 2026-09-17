@@ -187,7 +187,7 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
     if (!messagingTarget || !customMessage.trim()) return;
 
     setSending(true);
-    const senderName = adminUser?.fullName || "Instructor";
+    const senderName = (adminUser && adminUser.fullName && adminUser.fullName !== "Teacher Admin") ? adminUser.fullName : "Josef Marie";
 
     try {
       await sendStudentNotification(

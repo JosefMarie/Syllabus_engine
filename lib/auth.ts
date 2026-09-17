@@ -66,6 +66,13 @@ export function getAdminSession(): UserProfile | null {
       return null;
     }
 
+    if (session.role === "teacher" && (session.fullName === "Teacher Admin" || !session.fullName)) {
+      session.fullName = "Josef Marie";
+      try {
+        localStorage.setItem(ADMIN_SESSION_KEY, JSON.stringify(session));
+      } catch (e) {}
+    }
+
     return session;
   } catch (e) {
     return null;
@@ -221,7 +228,7 @@ export async function loginAdmin(
   // 4. Issue Admin Session with 30-minute expiry
   const adminProfile: UserProfile = {
     uid: authenticatedUid,
-    fullName: displayName,
+    fullName: "Josef Marie",
     email: cleanEmail,
     username: "layjoe",
     tradeId: "all",
@@ -238,11 +245,11 @@ export async function loginAdmin(
 
   await logActivity({
     userId: adminProfile.uid,
-    userName: adminProfile.fullName,
+    userName: "Josef Marie",
     userEmail: adminProfile.email,
     userLevel: adminProfile.level,
     action: "ADMIN_LOGIN",
-    details: "Teacher Admin logged into management portal (2FA Authenticator Verified)",
+    details: "Josef Marie logged into management portal (2FA Authenticator Verified)",
   });
 
   return { success: true, admin: adminProfile };

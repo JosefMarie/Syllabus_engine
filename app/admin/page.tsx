@@ -208,7 +208,7 @@ export default function AdminDashboardPage() {
 
           <div className="flex items-center space-x-3">
             <span className="hidden lg:inline text-xs font-mono text-[#94A3B8]">
-              Logged in: <strong className="text-white">{adminUser?.email}</strong>
+              Instructor: <strong className="text-white">Josef Marie</strong> <span className="text-[#64748B]">({adminUser?.email})</span>
             </span>
 
             {/* Real-time Student Attention & Side Window Alert System */}

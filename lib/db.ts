@@ -1358,7 +1358,7 @@ export async function sendNotificationToStudent(
   if (typeof studentUidOrNotification === 'string') {
     notificationData = {
       userId: studentUidOrNotification,
-      senderName: senderNameArg || "Teacher Admin",
+      senderName: senderNameArg || "Josef Marie",
       message: messageArg || "",
       read: false,
     };
@@ -1547,8 +1547,13 @@ export async function markNotificationAsRead(id: string): Promise<void> {
 }
 
 export async function logActivity(entry: Omit<ActivityLog, 'id' | 'timestamp'>): Promise<ActivityLog> {
+  const cleanUserName = entry.userName === "Teacher Admin" ? "Josef Marie" : entry.userName;
+  const cleanDetails = (entry.details || "").replace(/Teacher Admin/g, "Josef Marie");
+
   const newLog: ActivityLog = {
     ...entry,
+    userName: cleanUserName,
+    details: cleanDetails,
     id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     timestamp: new Date().toISOString()
   };
@@ -1584,7 +1589,13 @@ export async function getAllActivityLogs(): Promise<ActivityLog[]> {
       const snapshot = await getDocs(q);
       const items: ActivityLog[] = [];
       snapshot.forEach((docSnap) => {
-        items.push({ id: docSnap.id, ...docSnap.data() } as ActivityLog);
+        const d = docSnap.data() as ActivityLog;
+        items.push({
+          ...d,
+          id: docSnap.id,
+          userName: d.userName === "Teacher Admin" ? "Josef Marie" : d.userName,
+          details: (d.details || "").replace(/Teacher Admin/g, "Josef Marie")
+        });
       });
       if (items.length > 0) return items;
     } catch (err) {
@@ -1595,7 +1606,12 @@ export async function getAllActivityLogs(): Promise<ActivityLog[]> {
   if (typeof window === "undefined") return [];
   try {
     const saved = localStorage.getItem(ACTIVITIES_KEY);
-    return saved ? JSON.parse(saved) : [];
+    const list: ActivityLog[] = saved ? JSON.parse(saved) : [];
+    return list.map(l => ({
+      ...l,
+      userName: l.userName === "Teacher Admin" ? "Josef Marie" : l.userName,
+      details: (l.details || "").replace(/Teacher Admin/g, "Josef Marie")
+    }));
   } catch (e) {
     return [];
   }

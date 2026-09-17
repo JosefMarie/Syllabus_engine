@@ -542,7 +542,7 @@ export default function StudentProgressManager() {
     setSending(true);
 
     const admin = getAdminSession();
-    const senderName = admin ? admin.fullName : "Teacher Admin";
+    const senderName = (admin && admin.fullName && admin.fullName !== "Teacher Admin") ? admin.fullName : "Josef Marie";
 
     if (messagingTarget === 'behind') {
       const behindStudents = students.filter((s) => s.progressPercent < 30);
