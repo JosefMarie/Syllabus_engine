@@ -115,27 +115,28 @@ function BuilderContent() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-[#334155] bg-[#0B0F19]/90 px-6 py-4 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between">
-          <div className="flex items-center space-x-3">
+      <header className="sticky top-0 z-30 border-b border-[#334155] bg-[#0B0F19]/90 px-3 sm:px-6 py-2.5 sm:py-4 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-2">
+          <div className="flex items-center space-x-1.5 sm:space-x-3 min-w-0">
             <Link
               href="/admin"
-              className="inline-flex items-center space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors bg-[#1E293B] px-3 py-1.5 rounded-lg border border-[#334155]"
+              className="inline-flex items-center space-x-1 text-xs text-[#94A3B8] hover:text-white transition-colors bg-[#1E293B] px-2.5 sm:px-3 py-1.5 rounded-lg border border-[#334155] shrink-0"
+              title="Return to Admin Dashboard"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
-              <span>Dashboard</span>
+              <span className="hidden xs:inline">Dashboard</span>
             </Link>
             <Link
               href="/"
-              className="inline-flex items-center space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors bg-[#1E293B] px-3 py-1.5 rounded-lg border border-[#334155]"
+              className="hidden sm:inline-flex items-center space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors bg-[#1E293B] px-3 py-1.5 rounded-lg border border-[#334155] shrink-0"
             >
               <span>Catalog</span>
             </Link>
-            <span className="text-[#334155]">/</span>
-            <div className="flex items-center space-x-2">
-              <ShieldCheck className="h-5 w-5 text-[#06B6D4]" />
-              <span className="text-sm font-bold text-white font-mono">
-                {id ? `Editing Syllabus #${id}` : "Create Syllabus Hub"}
+            <span className="text-[#334155] shrink-0">/</span>
+            <div className="flex items-center space-x-1.5 min-w-0">
+              <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 text-[#06B6D4] shrink-0" />
+              <span className="text-xs sm:text-sm font-bold text-white font-mono truncate">
+                {id ? `Edit #${id}` : "Create Syllabus Hub"}
               </span>
             </div>
           </div>

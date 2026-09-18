@@ -119,10 +119,16 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to delete this syllabus?")) {
-      await deleteSyllabus(id);
-      setSyllabi(syllabi.filter(s => s.id !== id));
+  const handleDelete = async (id: string, title?: string) => {
+    const courseLabel = title ? `"${title}"` : "this syllabus";
+    if (confirm(`Are you sure you want to permanently delete ${courseLabel}? This action cannot be undone.`)) {
+      try {
+        await deleteSyllabus(id);
+        setSyllabi(prev => prev.filter(s => s.id !== id));
+      } catch (err) {
+        console.error("Delete syllabus error:", err);
+        alert("Failed to delete syllabus. Please try again.");
+      }
     }
   };
 
@@ -187,27 +193,30 @@ export default function AdminDashboardPage() {
   return (
     <div className="min-h-screen bg-[#0B0F19] text-[#CBD5E1]">
       {/* Admin Top Header */}
-      <header className="sticky top-0 z-30 border-b border-[#334155] bg-[#0B0F19]/90 px-6 py-4 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <div className="flex items-center space-x-3">
+      <header className="sticky top-0 z-30 border-b border-[#334155] bg-[#0B0F19]/90 px-3 sm:px-6 py-2.5 sm:py-4 backdrop-blur-md">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2">
+          {/* Left Brand & Navigation */}
+          <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
             <Link
               href="/"
-              className="inline-flex items-center space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors bg-[#1E293B] px-3 py-1.5 rounded-lg border border-[#334155]"
+              className="inline-flex items-center space-x-1 sm:space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors bg-[#1E293B] px-2.5 sm:px-3 py-1.5 rounded-lg border border-[#334155] shrink-0"
+              title="Return to Public Course Catalog"
             >
-              <ArrowLeft className="h-4 w-4" />
-              <span>Catalog</span>
+              <ArrowLeft className="h-3.5 w-3.5" />
+              <span className="hidden xs:inline">Catalog</span>
             </Link>
-            <span className="text-[#334155]">/</span>
-            <div className="flex items-center space-x-2">
-              <ShieldCheck className="h-5 w-5 text-[#06B6D4]" />
-              <h1 className="text-lg font-extrabold text-white tracking-tight">
-                Teacher Admin Portal
+            <span className="text-[#334155] shrink-0">/</span>
+            <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0">
+              <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 text-[#06B6D4] shrink-0" />
+              <h1 className="text-xs sm:text-base md:text-lg font-extrabold text-white tracking-tight truncate whitespace-nowrap">
+                <span className="hidden sm:inline">Teacher </span>Admin<span className="hidden xs:inline"> Portal</span>
               </h1>
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
-            <span className="hidden lg:inline text-xs font-mono text-[#94A3B8]">
+          {/* Right Action Items */}
+          <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
+            <span className="hidden xl:inline text-xs font-mono text-[#94A3B8]">
               Instructor: <strong className="text-white">Josef Marie</strong> <span className="text-[#64748B]">({adminUser?.email})</span>
             </span>
 
@@ -216,7 +225,8 @@ export default function AdminDashboardPage() {
 
             <Link
               href="/admin/builder"
-              className="inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4] px-3.5 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg"
+              title="Create New Syllabus"
+              className="inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4] p-2 sm:px-3.5 sm:py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg shrink-0"
             >
               <Plus className="h-4 w-4" />
               <span className="hidden sm:inline">New Syllabus</span>
@@ -225,7 +235,7 @@ export default function AdminDashboardPage() {
             <button
               onClick={handleRevokeAll}
               title="Instantly disconnects all phones, tablets, and computers across the school"
-              className="inline-flex items-center space-x-1.5 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 hover:text-white transition-all"
+              className="hidden sm:inline-flex items-center space-x-1.5 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 hover:text-white transition-all shrink-0"
             >
               <Smartphone className="h-3.5 w-3.5 text-rose-400" />
               <span className="hidden md:inline">Log Out All Devices</span>
@@ -233,7 +243,8 @@ export default function AdminDashboardPage() {
 
             <button
               onClick={handleLogout}
-              className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3.5 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-rose-500/50 transition-all"
+              title="Logout from Admin Portal"
+              className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] p-2 sm:px-3.5 sm:py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-rose-500/50 transition-all shrink-0"
             >
               <LogOut className="h-3.5 w-3.5 text-rose-400" />
               <span className="hidden sm:inline">Logout</span>
@@ -243,45 +254,45 @@ export default function AdminDashboardPage() {
       </header>
 
       {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-6 py-8">
-        {/* Navigation Tabs */}
-        <div className="mb-8 flex flex-wrap gap-2 sm:gap-4 border-b border-[#334155]">
+      <main className="mx-auto max-w-7xl px-3 sm:px-6 py-4 sm:py-8">
+        {/* Navigation Tabs - Clean Swipeable Horizontal Scroll on Mobile */}
+        <div className="mb-6 sm:mb-8 flex overflow-x-auto no-scrollbar gap-2 sm:gap-4 border-b border-[#334155] pb-px -mx-3 px-3 sm:mx-0 sm:px-0">
           <button
             onClick={() => setActiveTab('syllabi')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-sm font-bold transition-all ${
+            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
               activeTab === 'syllabi'
                 ? 'border-[#06B6D4] text-[#06B6D4]'
                 : 'border-transparent text-[#94A3B8] hover:text-white'
             }`}
           >
-            <BookOpen className="h-4 w-4" />
+            <BookOpen className="h-4 w-4 shrink-0" />
             <span>Course Syllabi ({syllabi.length})</span>
           </button>
 
           <button
             onClick={() => setActiveTab('trades')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-sm font-bold transition-all ${
+            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
               activeTab === 'trades'
                 ? 'border-[#06B6D4] text-[#06B6D4]'
                 : 'border-transparent text-[#94A3B8] hover:text-white'
             }`}
           >
-            <Briefcase className="h-4 w-4" />
+            <Briefcase className="h-4 w-4 shrink-0" />
             <span>Academic Trades</span>
           </button>
 
           <button
             onClick={() => setActiveTab('students')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-sm font-bold transition-all ${
+            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
               activeTab === 'students'
                 ? 'border-[#06B6D4] text-[#06B6D4]'
                 : 'border-transparent text-[#94A3B8] hover:text-white'
             }`}
           >
-            <UserCheck className="h-4 w-4" />
+            <UserCheck className="h-4 w-4 shrink-0" />
             <span>Student Approvals</span>
             {pendingCount > 0 && (
-              <span className="ml-1 rounded-full bg-[#F59E0B] px-2.5 py-0.5 text-[10px] font-mono font-extrabold text-slate-950 shadow-md">
+              <span className="ml-1 rounded-full bg-[#F59E0B] px-2 py-0.5 text-[10px] font-mono font-extrabold text-slate-950 shadow-md">
                 {pendingCount} Pending
               </span>
             )}
@@ -289,25 +300,25 @@ export default function AdminDashboardPage() {
 
           <button
             onClick={() => setActiveTab('progress')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-sm font-bold transition-all ${
+            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
               activeTab === 'progress'
                 ? 'border-[#06B6D4] text-[#06B6D4]'
                 : 'border-transparent text-[#94A3B8] hover:text-white'
             }`}
           >
-            <Users className="h-4 w-4" />
+            <Users className="h-4 w-4 shrink-0" />
             <span>Progress & Messaging</span>
           </button>
 
           <button
             onClick={() => setActiveTab('activity')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-sm font-bold transition-all ${
+            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
               activeTab === 'activity'
                 ? 'border-[#06B6D4] text-[#06B6D4]'
                 : 'border-transparent text-[#94A3B8] hover:text-white'
             }`}
           >
-            <Activity className="h-4 w-4" />
+            <Activity className="h-4 w-4 shrink-0" />
             <span>Activity Logs & Audit</span>
           </button>
         </div>
@@ -315,27 +326,27 @@ export default function AdminDashboardPage() {
         {/* TAB 1: SYLLABI MANAGEMENT */}
         {activeTab === 'syllabi' && (
           <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#334155] pb-6 gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#334155] pb-4 sm:pb-6 gap-3 sm:gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-white">Course Syllabi Management</h2>
+                <h2 className="text-xl sm:text-2xl font-bold text-white">Course Syllabi Management</h2>
                 <p className="mt-1 text-xs text-[#94A3B8]">
                   Manage published student syllabi or parse new course documents with Gemini 2.5 Pro.
                 </p>
               </div>
 
-              <div className="flex items-center space-x-3 text-xs font-mono">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs font-mono">
                 <button
                   onClick={() => downloadAllSyllabiAsJSON(syllabi)}
-                  className="inline-flex items-center space-x-1.5 rounded-lg border border-[#06B6D4]/40 bg-[#06B6D4]/10 px-3 py-1 font-sans text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4]/20 transition-all"
+                  className="inline-flex items-center space-x-1.5 rounded-lg border border-[#06B6D4]/40 bg-[#06B6D4]/10 px-2.5 sm:px-3 py-1 font-sans text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4]/20 transition-all shrink-0"
                   title="Export all course syllabi as a single JSON backup"
                 >
                   <Download className="h-3.5 w-3.5" />
                   <span>Export All (JSON)</span>
                 </button>
-                <span className="rounded-lg bg-[#10B981]/15 px-3 py-1 text-[#10B981] border border-[#10B981]/30">
+                <span className="rounded-lg bg-[#10B981]/15 px-2.5 sm:px-3 py-1 text-[#10B981] border border-[#10B981]/30 shrink-0">
                   Published: {syllabi.filter(s => s.status === 'published').length}
                 </span>
-                <span className="rounded-lg bg-[#F59E0B]/15 px-3 py-1 text-[#F59E0B] border border-[#F59E0B]/30">
+                <span className="rounded-lg bg-[#F59E0B]/15 px-2.5 sm:px-3 py-1 text-[#F59E0B] border border-[#F59E0B]/30 shrink-0">
                   Drafts: {syllabi.filter(s => s.status === 'draft').length}
                 </span>
               </div>
@@ -436,8 +447,9 @@ export default function AdminDashboardPage() {
                       </Link>
 
                       <button
-                        onClick={() => handleDelete(syllabus.id)}
+                        onClick={() => handleDelete(syllabus.id, syllabus.title)}
                         className="rounded-xl bg-rose-500/10 p-2 text-rose-400 hover:bg-rose-500/20 transition-colors"
+                        title="Permanently Delete Syllabus"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>

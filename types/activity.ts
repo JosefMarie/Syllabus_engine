@@ -15,6 +15,7 @@ export type ActivityActionType =
   | "CREATE_TRADE"
   | "DELETE_TRADE"
   | "SAVE_SYLLABUS"
+  | "DELETE_SYLLABUS"
   | "SEND_STUDENT_MESSAGE"
   | "STUDENT_LOGOUT"
   | "AUTO_TIMEOUT_LOGOUT"

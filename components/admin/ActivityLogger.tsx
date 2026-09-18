@@ -21,15 +21,26 @@ import {
 export default function ActivityLogger() {
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [clearing, setClearing] = useState(false);
+  const [displayLimit, setDisplayLimit] = useState(50);
   const [search, setSearch] = useState("");
   const [actionFilter, setActionFilter] = useState<string>("ALL");
 
-  const loadLogs = async () => {
+  const loadLogs = async (limitCount = 50) => {
     setLoading(true);
-    const data = await getAllActivities();
+    const data = await getAllActivities(limitCount);
     setActivities(data);
     setLoading(false);
+  };
+
+  const handleLoadMore = async () => {
+    setLoadingMore(true);
+    const nextLimit = displayLimit + 50;
+    const data = await getAllActivities(nextLimit);
+    setActivities(data);
+    setDisplayLimit(nextLimit);
+    setLoadingMore(false);
   };
 
   const handleClearLogs = async () => {
@@ -43,7 +54,7 @@ export default function ActivityLogger() {
   };
 
   useEffect(() => {
-    loadLogs();
+    loadLogs(50);
   }, []);
 
   const filtered = activities.filter((act) => {
@@ -74,8 +85,10 @@ export default function ActivityLogger() {
         return <span className="rounded-full bg-rose-500/15 px-2.5 py-0.5 text-[10px] font-mono font-bold text-rose-400 border border-rose-500/30 flex items-center gap-1">Rejected</span>;
       case "RESET_FOCUS_STRIKES":
         return <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-[10px] font-mono font-bold text-amber-400 border border-amber-500/30 flex items-center gap-1">Strikes Cleared</span>;
-      case "STUDENT_SUSPENDED_FOCUS":
-        return <span className="rounded-full bg-rose-500/20 px-2.5 py-0.5 text-[10px] font-mono font-bold text-rose-300 border border-rose-500/40 flex items-center gap-1">Auto-Suspended</span>;
+      case "SAVE_SYLLABUS":
+        return <span className="rounded-full bg-[#06B6D4]/15 px-2.5 py-0.5 text-[10px] font-mono font-bold text-[#06B6D4] border border-[#06B6D4]/30 flex items-center gap-1">Syllabus Saved</span>;
+      case "DELETE_SYLLABUS":
+        return <span className="rounded-full bg-rose-500/15 px-2.5 py-0.5 text-[10px] font-mono font-bold text-rose-400 border border-rose-500/30 flex items-center gap-1">Syllabus Deleted</span>;
       default:
         return <span className="rounded-full bg-[#334155] px-2.5 py-0.5 text-[10px] font-mono text-white">{action}</span>;
     }
@@ -107,7 +120,7 @@ export default function ActivityLogger() {
           </button>
 
           <button
-            onClick={loadLogs}
+            onClick={() => loadLogs(displayLimit)}
             className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3.5 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white transition-all shadow-md"
           >
             <RefreshCw className="h-3.5 w-3.5 text-[#06B6D4]" />
@@ -188,6 +201,28 @@ export default function ActivityLogger() {
               </div>
             </div>
           ))}
+
+          {activities.length >= displayLimit && (
+            <div className="pt-4 text-center">
+              <button
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="inline-flex items-center space-x-2 rounded-xl border border-[#334155] bg-[#1E293B] px-6 py-2.5 text-xs font-bold text-white hover:border-[#06B6D4] hover:bg-[#06B6D4]/10 transition-all shadow-md disabled:opacity-50"
+              >
+                {loadingMore ? (
+                  <>
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin text-[#06B6D4]" />
+                    <span>Loading Previous Logs...</span>
+                  </>
+                ) : (
+                  <>
+                    <Clock className="h-3.5 w-3.5 text-[#06B6D4]" />
+                    <span>Load 50 More Logs (Showing {activities.length})</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -33,14 +33,18 @@ if (typeof window !== "undefined" || isFirebaseConfigured) {
     if (isFirebaseConfigured) {
       app = getApps().length > 0 ? getApp() : initializeApp(firebaseConfig);
 
-      // Aggressive localStorage cleanup to permanently resolve QuotaExceededError
+      // Startup storage hygiene: preserve active session and offline syllabus caches
       if (typeof window !== "undefined") {
         try {
           const preservedKeys = new Set([
             "syllabus_platform_current_user_v1",
+            "syllabus_platform_admin_session_v1",
             "syllabus_admin_session_v1",
             "syllabus_auth_session_v1",
-            "syllabus_admin_presence_sound"
+            "syllabus_admin_presence_sound",
+            "syllabus_platform_syllabi_v1",
+            "syllabus_platform_trades_v1",
+            "syllabus_platform_progress_v1"
           ]);
 
           const keysToRemove: string[] = [];
@@ -49,17 +53,13 @@ if (typeof window !== "undefined" || isFirebaseConfigured) {
             if (!key) continue;
             if (preservedKeys.has(key)) continue;
             if (key.startsWith("firebase:authUser")) continue;
+            if (key.startsWith("syllabus_single_v2_")) continue; // Preserve modern single syllabus caches
 
-            // Purge all firestore internal tokens/mutations/clients that choked localStorage
-            if (key.startsWith("firestore_") || key.startsWith("firebase:")) {
-              keysToRemove.push(key);
-              continue;
-            }
-            // Purge old bloated offline queues and raw syllabus monolithic dumps
+            // Purge old firestore internal tokens and obsolete v1 dumps
             if (
-              key.startsWith("syllabus_offline_queue_") ||
-              key.startsWith("syllabus_single_") ||
-              key === "syllabus_platform_syllabi_v1" ||
+              key.startsWith("firestore_") ||
+              key.startsWith("firebase:") ||
+              key.startsWith("syllabus_single_v1_") ||
               key === "syllabus_platform_activities_v1"
             ) {
               keysToRemove.push(key);
@@ -71,10 +71,13 @@ if (typeof window !== "undefined" || isFirebaseConfigured) {
         }
       }
 
-      // Initialize Firestore with memoryLocalCache to eliminate IndexedDB and localStorage tab manager locks
+      // Initialize Firestore with memoryLocalCache and experimentalForceLongPolling.
+      // experimentalForceLongPolling ensures 100% reliable connectivity on public networks,
+      // school/university firewalls, proxies, and captive portals that block or drop WebSockets (wss://).
       try {
         db = initializeFirestore(app, {
-          localCache: memoryLocalCache()
+          localCache: memoryLocalCache(),
+          experimentalForceLongPolling: true,
         });
       } catch (cacheErr) {
         try {

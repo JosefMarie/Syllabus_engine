@@ -23,6 +23,8 @@ interface Props {
   activeSubtopicId: string | null;
   onSelectSubtopic: (subtopic: Subtopic) => void;
   progressMap: Record<string, boolean>;
+  mobileOpen?: boolean;
+  onMobileOpenChange?: (open: boolean) => void;
 }
 
 export default function SidebarTree({
@@ -30,8 +32,19 @@ export default function SidebarTree({
   activeSubtopicId,
   onSelectSubtopic,
   progressMap,
+  mobileOpen: externalMobileOpen,
+  onMobileOpenChange,
 }: Props) {
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [internalMobileOpen, setInternalMobileOpen] = useState(false);
+  const isDrawerOpen = externalMobileOpen !== undefined ? externalMobileOpen : internalMobileOpen;
+  const setDrawerOpen = (open: boolean) => {
+    if (onMobileOpenChange) {
+      onMobileOpenChange(open);
+    } else {
+      setInternalMobileOpen(open);
+    }
+  };
+
   const [searchQuery, setSearchQuery] = useState("");
   
   // Safely extract first identifiers with complete optional chaining to prevent undefined[0] runtime errors
@@ -92,9 +105,18 @@ export default function SidebarTree({
             </span>
             <span className="text-sm font-bold font-mono tracking-tight">{courseCodeDisplay}</span>
           </Link>
-          <span className="rounded-full bg-[#06B6D4]/10 px-2 py-0.5 text-[10px] font-mono text-[#06B6D4] border border-[#06B6D4]/30">
-            {percentComplete}% Complete
-          </span>
+          <div className="flex items-center space-x-2">
+            <span className="rounded-full bg-[#06B6D4]/10 px-2 py-0.5 text-[10px] font-mono text-[#06B6D4] border border-[#06B6D4]/30">
+              {percentComplete}% Complete
+            </span>
+            <button
+              onClick={() => setDrawerOpen(false)}
+              className="rounded-lg p-1 text-slate-400 hover:bg-[#334155] hover:text-white lg:hidden transition-colors"
+              title="Close Syllabus Outline"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
         <h2 className="mt-2 text-base font-bold text-white leading-snug line-clamp-2">
           {courseTitleDisplay}
@@ -214,7 +236,7 @@ export default function SidebarTree({
                                                 key={sub.id}
                                                 onClick={() => {
                                                   onSelectSubtopic(sub);
-                                                  setMobileOpen(false);
+                                                  setDrawerOpen(false);
                                                 }}
                                                 className={`flex w-full items-center justify-between rounded-md px-2 py-1.5 text-left text-xs transition-all ${
                                                   isActive
@@ -256,34 +278,19 @@ export default function SidebarTree({
 
   return (
     <>
-      {/* Mobile Drawer Header Trigger */}
-      <div className="flex items-center justify-between border-b border-[#334155] bg-[#1E293B] p-3 md:hidden">
-        <div className="flex items-center space-x-2 truncate">
-          <span className="rounded bg-[#06B6D4] px-2 py-0.5 text-xs font-bold text-slate-950 font-mono">
-            {courseCodeDisplay}
-          </span>
-          <span className="text-xs font-bold text-white truncate max-w-[200px]">
-            {courseTitleDisplay}
-          </span>
-        </div>
-        <button
-          onClick={() => setMobileOpen(!mobileOpen)}
-          className="rounded-lg bg-[#0B0F19] p-2 text-[#94A3B8] hover:text-white"
-        >
-          {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
-      </div>
-
-      {/* Desktop Sidebar (Permanent) */}
-      <div className="hidden h-screen w-80 shrink-0 border-r border-[#334155] md:block">
+      {/* Desktop Sidebar (Permanent on lg+ viewports) */}
+      <div className="hidden h-screen w-80 shrink-0 border-r border-[#334155] lg:block">
         {contentTree}
       </div>
 
-      {/* Mobile Slide-Out Drawer */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-40 flex md:hidden">
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs" onClick={() => setMobileOpen(false)} />
-          <div className="relative z-50 w-80 max-w-full bg-[#1E293B]">
+      {/* Mobile & Tablet Slide-Out Drawer (< lg viewports) */}
+      {isDrawerOpen && (
+        <div className="fixed inset-0 z-50 flex lg:hidden">
+          <div 
+            className="fixed inset-0 bg-black/75 backdrop-blur-xs transition-opacity" 
+            onClick={() => setDrawerOpen(false)} 
+          />
+          <div className="relative z-50 w-80 max-w-[85vw] h-full bg-[#1E293B] shadow-2xl flex flex-col animate-in slide-in-from-left duration-200">
             {contentTree}
           </div>
         </div>

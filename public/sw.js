@@ -1,4 +1,4 @@
-const CACHE_NAME = "syllabus-pwa-v5";
+const CACHE_NAME = "syllabus-pwa-v6";
 
 // Static assets to precache immediately on install (public safe assets only)
 const PRECACHE_ASSETS = [
@@ -43,7 +43,7 @@ self.addEventListener("fetch", (event) => {
   // 1. Bypass Firebase Cloud Firestore, Auth & Storage APIs (they have built-in offline caches)
   if (
     url.hostname.includes("googleapis.com") ||
-    url.hostname.includes("firebase") ||
+    url.hostname.includes("firebaseio.com") ||
     url.hostname.includes("identitytoolkit") ||
     url.hostname.includes("securetoken") ||
     event.request.method !== "GET"

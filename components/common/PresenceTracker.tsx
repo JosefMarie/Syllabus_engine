@@ -73,12 +73,25 @@ export default function PresenceTracker({
     };
   }, [syllabusId, syllabusTitle, topicId, topicTitle, subtopicId, subtopicTitle]);
 
-  // Flush active seconds helper
+  const OFFLINE_STUDY_KEY = `syllabus_offline_time_${userId}`;
+
+  // Flush active seconds helper with offline queueing
   const flushActiveSeconds = () => {
     const cur = currentTopicRef.current;
     if (activeSecondsAccumulatorRef.current > 0 && cur.topicId && cur.syllabusId) {
       const secondsToAdd = activeSecondsAccumulatorRef.current;
       activeSecondsAccumulatorRef.current = 0;
+
+      // If browser is offline, store locally until connectivity is restored
+      if (typeof navigator !== "undefined" && !navigator.onLine) {
+        try {
+          const existing = parseInt(localStorage.getItem(OFFLINE_STUDY_KEY) || "0", 10);
+          localStorage.setItem(OFFLINE_STUDY_KEY, String(existing + secondsToAdd));
+        } catch (e) {
+          console.warn("Error saving offline study time:", e);
+        }
+        return;
+      }
 
       recordActiveTopicTime({
         userId,
@@ -97,6 +110,46 @@ export default function PresenceTracker({
       }).catch((err) => console.warn("Error flushing active topic time:", err));
     }
   };
+
+  // Reconnection listener to flush any queued offline study seconds
+  useEffect(() => {
+    if (!userId) return;
+    const handleOnline = () => {
+      try {
+        const queued = parseInt(localStorage.getItem(OFFLINE_STUDY_KEY) || "0", 10);
+        if (queued > 0) {
+          localStorage.removeItem(OFFLINE_STUDY_KEY);
+          activeSecondsAccumulatorRef.current += queued;
+          flushActiveSeconds();
+        }
+      } catch (e) {}
+    };
+    window.addEventListener("online", handleOnline);
+    return () => window.removeEventListener("online", handleOnline);
+  }, [userId]);
+
+  // Real-Time Cross-Tab / Multi-Window Collision Detection
+  useEffect(() => {
+    if (typeof window === "undefined" || !("BroadcastChannel" in window) || !userId) return;
+    const channelName = `syllabus_tab_detector_${userId}`;
+    const channel = new BroadcastChannel(channelName);
+
+    // Announce to other tabs that this tab is active
+    channel.postMessage({ type: "PROBE_OTHER_TABS", tabTime: Date.now() });
+
+    channel.onmessage = (e) => {
+      if (e.data?.type === "PROBE_OTHER_TABS") {
+        channel.postMessage({ type: "ACK_TAB_PRESENT" });
+        setMultiWindowDetected(true);
+      } else if (e.data?.type === "ACK_TAB_PRESENT") {
+        setMultiWindowDetected(true);
+      }
+    };
+
+    return () => {
+      channel.close();
+    };
+  }, [userId]);
 
   // Helper: Detect if browser focus or visibility APIs have been hijacked by extensions or scripts
   const isFocusTampered = (): boolean => {
@@ -253,10 +306,21 @@ export default function PresenceTracker({
       } else {
         // Returned to syllabus window and actively engaging -> reset continuous unfocused duration
         unfocusedStartTimeRef.current = null;
-        unfocusedDuration = 0;
       }
 
-      updateStudentPresence(userId, fullName, state, subtopicTitle, syllabusTitle, unfocusedDuration);
+      const now = Date.now();
+      const stateChanged = state !== lastReportedStateRef.current;
+      const subtopicChanged = (subtopicTitle || "") !== lastReportedSubtopicRef.current;
+      const routineHeartbeatDue = (now - lastPresenceWriteRef.current) >= 20000;
+      const isUnfocusedTracking = unfocusedDuration > 0;
+
+      // Adaptive Write: Immediate on state/topic shift or active unfocused tracking, 20s steady-state heartbeat
+      if (stateChanged || subtopicChanged || routineHeartbeatDue || isUnfocusedTracking) {
+        lastReportedStateRef.current = state;
+        lastReportedSubtopicRef.current = subtopicTitle || "";
+        lastPresenceWriteRef.current = now;
+        updateStudentPresence(userId, fullName, state, subtopicTitle, syllabusTitle, unfocusedDuration);
+      }
 
       // ACCUMULATE ACTIVE LEARNING TIME:
       // Only count when actively reading/interacting. Do NOT count when idle (> 60s) or tab unfocused!
@@ -269,6 +333,10 @@ export default function PresenceTracker({
         }
       }
     };
+
+    const lastReportedStateRef = { current: "" as PresenceState | "" };
+    const lastReportedSubtopicRef = { current: "" };
+    const lastPresenceWriteRef = { current: 0 };
 
     // Initial report
     reportPresence();

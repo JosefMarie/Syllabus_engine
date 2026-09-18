@@ -78,6 +78,8 @@ export interface Syllabus {
   updatedAt: string;
   learningOutcomes: LearningOutcome[];
   citationsDictionary?: Record<string, Citation>; // Fast lookup by lowercase term
+  _isChunked?: boolean;
+  _chunkCount?: number;
 }
 
 export interface SyllabusExtractionResult {

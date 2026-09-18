@@ -6,8 +6,20 @@ import { parseSyllabusWithGemini } from "@/lib/gemini";
 import { saveSyllabus, getAllTrades } from "@/lib/db";
 import { uploadFileToStorage } from "@/lib/storage";
 import MarkdownEditor from "./MarkdownEditor";
-import SandpackPlayground from "@/components/viewer/SandpackPlayground";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
+
+const SandpackPlayground = dynamic(() => import("@/components/viewer/SandpackPlayground"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-48 w-full items-center justify-center rounded-2xl border border-[#334155] bg-[#0F172A] p-4 text-center">
+      <div className="space-y-2">
+        <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent" />
+        <p className="text-xs font-mono text-[#94A3B8]">Loading Code Sandbox Preview...</p>
+      </div>
+    </div>
+  ),
+});
 import { Trade, StudentLevel } from "@/types/auth";
 import { downloadSyllabusAsJSON, downloadSyllabusAsText } from "@/lib/exportSyllabus";
 import { 
@@ -62,9 +74,11 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
       id: `syllabus-${Date.now()}`,
       title: "",
       courseCode: "",
-      department: "Computer Science & Engineering",
-      instructor: "Instructor Name",
+      department: "Software Engineering & Systems",
+      instructor: "Josef Marie",
       description: "",
+      tradeId: "trade-1785861602651",
+      level: "Level 4",
       status: "draft",
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -233,6 +247,9 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
       const updatedSyllabus: Syllabus = { 
         ...syllabus, 
         courseCode: (syllabus.courseCode || "").trim() || `CRS-${Math.floor(100 + Math.random() * 900)}`,
+        instructor: syllabus.instructor || "Josef Marie",
+        tradeId: syllabus.tradeId || "trade-1785861602651",
+        level: syllabus.level || "Level 4",
         status: targetStatus,
         updatedAt: new Date().toISOString()
       };
@@ -272,8 +289,9 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
         ...result.syllabus,
         id: prev.id || result.syllabus.id,
         createdAt: prev.createdAt || result.syllabus.createdAt,
-        tradeId: prev.tradeId || result.syllabus.tradeId,
-        level: prev.level || result.syllabus.level,
+        instructor: prev.instructor || result.syllabus.instructor || "Josef Marie",
+        tradeId: prev.tradeId || result.syllabus.tradeId || "trade-1785861602651",
+        level: prev.level || result.syllabus.level || "Level 4",
         status: prev.status || 'draft',
         documentUrl: prev.documentUrl || result.syllabus.documentUrl,
       }));

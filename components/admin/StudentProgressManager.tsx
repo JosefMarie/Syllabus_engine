@@ -1088,7 +1088,7 @@ export default function StudentProgressManager() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
+                <table className="w-full text-left text-xs hidden md:table">
                   <thead className="border-b border-[#334155] bg-[#0B0F19]/70 font-mono text-[#94A3B8] uppercase">
                     <tr>
                       <th className="px-6 py-4">Student</th>
@@ -1262,6 +1262,91 @@ export default function StudentProgressManager() {
                     ))}
                   </tbody>
                 </table>
+
+                {/* Mobile Responsive Cards */}
+                <div className="md:hidden divide-y divide-[#334155]">
+                  {studentRowsReport.map((st) => (
+                    <div key={st.userId} className="p-4 space-y-3 bg-[#1E293B]">
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <div className="font-bold text-white text-sm">{st.studentName}</div>
+                          <div className="text-[11px] text-[#94A3B8] font-mono">
+                            @{st.studentUsername || 'student'}
+                            {st.studentEmail && ` • ${st.studentEmail}`}
+                          </div>
+                        </div>
+                        <span className="rounded bg-[#06B6D4]/15 px-2 py-0.5 font-mono text-[10px] text-[#06B6D4] font-bold border border-[#06B6D4]/30 shrink-0">
+                          {st.studentLevel || 'Level 4'}
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 text-[11px]">
+                        <div className="rounded-xl bg-[#0B0F19] p-2.5 border border-[#334155]">
+                          <span className="text-[#94A3B8] block text-[10px] uppercase font-mono">Active Focus</span>
+                          <div className="font-mono text-sm font-extrabold text-white flex items-center gap-1.5 mt-0.5">
+                            <Clock className="h-3.5 w-3.5 text-[#06B6D4]" />
+                            <span>{st.totalActiveMinutes} mins</span>
+                          </div>
+                        </div>
+
+                        <div className="rounded-xl bg-[#0B0F19] p-2.5 border border-[#334155]">
+                          <span className="text-[#94A3B8] block text-[10px] uppercase font-mono">Strikes Status</span>
+                          <div className="mt-0.5">
+                            {st.unfocusedCount >= 10 ? (
+                              <span className="text-rose-400 font-mono font-bold text-xs">10/10 Suspended</span>
+                            ) : st.unfocusedCount > 0 ? (
+                              <span className="text-amber-400 font-mono font-bold text-xs">{st.unfocusedCount}/10 Strikes</span>
+                            ) : (
+                              <span className="text-emerald-400 font-mono font-bold text-xs">0/10 Clear</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {st.topics.length > 0 && (
+                        <div className="flex flex-wrap gap-1">
+                          {st.topics.slice(0, 3).map((tp) => (
+                            <span key={tp.topicId} className="inline-flex items-center space-x-1 rounded-md bg-[#0B0F19] px-2 py-0.5 text-[10px] text-[#CBD5E1] border border-[#334155]">
+                              <span className="max-w-[120px] truncate">{tp.topicTitle}</span>
+                              <span className="text-[#10B981] font-mono font-bold">{Math.round(tp.minutes)}m</span>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between pt-1">
+                        {st.unfocusedCount > 0 ? (
+                          <button
+                            onClick={async () => {
+                              await resetStudentUnfocusedCount(st.userId);
+                              setStudents(prev => prev.map(s => s.userId === st.userId ? { ...s, unfocusedCount: 0, suspensionReason: '', status: 'pending_approval' } : s));
+                              setSuccessNotice(`Reset strikes for ${st.studentName}`);
+                              setTimeout(() => setSuccessNotice(null), 4000);
+                            }}
+                            className="inline-flex items-center space-x-1 rounded-lg bg-amber-500/15 px-2.5 py-1 text-[11px] font-mono text-amber-400 border border-amber-500/30"
+                          >
+                            <RotateCcw className="h-3 w-3" />
+                            <span>Reset Strikes</span>
+                          </button>
+                        ) : <div />}
+
+                        <button
+                          onClick={() => setSelectedStudentDetail({
+                            userId: st.userId,
+                            studentName: st.studentName,
+                            studentEmail: st.studentEmail,
+                            records: st.records,
+                            totalMinutes: st.totalActiveMinutes
+                          })}
+                          className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#0B0F19] px-3.5 py-1.5 text-xs font-semibold text-[#06B6D4] hover:text-white"
+                        >
+                          <span>Detailed Log</span>
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
           </div>

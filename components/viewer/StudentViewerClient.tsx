@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Syllabus, Subtopic, Citation } from "@/types/syllabus";
 import { getSyllabusById, getSubtopicProgress, toggleSubtopicProgress, logActivity, saveLastReadSubtopic, getLastReadSubtopic, subscribeToUserProfile } from "@/lib/db";
 import { getStoredSession, getAdminSession } from "@/lib/auth";
@@ -10,7 +10,7 @@ import CitationsDrawer from "@/components/viewer/CitationsDrawer";
 import Link from "next/link";
 import ContentProtection from "@/components/common/ContentProtection";
 import { downloadSyllabusAsJSON, downloadSyllabusAsText } from "@/lib/exportSyllabus";
-import { ArrowLeft, ShieldCheck, Lock, AlertTriangle, LogIn, UserPlus, Download, FileText, FileCode, CheckCircle2, AlertCircle, ArrowRight, Eye, RotateCcw, BookOpen } from "lucide-react";
+import { ArrowLeft, Menu, ShieldCheck, Lock, AlertTriangle, LogIn, UserPlus, Download, FileText, FileCode, CheckCircle2, Circle, AlertCircle, ArrowRight, Eye, RotateCcw, BookOpen, Maximize2, Minimize2, X, Sparkles } from "lucide-react";
 import { UserProfile, StudentLevel } from "@/types/auth";
 import NotificationAlert from "@/components/common/NotificationAlert";
 import PresenceTracker from "@/components/common/PresenceTracker";
@@ -26,6 +26,37 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
   const [resumeNotice, setResumeNotice] = useState<string | null>(null);
+  const [isFocusMode, setIsFocusMode] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  const [toastData, setToastData] = useState<{
+    message: string;
+    subtopicTitle?: string;
+    isCompleted: boolean;
+    completedCount: number;
+    totalCount: number;
+  } | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const triggerToast = (message: string, isCompleted: boolean, subtopicTitle?: string, currentMap?: Record<string, boolean>) => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    const mapToUse = currentMap || progressMap;
+    const completedCount = allSubtopics.filter(s => mapToUse[s.id]).length;
+
+    setToastData({
+      message,
+      subtopicTitle,
+      isCompleted,
+      completedCount,
+      totalCount: allSubtopics.length,
+    });
+
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastData(null);
+    }, 4500);
+  };
 
   // Flattened array of all subtopics for easy previous/next pagination
   const [allSubtopics, setAllSubtopics] = useState<Subtopic[]>([]);
@@ -162,11 +193,35 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
     saveLastReadSubtopic(syllabusId, sub.id, currentUser?.uid);
   };
 
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const scrollTotal = el.scrollHeight - el.clientHeight;
+    if (scrollTotal > 0) {
+      const p = Math.min(100, Math.max(0, (el.scrollTop / scrollTotal) * 100));
+      setScrollProgress(p);
+    } else {
+      setScrollProgress(100);
+    }
+  };
+
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0;
+    }
+    setScrollProgress(0);
+  }, [activeSubtopic?.id]);
+
   const handleToggleComplete = async (subtopicId: string) => {
     const updatedMap = await toggleSubtopicProgress(subtopicId);
     setProgressMap(updatedMap);
     saveLastReadSubtopic(syllabusId, subtopicId, currentUser?.uid);
     const isCompletedNow = Boolean(updatedMap[subtopicId]);
+    triggerToast(
+      isCompletedNow ? "Subtopic completed! 🎉 Great focus!" : "Subtopic marked as Incomplete",
+      isCompletedNow,
+      activeSubtopic?.title,
+      updatedMap
+    );
 
     const user = getStoredSession();
     const admin = getAdminSession();
@@ -415,30 +470,77 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
           </>
         )}
         {/* 5-Level Sidebar Navigation */}
-        <SidebarTree
-          syllabus={syllabus}
-          activeSubtopicId={activeSubtopic?.id || null}
-          onSelectSubtopic={handleSelectSubtopic}
-          progressMap={progressMap}
-        />
+        {!isFocusMode && (
+          <SidebarTree
+            syllabus={syllabus}
+            activeSubtopicId={activeSubtopic?.id || null}
+            onSelectSubtopic={handleSelectSubtopic}
+            progressMap={progressMap}
+            mobileOpen={isMobileSidebarOpen}
+            onMobileOpenChange={setIsMobileSidebarOpen}
+          />
+        )}
 
         {/* Main Workspace Pane */}
-        <div className="flex flex-1 flex-col overflow-y-auto">
+        <div ref={scrollContainerRef} onScroll={handleScroll} className="flex flex-1 flex-col overflow-y-auto w-full min-w-0 relative">
           {/* Top Sticky Header */}
-          <header className="sticky top-0 z-20 flex items-center justify-between border-b border-[#334155] bg-[#0B0F19]/90 px-6 py-3 backdrop-blur-md">
-            <div className="flex items-center space-x-3">
+          <header className="sticky top-0 z-30 flex items-center justify-between border-b border-[#334155] bg-[#0B0F19]/95 px-3 sm:px-6 py-2.5 sm:py-3 backdrop-blur-md relative">
+            <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+              {/* Mobile & Tablet Outline Drawer Trigger */}
+              <button
+                onClick={() => setIsMobileSidebarOpen(true)}
+                title="Open Course Syllabus Outline"
+                className="inline-flex lg:hidden items-center space-x-1.5 rounded-lg border border-[#334155] bg-[#1E293B] px-2.5 py-1.5 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-[#06B6D4] transition-all shrink-0"
+              >
+                <Menu className="h-4 w-4 text-[#06B6D4]" />
+                <span className="hidden xs:inline font-mono text-[11px]">Outline</span>
+              </button>
+
               <Link
                 href="/"
-                className="inline-flex items-center space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors"
+                className="inline-flex items-center space-x-1 text-xs text-[#94A3B8] hover:text-white transition-colors shrink-0"
               >
-                <ArrowLeft className="h-4 w-4" />
-                <span>Catalog</span>
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span className="hidden xs:inline">Catalog</span>
               </Link>
-              <span className="text-[#334155]">/</span>
-              <span className="text-xs font-mono text-[#06B6D4] font-semibold">{syllabus?.courseCode || "Syllabus"}</span>
+              <span className="text-[#334155] shrink-0">/</span>
+              <span className="text-xs font-mono text-[#06B6D4] font-semibold truncate max-w-[120px] sm:max-w-none">{syllabus?.courseCode || "Syllabus"}</span>
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
+              {/* Reading Progress Percentage */}
+              {activeSubtopic && (
+                <div className="flex items-center space-x-1 sm:space-x-1.5 rounded-lg border border-[#06B6D4]/30 bg-[#06B6D4]/10 px-2 py-1 text-[11px] sm:text-xs font-mono text-[#06B6D4]">
+                  <BookOpen className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-[#06B6D4]" />
+                  <span>{Math.round(scrollProgress)}%</span>
+                  <span className="hidden sm:inline">Read</span>
+                </div>
+              )}
+
+              {/* Focus Mode Button (hidden on tiny screens, visible on sm+) */}
+              {activeSubtopic && (
+                <button
+                  onClick={() => setIsFocusMode(!isFocusMode)}
+                  title={isFocusMode ? "Exit Focus Mode (Show Sidebar)" : "Enter Focus Mode (Full-Width Reading Canvas)"}
+                  className={`hidden sm:inline-flex items-center space-x-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all border ${
+                    isFocusMode
+                      ? "bg-[#06B6D4] text-slate-950 font-bold border-[#06B6D4] shadow-md shadow-[#06B6D4]/30"
+                      : "border-[#334155] bg-[#1E293B] text-[#CBD5E1] hover:text-white hover:border-[#06B6D4]"
+                  }`}
+                >
+                  {isFocusMode ? (
+                    <>
+                      <Minimize2 className="h-3.5 w-3.5" />
+                      <span className="hidden md:inline">Exit Focus</span>
+                    </>
+                  ) : (
+                    <>
+                      <Maximize2 className="h-3.5 w-3.5 text-[#06B6D4]" />
+                      <span className="hidden md:inline">Focus Mode</span>
+                    </>
+                  )}
+                </button>
+              )}
               {isAdminLoggedIn && (
                 <>
                   <div className="relative">
@@ -486,6 +588,15 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
                 </>
               )}
             </div>
+            {/* Sticky Reading Progress Bar on bottom edge of header */}
+            {activeSubtopic && (
+              <div className="absolute bottom-0 left-0 right-0 h-1 bg-slate-800/80 overflow-hidden pointer-events-none">
+                <div 
+                  className="h-full bg-gradient-to-r from-[#06B6D4] via-[#3B82F6] to-[#10B981] transition-all duration-150 shadow-[0_0_12px_rgba(6,182,212,0.9)]"
+                  style={{ width: `${scrollProgress}%` }}
+                />
+              </div>
+            )}
           </header>
 
           {/* Content Pane */}
@@ -621,7 +732,7 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
 
         {/* Reading Position Auto-Resume Notification Toast */}
         {resumeNotice && (
-          <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 rounded-xl border border-[#06B6D4]/40 bg-[#1E293B]/95 px-4 py-3 text-xs text-white shadow-2xl backdrop-blur-md transition-all">
+          <div className="fixed bottom-24 right-6 z-40 flex items-center gap-2 rounded-xl border border-[#06B6D4]/40 bg-[#1E293B]/95 px-4 py-3 text-xs text-white shadow-2xl backdrop-blur-md transition-all">
             <span className="relative flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#06B6D4] opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#06B6D4]"></span>
@@ -634,6 +745,39 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
               title="Dismiss"
             >
               ×
+            </button>
+          </div>
+        )}
+
+        {/* Prominent Floating Completion Toast */}
+        {toastData && (
+          <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] max-w-md w-[92%] sm:w-auto flex items-center space-x-3.5 rounded-2xl border-2 border-[#10B981] bg-[#0F172A]/98 p-4 text-white shadow-[0_12px_45px_rgba(16,185,129,0.45)] backdrop-blur-xl animate-in fade-in slide-in-from-bottom-5 duration-300">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#10B981]/20 border border-[#10B981]/40 text-[#10B981]">
+              {toastData.isCompleted ? (
+                <CheckCircle2 className="h-6 w-6 text-[#10B981]" />
+              ) : (
+                <Circle className="h-6 w-6 text-slate-400" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0 pr-2">
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-[#10B981]">
+                  {toastData.isCompleted ? "Goal Completed! 🎉" : "Progress Updated"}
+                </span>
+                <span className="text-[10px] font-mono text-[#94A3B8]">
+                  ({toastData.completedCount}/{toastData.totalCount} completed)
+                </span>
+              </div>
+              <p className="text-xs font-semibold text-slate-100 truncate mt-0.5 max-w-[280px] sm:max-w-xs">
+                {toastData.subtopicTitle ? `"${toastData.subtopicTitle}"` : toastData.message}
+              </p>
+            </div>
+            <button
+              onClick={() => setToastData(null)}
+              className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors shrink-0"
+              title="Close"
+            >
+              <X className="h-4 w-4" />
             </button>
           </div>
         )}

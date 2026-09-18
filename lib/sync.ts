@@ -1,7 +1,7 @@
 import { Syllabus } from "@/types/syllabus";
 import { db, isFirebaseConfigured } from "./firebase";
 import { doc, setDoc } from "firebase/firestore";
-import { sanitizeForFirestore } from "./db";
+import { sanitizeForFirestore, partitionContentIntoChunks } from "./db";
 
 const OFFLINE_SYLLABI_QUEUE_KEY = "syllabus_offline_queue_syllabi_v1";
 const OFFLINE_PROGRESS_QUEUE_KEY = "syllabus_offline_queue_progress_v1";
@@ -152,11 +152,23 @@ export async function syncPendingOfflineChanges(): Promise<{ syllabiCount: numbe
     for (const syl of pendingSyllabi) {
       try {
         const sanitized = sanitizeForFirestore(syl);
-        const setPromise = setDoc(doc(db, "syllabi", syl.id), sanitized);
-        const timeoutPromise = new Promise<void>((_, reject) => 
-          setTimeout(() => reject(new Error("Timeout syncing syllabus")), 12000)
-        );
-        await Promise.race([setPromise, timeoutPromise]);
+        const serialized = JSON.stringify(sanitized);
+        if (serialized.length > 600000) {
+          const { skeletonSyllabus, chunks } = partitionContentIntoChunks(syl);
+          await setDoc(doc(db, "syllabi", syl.id), sanitizeForFirestore(skeletonSyllabus));
+          for (let i = 0; i < chunks.length; i++) {
+            await setDoc(doc(db, "syllabi", syl.id, "chunks", `chunk_${i}`), {
+              index: i,
+              contents: sanitizeForFirestore(chunks[i])
+            });
+          }
+        } else {
+          const setPromise = setDoc(doc(db, "syllabi", syl.id), sanitized);
+          const timeoutPromise = new Promise<void>((_, reject) => 
+            setTimeout(() => reject(new Error("Timeout syncing syllabus")), 15000)
+          );
+          await Promise.race([setPromise, timeoutPromise]);
+        }
         removePendingOfflineSyllabus(syl.id);
         syncedSyllabi++;
         console.log(`[PWA Sync] Successfully synced syllabus: "${syl.title}"`);

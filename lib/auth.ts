@@ -327,7 +327,6 @@ export async function loginUser(
   }
 
   saveStoredSession(found);
-  saveAdminSession(null); // Clear any lingering admin session
 
   await logActivity({
     userId: found.uid,

@@ -223,20 +223,20 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
   return (
     <>
       {/* Header Badge / Control Trigger in Top Bar */}
-      <div className="flex items-center space-x-1.5">
+      <div className="flex items-center space-x-1 sm:space-x-2">
         <button
-          onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-          title="Student Attention Alerts History"
-          className="relative inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-amber-500/50 shadow-sm transition-all"
+          onClick={() => setIsHistoryOpen(true)}
+          title="Open real-time attention alerts"
+          className="relative inline-flex items-center space-x-1 sm:space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-amber-500/50 shadow-sm transition-all shrink-0"
         >
           {alertHistory.length > 0 ? (
-            <BellRing className="h-3.5 w-3.5 text-amber-400 animate-pulse" />
+            <BellRing className="h-3.5 w-3.5 text-amber-400 animate-pulse shrink-0" />
           ) : (
-            <Bell className="h-3.5 w-3.5 text-[#94A3B8]" />
+            <Bell className="h-3.5 w-3.5 text-[#94A3B8] shrink-0" />
           )}
-          <span className="hidden sm:inline">Attention Alerts</span>
+          <span className="hidden md:inline">Alerts</span>
           {alertHistory.length > 0 && (
-            <span className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.2 text-[10px] font-bold text-slate-950 font-mono">
+            <span className="ml-0.5 sm:ml-1 rounded-full bg-amber-500 px-1.5 py-0.2 text-[10px] font-bold text-slate-950 font-mono">
               {alertHistory.length}
             </span>
           )}
@@ -245,7 +245,7 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
         <button
           onClick={toggleSound}
           title={soundEnabled ? "Mute alert chimes" : "Enable alert chimes"}
-          className={`inline-flex items-center justify-center h-8 w-8 rounded-xl border transition-all ${
+          className={`hidden sm:inline-flex items-center justify-center h-8 w-8 rounded-xl border transition-all shrink-0 ${
             soundEnabled
               ? "border-[#334155] bg-[#1E293B] text-amber-400 hover:text-white"
               : "border-[#334155] bg-[#1E293B]/60 text-[#64748B] hover:text-[#94A3B8]"
@@ -355,7 +355,18 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
                     </div>
                   </div>
 
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-1.5 sm:space-x-2">
+                    <button
+                      onClick={toggleSound}
+                      title={soundEnabled ? "Mute alert chimes" : "Enable alert chimes"}
+                      className={`inline-flex items-center justify-center h-7 w-7 rounded-lg border text-xs transition-all ${
+                        soundEnabled
+                          ? "border-[#334155] bg-[#1E293B] text-amber-400 hover:text-white"
+                          : "border-[#334155] bg-[#1E293B]/60 text-[#64748B] hover:text-[#94A3B8]"
+                      }`}
+                    >
+                      {soundEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+                    </button>
                     <button
                       onClick={() => setAlertHistory([])}
                       className="text-xs text-[#94A3B8] hover:text-white px-2 py-1 rounded bg-[#1E293B] border border-[#334155]"

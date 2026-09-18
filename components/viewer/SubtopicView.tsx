@@ -5,9 +5,21 @@ import { Subtopic, Citation } from "@/types/syllabus";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
-import SandpackPlayground from "./SandpackPlayground";
+import dynamic from "next/dynamic";
 import ImageLightbox from "./ImageLightbox";
 import { CheckCircle2, Circle, BookOpen, Monitor, AlignLeft, ChevronLeft, ChevronRight, Sparkles, Lightbulb, ZoomIn, X, Image as ImageIcon } from "lucide-react";
+
+const SandpackPlayground = dynamic(() => import("./SandpackPlayground"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-64 w-full items-center justify-center rounded-2xl border border-[#334155] bg-[#0F172A] p-6 text-center shadow-inner my-4">
+      <div className="space-y-3">
+        <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent" />
+        <p className="text-xs font-mono text-[#94A3B8]">Loading interactive code environment...</p>
+      </div>
+    </div>
+  ),
+});
 
 interface Props {
   subtopic: Subtopic;
@@ -355,37 +367,38 @@ export default function SubtopicView({
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 md:px-8">
+    <div className="mx-auto max-w-5xl px-2.5 sm:px-6 py-4 sm:py-6 md:px-8 relative w-full min-w-0 overflow-x-hidden">
+
       {/* Presentation View Mode Switcher Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#1E293B] p-4 rounded-2xl border border-[#334155] shadow-xl mb-6">
+      <div className="flex flex-col xs:flex-row sm:items-center justify-between gap-3 bg-[#1E293B] p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-[#334155] shadow-xl mb-4 sm:mb-6">
         <div className="flex items-center space-x-2 text-xs font-mono text-[#94A3B8]">
-          <Sparkles className="h-4 w-4 text-[#06B6D4]" />
-          <span>Viewing Mode:</span>
-          <span className="text-white font-bold">{viewMode === 'slide' ? 'Interactive Slide Deck' : 'Continuous Document'}</span>
+          <Sparkles className="h-4 w-4 text-[#06B6D4] shrink-0" />
+          <span className="hidden xs:inline">Mode:</span>
+          <span className="text-white font-bold">{viewMode === 'slide' ? 'Slide Deck' : 'Continuous'}</span>
         </div>
 
-        <div className="flex items-center space-x-2 bg-[#0B0F19] p-1 rounded-xl border border-[#334155]">
+        <div className="flex items-center space-x-1.5 sm:space-x-2 bg-[#0B0F19] p-1 rounded-xl border border-[#334155] self-stretch xs:self-auto justify-center">
           <button
             onClick={() => setViewMode('slide')}
-            className={`inline-flex items-center space-x-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+            className={`flex-1 xs:flex-initial inline-flex items-center justify-center space-x-1.5 rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-bold transition-all ${
               viewMode === 'slide'
                 ? "bg-[#06B6D4] text-slate-950 shadow-md"
                 : "text-[#94A3B8] hover:text-white"
             }`}
           >
-            <Monitor className="h-3.5 w-3.5" />
-            <span>Slide Deck View</span>
+            <Monitor className="h-3.5 w-3.5 shrink-0" />
+            <span>Slide Deck</span>
           </button>
 
           <button
             onClick={() => setViewMode('continuous')}
-            className={`inline-flex items-center space-x-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+            className={`flex-1 xs:flex-initial inline-flex items-center justify-center space-x-1.5 rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-bold transition-all ${
               viewMode === 'continuous'
                 ? "bg-[#06B6D4] text-slate-950 shadow-md"
                 : "text-[#94A3B8] hover:text-white"
             }`}
           >
-            <AlignLeft className="h-3.5 w-3.5" />
+            <AlignLeft className="h-3.5 w-3.5 shrink-0" />
             <span>Page View</span>
           </button>
         </div>
@@ -393,44 +406,44 @@ export default function SubtopicView({
 
       {/* RENDER MODE 1: SLIDE DECK PRESENTATION MODE */}
       {viewMode === 'slide' ? (
-        <div className="relative space-y-6">
+        <div className="relative space-y-4 sm:space-y-6 w-full min-w-0">
           {/* Main Presentation Slide Canvas Card */}
-          <div className="relative rounded-3xl border border-[#06B6D4]/40 bg-gradient-to-b from-[#1E293B] via-[#0F172A] to-[#0B0F19] p-6 md:p-10 shadow-2xl overflow-hidden min-h-[500px]">
+          <div className="relative rounded-2xl sm:rounded-3xl border border-[#06B6D4]/40 bg-gradient-to-b from-[#1E293B] via-[#0F172A] to-[#0B0F19] p-3.5 sm:p-6 md:p-10 shadow-2xl overflow-hidden min-h-[350px] w-full min-w-0">
             {/* Slide Header & Progress */}
-            <div className="flex items-center justify-between border-b border-[#334155] pb-4 mb-6">
-              <div className="flex items-center space-x-2 text-xs font-mono text-[#06B6D4]">
-                <span className="bg-[#06B6D4]/15 px-2.5 py-1 rounded-md border border-[#06B6D4]/30 font-bold uppercase tracking-wider">
-                  Slide {currentIndex} of {totalSubtopics}
+            <div className="flex items-center justify-between border-b border-[#334155] pb-3 sm:pb-4 mb-4 sm:mb-6 gap-2">
+              <div className="flex items-center space-x-2 text-xs font-mono text-[#06B6D4] min-w-0 truncate">
+                <span className="bg-[#06B6D4]/15 px-2 sm:px-2.5 py-1 rounded-md border border-[#06B6D4]/30 font-bold uppercase tracking-wider text-[10px] sm:text-xs shrink-0">
+                  Slide {currentIndex}/{totalSubtopics}
                 </span>
                 <span className="text-[#94A3B8] hidden sm:inline">•</span>
-                <span className="text-[#94A3B8] hidden sm:inline">Use ← → Arrow Keys to Flip Slides</span>
+                <span className="text-[#94A3B8] hidden sm:inline truncate">Use ← → Arrow Keys</span>
               </div>
 
               <button
                 onClick={onToggleComplete}
-                className={`inline-flex items-center space-x-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition-all ${
+                className={`inline-flex items-center space-x-1.5 rounded-xl px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold transition-all shrink-0 ${
                   isCompleted
                     ? "bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40"
                     : "bg-[#1E293B] text-[#CBD5E1] border border-[#334155] hover:border-[#06B6D4]"
                 }`}
               >
-                {isCompleted ? <CheckCircle2 className="w-4 h-4 text-[#10B981]" /> : <Circle className="w-4 h-4 text-[#94A3B8]" />}
+                {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#10B981]" /> : <Circle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#94A3B8]" />}
                 <span>{isCompleted ? "Completed" : "Mark Complete"}</span>
               </button>
             </div>
 
             {/* Slide Subtopic Title */}
-            <div className="mb-6">
-              <span className="text-xs font-mono text-[#94A3B8] uppercase tracking-wider">
+            <div className="mb-4 sm:mb-6">
+              <span className="text-[10px] sm:text-xs font-mono text-[#94A3B8] uppercase tracking-wider">
                 Level 5 Subtopic
               </span>
-              <h1 className="text-2xl md:text-4xl font-extrabold text-white tracking-tight mt-1 leading-tight">
+              <h1 className="text-xl sm:text-2xl md:text-4xl font-extrabold text-white tracking-tight mt-1 leading-tight break-words">
                 {subtopic.title}
               </h1>
             </div>
 
             {/* Slide Smart Markdown Content (Rendered on White Paper Sheet) */}
-            <div className="bg-white rounded-2xl p-6 sm:p-8 text-black shadow-lg border border-slate-200 visual-word-sheet my-4">
+            <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 text-black shadow-lg border border-slate-200 visual-word-sheet my-3 sm:my-4 overflow-x-auto break-words w-full">
               <ReactMarkdown 
                 remarkPlugins={[remarkGfm]}
                 rehypePlugins={[rehypeRaw]}
@@ -484,28 +497,30 @@ export default function SubtopicView({
           </div>
 
           {/* Floating Slide Deck Controls Bar */}
-          <div className="flex items-center justify-between bg-[#1E293B] p-4 rounded-2xl border border-[#334155] shadow-xl">
+          <div className="flex items-center justify-between gap-1.5 sm:gap-2 bg-[#1E293B] p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-[#334155] shadow-xl">
             {onPrevSubtopic ? (
               <button
                 onClick={onPrevSubtopic}
-                className="inline-flex items-center space-x-2 rounded-xl bg-[#0B0F19] px-5 py-3 text-xs font-bold text-white border border-[#334155] hover:border-[#06B6D4] hover:bg-[#334155] transition-all shadow-md"
+                className="inline-flex items-center space-x-1 sm:space-x-2 rounded-xl bg-[#0B0F19] px-3 sm:px-5 py-2.5 sm:py-3 text-xs font-bold text-white border border-[#334155] hover:border-[#06B6D4] hover:bg-[#334155] transition-all shadow-md shrink-0"
               >
-                <ChevronLeft className="w-4 h-4 text-[#06B6D4]" />
-                <span>Previous Slide (←)</span>
+                <ChevronLeft className="w-4 h-4 text-[#06B6D4] shrink-0" />
+                <span className="hidden xs:inline">Prev</span>
+                <span className="hidden sm:inline">Slide</span>
               </button>
             ) : <div />}
 
-            <div className="text-center font-mono text-xs text-[#06B6D4] font-bold bg-[#06B6D4]/10 px-4 py-2 rounded-xl border border-[#06B6D4]/30">
-              Slide {currentIndex} / {totalSubtopics}
+            <div className="text-center font-mono text-[11px] sm:text-xs text-[#06B6D4] font-bold bg-[#06B6D4]/10 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-[#06B6D4]/30 shrink-0">
+              {currentIndex} / {totalSubtopics}
             </div>
 
             {onNextSubtopic ? (
               <button
                 onClick={onNextSubtopic}
-                className="inline-flex items-center space-x-2 rounded-xl bg-gradient-to-r from-[#06B6D4] to-[#10B981] px-5 py-3 text-xs font-bold text-slate-950 hover:opacity-90 transition-all shadow-xl"
+                className="inline-flex items-center space-x-1 sm:space-x-2 rounded-xl bg-gradient-to-r from-[#06B6D4] to-[#10B981] px-3 sm:px-5 py-2.5 sm:py-3 text-xs font-bold text-slate-950 hover:opacity-90 transition-all shadow-xl shrink-0"
               >
-                <span>Next Slide (→)</span>
-                <ChevronRight className="w-4 h-4" />
+                <span className="hidden xs:inline">Next</span>
+                <span className="hidden sm:inline">Slide</span>
+                <ChevronRight className="w-4 h-4 shrink-0" />
               </button>
             ) : <div />}
           </div>
@@ -513,22 +528,22 @@ export default function SubtopicView({
       ) : (
 
         /* RENDER MODE 2: CONTINUOUS DOCUMENT PAGE VIEW */
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#334155] pb-6 gap-4">
+        <div className="space-y-4 sm:space-y-6 w-full min-w-0">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#334155] pb-4 sm:pb-6 gap-3 sm:gap-4">
             <div>
               <div className="flex items-center space-x-2 text-xs font-mono text-[#94A3B8] uppercase tracking-wider">
                 <span>Level 5 Subtopic</span>
                 <span>•</span>
                 <span className="text-[#06B6D4]">Index #{subtopic.order}</span>
               </div>
-              <h1 className="mt-1 text-2xl md:text-3xl font-extrabold text-white tracking-tight">
+              <h1 className="mt-1 text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight break-words">
                 {subtopic.title}
               </h1>
             </div>
 
             <button
               onClick={onToggleComplete}
-              className={`inline-flex items-center space-x-2 rounded-xl px-4 py-2.5 text-xs font-semibold shadow-md transition-all ${
+              className={`inline-flex items-center space-x-2 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs font-semibold shadow-md transition-all self-start sm:self-auto shrink-0 ${
                 isCompleted
                   ? "bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40"
                   : "bg-[#1E293B] text-[#CBD5E1] border border-[#334155] hover:border-[#06B6D4] hover:text-white"
@@ -549,7 +564,7 @@ export default function SubtopicView({
           </div>
 
           {/* Document Smart Markdown Content (Rendered on White Paper Sheet) */}
-          <div className="bg-white rounded-2xl p-6 sm:p-10 text-black shadow-xl border border-slate-200 visual-word-sheet">
+          <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-8 md:p-10 text-black shadow-xl border border-slate-200 visual-word-sheet overflow-x-auto break-words w-full">
             <ReactMarkdown 
               remarkPlugins={[remarkGfm]}
               rehypePlugins={[rehypeRaw]}

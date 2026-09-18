@@ -15,6 +15,7 @@ import {
   query,
   where,
   orderBy,
+  limit,
   onSnapshot
 } from "firebase/firestore";
 import { 
@@ -116,6 +117,7 @@ export function cleanupLocalStorageQuota(): void {
   try {
     const preservedKeys = new Set([
       "syllabus_platform_current_user_v1",
+      "syllabus_platform_admin_session_v1",
       "syllabus_admin_session_v1",
       "syllabus_auth_session_v1",
       "syllabus_admin_presence_sound"
@@ -369,6 +371,95 @@ export async function getAllSyllabi(): Promise<Syllabus[]> {
   return items;
 }
 
+/**
+ * Partitions subtopic contentMarkdown into subcollection chunks if the syllabus
+ * exceeds Firestore's 1MB single-document limit.
+ */
+export function partitionContentIntoChunks(syllabus: Syllabus): {
+  skeletonSyllabus: Syllabus;
+  chunks: Record<string, string>[];
+} {
+  const contentMap: Record<string, string> = {};
+
+  const skeleton: Syllabus = {
+    ...syllabus,
+    _isChunked: true,
+    learningOutcomes: (syllabus.learningOutcomes || []).map((lo) => ({
+      ...lo,
+      indicativeContents: (lo.indicativeContents || []).map((ic) => ({
+        ...ic,
+        topics: (ic.topics || []).map((top) => ({
+          ...top,
+          subtopics: (top.subtopics || []).map((sub) => {
+            if (sub && sub.id) {
+              contentMap[sub.id] = sub.contentMarkdown || "";
+            }
+            return {
+              ...sub,
+              contentMarkdown: "" // emptied to keep root document lightweight (<50 KB)
+            };
+          })
+        }))
+      }))
+    }))
+  };
+
+  const chunks: Record<string, string>[] = [];
+  let currentChunk: Record<string, string> = {};
+  let currentSize = 0;
+
+  for (const [subId, markdown] of Object.entries(contentMap)) {
+    const itemSize = subId.length + (markdown ? markdown.length : 0) + 16;
+    if (currentSize + itemSize > 350000 && Object.keys(currentChunk).length > 0) {
+      chunks.push(currentChunk);
+      currentChunk = {};
+      currentSize = 0;
+    }
+    currentChunk[subId] = markdown;
+    currentSize += itemSize;
+  }
+  if (Object.keys(currentChunk).length > 0) {
+    chunks.push(currentChunk);
+  }
+
+  skeleton._chunkCount = chunks.length;
+  return { skeletonSyllabus: skeleton, chunks };
+}
+
+/**
+ * Reassembles a chunked syllabus by populating each subtopic's contentMarkdown
+ * from fetched subcollection chunks.
+ */
+export function reassembleChunkedSyllabus(
+  skeleton: Syllabus,
+  chunkDocs: { index?: number; contents?: Record<string, string> }[]
+): Syllabus {
+  const fullContentMap: Record<string, string> = {};
+  const sorted = [...chunkDocs].sort((a, b) => (a.index ?? 0) - (b.index ?? 0));
+  for (const c of sorted) {
+    if (c.contents && typeof c.contents === "object") {
+      Object.assign(fullContentMap, c.contents);
+    }
+  }
+
+  return {
+    ...skeleton,
+    learningOutcomes: (skeleton.learningOutcomes || []).map((lo) => ({
+      ...lo,
+      indicativeContents: (lo.indicativeContents || []).map((ic) => ({
+        ...ic,
+        topics: (ic.topics || []).map((top) => ({
+          ...top,
+          subtopics: (top.subtopics || []).map((sub) => ({
+            ...sub,
+            contentMarkdown: fullContentMap[sub.id] !== undefined ? fullContentMap[sub.id] : (sub.contentMarkdown || "")
+          }))
+        }))
+      }))
+    }))
+  };
+}
+
 export async function getSyllabusById(id: string): Promise<Syllabus | null> {
   if (!id) return null;
 
@@ -397,7 +488,22 @@ export async function getSyllabusById(id: string): Promise<Syllabus | null> {
       );
       const docSnap = await Promise.race([fetchPromise, timeoutPromise]);
       if (docSnap && 'exists' in docSnap && docSnap.exists()) {
-        firestoreDoc = { id: docSnap.id, ...docSnap.data() } as Syllabus;
+        const rawData = { id: docSnap.id, ...docSnap.data() } as Syllabus;
+        if (rawData._isChunked) {
+          try {
+            const chunksSnap = await getDocs(collection(db, "syllabi", id, "chunks"));
+            const chunkList: { index?: number; contents?: Record<string, string> }[] = [];
+            chunksSnap.forEach((cSnap) => {
+              chunkList.push(cSnap.data() as any);
+            });
+            firestoreDoc = reassembleChunkedSyllabus(rawData, chunkList);
+          } catch (chunkErr) {
+            console.warn("Could not fetch syllabus content chunks:", chunkErr);
+            firestoreDoc = rawData;
+          }
+        } else {
+          firestoreDoc = rawData;
+        }
         saveSingleLocalSyllabus(firestoreDoc);
       }
     } catch (err) {
@@ -470,17 +576,43 @@ export async function saveSyllabus(syllabus: Syllabus): Promise<Syllabus> {
   // 3. Persist to Firestore if online
   if (isFirebaseConfigured && db && (typeof navigator === "undefined" || navigator.onLine)) {
     try {
-      const setPromise = setDoc(doc(db, "syllabi", updated.id), sanitized);
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error("Database write took longer than expected")), 15000)
-      );
-      await Promise.race([setPromise, timeoutPromise]);
+      const serialized = JSON.stringify(sanitized);
+      const isLarge = serialized.length > 600000;
+
+      if (isLarge) {
+        const { skeletonSyllabus, chunks } = partitionContentIntoChunks(updated);
+        const cleanSkeleton = sanitizeForFirestore(skeletonSyllabus);
+
+        // 1. Write root skeleton document
+        const setRootPromise = setDoc(doc(db, "syllabi", updated.id), cleanSkeleton);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Database write took longer than expected")), 20000)
+        );
+        await Promise.race([setRootPromise, timeoutPromise]);
+
+        // 2. Write all content chunks to subcollection
+        for (let i = 0; i < chunks.length; i++) {
+          await setDoc(doc(db, "syllabi", updated.id, "chunks", `chunk_${i}`), {
+            index: i,
+            contents: sanitizeForFirestore(chunks[i])
+          });
+        }
+      } else {
+        const cleanDoc = { ...sanitized, _isChunked: false, _chunkCount: 0 };
+        const setPromise = setDoc(doc(db, "syllabi", updated.id), cleanDoc);
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error("Database write took longer than expected")), 15000)
+        );
+        await Promise.race([setPromise, timeoutPromise]);
+      }
+
       firestoreSaved = true;
       removePendingOfflineSyllabus(updated.id);
     } catch (err: any) {
-      console.warn("Firestore write slow or queued for background sync:", err);
+      console.error("Firestore write failed:", err);
       firestoreError = err;
       queueOfflineSyllabus(updated);
+      throw new Error(`Failed to save syllabus to cloud database: ${err?.message || err}`);
     }
   } else {
     // Offline mode: queue for sync
@@ -491,17 +623,44 @@ export async function saveSyllabus(syllabus: Syllabus): Promise<Syllabus> {
 }
 
 export async function deleteSyllabus(id: string): Promise<boolean> {
+  const localList = getLocalSyllabi();
+  const existing = localList.find((s) => s.id === id);
+
   if (isFirebaseConfigured && db) {
     try {
+      try {
+        const chunksSnap = await getDocs(collection(db, "syllabi", id, "chunks"));
+        for (const cDoc of chunksSnap.docs) {
+          await deleteDoc(doc(db, "syllabi", id, "chunks", cDoc.id));
+        }
+      } catch (chunkErr) {
+        // Ignore if no chunks
+      }
       await deleteDoc(doc(db, "syllabi", id));
     } catch (err) {
       console.warn("Firestore delete error:", err);
     }
   }
+
   removeSingleLocalSyllabus(id);
   removePendingOfflineSyllabus(id);
-  const list = getLocalSyllabi().filter((s) => s.id !== id);
+  const list = localList.filter((s) => s.id !== id);
   saveLocalSyllabi(list);
+
+  if (existing) {
+    try {
+      await logActivity({
+        userId: "admin",
+        userName: "Josef Marie",
+        userEmail: "admin@platform.local",
+        action: "DELETE_SYLLABUS",
+        details: `Permanently deleted syllabus "${existing.title}" (${existing.courseCode || "N/A"})`,
+      });
+    } catch (e) {
+      // Ignore activity log failure
+    }
+  }
+
   return true;
 }
 
@@ -1008,31 +1167,46 @@ const TRADES_INIT_KEY = "syllabus_platform_trades_init_v1";
 export async function getAllTrades(): Promise<Trade[]> {
   if (isFirebaseConfigured && db) {
     try {
-      const snapshot = await getDocs(collection(db, "trades"));
-      const items: Trade[] = [];
-      snapshot.forEach((docSnap) => {
-        if (docSnap.id === "_meta") return;
-        const data = docSnap.data();
-        items.push({ ...data, id: data.id || docSnap.id } as Trade);
-      });
+      const fetchPromise = getDocs(collection(db, "trades"));
+      const timeoutPromise = new Promise<null>((resolve) =>
+        setTimeout(() => resolve(null), 3000)
+      );
+      const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
+      if (snapshot && 'forEach' in snapshot) {
+        const items: Trade[] = [];
+        snapshot.forEach((docSnap) => {
+          if (docSnap.id === "_meta") return;
+          const data = docSnap.data();
+          items.push({ ...data, id: data.id || docSnap.id } as Trade);
+        });
 
-      const metaSnap = await getDoc(doc(db, "trades", "_meta"));
-      const isInitLocal = typeof window !== "undefined" && localStorage.getItem(TRADES_INIT_KEY);
+        const metaDocRef = doc(db, "trades", "_meta");
+        const metaSnap = await Promise.race([
+          getDoc(metaDocRef),
+          new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500))
+        ]);
+        const isInitLocal = typeof window !== "undefined" && localStorage.getItem(TRADES_INIT_KEY);
 
-      if (items.length > 0 || metaSnap.exists() || isInitLocal) {
-        return items;
-      }
+        if (items.length > 0 || (metaSnap && 'exists' in metaSnap && metaSnap.exists()) || isInitLocal) {
+          if (typeof window !== "undefined" && items.length > 0) {
+            try {
+              localStorage.setItem(TRADES_KEY, JSON.stringify(items));
+            } catch (e) {}
+          }
+          return items;
+        }
 
-      // First-time initialization ONLY: set _meta doc and seed default trades
-      await setDoc(doc(db, "trades", "_meta"), { initialized: true });
-      for (const trade of DEFAULT_TRADES) {
-        await setDoc(doc(db, "trades", trade.id), trade);
+        // First-time initialization ONLY: set _meta doc and seed default trades
+        await setDoc(doc(db, "trades", "_meta"), { initialized: true });
+        for (const trade of DEFAULT_TRADES) {
+          await setDoc(doc(db, "trades", trade.id), trade);
+        }
+        if (typeof window !== "undefined") {
+          localStorage.setItem(TRADES_INIT_KEY, "true");
+          localStorage.setItem(TRADES_KEY, JSON.stringify(DEFAULT_TRADES));
+        }
+        return DEFAULT_TRADES;
       }
-      if (typeof window !== "undefined") {
-        localStorage.setItem(TRADES_INIT_KEY, "true");
-        localStorage.setItem(TRADES_KEY, JSON.stringify(DEFAULT_TRADES));
-      }
-      return DEFAULT_TRADES;
     } catch (err) {
       console.warn("Firestore fetch trades error:", err);
     }
@@ -1582,10 +1756,12 @@ export async function logActivity(entry: Omit<ActivityLog, 'id' | 'timestamp'>):
   return newLog;
 }
 
-export async function getAllActivityLogs(): Promise<ActivityLog[]> {
+export async function getAllActivityLogs(limitCount?: number): Promise<ActivityLog[]> {
   if (isFirebaseConfigured && db) {
     try {
-      const q = query(collection(db, "activityLogs"), orderBy("timestamp", "desc"));
+      const q = limitCount
+        ? query(collection(db, "activityLogs"), orderBy("timestamp", "desc"), limit(limitCount))
+        : query(collection(db, "activityLogs"), orderBy("timestamp", "desc"));
       const snapshot = await getDocs(q);
       const items: ActivityLog[] = [];
       snapshot.forEach((docSnap) => {
@@ -1607,11 +1783,12 @@ export async function getAllActivityLogs(): Promise<ActivityLog[]> {
   try {
     const saved = localStorage.getItem(ACTIVITIES_KEY);
     const list: ActivityLog[] = saved ? JSON.parse(saved) : [];
-    return list.map(l => ({
+    const mapped = list.map(l => ({
       ...l,
       userName: l.userName === "Teacher Admin" ? "Josef Marie" : l.userName,
       details: (l.details || "").replace(/Teacher Admin/g, "Josef Marie")
     }));
+    return limitCount ? mapped.slice(0, limitCount) : mapped;
   } catch (e) {
     return [];
   }
