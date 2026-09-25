@@ -20,7 +20,9 @@ export type ActivityActionType =
   | "STUDENT_LOGOUT"
   | "AUTO_TIMEOUT_LOGOUT"
   | "RESET_FOCUS_STRIKES"
-  | "STUDENT_SUSPENDED_FOCUS";
+  | "STUDENT_SUSPENDED_FOCUS"
+  | "DISABLE_RESTRICTIONS"
+  | "ENABLE_RESTRICTIONS";
 
 export interface ActivityLog {
   id: string;

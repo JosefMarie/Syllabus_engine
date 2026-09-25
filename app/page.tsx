@@ -26,19 +26,24 @@ import {
   AlertCircle,
   AlertTriangle,
   Eye,
-  Lock
+  Lock,
+  Award,
+  Users
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import NotificationAlert from "@/components/common/NotificationAlert";
 import PresenceTracker from "@/components/common/PresenceTracker";
 import DisciplinaryLockdown from "@/components/common/DisciplinaryLockdown";
+import StudentAssignmentsView from "@/components/student/StudentAssignmentsView";
+import StudentGroupsView from "@/components/student/StudentGroupsView";
 
 export default function CatalogPage() {
   const router = useRouter();
   const [syllabi, setSyllabi] = useState<Syllabus[]>([]);
   const [tradesMap, setTradesMap] = useState<Record<string, string>>({});
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [studentPortalTab, setStudentPortalTab] = useState<"courses" | "assignments" | "groups">("courses");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [navigatingSyllabusId, setNavigatingSyllabusId] = useState<string | null>(null);
@@ -87,7 +92,23 @@ export default function CatalogPage() {
 
     const handlePresenceUpdate = () => {
       const u = getStoredSession();
-      if (u) setCurrentUser(u);
+      if (!u) return;
+      setCurrentUser(prev => {
+        if (!prev) return u;
+        if (
+          prev.uid === u.uid &&
+          prev.role === u.role &&
+          prev.status === u.status &&
+          prev.level === u.level &&
+          prev.tradeId === u.tradeId &&
+          prev.unfocusedCount === u.unfocusedCount &&
+          prev.fullName === u.fullName &&
+          prev.email === u.email
+        ) {
+          return prev;
+        }
+        return u;
+      });
     };
     window.addEventListener("syllabus_presence_updated", handlePresenceUpdate);
     window.addEventListener("focus", handlePresenceUpdate);
@@ -96,7 +117,25 @@ export default function CatalogPage() {
     const session = getStoredSession();
     if (session?.uid) {
       unsubProfile = subscribeToUserProfile(session.uid, (freshUser) => {
-        if (freshUser) setCurrentUser(freshUser);
+        if (freshUser) {
+          setCurrentUser(prev => {
+            if (!prev) return freshUser;
+            if (
+              prev.uid === freshUser.uid &&
+              prev.role === freshUser.role &&
+              prev.status === freshUser.status &&
+              prev.level === freshUser.level &&
+              prev.tradeId === freshUser.tradeId &&
+              prev.unfocusedCount === freshUser.unfocusedCount &&
+              prev.fullName === freshUser.fullName &&
+              prev.email === freshUser.email &&
+              prev.suspensionReason === freshUser.suspensionReason
+            ) {
+              return prev;
+            }
+            return freshUser;
+          });
+        }
       });
     }
 
@@ -269,7 +308,16 @@ export default function CatalogPage() {
       {currentUser && (
         <>
           <NotificationAlert userId={currentUser.uid} />
-          <PresenceTracker userId={currentUser.uid} fullName={currentUser.fullName} />
+          {currentUser.role === "student" && (
+            <PresenceTracker 
+              userId={currentUser.uid} 
+              fullName={currentUser.fullName}
+              email={currentUser.email}
+              username={currentUser.username}
+              tradeId={currentUser.tradeId}
+              level={currentUser.level}
+            />
+          )}
         </>
       )}
       {/* Top Header */}
@@ -550,11 +598,63 @@ export default function CatalogPage() {
           </div>
         )}
 
-        {/* Syllabi Grid */}
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-bold text-white">Available Course Syllabi</h3>
-          <span className="text-xs font-mono text-[#94A3B8]">Showing {filtered.length} courses</span>
-        </div>
+        {/* Student Dashboard Tabs: Course Syllabi vs Class Assignments */}
+        {currentUser && (
+          <div className="flex items-center space-x-3 border-b border-[#334155] pb-3 mb-6">
+            <button
+              onClick={() => setStudentPortalTab("courses")}
+              className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all ${
+                studentPortalTab === "courses"
+                  ? "bg-[#06B6D4] text-slate-950 shadow-md"
+                  : "bg-[#1E293B] text-[#94A3B8] hover:text-white border border-[#334155]"
+              }`}
+            >
+              <BookOpen className="h-4 w-4" />
+              <span>Course Syllabi</span>
+            </button>
+
+            <button
+              onClick={() => setStudentPortalTab("assignments")}
+              className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all ${
+                studentPortalTab === "assignments"
+                  ? "bg-[#06B6D4] text-slate-950 shadow-md"
+                  : "bg-[#1E293B] text-[#94A3B8] hover:text-white border border-[#334155]"
+              }`}
+            >
+              <Award className="h-4 w-4" />
+              <span>My Class Assignments</span>
+            </button>
+
+            <button
+              onClick={() => setStudentPortalTab("groups")}
+              className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all ${
+                studentPortalTab === "groups"
+                  ? "bg-[#06B6D4] text-slate-950 shadow-md"
+                  : "bg-[#1E293B] text-[#94A3B8] hover:text-white border border-[#334155]"
+              }`}
+            >
+              <Users className="h-4 w-4" />
+              <span>My Study Groups</span>
+            </button>
+          </div>
+        )}
+
+        {/* ASSIGNMENTS VIEW OR GROUPS VIEW FOR LOGGED IN STUDENT */}
+        {currentUser && studentPortalTab === "assignments" ? (
+          <StudentAssignmentsView currentUser={currentUser} syllabi={syllabi} />
+        ) : currentUser && studentPortalTab === "groups" ? (
+          <StudentGroupsView 
+            currentUser={currentUser} 
+            syllabi={syllabi} 
+            onNavigateToAssignments={() => setStudentPortalTab("assignments")}
+          />
+        ) : (
+          <>
+            {/* Syllabi Grid */}
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-white">Available Course Syllabi</h3>
+              <span className="text-xs font-mono text-[#94A3B8]">Showing {filtered.length} courses</span>
+            </div>
 
         {loading ? (
           <div className="py-20 text-center text-[#94A3B8]">
@@ -650,6 +750,8 @@ export default function CatalogPage() {
             })}
           </div>
         )}
+        </>
+      )}
 
         {/* Global Floating Pill while opening a course */}
         {navigatingSyllabusId && (

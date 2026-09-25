@@ -20,6 +20,7 @@ import {
   getLocalSyllabi,
   resetStudentUnfocusedCount
 } from "@/lib/db";
+import RestrictionsControl from "./RestrictionsControl";
 import { 
   getAllStudentPresences, 
   getLocalStudentPresences, 
@@ -656,6 +657,9 @@ export default function StudentProgressManager() {
           </button>
         </div>
       </div>
+
+      {/* Focus Restrictions & Group Work Quick Switcher */}
+      <RestrictionsControl />
 
       {successNotice && (
         <div className="rounded-xl border border-[#10B981]/30 bg-[#10B981]/15 p-4 text-xs font-semibold text-[#10B981] flex items-center space-x-2">

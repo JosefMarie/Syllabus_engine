@@ -9,7 +9,12 @@ import TradesManager from "@/components/admin/TradesManager";
 import StudentApprovals from "@/components/admin/StudentApprovals";
 import ActivityLogger from "@/components/admin/ActivityLogger";
 import StudentProgressManager from "@/components/admin/StudentProgressManager";
+import AssignmentManager from "@/components/admin/AssignmentManager";
+import GroupManager from "@/components/admin/GroupManager";
 import AdminPresenceAlert from "@/components/admin/AdminPresenceAlert";
+import RestrictionsControl from "@/components/admin/RestrictionsControl";
+import { getAllTrades } from "@/lib/db";
+import { Trade } from "@/types/auth";
 import { useRouter } from "next/navigation";
 import { downloadSyllabusAsJSON, downloadSyllabusAsText, downloadAllSyllabiAsJSON } from "@/lib/exportSyllabus";
 import { 
@@ -25,6 +30,7 @@ import {
   LogOut,
   Activity,
   Users,
+  Award,
   Download,
   FileText,
   FileCode,
@@ -38,8 +44,9 @@ export default function AdminDashboardPage() {
   const router = useRouter();
 
   const [adminUser, setAdminUser] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<'syllabi' | 'trades' | 'students' | 'progress' | 'activity'>('syllabi');
+  const [activeTab, setActiveTab] = useState<'syllabi' | 'trades' | 'students' | 'progress' | 'assignments' | 'groups' | 'activity'>('syllabi');
   const [syllabi, setSyllabi] = useState<Syllabus[]>([]);
+  const [trades, setTrades] = useState<Trade[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
@@ -77,6 +84,14 @@ export default function AdminDashboardPage() {
           if (isMounted) setSyllabi(data);
         } catch (e) {
           console.warn("Error fetching syllabi for admin:", e);
+        }
+
+        // Fetch trades safely
+        try {
+          const tradeList = await getAllTrades();
+          if (isMounted) setTrades(tradeList);
+        } catch (e) {
+          console.warn("Error fetching trades for admin:", e);
         }
 
         // Fetch student profiles safely
@@ -220,6 +235,9 @@ export default function AdminDashboardPage() {
               Instructor: <strong className="text-white">Josef Marie</strong> <span className="text-[#64748B]">({adminUser?.email})</span>
             </span>
 
+            {/* Real-time Focus Restrictions Control (10 Strikes & 3-Min Timeout Toggle) */}
+            <RestrictionsControl adminUser={adminUser} compact={true} />
+
             {/* Real-time Student Attention & Side Window Alert System */}
             <AdminPresenceAlert adminUser={adminUser} />
 
@@ -308,6 +326,30 @@ export default function AdminDashboardPage() {
           >
             <Users className="h-4 w-4 shrink-0" />
             <span>Progress & Messaging</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('assignments')}
+            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
+              activeTab === 'assignments'
+                ? 'border-[#06B6D4] text-[#06B6D4]'
+                : 'border-transparent text-[#94A3B8] hover:text-white'
+            }`}
+          >
+            <Award className="h-4 w-4 shrink-0" />
+            <span>Class Assignments</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('groups')}
+            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
+              activeTab === 'groups'
+                ? 'border-[#06B6D4] text-[#06B6D4]'
+                : 'border-transparent text-[#94A3B8] hover:text-white'
+            }`}
+          >
+            <Users className="h-4 w-4 shrink-0" />
+            <span>Student Groups</span>
           </button>
 
           <button
@@ -470,7 +512,26 @@ export default function AdminDashboardPage() {
         {/* TAB 4: STUDENT PROGRESS & MESSAGING */}
         {activeTab === 'progress' && <StudentProgressManager />}
 
-        {/* TAB 5: ACTIVITY LOGS & AUDIT */}
+        {/* TAB 5: CLASS ASSIGNMENTS */}
+        {activeTab === 'assignments' && (
+          <AssignmentManager 
+            syllabi={syllabi} 
+            trades={trades} 
+            adminEmail={adminUser?.email} 
+          />
+        )}
+
+        {/* TAB 6: STUDENT STUDY & PROJECT GROUPS */}
+        {activeTab === 'groups' && (
+          <GroupManager
+            syllabi={syllabi}
+            trades={trades}
+            adminEmail={adminUser?.email}
+            adminUser={adminUser}
+          />
+        )}
+
+        {/* TAB 7: ACTIVITY LOGS & AUDIT */}
         {activeTab === 'activity' && <ActivityLogger />}
       </main>
     </div>

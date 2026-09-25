@@ -597,3 +597,92 @@ function parseTextWithSmartRules(rawText: string): SyllabusExtractionResult {
 
   return formatExtractedData(mockRaw);
 }
+
+/**
+ * Extracts and structures assignment details from raw text / PDF using Gemini AI with fallback
+ */
+export async function parseAssignmentWithGemini(rawText: string): Promise<{
+  title: string;
+  courseCode: string;
+  courseTitle: string;
+  description: string;
+  instructionsMarkdown: string;
+  totalPoints: number;
+  dueDate?: string;
+}> {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+
+  if (apiKey && apiKey.trim().length > 10) {
+    const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
+
+    for (const modelName of modelsToTry) {
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const prompt = `You are an educational assistant. Extract and format an Assignment from the provided raw text or document.
+Generate a structured JSON object with the following fields:
+- title: A concise, descriptive title for the assignment (e.g. "Practical Lab: Linked List Implementation")
+- courseCode: The associated course code if found, e.g. "SWDDA401", or empty string
+- courseTitle: The subject/course name, e.g. "Data Structures and Algorithms", or empty string
+- description: A brief summary of what this assignment evaluates (1-3 sentences)
+- instructionsMarkdown: The full body of instructions, tasks, problems, and questions formatted in clean Markdown (use headings, bullet points, code blocks where appropriate)
+- totalPoints: Maximum points or marks (default to 100 if unspecified)
+- dueDate: Due date in YYYY-MM-DD format if mentioned, or empty string
+
+RAW TEXT:
+${rawText.slice(0, 30000)}`;
+
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          generationConfig: {
+            temperature: 0.2,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: SchemaType.OBJECT,
+              properties: {
+                title: { type: SchemaType.STRING },
+                courseCode: { type: SchemaType.STRING },
+                courseTitle: { type: SchemaType.STRING },
+                description: { type: SchemaType.STRING },
+                instructionsMarkdown: { type: SchemaType.STRING },
+                totalPoints: { type: SchemaType.NUMBER },
+                dueDate: { type: SchemaType.STRING },
+              },
+              required: ["title", "description", "instructionsMarkdown", "totalPoints"]
+            }
+          }
+        });
+
+        const response = await model.generateContent(prompt);
+        const text = response.response.text();
+        if (text) {
+          const parsed = JSON.parse(text);
+          return {
+            title: parsed.title || "Course Assignment",
+            courseCode: parsed.courseCode || "",
+            courseTitle: parsed.courseTitle || "",
+            description: parsed.description || "",
+            instructionsMarkdown: parsed.instructionsMarkdown || rawText,
+            totalPoints: typeof parsed.totalPoints === "number" ? parsed.totalPoints : 100,
+            dueDate: parsed.dueDate || undefined
+          };
+        }
+      } catch (err) {
+        console.warn(`Gemini assignment parse attempt failed with ${modelName}:`, err);
+      }
+    }
+  }
+
+  // Fallback heuristic parser if Gemini API key not present or rate limited
+  const lines = rawText.split("\n").map(l => l.trim()).filter(Boolean);
+  const firstLine = lines[0] || "Course Assignment";
+  const courseCodeMatch = rawText.match(/\b([A-Z]{3,6}\d{3,4})\b/);
+
+  return {
+    title: firstLine.length < 100 ? firstLine : "Course Assignment",
+    courseCode: courseCodeMatch ? courseCodeMatch[1] : "",
+    courseTitle: "",
+    description: lines.slice(1, 3).join(" ") || "Complete the instructions and submit your solution.",
+    instructionsMarkdown: rawText,
+    totalPoints: 100
+  };
+}

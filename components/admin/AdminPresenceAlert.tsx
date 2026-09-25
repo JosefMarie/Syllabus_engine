@@ -18,8 +18,10 @@ import {
   CheckCircle2, 
   Bell, 
   BellRing,
-  Radio
+  Radio,
+  Users
 } from "lucide-react";
+import { subscribeToSystemRestrictions } from "@/lib/restrictions";
 
 export interface AttentionAlertItem {
   id: string;
@@ -43,9 +45,14 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [isMounted, setIsMounted] = useState(false);
+  const [restrictionsDisabled, setRestrictionsDisabled] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
+    const unsubRestrictions = subscribeToSystemRestrictions((cfg) => {
+      setRestrictionsDisabled(cfg.restrictionsDisabled);
+    });
+    return () => unsubRestrictions();
   }, []);
 
   // Quick Message Modal State
@@ -80,7 +87,7 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
 
   // Synthesize a gentle alert chime when a student loses focus
   const playAlertChime = () => {
-    if (!soundEnabled) return;
+    if (!soundEnabled || restrictionsDisabled) return;
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (!AudioCtx) return;
@@ -381,6 +388,13 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
                     </button>
                   </div>
                 </div>
+
+                {restrictionsDisabled && (
+                  <div className="rounded-xl border border-purple-500/40 bg-purple-500/10 p-3 text-xs text-purple-200 flex items-center space-x-2">
+                    <Users className="h-4 w-4 shrink-0 text-purple-400" />
+                    <span>Group Work Mode is Active: 10 strikes &amp; 3-minute timeouts are currently paused.</span>
+                  </div>
+                )}
 
                 <div className="flex-1 overflow-y-auto space-y-2 pr-1 divide-y divide-[#334155]/40">
                   {alertHistory.length === 0 ? (

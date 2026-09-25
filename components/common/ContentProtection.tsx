@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { ShieldAlert, Lock } from "lucide-react";
+import { subscribeToSystemRestrictions } from "@/lib/restrictions";
 
 interface Props {
   children: React.ReactNode;
@@ -19,9 +20,24 @@ export default function ContentProtection({
   const [showWarning, setShowWarning] = useState(false);
   const [warningText, setWarningText] = useState("");
   const [isWindowBlurred, setIsWindowBlurred] = useState(false);
+  const [restrictionsDisabled, setRestrictionsDisabled] = useState(false);
 
   useEffect(() => {
-    if (!isProtected) return;
+    const unsub = subscribeToSystemRestrictions((cfg) => {
+      setRestrictionsDisabled(cfg.restrictionsDisabled);
+      if (cfg.restrictionsDisabled) {
+        setIsWindowBlurred(false);
+        setShowWarning(false);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    if (!isProtected || restrictionsDisabled) {
+      setIsWindowBlurred(false);
+      return;
+    }
 
     const triggerWarning = (msg: string) => {
       setWarningText(msg);
@@ -94,9 +110,9 @@ export default function ContentProtection({
       window.removeEventListener("blur", handleBlur);
       window.removeEventListener("focus", handleFocus);
     };
-  }, [isProtected]);
+  }, [isProtected, restrictionsDisabled]);
 
-  if (!isProtected) {
+  if (!isProtected || restrictionsDisabled) {
     return <>{children}</>;
   }
 

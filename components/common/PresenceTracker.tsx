@@ -9,8 +9,9 @@ import {
   suspendStudentForUnfocusedTimeout, 
   subscribeToUserProfile 
 } from "@/lib/db";
+import { subscribeToSystemRestrictions } from "@/lib/restrictions";
 import { PresenceState } from "@/types/presence";
-import { Layers, AlertTriangle, EyeOff, Clock } from "lucide-react";
+import { Layers, AlertTriangle, EyeOff, Clock, Users } from "lucide-react";
 import DisciplinaryLockdown from "@/components/common/DisciplinaryLockdown";
 
 interface PresenceTrackerProps {
@@ -47,6 +48,22 @@ export default function PresenceTracker({
   const [lockdownReason, setLockdownReason] = useState<string>("Exceeded 10 side-window / focus violations during active syllabus study.");
   const [showAttentionPrompt, setShowAttentionPrompt] = useState(false);
   const [promptCountdown, setPromptCountdown] = useState(60);
+  const [restrictionsDisabled, setRestrictionsDisabled] = useState(false);
+  const restrictionsDisabledRef = useRef(false);
+
+  useEffect(() => {
+    const unsubRestrictions = subscribeToSystemRestrictions((cfg) => {
+      setRestrictionsDisabled(cfg.restrictionsDisabled);
+      restrictionsDisabledRef.current = cfg.restrictionsDisabled;
+      if (cfg.restrictionsDisabled) {
+        setShowAttentionPrompt(false);
+        setMultiWindowDetected(false);
+        unfocusedStartTimeRef.current = null;
+      }
+    });
+    return () => unsubRestrictions();
+  }, []);
+
   const lastInteractionRef = useRef<number>(Date.now());
   const unfocusedStartTimeRef = useRef<number | null>(null);
   const isTimingOutRef = useRef(false);
@@ -232,6 +249,54 @@ export default function PresenceTracker({
       }
     };
 
+    // Helper: Determine if native file picker dialog is currently open
+    const isFilePickerActive = (): boolean => {
+      if (typeof window === "undefined") return false;
+      const w = window as any;
+      if (!w.__SYLLABUS_FILE_PICKER_TIMESTAMP) return false;
+      const elapsed = Date.now() - w.__SYLLABUS_FILE_PICKER_TIMESTAMP;
+      // Allow up to 3 minutes for browsing and selecting files
+      return w.__SYLLABUS_FILE_PICKER_ACTIVE === true && elapsed < 180000;
+    };
+
+    const markFilePickerActive = () => {
+      if (typeof window === "undefined") return;
+      (window as any).__SYLLABUS_FILE_PICKER_ACTIVE = true;
+      (window as any).__SYLLABUS_FILE_PICKER_TIMESTAMP = Date.now();
+    };
+
+    const markFilePickerInactive = (delayMs: number = 1000) => {
+      if (typeof window === "undefined") return;
+      setTimeout(() => {
+        (window as any).__SYLLABUS_FILE_PICKER_ACTIVE = false;
+        (window as any).__SYLLABUS_FILE_PICKER_TIMESTAMP = 0;
+      }, delayMs);
+    };
+
+    // Global capture listener for file uploads
+    const handleGlobalFileClick = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (!target) return;
+      if (
+        target.matches('input[type="file"]') ||
+        target.closest('input[type="file"]') ||
+        target.closest('label')?.querySelector('input[type="file"]')
+      ) {
+        markFilePickerActive();
+      }
+    };
+
+    const handleGlobalFileChangeOrCancel = (e: Event) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.matches('input[type="file"]')) {
+        markFilePickerInactive(1500);
+      }
+    };
+
+    document.addEventListener("click", handleGlobalFileClick, true);
+    document.addEventListener("change", handleGlobalFileChangeOrCancel, true);
+    document.addEventListener("cancel", handleGlobalFileChangeOrCancel, true);
+
     window.addEventListener("mousemove", recordInteraction, { passive: true });
     window.addEventListener("scroll", recordInteraction, { passive: true });
     window.addEventListener("keydown", recordInteraction, { passive: true });
@@ -240,6 +305,11 @@ export default function PresenceTracker({
 
     // Compute precise status: idle threshold is 60 seconds (1 minute)
     const computePresenceState = (): PresenceState => {
+      // If student is currently selecting a file through native OS file dialog, keep active
+      if (isFilePickerActive()) {
+        return 'actively_reading';
+      }
+
       // 1. Anti-Tamper check: If extension hijacked document.hasFocus or document.hidden
       if (isFocusTampered()) {
         return 'tab_unfocused';
@@ -262,8 +332,8 @@ export default function PresenceTracker({
     const reportPresence = () => {
       if (isTimingOutRef.current) return;
 
-      // Anti-tamper lockdown
-      if (isFocusTampered() && !isLockdown) {
+      // Anti-tamper lockdown (only when restrictions are active)
+      if (isFocusTampered() && !isLockdown && !restrictionsDisabledRef.current) {
         const tamperReason = "Account suspended: Security violation detected. Unauthorized browser extension or script tampering with focus detection.";
         setLockdownReason(tamperReason);
         setIsLockdown(true);
@@ -282,14 +352,14 @@ export default function PresenceTracker({
         }
         unfocusedDuration = Math.floor((Date.now() - unfocusedStartTimeRef.current) / 1000);
 
-        // If continuously unfocused for 3 minutes (180s), immediately trigger disciplinary lockdown
-        if (unfocusedDuration >= 180 && !isLockdown) {
+        // If continuously unfocused for 3 minutes (180s), immediately trigger disciplinary lockdown ONLY if restrictions are active
+        if (unfocusedDuration >= 180 && !isLockdown && !restrictionsDisabledRef.current) {
           const timeoutReason = "Account suspended: Exceeded 3 minutes continuously in a side window / unfocused application without learning focus.";
           setLockdownReason(timeoutReason);
           setIsLockdown(true);
           suspendStudentForUnfocusedTimeout(userId).catch(console.error);
         }
-      } else if (secondsSinceLastInput >= 180) {
+      } else if (secondsSinceLastInput >= 180 && !restrictionsDisabledRef.current) {
         // Even if tab claims to be open, 3 minutes of zero human interaction = abandoned study
         unfocusedDuration = Math.floor(secondsSinceLastInput);
         if (!isLockdown) {
@@ -299,7 +369,7 @@ export default function PresenceTracker({
           setShowAttentionPrompt(false);
           suspendStudentForUnfocusedTimeout(userId).catch(console.error);
         }
-      } else if (secondsSinceLastInput >= 120 && !showAttentionPrompt && !isLockdown) {
+      } else if (secondsSinceLastInput >= 120 && !showAttentionPrompt && !isLockdown && !restrictionsDisabledRef.current) {
         // Warning prompt at 2 minutes of idle time with 60s countdown before 3-minute suspension
         setShowAttentionPrompt(true);
         setPromptCountdown(60);
@@ -323,8 +393,8 @@ export default function PresenceTracker({
       }
 
       // ACCUMULATE ACTIVE LEARNING TIME:
-      // Only count when actively reading/interacting. Do NOT count when idle (> 60s) or tab unfocused!
-      if (state === 'actively_reading') {
+      // Count when actively reading/interacting, or in group work mode while active
+      if (state === 'actively_reading' || (restrictionsDisabledRef.current && secondsSinceLastInput < 120)) {
         activeSecondsAccumulatorRef.current += 5; // 5 second tick
         
         // Flush every 15 seconds of active study to persist progress
@@ -349,6 +419,10 @@ export default function PresenceTracker({
     const handleUnfocusedStrike = async () => {
       // Do not record strikes if already in lockdown or suspended
       if (isLockdown) return;
+      // Do not record strikes if restrictions are disabled (Group Work Mode)
+      if (restrictionsDisabledRef.current) return;
+      // Do not record strikes if student is currently selecting a file
+      if (isFilePickerActive()) return;
 
       const now = Date.now();
       if (now - lastUnfocusRecordedRef.current < 4000) return; // 4 second debouncing
@@ -391,6 +465,9 @@ export default function PresenceTracker({
     window.addEventListener("syllabus_student_suspended", handleStudentSuspended);
 
     const handleVisibilityChange = () => {
+      if (isFilePickerActive()) {
+        return;
+      }
       if (document.hidden) {
         flushActiveSeconds();
         if (!unfocusedStartTimeRef.current) {
@@ -406,6 +483,10 @@ export default function PresenceTracker({
     };
 
     const handleBlur = () => {
+      // If student is browsing files in the OS file picker, do NOT treat as tab unfocused or side-window strike
+      if (isFilePickerActive()) {
+        return;
+      }
       flushActiveSeconds();
       if (!unfocusedStartTimeRef.current) {
         unfocusedStartTimeRef.current = Date.now();
@@ -415,6 +496,10 @@ export default function PresenceTracker({
     };
 
     const handleFocus = () => {
+      // Returning focus after file selection or dialog dismissal
+      if (isFilePickerActive()) {
+        markFilePickerInactive(1000);
+      }
       lastInteractionRef.current = Date.now();
       unfocusedStartTimeRef.current = null;
       reportPresence();
@@ -436,7 +521,7 @@ export default function PresenceTracker({
       broadcastChannel.postMessage({ type: "WINDOW_OPENED", timestamp: Date.now() });
 
       broadcastChannel.onmessage = (event) => {
-        if (event.data?.type === "WINDOW_OPENED") {
+        if (event.data?.type === "WINDOW_OPENED" && !restrictionsDisabledRef.current) {
           setMultiWindowDetected(true);
         }
       };
@@ -446,6 +531,9 @@ export default function PresenceTracker({
       flushActiveSeconds();
       clearInterval(interval);
       unsubProfile();
+      document.removeEventListener("click", handleGlobalFileClick, true);
+      document.removeEventListener("change", handleGlobalFileChangeOrCancel, true);
+      document.removeEventListener("cancel", handleGlobalFileChangeOrCancel, true);
       window.removeEventListener("syllabus_student_suspended", handleStudentSuspended);
       window.removeEventListener("mousemove", recordInteraction);
       window.removeEventListener("scroll", recordInteraction);
@@ -472,6 +560,14 @@ export default function PresenceTracker({
 
   return (
     <>
+      {/* Floating indicator when Instructor has enabled Group Work Mode */}
+      {restrictionsDisabled && (
+        <div className="fixed top-3 right-4 z-40 flex items-center space-x-2 rounded-xl bg-purple-950/85 border border-purple-500/40 px-3 py-1.5 text-[11px] font-mono font-bold text-purple-300 shadow-2xl backdrop-blur-md animate-in fade-in">
+          <Users className="h-3.5 w-3.5 text-purple-400 shrink-0" />
+          <span>Group Work Mode Active • Restrictions Paused</span>
+        </div>
+      )}
+
       {showAttentionPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
           <div className="w-full max-w-md rounded-3xl border border-amber-500/30 bg-[#0F172A] p-6 shadow-2xl text-center">
@@ -499,7 +595,7 @@ export default function PresenceTracker({
         </div>
       )}
 
-      {multiWindowDetected && (
+      {multiWindowDetected && !restrictionsDisabled && (
         <div className="fixed bottom-4 left-4 z-50 max-w-md rounded-2xl border border-amber-500/50 bg-[#1E293B] p-4 text-xs shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom">
           <div className="flex items-start space-x-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">

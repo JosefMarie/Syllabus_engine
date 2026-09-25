@@ -1,8 +1,9 @@
 import { Syllabus, Citation } from "@/types/syllabus";
-import { Trade, UserProfile, AccountStatus } from "@/types/auth";
+import { Trade, UserProfile, AccountStatus, StudentLevel } from "@/types/auth";
 import { StudentNotification, StudentProgressSummary } from "@/types/notification";
 import { ActivityLog } from "@/types/activity";
 import { StudentTopicTimeRecord } from "@/types/timeTracking";
+import { StudentGroup, GroupMember } from "@/types/group";
 import { db, isFirebaseConfigured } from "./firebase";
 import { 
   collection, 
@@ -25,6 +26,12 @@ import {
   queueOfflineProgress, 
   syncPendingOfflineChanges 
 } from "./sync";
+import { 
+  getSystemRestrictions, 
+  setSystemRestrictions, 
+  subscribeToSystemRestrictions, 
+  getLocalRestrictions 
+} from "./restrictions";
 
 const STORAGE_KEY = "syllabus_platform_syllabi_v1";
 const PROGRESS_KEY = "syllabus_platform_progress_v1";
@@ -800,6 +807,12 @@ export async function updateUserStatus(uid: string, status: AccountStatus): Prom
  * requiring the teacher to re-approve them in the admin portal before they can study again.
  */
 export async function recordStudentUnfocusedIncident(userId: string): Promise<{ unfocusedCount: number; suspended: boolean }> {
+  // 0. If instructor has disabled restrictions (e.g. for group work), do NOT record strikes
+  const restrictions = await getSystemRestrictions();
+  if (restrictions.restrictionsDisabled) {
+    return { unfocusedCount: 0, suspended: false };
+  }
+
   let count = 0;
   let user: UserProfile | null = null;
 
@@ -937,6 +950,12 @@ export async function recordStudentUnfocusedIncident(userId: string): Promise<{ 
  * or unfocused application for >= 3 minutes (180 seconds).
  */
 export async function suspendStudentForUnfocusedTimeout(userId: string): Promise<boolean> {
+  // 0. If instructor has disabled restrictions (e.g. for group work), do NOT suspend
+  const restrictions = await getSystemRestrictions();
+  if (restrictions.restrictionsDisabled) {
+    return false;
+  }
+
   const suspensionReason = "Account suspended: Exceeded 3 minutes continuously in a side window / unfocused application without learning focus.";
   let user: UserProfile | null = null;
 
@@ -2200,5 +2219,600 @@ export async function seedInitialTopicTimeRecordsIfEmpty(): Promise<StudentTopic
   // Mock data seeding has been removed so the platform starts completely fresh.
   return [];
 }
+
+// ==========================================
+// ASSIGNMENTS & STUDENT SUBMISSIONS
+// ==========================================
+import { Assignment, AssignmentSubmission } from "@/types/assignment";
+
+const ASSIGNMENTS_KEY = "syllabus_platform_assignments_v1";
+const SUBMISSIONS_KEY = "syllabus_platform_submissions_v1";
+
+export async function getAllAssignments(): Promise<Assignment[]> {
+  // 1. Try Firestore if configured
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(collection(db, "assignments"), orderBy("createdAt", "desc"));
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as Assignment));
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(list));
+          } catch (e) {}
+        }
+        return list;
+      }
+    } catch (e) {
+      console.warn("Firestore assignments fetch failed, falling back to local:", e);
+    }
+  }
+
+  // 2. Fallback to localStorage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(ASSIGNMENTS_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+  }
+  return [];
+}
+
+export async function saveAssignment(assignment: Assignment): Promise<void> {
+  const sanitized = sanitizeForFirestore(assignment);
+
+  // 1. LocalStorage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(ASSIGNMENTS_KEY);
+      const list: Assignment[] = raw ? JSON.parse(raw) : [];
+      const idx = list.findIndex(a => a.id === assignment.id);
+      if (idx >= 0) {
+        list[idx] = assignment;
+      } else {
+        list.unshift(assignment);
+      }
+      localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(list));
+    } catch (e) {
+      console.error("Local save assignment error:", e);
+    }
+  }
+
+  // 2. Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "assignments", assignment.id), sanitized, { merge: true });
+    } catch (e) {
+      console.error("Firestore save assignment error:", e);
+    }
+  }
+}
+
+export async function deleteAssignment(assignmentId: string): Promise<void> {
+  // 1. LocalStorage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(ASSIGNMENTS_KEY);
+      if (raw) {
+        const list: Assignment[] = JSON.parse(raw);
+        localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(list.filter(a => a.id !== assignmentId)));
+      }
+    } catch (e) {}
+  }
+
+  // 2. Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, "assignments", assignmentId));
+    } catch (e) {
+      console.warn("Firestore delete assignment error:", e);
+    }
+  }
+}
+
+export async function getSubmissionsForAssignment(assignmentId: string): Promise<AssignmentSubmission[]> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(collection(db, "submissions"), where("assignmentId", "==", assignmentId));
+      const snap = await getDocs(q);
+      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as AssignmentSubmission));
+      return list;
+    } catch (e) {
+      console.warn("Firestore getSubmissionsForAssignment error:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(SUBMISSIONS_KEY);
+      if (raw) {
+        const all: AssignmentSubmission[] = JSON.parse(raw);
+        return all.filter(s => s.assignmentId === assignmentId);
+      }
+    } catch (e) {}
+  }
+  return [];
+}
+
+export async function getStudentSubmissions(studentUid: string): Promise<AssignmentSubmission[]> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(collection(db, "submissions"), where("studentUid", "==", studentUid));
+      const snap = await getDocs(q);
+      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as AssignmentSubmission));
+      return list;
+    } catch (e) {
+      console.warn("Firestore getStudentSubmissions error:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(SUBMISSIONS_KEY);
+      if (raw) {
+        const all: AssignmentSubmission[] = JSON.parse(raw);
+        return all.filter(s => s.studentUid === studentUid);
+      }
+    } catch (e) {}
+  }
+  return [];
+}
+
+export async function saveAssignmentSubmission(submission: AssignmentSubmission): Promise<void> {
+  const sanitized = sanitizeForFirestore(submission);
+
+  // 1. LocalStorage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(SUBMISSIONS_KEY);
+      const list: AssignmentSubmission[] = raw ? JSON.parse(raw) : [];
+      const idx = list.findIndex(s => s.id === submission.id);
+      if (idx >= 0) {
+        list[idx] = submission;
+      } else {
+        list.push(submission);
+      }
+      localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(list));
+    } catch (e) {}
+  }
+
+  // 2. Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "submissions", submission.id), sanitized, { merge: true });
+    } catch (e) {
+      console.error("Firestore saveAssignmentSubmission error:", e);
+    }
+  }
+}
+
+export async function getAllSubmissions(): Promise<AssignmentSubmission[]> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(collection(db, "submissions"), orderBy("submittedAt", "desc"));
+      const snap = await getDocs(q);
+      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as AssignmentSubmission));
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(list));
+        } catch (e) {}
+      }
+      return list;
+    } catch (e) {
+      console.warn("Firestore getAllSubmissions error:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(SUBMISSIONS_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+  }
+  return [];
+}
+
+export async function getSubmissionsForCourse(courseCode: string): Promise<AssignmentSubmission[]> {
+  const all = await getAllSubmissions();
+  return all.filter(s => s.courseCode === courseCode);
+}
+
+// ==========================================
+// STUDENT STUDY & PROJECT GROUPS SYSTEM
+// ==========================================
+
+const GROUPS_KEY = "syllabus_platform_groups_v1";
+
+// Helper: generate friendly join code (e.g., "GRP-782")
+export function generateGroupJoinCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let suffix = "";
+  for (let i = 0; i < 4; i++) {
+    suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `GRP-${suffix}`;
+}
+
+export async function getAllGroups(): Promise<StudentGroup[]> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(collection(db, "groups"), orderBy("createdAt", "desc"));
+      const snap = await getDocs(q);
+      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as StudentGroup));
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(GROUPS_KEY, JSON.stringify(list));
+        } catch (e) {}
+      }
+      return list;
+    } catch (e) {
+      console.warn("Firestore getAllGroups error, using local fallback:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(GROUPS_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+  }
+  return [];
+}
+
+export async function getGroupsForCourse(courseCode: string): Promise<StudentGroup[]> {
+  const all = await getAllGroups();
+  // Groups are class-wide: return any group created for this course, or class-wide groups ("all" or unset)
+  return all.filter(g => !g.courseCode || g.courseCode === "all" || g.courseCode === courseCode);
+}
+
+export async function getStudentGroups(studentUid: string): Promise<StudentGroup[]> {
+  const all = await getAllGroups();
+  return all.filter(g => g.members && g.members.some(m => m.uid === studentUid));
+}
+
+export async function saveGroup(group: StudentGroup): Promise<void> {
+  const sanitized = sanitizeForFirestore(group);
+
+  // 1. LocalStorage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(GROUPS_KEY);
+      const list: StudentGroup[] = raw ? JSON.parse(raw) : [];
+      const idx = list.findIndex(g => g.id === group.id);
+      if (idx >= 0) {
+        list[idx] = group;
+      } else {
+        list.push(group);
+      }
+      localStorage.setItem(GROUPS_KEY, JSON.stringify(list));
+    } catch (e) {}
+  }
+
+  // 2. Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "groups", group.id), sanitized, { merge: true });
+    } catch (e) {
+      console.error("Firestore saveGroup error:", e);
+    }
+  }
+}
+
+export async function deleteGroup(groupId: string): Promise<void> {
+  // 1. LocalStorage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(GROUPS_KEY);
+      if (raw) {
+        const list: StudentGroup[] = JSON.parse(raw);
+        const filtered = list.filter(g => g.id !== groupId);
+        localStorage.setItem(GROUPS_KEY, JSON.stringify(filtered));
+      }
+    } catch (e) {}
+  }
+
+  // 2. Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, "groups", groupId));
+    } catch (e) {
+      console.error("Firestore deleteGroup error:", e);
+    }
+  }
+}
+
+export async function joinGroupByCode(
+  student: UserProfile, 
+  joinCode: string
+): Promise<{ success: boolean; message: string; group?: StudentGroup }> {
+  const code = joinCode.trim().toUpperCase();
+  if (!code) {
+    return { success: false, message: "Please enter a valid group join code." };
+  }
+
+  const all = await getAllGroups();
+  const group = all.find(g => g.joinCode.trim().toUpperCase() === code);
+
+  if (!group) {
+    return { success: false, message: `No active study group found matching code "${code}".` };
+  }
+
+  if (group.isLocked) {
+    return { success: false, message: "This group has been locked by the instructor. New members cannot join." };
+  }
+
+  if (group.members.some(m => m.uid === student.uid)) {
+    return { success: false, message: "You are already a registered member of this group!" };
+  }
+
+  if (group.members.length >= group.maxMembers) {
+    return { success: false, message: `This group has reached its maximum capacity of ${group.maxMembers} members.` };
+  }
+
+  // Strict Policy: No student can join two groups (even for different courses/modules)
+  const existingGroup = all.find(
+    g => g.id !== group.id && g.members.some(m => m.uid === student.uid)
+  );
+  if (existingGroup) {
+    return { 
+      success: false, 
+      message: `You are already enrolled in "${existingGroup.name}". In this class, each student can only belong to one group across all courses. Please leave "${existingGroup.name}" before joining another group.` 
+    };
+  }
+
+  // Add member
+  const newMember: GroupMember = {
+    uid: student.uid,
+    fullName: student.fullName,
+    username: student.username,
+    joinedAt: new Date().toISOString(),
+    isLeader: false
+  };
+
+  const updatedGroup: StudentGroup = {
+    ...group,
+    members: [...group.members, newMember],
+    updatedAt: new Date().toISOString()
+  };
+
+  await saveGroup(updatedGroup);
+  return { success: true, message: `Successfully joined "${group.name}"!`, group: updatedGroup };
+}
+
+export async function leaveGroup(
+  studentUid: string, 
+  groupId: string
+): Promise<{ success: boolean; message: string }> {
+  const all = await getAllGroups();
+  const group = all.find(g => g.id === groupId);
+
+  if (!group) {
+    return { success: false, message: "Group not found." };
+  }
+
+  if (group.isLocked) {
+    return { success: false, message: "Group membership has been locked by the course instructor." };
+  }
+
+  const isMember = group.members.some(m => m.uid === studentUid);
+  if (!isMember) {
+    return { success: false, message: "You are not a member of this group." };
+  }
+
+  const remaining = group.members.filter(m => m.uid !== studentUid);
+
+  if (remaining.length === 0) {
+    // Delete empty group
+    await deleteGroup(groupId);
+    return { success: true, message: "Left group. As the last member, the group was disbanded." };
+  }
+
+  // If the student leaving was the leader, promote next member
+  const wasLeader = group.members.find(m => m.uid === studentUid)?.isLeader;
+  if (wasLeader) {
+    remaining[0].isLeader = true;
+  }
+
+  const updatedGroup: StudentGroup = {
+    ...group,
+    members: remaining,
+    leaderName: remaining.find(m => m.isLeader)?.fullName || remaining[0].fullName,
+    updatedAt: new Date().toISOString()
+  };
+
+  await saveGroup(updatedGroup);
+  return { success: true, message: "You have left the group." };
+}
+
+export async function toggleGroupLock(groupId: string, isLocked: boolean): Promise<void> {
+  const all = await getAllGroups();
+  const group = all.find(g => g.id === groupId);
+  if (group) {
+    group.isLocked = isLocked;
+    group.updatedAt = new Date().toISOString();
+    await saveGroup(group);
+  }
+}
+
+export async function addMemberToGroup(
+  groupId: string, 
+  student: UserProfile
+): Promise<{ success: boolean; message: string }> {
+  const all = await getAllGroups();
+  const group = all.find(g => g.id === groupId);
+  if (!group) return { success: false, message: "Group not found." };
+
+  if (group.members.some(m => m.uid === student.uid)) {
+    return { success: false, message: "Student is already in this group." };
+  }
+
+  // Strict Policy: Student cannot be in two groups anywhere in the class
+  const existingGroup = all.find(g => g.id !== groupId && g.members.some(m => m.uid === student.uid));
+  if (existingGroup) {
+    return {
+      success: false,
+      message: `${student.fullName} is already enrolled in "${existingGroup.name}". A student can belong to only one group. Please remove them from "${existingGroup.name}" before adding them here.`
+    };
+  }
+
+  const newMember: GroupMember = {
+    uid: student.uid,
+    fullName: student.fullName,
+    username: student.username,
+    joinedAt: new Date().toISOString(),
+    isLeader: group.members.length === 0
+  };
+
+  group.members.push(newMember);
+  // Admin override: Automatically expand group capacity if members exceed previous max
+  if (group.members.length > group.maxMembers) {
+    group.maxMembers = group.members.length;
+  }
+  group.updatedAt = new Date().toISOString();
+  await saveGroup(group);
+  return { success: true, message: `Added ${student.fullName} to ${group.name}.` };
+}
+
+export async function updateGroupCapacity(
+  groupId: string,
+  newMaxMembers: number
+): Promise<{ success: boolean; message: string }> {
+  const all = await getAllGroups();
+  const group = all.find(g => g.id === groupId);
+  if (!group) return { success: false, message: "Group not found." };
+
+  const parsed = Math.max(group.members.length, Math.max(2, Number(newMaxMembers) || group.members.length));
+  group.maxMembers = parsed;
+  group.updatedAt = new Date().toISOString();
+  await saveGroup(group);
+  return { success: true, message: `Updated group capacity to ${parsed} members.` };
+}
+
+export async function removeMemberFromGroup(
+  groupId: string, 
+  studentUid: string
+): Promise<{ success: boolean; message: string }> {
+  return leaveGroup(studentUid, groupId);
+}
+
+// Teacher Auto-Balance / Divide Class into Groups
+export async function autoGenerateGroups(
+  courseCode: string,
+  courseTitle: string,
+  tradeId: string,
+  level: StudentLevel,
+  students: UserProfile[],
+  groupSize: number = 4
+): Promise<StudentGroup[]> {
+  // 1. Fetch ALL existing groups across the entire class/system
+  const allGroups = await getAllGroups();
+  const enrolledUids = new Set<string>();
+  allGroups.forEach(g => {
+    g.members.forEach(m => enrolledUids.add(m.uid));
+  });
+
+  // 2. Filter unassigned students (students not enrolled in ANY group)
+  const unassigned = students.filter(s => !enrolledUids.has(s.uid) && s.status === 'approved');
+  if (unassigned.length === 0) {
+    return [];
+  }
+
+  // 3. Shuffle students randomly
+  const shuffled = [...unassigned].sort(() => Math.random() - 0.5);
+
+  // 4. Divide into teams
+  const generated: StudentGroup[] = [];
+  const existingClassGroups = allGroups.filter(g => g.level === level);
+  let teamNumber = existingClassGroups.length + 1;
+
+  for (let i = 0; i < shuffled.length; i += groupSize) {
+    const chunk = shuffled.slice(i, i + groupSize);
+    const prefix = courseCode && courseCode !== "all" ? courseCode.toLowerCase() : "class";
+    const groupId = `grp_${prefix}_${Date.now()}_${teamNumber}`;
+    const joinCode = generateGroupJoinCode();
+
+    const members: GroupMember[] = chunk.map((st, idx) => ({
+      uid: st.uid,
+      fullName: st.fullName,
+      username: st.username,
+      joinedAt: new Date().toISOString(),
+      isLeader: idx === 0
+    }));
+
+    const displayName = courseCode && courseCode !== "all"
+      ? `Team ${teamNumber} (${level} - ${courseCode})`
+      : `Team ${teamNumber} (${level} Class)`;
+
+    const newGroup: StudentGroup = {
+      id: groupId,
+      name: displayName,
+      courseCode: courseCode || "all",
+      courseTitle: courseTitle || "All Class Assignments",
+      tradeId,
+      level,
+      joinCode,
+      createdByUid: "teacher_auto",
+      leaderName: members[0].fullName,
+      members,
+      maxMembers: Math.max(groupSize, members.length),
+      isLocked: false,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    await saveGroup(newGroup);
+    generated.push(newGroup);
+    teamNumber++;
+  }
+
+  return generated;
+}
+
+// Grade a group submission and cascade score & feedback to all members
+export async function gradeGroupSubmission(
+  submission: AssignmentSubmission,
+  score: number,
+  feedback: string,
+  gradedBy: string
+): Promise<void> {
+  const gradedAt = new Date().toISOString();
+
+  // 1. Update the primary submission
+  const updatedSubmission: AssignmentSubmission = {
+    ...submission,
+    status: "graded",
+    score,
+    feedback: feedback.trim(),
+    gradedAt,
+    gradedBy
+  };
+  await saveAssignmentSubmission(updatedSubmission);
+
+  // 2. Cascade score & feedback across all group members
+  if (submission.groupMembers && submission.groupMembers.length > 0) {
+    for (const member of submission.groupMembers) {
+      if (member.uid === submission.studentUid) continue; // already saved as primary
+
+      const memberSubId = `${submission.assignmentId}_${member.uid}`;
+      const memberSubmission: AssignmentSubmission = {
+        ...updatedSubmission,
+        id: memberSubId,
+        studentUid: member.uid,
+        studentName: member.fullName,
+        studentUsername: member.username
+      };
+      await saveAssignmentSubmission(memberSubmission);
+    }
+  }
+}
+
+export { 
+  getSystemRestrictions, 
+  setSystemRestrictions, 
+  subscribeToSystemRestrictions, 
+  getLocalRestrictions 
+} from "./restrictions";
+
+
 
 
