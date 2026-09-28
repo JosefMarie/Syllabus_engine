@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Syllabus } from "@/types/syllabus";
 import { UserProfile } from "@/types/auth";
-import { getAllSyllabi, deleteSyllabus, getAllUserProfiles, getLocalSyllabi, getLocalTrades, getAllTrades } from "@/lib/db";
+import { getAllSyllabi, deleteSyllabus, getAllUserProfiles, getLocalSyllabi, getLocalTrades, getAllTrades, subscribeToAllUserProfiles, getLocalUserProfiles } from "@/lib/db";
 import { getAdminSession, logoutAdmin, getStoredSession, subscribeToAdminSessionRevocation, revokeAllAdminSessions } from "@/lib/auth";
 import TradesManager from "@/components/admin/TradesManager";
 import StudentApprovals from "@/components/admin/StudentApprovals";
@@ -46,7 +46,12 @@ export default function AdminDashboardPage() {
   const [activeTab, setActiveTab] = useState<'syllabi' | 'trades' | 'students' | 'progress' | 'assignments' | 'groups' | 'activity'>('syllabi');
   const [syllabi, setSyllabi] = useState<Syllabus[]>(() => getLocalSyllabi());
   const [trades, setTrades] = useState<Trade[]>(() => getLocalTrades());
-  const [pendingCount, setPendingCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(() => {
+    if (typeof window !== "undefined") {
+      return getLocalUserProfiles().filter(u => u.status === 'pending_approval').length;
+    }
+    return 0;
+  });
   const [loading, setLoading] = useState(false);
 
   const [studentSession, setStudentSession] = useState<UserProfile | null>(null);
@@ -59,6 +64,14 @@ export default function AdminDashboardPage() {
       if (isMounted) {
         setAdminUser(null);
         router.push("/admin/login");
+      }
+    });
+
+    // Real-time listener: keep pending approvals count live
+    const unsubProfiles = subscribeToAllUserProfiles((userProfiles) => {
+      if (isMounted) {
+        const pending = userProfiles.filter(u => u.status === 'pending_approval').length;
+        setPendingCount(pending);
       }
     });
 
@@ -92,15 +105,6 @@ export default function AdminDashboardPage() {
         } catch (e) {
           console.warn("Error fetching trades for admin:", e);
         }
-
-        // Fetch student profiles safely
-        try {
-          const userProfiles = await getAllUserProfiles();
-          const pending = userProfiles.filter(u => u.status === 'pending_approval').length;
-          if (isMounted) setPendingCount(pending);
-        } catch (e) {
-          console.warn("Error fetching profiles for admin:", e);
-        }
       } catch (globalErr) {
         console.error("Admin dashboard initialization error:", globalErr);
       } finally {
@@ -118,6 +122,7 @@ export default function AdminDashboardPage() {
     return () => {
       isMounted = false;
       unsubRevocation();
+      unsubProfiles();
       clearTimeout(safetyTimer);
     };
   }, [router]);

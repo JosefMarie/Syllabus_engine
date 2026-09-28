@@ -44,6 +44,7 @@ if (typeof window !== "undefined" || isFirebaseConfigured) {
             "syllabus_admin_session_v1",
             "syllabus_auth_session_v1",
             "syllabus_admin_presence_sound",
+            "syllabus_platform_users_v1",
             "syllabus_platform_syllabi_v1",
             "syllabus_platform_trades_v1",
             "syllabus_platform_trades_init_v1",

@@ -127,7 +127,8 @@ export function cleanupLocalStorageQuota(): void {
       "syllabus_platform_admin_session_v1",
       "syllabus_admin_session_v1",
       "syllabus_auth_session_v1",
-      "syllabus_admin_presence_sound"
+      "syllabus_admin_presence_sound",
+      "syllabus_platform_users_v1"
     ]);
 
     const keysToRemove: string[] = [];
@@ -728,29 +729,7 @@ export function saveLocalCurrentUser(user: UserProfile | null) {
   }
 }
 
-export async function getAllUserProfiles(): Promise<UserProfile[]> {
-  purgeStaleMockDataOnce();
-  let items: UserProfile[] = [];
-  if (isFirebaseConfigured && db) {
-    try {
-      const fetchPromise = getDocs(collection(db, "users"));
-      const timeoutPromise = new Promise<null>((resolve) => 
-        setTimeout(() => resolve(null), 3000)
-      );
-      const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
-      if (snapshot && 'forEach' in snapshot) {
-        snapshot.forEach((docSnap) => {
-          items.push({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
-        });
-        if (items.length > 0) {
-          return items.filter(u => !u.uid.startsWith("demo-") && u.fullName !== "Alson Johns" && u.fullName !== "Angel Vanca");
-        }
-      }
-    } catch (err) {
-      console.warn("Firestore fetch users error:", err);
-    }
-  }
-
+export function getLocalUserProfiles(): UserProfile[] {
   if (typeof window === "undefined") return [];
   try {
     const saved = localStorage.getItem(USERS_KEY);
@@ -759,6 +738,100 @@ export async function getAllUserProfiles(): Promise<UserProfile[]> {
   } catch (e) {
     return [];
   }
+}
+
+export function subscribeToAllUserProfiles(
+  callback: (users: UserProfile[]) => void
+): () => void {
+  // 1. Immediately emit local cached profiles (0ms)
+  const localList = getLocalUserProfiles();
+  if (localList.length > 0) {
+    callback(localList);
+  }
+
+  let unsubFirestore: (() => void) | null = null;
+  if (isFirebaseConfigured && db) {
+    try {
+      unsubFirestore = onSnapshot(
+        collection(db, "users"),
+        (snap) => {
+          const items: UserProfile[] = [];
+          snap.forEach((docSnap) => {
+            items.push({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
+          });
+          const filtered = items.filter(u => !u.uid.startsWith("demo-") && u.fullName !== "Alson Johns" && u.fullName !== "Angel Vanca");
+          if (filtered.length > 0 && typeof window !== "undefined") {
+            try {
+              localStorage.setItem(USERS_KEY, JSON.stringify(filtered));
+            } catch (e) {}
+          }
+          callback(filtered);
+        },
+        (err) => {
+          console.warn("Firestore subscribeToAllUserProfiles error:", err);
+        }
+      );
+    } catch (e) {
+      console.warn("Failed to attach subscribeToAllUserProfiles onSnapshot:", e);
+    }
+  }
+
+  return () => {
+    if (unsubFirestore) unsubFirestore();
+  };
+}
+
+export async function getAllUserProfiles(): Promise<UserProfile[]> {
+  purgeStaleMockDataOnce();
+  const local = getLocalUserProfiles();
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const fetchPromise = getDocs(collection(db, "users"));
+      // Fast race: if we already have local profiles, allow 1500ms max. IndexedDB returns in <20ms.
+      // If empty, allow 12000ms.
+      const timeoutMs = local.length > 0 ? 1500 : 12000;
+      const timeoutPromise = new Promise<null>((resolve) => 
+        setTimeout(() => resolve(null), timeoutMs)
+      );
+      const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
+      if (snapshot && 'forEach' in snapshot) {
+        const items: UserProfile[] = [];
+        snapshot.forEach((docSnap) => {
+          items.push({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
+        });
+        const filtered = items.filter(u => !u.uid.startsWith("demo-") && u.fullName !== "Alson Johns" && u.fullName !== "Angel Vanca");
+        if (filtered.length > 0) {
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem(USERS_KEY, JSON.stringify(filtered));
+            } catch (e) {}
+          }
+          return filtered;
+        }
+      } else if (local.length > 0) {
+        // Fire-and-forget background sync if initial timeout was hit
+        fetchPromise.then((snap) => {
+          if (snap && 'forEach' in snap) {
+            const items: UserProfile[] = [];
+            snap.forEach((docSnap) => {
+              items.push({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
+            });
+            const filtered = items.filter(u => !u.uid.startsWith("demo-") && u.fullName !== "Alson Johns" && u.fullName !== "Angel Vanca");
+            if (filtered.length > 0 && typeof window !== "undefined") {
+              try {
+                localStorage.setItem(USERS_KEY, JSON.stringify(filtered));
+              } catch (e) {}
+            }
+          }
+        }).catch(() => {});
+      }
+    } catch (err) {
+      console.warn("Firestore fetch users error:", err);
+    }
+  }
+
+  return local;
 }
 
 export async function saveUserProfile(profile: UserProfile): Promise<void> {
@@ -1521,6 +1594,11 @@ export async function getAllStudentProgressSummaries(): Promise<StudentProgressS
       users.push({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
     });
     const students = users.filter(u => u.role === 'student' && !u.uid.startsWith("demo-") && u.fullName !== "Alson Johns" && u.fullName !== "Angel Vanca");
+    if (typeof window !== "undefined" && students.length > 0) {
+      try {
+        localStorage.setItem(USERS_KEY, JSON.stringify(students));
+      } catch (e) {}
+    }
 
     const publishedSyllabi = (syllabiList || []).filter((s: Syllabus) => s.status === 'published' || !s.status);
 

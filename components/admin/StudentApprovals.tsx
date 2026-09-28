@@ -2,32 +2,65 @@
 
 import React, { useEffect, useState } from "react";
 import { UserProfile, Trade } from "@/types/auth";
-import { getAllUserProfiles, updateStudentStatus, getAllTrades, logActivity, deleteUserProfile, resetStudentUnfocusedCount } from "@/lib/db";
+import { 
+  getAllUserProfiles, 
+  getLocalUserProfiles, 
+  subscribeToAllUserProfiles, 
+  updateStudentStatus, 
+  getAllTrades, 
+  logActivity, 
+  deleteUserProfile, 
+  resetStudentUnfocusedCount 
+} from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
 import { UserCheck, Check, X, ShieldAlert, Clock, CheckCircle2, Trash2, AlertTriangle, RotateCcw, Search, GraduationCap, Filter } from "lucide-react";
 
 export default function StudentApprovals() {
-  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [users, setUsers] = useState<UserProfile[]>(() => {
+    if (typeof window !== "undefined") {
+      return getLocalUserProfiles();
+    }
+    return [];
+  });
   const [tradesMap, setTradesMap] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'pending' | 'approved' | 'suspended' | 'all'>('pending');
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      return getLocalUserProfiles().length === 0;
+    }
+    return true;
+  });
+  const [filter, setFilter] = useState<'pending' | 'approved' | 'suspended' | 'all'>('all');
   const [levelFilter, setLevelFilter] = useState<'all' | 'Level 3' | 'Level 4' | 'Level 5'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [bulkApproving, setBulkApproving] = useState(false);
 
   useEffect(() => {
-    async function load() {
-      const allProfiles = await getAllUserProfiles();
-      setUsers(allProfiles);
-
-      const trades = await getAllTrades();
-      const map: Record<string, string> = {};
-      trades.forEach(t => map[t.id] = t.name);
-      setTradesMap(map);
-
+    // 1. Initial immediate fast emission from local cache (0ms)
+    const local = getLocalUserProfiles();
+    if (local.length > 0) {
+      setUsers(local);
       setLoading(false);
     }
-    load();
+
+    // 2. Real-time live listener for all 97+ students in Firestore
+    const unsubscribe = subscribeToAllUserProfiles((allProfiles) => {
+      if (allProfiles && allProfiles.length > 0) {
+        setUsers(allProfiles);
+      }
+      setLoading(false);
+    });
+
+    async function loadTrades() {
+      const trades = await getAllTrades();
+      const map: Record<string, string> = {};
+      trades.forEach(t => { map[t.id] = t.name; });
+      setTradesMap(map);
+    }
+    loadTrades();
+
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
   const handleApproveAll = async () => {
@@ -168,9 +201,16 @@ export default function StudentApprovals() {
 
   return (
     <div className="space-y-6">
-      {/* Top Statistical Overview Cards */}
+      {/* Top Statistical Overview Cards - Clickable Interactive Navigation */}
       <div className="grid gap-4 sm:grid-cols-4">
-        <div className="rounded-2xl border border-[#F59E0B]/30 bg-[#F59E0B]/10 p-5 shadow-lg flex items-center justify-between">
+        <button
+          onClick={() => setFilter('pending')}
+          className={`rounded-2xl border text-left p-5 shadow-lg flex items-center justify-between transition-all cursor-pointer ${
+            filter === 'pending'
+              ? 'border-[#F59E0B] ring-2 ring-[#F59E0B]/40 bg-[#F59E0B]/20'
+              : 'border-[#F59E0B]/30 bg-[#F59E0B]/10 hover:border-[#F59E0B]/60'
+          }`}
+        >
           <div>
             <span className="text-xs font-mono font-bold text-[#F59E0B] uppercase tracking-wider block mb-1">
               Pending Verification
@@ -183,9 +223,16 @@ export default function StudentApprovals() {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F59E0B]/20 text-[#F59E0B]">
             <Clock className="h-6 w-6" />
           </div>
-        </div>
+        </button>
 
-        <div className="rounded-2xl border border-[#10B981]/30 bg-[#10B981]/10 p-5 shadow-lg flex items-center justify-between">
+        <button
+          onClick={() => setFilter('approved')}
+          className={`rounded-2xl border text-left p-5 shadow-lg flex items-center justify-between transition-all cursor-pointer ${
+            filter === 'approved'
+              ? 'border-[#10B981] ring-2 ring-[#10B981]/40 bg-[#10B981]/20'
+              : 'border-[#10B981]/30 bg-[#10B981]/10 hover:border-[#10B981]/60'
+          }`}
+        >
           <div>
             <span className="text-xs font-mono font-bold text-[#10B981] uppercase tracking-wider block mb-1">
               Approved Accounts
@@ -198,9 +245,16 @@ export default function StudentApprovals() {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#10B981]/20 text-[#10B981]">
             <CheckCircle2 className="h-6 w-6" />
           </div>
-        </div>
+        </button>
 
-        <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-5 shadow-lg flex items-center justify-between">
+        <button
+          onClick={() => setFilter('suspended')}
+          className={`rounded-2xl border text-left p-5 shadow-lg flex items-center justify-between transition-all cursor-pointer ${
+            filter === 'suspended'
+              ? 'border-rose-500 ring-2 ring-rose-500/40 bg-rose-500/20'
+              : 'border-rose-500/30 bg-rose-500/10 hover:border-rose-500/60'
+          }`}
+        >
           <div>
             <span className="text-xs font-mono font-bold text-rose-400 uppercase tracking-wider block mb-1">
               Suspended (10 Strikes)
@@ -213,22 +267,29 @@ export default function StudentApprovals() {
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-500/20 text-rose-400">
             <AlertTriangle className="h-6 w-6" />
           </div>
-        </div>
+        </button>
 
-        <div className="rounded-2xl border border-slate-700 bg-slate-800/40 p-5 shadow-lg flex items-center justify-between">
+        <button
+          onClick={() => setFilter('all')}
+          className={`rounded-2xl border text-left p-5 shadow-lg flex items-center justify-between transition-all cursor-pointer ${
+            filter === 'all'
+              ? 'border-[#06B6D4] ring-2 ring-[#06B6D4]/40 bg-[#06B6D4]/15'
+              : 'border-slate-700 bg-slate-800/40 hover:border-slate-500'
+          }`}
+        >
           <div>
             <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider block mb-1">
-              Rejected Requests
+              All Enrolled Students
             </span>
             <span className="text-3xl font-extrabold text-white font-mono">
-              {rejectedCount}
+              {users.length}
             </span>
-            <span className="text-[11px] text-[#94A3B8] block mt-1">Denied registration</span>
+            <span className="text-[11px] text-[#94A3B8] block mt-1">Total across all levels</span>
           </div>
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-700/30 text-slate-400">
-            <ShieldAlert className="h-6 w-6" />
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-700/30 text-[#06B6D4]">
+            <GraduationCap className="h-6 w-6" />
           </div>
-        </div>
+        </button>
       </div>
 
       {/* Header & Status Filter Tabs */}
@@ -396,26 +457,43 @@ export default function StudentApprovals() {
       {loading ? (
         <div className="py-12 text-center text-xs text-[#94A3B8]">Loading student profiles...</div>
       ) : filteredUsers.length === 0 ? (
-        <div className="py-12 text-center text-xs text-[#94A3B8] bg-[#1E293B]/40 rounded-2xl border border-[#334155] p-6 space-y-3">
-          <p className="text-sm font-bold text-white">No matching student registrations found</p>
-          <p className="text-xs text-[#94A3B8] max-w-md mx-auto">
-            No students found in category <strong className="text-[#06B6D4]">"{filter.toUpperCase()}"</strong>
-            {levelFilter !== 'all' && <> for <strong className="text-[#10B981] font-mono">{levelFilter}</strong></>}
-            {searchQuery && <> matching name, username, or email <strong className="text-amber-400">"{searchQuery}"</strong></>}.
-          </p>
-          {isFiltered && (
+        filter === 'pending' && pendingCount === 0 && approvedCount > 0 ? (
+          <div className="py-12 text-center text-xs text-[#94A3B8] bg-[#1E293B]/40 rounded-2xl border border-[#334155] p-6 space-y-3">
+            <CheckCircle2 className="mx-auto h-12 w-12 text-[#10B981] mb-2" />
+            <p className="text-base font-bold text-white">All Student Accounts Are Verified & Active</p>
+            <p className="text-xs text-[#94A3B8] max-w-md mx-auto">
+              There are currently 0 students awaiting approval. You have <strong className="text-[#10B981] font-bold">{approvedCount} approved students</strong> active across your academic trades and levels.
+            </p>
             <button
-              onClick={() => {
-                setSearchQuery("");
-                setLevelFilter("all");
-              }}
-              className="mt-2 inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4] px-4 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+              onClick={() => setFilter('approved')}
+              className="mt-2 inline-flex items-center space-x-1.5 rounded-xl bg-[#10B981] px-4 py-2 text-xs font-bold text-slate-950 hover:bg-emerald-400 transition-all shadow-md"
             >
-              <RotateCcw className="h-3.5 w-3.5" />
-              <span>Clear Search & Reset Filters</span>
+              <UserCheck className="h-4 w-4" />
+              <span>View Approved Students ({approvedCount})</span>
             </button>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="py-12 text-center text-xs text-[#94A3B8] bg-[#1E293B]/40 rounded-2xl border border-[#334155] p-6 space-y-3">
+            <p className="text-sm font-bold text-white">No matching student registrations found</p>
+            <p className="text-xs text-[#94A3B8] max-w-md mx-auto">
+              No students found in category <strong className="text-[#06B6D4]">"{filter.toUpperCase()}"</strong>
+              {levelFilter !== 'all' && <> for <strong className="text-[#10B981] font-mono">{levelFilter}</strong></>}
+              {searchQuery && <> matching name, username, or email <strong className="text-amber-400">"{searchQuery}"</strong></>}.
+            </p>
+            {isFiltered && (
+              <button
+                onClick={() => {
+                  setSearchQuery("");
+                  setLevelFilter("all");
+                }}
+                className="mt-2 inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4] px-4 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                <span>Clear Search & Reset Filters</span>
+              </button>
+            )}
+          </div>
+        )
       ) : (
         <div className="space-y-3">
           {filteredUsers.map((user) => {
