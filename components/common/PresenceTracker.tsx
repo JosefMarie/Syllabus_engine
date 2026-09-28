@@ -381,10 +381,12 @@ export default function PresenceTracker({
       const now = Date.now();
       const stateChanged = state !== lastReportedStateRef.current;
       const subtopicChanged = (subtopicTitle || "") !== lastReportedSubtopicRef.current;
-      const routineHeartbeatDue = (now - lastPresenceWriteRef.current) >= 20000;
+      // Adaptive steady-state heartbeat: 45s steady-state preserves router bandwidth on crowded school Wi-Fi
+      // while state transitions (unfocused, changing topic, strikes) remain 100% instant.
+      const routineHeartbeatDue = (now - lastPresenceWriteRef.current) >= 45000;
       const isUnfocusedTracking = unfocusedDuration > 0;
 
-      // Adaptive Write: Immediate on state/topic shift or active unfocused tracking, 20s steady-state heartbeat
+      // Adaptive Write: Immediate on state/topic shift or active unfocused tracking, 45s steady-state heartbeat
       if (stateChanged || subtopicChanged || routineHeartbeatDue || isUnfocusedTracking) {
         lastReportedStateRef.current = state;
         lastReportedSubtopicRef.current = subtopicTitle || "";
@@ -397,8 +399,8 @@ export default function PresenceTracker({
       if (state === 'actively_reading' || (restrictionsDisabledRef.current && secondsSinceLastInput < 120)) {
         activeSecondsAccumulatorRef.current += 5; // 5 second tick
         
-        // Flush every 15 seconds of active study to persist progress
-        if (activeSecondsAccumulatorRef.current >= 15) {
+        // Flush every 35 seconds of active study to persist progress without flooding public networks
+        if (activeSecondsAccumulatorRef.current >= 35) {
           flushActiveSeconds();
         }
       }

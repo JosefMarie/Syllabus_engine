@@ -340,8 +340,9 @@ export async function getAllSyllabi(): Promise<Syllabus[]> {
     try {
       const q = query(collection(db, "syllabi"));
       const fetchPromise = getDocs(q);
-      // If we already have local syllabi, allow 4s. If starting empty, allow 12s for cloud fetch.
-      const timeoutMs = localCandidates.length > 0 ? 4000 : 12000;
+      // Fast race: if local candidates exist, allow 1200ms max. IndexedDB returns in <20ms.
+      // If network is congested, immediately return local and let background cache refresh silently.
+      const timeoutMs = localCandidates.length > 0 ? 1200 : 10000;
       const timeoutPromise = new Promise<null>((resolve) => 
         setTimeout(() => resolve(null), timeoutMs)
       );
@@ -368,6 +369,23 @@ export async function getAllSyllabi(): Promise<Syllabus[]> {
         if (firestoreList.length > 0) {
           saveLocalSyllabi(Array.from(mergedMap.values()));
         }
+      } else if (localCandidates.length > 0) {
+        // Fire-and-forget background sync if timeout was hit
+        fetchPromise.then((snap) => {
+          if (snap && 'forEach' in snap) {
+            const bgList: Syllabus[] = [];
+            snap.forEach((docSnap) => {
+              const val = { id: docSnap.id, ...docSnap.data() } as Syllabus;
+              if (!isDemoOrMockSyllabus(val)) {
+                bgList.push(val);
+                mergedMap.set(docSnap.id, val);
+              }
+            });
+            if (bgList.length > 0) {
+              saveLocalSyllabi(Array.from(mergedMap.values()));
+            }
+          }
+        }).catch(() => {});
       }
     } catch (err) {
       console.warn("Firestore fetch error, using cached store:", err);
@@ -481,14 +499,15 @@ export async function getSyllabusById(id: string): Promise<Syllabus | null> {
   if (isFirebaseConfigured && db) {
     try {
       const docRef = doc(db, "syllabi", id);
-      // If we already have a complete local version with content, allow 3s. Otherwise allow 15s.
+      // If we already have a complete local version with content, allow 900ms max.
+      // Firestore's IndexedDB responds in <20ms; if on slow Wi-Fi, return local immediately and update in background.
       const hasFullContent = Boolean(
         localDoc &&
         localDoc.learningOutcomes &&
         localDoc.learningOutcomes.length > 0 &&
         localDoc.learningOutcomes[0]?.indicativeContents?.[0]?.topics?.[0]?.subtopics?.[0]?.contentMarkdown
       );
-      const timeoutMs = hasFullContent ? 3000 : 15000;
+      const timeoutMs = hasFullContent ? 900 : 12000;
       const fetchPromise = getDoc(docRef);
       const timeoutPromise = new Promise<null>((resolve) => 
         setTimeout(() => resolve(null), timeoutMs)
@@ -512,6 +531,23 @@ export async function getSyllabusById(id: string): Promise<Syllabus | null> {
           firestoreDoc = rawData;
         }
         saveSingleLocalSyllabus(firestoreDoc);
+      } else if (hasFullContent) {
+        // Asynchronous background update if initial window timed out
+        fetchPromise.then(async (snap) => {
+          if (snap && snap.exists() && db) {
+            const rawData = { id: snap.id, ...snap.data() } as Syllabus;
+            let completeDoc = rawData;
+            if (rawData._isChunked) {
+              try {
+                const chunksSnap = await getDocs(collection(db, "syllabi", id, "chunks"));
+                const chunkList: { index?: number; contents?: Record<string, string> }[] = [];
+                chunksSnap.forEach((cSnap) => chunkList.push(cSnap.data() as any));
+                completeDoc = reassembleChunkedSyllabus(rawData, chunkList);
+              } catch (e) {}
+            }
+            saveSingleLocalSyllabus(completeDoc);
+          }
+        }).catch(() => {});
       }
     } catch (err) {
       console.warn("Firestore doc fetch error:", err);
@@ -1183,12 +1219,31 @@ export function subscribeToUserProfile(
 
 const TRADES_INIT_KEY = "syllabus_platform_trades_init_v1";
 
+export function getLocalTrades(): Trade[] {
+  if (typeof window === "undefined") return DEFAULT_TRADES;
+  try {
+    const saved = localStorage.getItem(TRADES_KEY);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {}
+  return DEFAULT_TRADES;
+}
+
 export async function getAllTrades(): Promise<Trade[]> {
+  const localList = getLocalTrades();
+  const hasLocal = localList && localList.length > 0;
+
   if (isFirebaseConfigured && db) {
     try {
       const fetchPromise = getDocs(collection(db, "trades"));
+      // Fast race: if local trades are cached, allow 1200ms max. IndexedDB returns in <20ms.
+      const timeoutMs = hasLocal ? 1200 : 5000;
       const timeoutPromise = new Promise<null>((resolve) =>
-        setTimeout(() => resolve(null), 3000)
+        setTimeout(() => resolve(null), timeoutMs)
       );
       const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
       if (snapshot && 'forEach' in snapshot) {
@@ -1199,6 +1254,15 @@ export async function getAllTrades(): Promise<Trade[]> {
           items.push({ ...data, id: data.id || docSnap.id } as Trade);
         });
 
+        if (items.length > 0) {
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem(TRADES_KEY, JSON.stringify(items));
+            } catch (e) {}
+          }
+          return items;
+        }
+
         const metaDocRef = doc(db, "trades", "_meta");
         const metaSnap = await Promise.race([
           getDoc(metaDocRef),
@@ -1206,13 +1270,8 @@ export async function getAllTrades(): Promise<Trade[]> {
         ]);
         const isInitLocal = typeof window !== "undefined" && localStorage.getItem(TRADES_INIT_KEY);
 
-        if (items.length > 0 || (metaSnap && 'exists' in metaSnap && metaSnap.exists()) || isInitLocal) {
-          if (typeof window !== "undefined" && items.length > 0) {
-            try {
-              localStorage.setItem(TRADES_KEY, JSON.stringify(items));
-            } catch (e) {}
-          }
-          return items;
+        if ((metaSnap && 'exists' in metaSnap && metaSnap.exists()) || isInitLocal) {
+          return items.length > 0 ? items : localList;
         }
 
         // First-time initialization ONLY: set _meta doc and seed default trades
@@ -1225,25 +1284,30 @@ export async function getAllTrades(): Promise<Trade[]> {
           localStorage.setItem(TRADES_KEY, JSON.stringify(DEFAULT_TRADES));
         }
         return DEFAULT_TRADES;
+      } else if (hasLocal) {
+        // Fire-and-forget background sync if timeout was hit
+        fetchPromise.then((snap) => {
+          if (snap && 'forEach' in snap) {
+            const bgTrades: Trade[] = [];
+            snap.forEach((docSnap) => {
+              if (docSnap.id === "_meta") return;
+              const data = docSnap.data();
+              bgTrades.push({ ...data, id: data.id || docSnap.id } as Trade);
+            });
+            if (bgTrades.length > 0 && typeof window !== "undefined") {
+              try {
+                localStorage.setItem(TRADES_KEY, JSON.stringify(bgTrades));
+              } catch (e) {}
+            }
+          }
+        }).catch(() => {});
       }
     } catch (err) {
       console.warn("Firestore fetch trades error:", err);
     }
   }
 
-  if (typeof window === "undefined") return DEFAULT_TRADES;
-  try {
-    const isInit = localStorage.getItem(TRADES_INIT_KEY);
-    const saved = localStorage.getItem(TRADES_KEY);
-    if (!saved && !isInit) {
-      localStorage.setItem(TRADES_INIT_KEY, "true");
-      localStorage.setItem(TRADES_KEY, JSON.stringify(DEFAULT_TRADES));
-      return DEFAULT_TRADES;
-    }
-    return saved ? JSON.parse(saved) : [];
-  } catch (e) {
-    return [];
-  }
+  return localList;
 }
 
 export async function saveTrade(trade: Trade): Promise<Trade> {

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Syllabus } from "@/types/syllabus";
 import { UserProfile, StudentLevel } from "@/types/auth";
-import { getAllSyllabi, getAllTrades, getSubtopicProgress, getSubtopicProgressAsync, subscribeToUserProfile } from "@/lib/db";
+import { getAllSyllabi, getAllTrades, getSubtopicProgress, getSubtopicProgressAsync, subscribeToUserProfile, getLocalSyllabi, getLocalTrades } from "@/lib/db";
 import { getStoredSession, saveStoredSession, updateUserEmail, logoutStudent, getAdminSession } from "@/lib/auth";
 import { 
   BookOpen, 
@@ -40,12 +40,17 @@ import StudentGroupsView from "@/components/student/StudentGroupsView";
 
 export default function CatalogPage() {
   const router = useRouter();
-  const [syllabi, setSyllabi] = useState<Syllabus[]>([]);
-  const [tradesMap, setTradesMap] = useState<Record<string, string>>({});
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [syllabi, setSyllabi] = useState<Syllabus[]>(() => getLocalSyllabi());
+  const [tradesMap, setTradesMap] = useState<Record<string, string>>(() => {
+    const localTrades = getLocalTrades();
+    const map: Record<string, string> = {};
+    localTrades.forEach(t => { map[t.id] = t.name; });
+    return map;
+  });
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => getStoredSession());
   const [studentPortalTab, setStudentPortalTab] = useState<"courses" | "assignments" | "groups">("courses");
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => getLocalSyllabi().length === 0);
   const [navigatingSyllabusId, setNavigatingSyllabusId] = useState<string | null>(null);
 
   // Auth requirement modal for unauthenticated viewers

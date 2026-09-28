@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Syllabus } from "@/types/syllabus";
 import { UserProfile } from "@/types/auth";
-import { getAllSyllabi, deleteSyllabus, getAllUserProfiles } from "@/lib/db";
+import { getAllSyllabi, deleteSyllabus, getAllUserProfiles, getLocalSyllabi, getLocalTrades, getAllTrades } from "@/lib/db";
 import { getAdminSession, logoutAdmin, getStoredSession, subscribeToAdminSessionRevocation, revokeAllAdminSessions } from "@/lib/auth";
 import TradesManager from "@/components/admin/TradesManager";
 import StudentApprovals from "@/components/admin/StudentApprovals";
@@ -13,7 +13,6 @@ import AssignmentManager from "@/components/admin/AssignmentManager";
 import GroupManager from "@/components/admin/GroupManager";
 import AdminPresenceAlert from "@/components/admin/AdminPresenceAlert";
 import RestrictionsControl from "@/components/admin/RestrictionsControl";
-import { getAllTrades } from "@/lib/db";
 import { Trade } from "@/types/auth";
 import { useRouter } from "next/navigation";
 import { downloadSyllabusAsJSON, downloadSyllabusAsText, downloadAllSyllabiAsJSON } from "@/lib/exportSyllabus";
@@ -45,10 +44,10 @@ export default function AdminDashboardPage() {
 
   const [adminUser, setAdminUser] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState<'syllabi' | 'trades' | 'students' | 'progress' | 'assignments' | 'groups' | 'activity'>('syllabi');
-  const [syllabi, setSyllabi] = useState<Syllabus[]>([]);
-  const [trades, setTrades] = useState<Trade[]>([]);
+  const [syllabi, setSyllabi] = useState<Syllabus[]>(() => getLocalSyllabi());
+  const [trades, setTrades] = useState<Trade[]>(() => getLocalTrades());
   const [pendingCount, setPendingCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const [studentSession, setStudentSession] = useState<UserProfile | null>(null);
 
@@ -366,173 +365,179 @@ export default function AdminDashboardPage() {
         </div>
 
         {/* TAB 1: SYLLABI MANAGEMENT */}
-        {activeTab === 'syllabi' && (
-          <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#334155] pb-4 sm:pb-6 gap-3 sm:gap-4">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold text-white">Course Syllabi Management</h2>
-                <p className="mt-1 text-xs text-[#94A3B8]">
-                  Manage published student syllabi or parse new course documents with Gemini 2.5 Pro.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs font-mono">
-                <button
-                  onClick={() => downloadAllSyllabiAsJSON(syllabi)}
-                  className="inline-flex items-center space-x-1.5 rounded-lg border border-[#06B6D4]/40 bg-[#06B6D4]/10 px-2.5 sm:px-3 py-1 font-sans text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4]/20 transition-all shrink-0"
-                  title="Export all course syllabi as a single JSON backup"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  <span>Export All (JSON)</span>
-                </button>
-                <span className="rounded-lg bg-[#10B981]/15 px-2.5 sm:px-3 py-1 text-[#10B981] border border-[#10B981]/30 shrink-0">
-                  Published: {syllabi.filter(s => s.status === 'published').length}
-                </span>
-                <span className="rounded-lg bg-[#F59E0B]/15 px-2.5 sm:px-3 py-1 text-[#F59E0B] border border-[#F59E0B]/30 shrink-0">
-                  Drafts: {syllabi.filter(s => s.status === 'draft').length}
-                </span>
-              </div>
+        <div className={activeTab === 'syllabi' ? 'block' : 'hidden'}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#334155] pb-4 sm:pb-6 gap-3 sm:gap-4">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-white">Course Syllabi Management</h2>
+              <p className="mt-1 text-xs text-[#94A3B8]">
+                Manage published student syllabi or parse new course documents with Gemini 2.5 Pro.
+              </p>
             </div>
 
-            {loading ? (
-              <div className="py-20 text-center text-[#94A3B8]">
-                <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-3" />
-                Loading Course Syllabi...
-              </div>
-            ) : syllabi.length === 0 ? (
-              <div className="py-20 text-center text-[#94A3B8]">
-                <BookOpen className="mx-auto h-12 w-12 text-[#334155] mb-3" />
-                <p className="font-semibold text-white">No Syllabi Found</p>
-                <p className="text-xs mt-1 mb-4">Get started by creating your first syllabus.</p>
-                <Link
-                  href="/admin/builder"
-                  className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-4 py-2.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg"
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs font-mono">
+              <button
+                onClick={() => downloadAllSyllabiAsJSON(syllabi)}
+                className="inline-flex items-center space-x-1.5 rounded-lg border border-[#06B6D4]/40 bg-[#06B6D4]/10 px-2.5 sm:px-3 py-1 font-sans text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4]/20 transition-all shrink-0"
+                title="Export all course syllabi as a single JSON backup"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span>Export All (JSON)</span>
+              </button>
+              <span className="rounded-lg bg-[#10B981]/15 px-2.5 sm:px-3 py-1 text-[#10B981] border border-[#10B981]/30 shrink-0">
+                Published: {syllabi.filter(s => s.status === 'published').length}
+              </span>
+              <span className="rounded-lg bg-[#F59E0B]/15 px-2.5 sm:px-3 py-1 text-[#F59E0B] border border-[#F59E0B]/30 shrink-0">
+                Drafts: {syllabi.filter(s => s.status === 'draft').length}
+              </span>
+            </div>
+          </div>
+
+          {loading ? (
+            <div className="py-20 text-center text-[#94A3B8]">
+              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-3" />
+              Loading Course Syllabi...
+            </div>
+          ) : syllabi.length === 0 ? (
+            <div className="py-20 text-center text-[#94A3B8]">
+              <BookOpen className="mx-auto h-12 w-12 text-[#334155] mb-3" />
+              <p className="font-semibold text-white">No Syllabi Found</p>
+              <p className="text-xs mt-1 mb-4">Get started by creating your first syllabus.</p>
+              <Link
+                href="/admin/builder"
+                className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-4 py-2.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Create First Syllabus</span>
+              </Link>
+            </div>
+          ) : (
+            <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {syllabi.map((syllabus) => (
+                <div
+                  key={syllabus.id}
+                  className="flex flex-col justify-between rounded-2xl border border-[#334155] bg-[#1E293B] p-6 shadow-xl hover:border-[#06B6D4]/50 transition-all"
                 >
-                  <Plus className="h-4 w-4" />
-                  <span>Create First Syllabus</span>
-                </Link>
-              </div>
-            ) : (
-              <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {syllabi.map((syllabus) => (
-                  <div
-                    key={syllabus.id}
-                    className="flex flex-col justify-between rounded-2xl border border-[#334155] bg-[#1E293B] p-6 shadow-xl hover:border-[#06B6D4]/50 transition-all"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="rounded-lg bg-[#0B0F19] px-2.5 py-1 font-mono text-xs font-bold text-[#06B6D4] border border-[#334155]">
-                          {syllabus.courseCode}
-                        </span>
-                        <span
-                          className={`rounded-md px-2 py-0.5 text-[10px] font-bold font-mono uppercase ${
-                            syllabus.status === "published"
-                              ? "bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30"
-                              : "bg-[#F59E0B]/15 text-[#F59E0B] border border-[#F59E0B]/30"
-                          }`}
-                        >
-                          {syllabus.status}
-                        </span>
-                      </div>
-
-                      <h3 className="text-base font-bold text-white line-clamp-1">{syllabus.title}</h3>
-                      <p className="mt-2 text-xs text-[#94A3B8] line-clamp-2 leading-relaxed">
-                        {syllabus.description}
-                      </p>
-
-                      <div className="mt-4 flex flex-wrap gap-2 font-mono text-[10px]">
-                        <span className="rounded bg-[#0B0F19] px-2 py-1 text-[#94A3B8]">
-                          {syllabus.learningOutcomes?.length || 0} Outcomes
-                        </span>
-                        {syllabus.level && (
-                          <span className="rounded bg-[#06B6D4]/15 px-2 py-1 text-[#06B6D4] font-bold">
-                            {syllabus.level}
-                          </span>
-                        )}
-                      </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="rounded-lg bg-[#0B0F19] px-2.5 py-1 font-mono text-xs font-bold text-[#06B6D4] border border-[#334155]">
+                        {syllabus.courseCode}
+                      </span>
+                      <span
+                        className={`rounded-md px-2 py-0.5 text-[10px] font-bold font-mono uppercase ${
+                          syllabus.status === "published"
+                            ? "bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30"
+                            : "bg-[#F59E0B]/15 text-[#F59E0B] border border-[#F59E0B]/30"
+                        }`}
+                      >
+                        {syllabus.status}
+                      </span>
                     </div>
 
-                    <div className="mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-[#334155] pt-4">
-                      <button
-                        onClick={() => downloadSyllabusAsText(syllabus)}
-                        className="inline-flex items-center space-x-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-2.5 py-1.5 text-xs font-semibold text-[#06B6D4] hover:border-[#06B6D4]"
-                        title="Download Formatted Text Document (.txt)"
-                      >
-                        <FileText className="h-3.5 w-3.5" />
-                        <span>Doc</span>
-                      </button>
+                    <h3 className="text-base font-bold text-white line-clamp-1">{syllabus.title}</h3>
+                    <p className="mt-2 text-xs text-[#94A3B8] line-clamp-2 leading-relaxed">
+                      {syllabus.description}
+                    </p>
 
-                      <button
-                        onClick={() => downloadSyllabusAsJSON(syllabus)}
-                        className="inline-flex items-center space-x-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-2.5 py-1.5 text-xs font-semibold text-[#10B981] hover:border-[#10B981]"
-                        title="Download Raw JSON Data (.json)"
-                      >
-                        <FileCode className="h-3.5 w-3.5" />
-                        <span>JSON</span>
-                      </button>
-
-                      <Link
-                        href={`/syllabus/view?id=${syllabus.id}`}
-                        target="_blank"
-                        className="inline-flex items-center space-x-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-2.5 py-1.5 text-xs font-semibold text-[#CBD5E1] hover:text-white"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        <span>View</span>
-                      </Link>
-
-                      <Link
-                        href={`/admin/builder?id=${syllabus.id}`}
-                        className="inline-flex items-center space-x-1 rounded-xl bg-[#06B6D4]/10 px-2.5 py-1.5 text-xs font-semibold text-[#06B6D4] hover:bg-[#06B6D4]/20 border border-[#06B6D4]/30"
-                      >
-                        <Edit3 className="h-3.5 w-3.5" />
-                        <span>Edit</span>
-                      </Link>
-
-                      <button
-                        onClick={() => handleDelete(syllabus.id, syllabus.title)}
-                        className="rounded-xl bg-rose-500/10 p-2 text-rose-400 hover:bg-rose-500/20 transition-colors"
-                        title="Permanently Delete Syllabus"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                    <div className="mt-4 flex flex-wrap gap-2 font-mono text-[10px]">
+                      <span className="rounded bg-[#0B0F19] px-2 py-1 text-[#94A3B8]">
+                        {syllabus.learningOutcomes?.length || 0} Outcomes
+                      </span>
+                      {syllabus.level && (
+                        <span className="rounded bg-[#06B6D4]/15 px-2 py-1 text-[#06B6D4] font-bold">
+                          {syllabus.level}
+                        </span>
+                      )}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+
+                  <div className="mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-[#334155] pt-4">
+                    <button
+                      onClick={() => downloadSyllabusAsText(syllabus)}
+                      className="inline-flex items-center space-x-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-2.5 py-1.5 text-xs font-semibold text-[#06B6D4] hover:border-[#06B6D4]"
+                      title="Download Formatted Text Document (.txt)"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      <span>Doc</span>
+                    </button>
+
+                    <button
+                      onClick={() => downloadSyllabusAsJSON(syllabus)}
+                      className="inline-flex items-center space-x-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-2.5 py-1.5 text-xs font-semibold text-[#10B981] hover:border-[#10B981]"
+                      title="Download Raw JSON Data (.json)"
+                    >
+                      <FileCode className="h-3.5 w-3.5" />
+                      <span>JSON</span>
+                    </button>
+
+                    <Link
+                      href={`/syllabus/view?id=${syllabus.id}`}
+                      target="_blank"
+                      className="inline-flex items-center space-x-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-2.5 py-1.5 text-xs font-semibold text-[#CBD5E1] hover:text-white"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      <span>View</span>
+                    </Link>
+
+                    <Link
+                      href={`/admin/builder?id=${syllabus.id}`}
+                      className="inline-flex items-center space-x-1 rounded-xl bg-[#06B6D4]/10 px-2.5 py-1.5 text-xs font-semibold text-[#06B6D4] hover:bg-[#06B6D4]/20 border border-[#06B6D4]/30"
+                    >
+                      <Edit3 className="h-3.5 w-3.5" />
+                      <span>Edit</span>
+                    </Link>
+
+                    <button
+                      onClick={() => handleDelete(syllabus.id, syllabus.title)}
+                      className="rounded-xl bg-rose-500/10 p-2 text-rose-400 hover:bg-rose-500/20 transition-colors"
+                      title="Permanently Delete Syllabus"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
         {/* TAB 2: ACADEMIC TRADES MANAGER */}
-        {activeTab === 'trades' && <TradesManager />}
+        <div className={activeTab === 'trades' ? 'block' : 'hidden'}>
+          <TradesManager />
+        </div>
 
         {/* TAB 3: STUDENT REGISTRATION APPROVALS */}
-        {activeTab === 'students' && <StudentApprovals />}
+        <div className={activeTab === 'students' ? 'block' : 'hidden'}>
+          <StudentApprovals />
+        </div>
 
         {/* TAB 4: STUDENT PROGRESS & MESSAGING */}
-        {activeTab === 'progress' && <StudentProgressManager />}
+        <div className={activeTab === 'progress' ? 'block' : 'hidden'}>
+          <StudentProgressManager />
+        </div>
 
         {/* TAB 5: CLASS ASSIGNMENTS */}
-        {activeTab === 'assignments' && (
+        <div className={activeTab === 'assignments' ? 'block' : 'hidden'}>
           <AssignmentManager 
             syllabi={syllabi} 
             trades={trades} 
             adminEmail={adminUser?.email} 
           />
-        )}
+        </div>
 
         {/* TAB 6: STUDENT STUDY & PROJECT GROUPS */}
-        {activeTab === 'groups' && (
+        <div className={activeTab === 'groups' ? 'block' : 'hidden'}>
           <GroupManager
             syllabi={syllabi}
             trades={trades}
             adminEmail={adminUser?.email}
             adminUser={adminUser}
           />
-        )}
+        </div>
 
         {/* TAB 7: ACTIVITY LOGS & AUDIT */}
-        {activeTab === 'activity' && <ActivityLogger />}
+        <div className={activeTab === 'activity' ? 'block' : 'hidden'}>
+          <ActivityLogger />
+        </div>
       </main>
     </div>
   );

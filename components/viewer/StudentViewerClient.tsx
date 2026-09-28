@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { Syllabus, Subtopic, Citation } from "@/types/syllabus";
-import { getSyllabusById, getSubtopicProgress, toggleSubtopicProgress, logActivity, saveLastReadSubtopic, getLastReadSubtopic, subscribeToUserProfile } from "@/lib/db";
+import { getSyllabusById, getSubtopicProgress, toggleSubtopicProgress, logActivity, saveLastReadSubtopic, getLastReadSubtopic, subscribeToUserProfile, getSingleLocalSyllabus } from "@/lib/db";
 import { getStoredSession, getAdminSession } from "@/lib/auth";
 import SidebarTree from "@/components/viewer/SidebarTree";
 import SubtopicView from "@/components/viewer/SubtopicView";
@@ -17,11 +17,11 @@ import PresenceTracker from "@/components/common/PresenceTracker";
 import DisciplinaryLockdown from "@/components/common/DisciplinaryLockdown";
 
 export default function StudentViewerClient({ syllabusId }: { syllabusId: string }) {
-  const [syllabus, setSyllabus] = useState<Syllabus | null>(null);
+  const [syllabus, setSyllabus] = useState<Syllabus | null>(() => getSingleLocalSyllabus(syllabusId));
   const [activeSubtopic, setActiveSubtopic] = useState<Subtopic | null>(null);
   const [activeCitation, setActiveCitation] = useState<Citation | null>(null);
   const [progressMap, setProgressMap] = useState<Record<string, boolean>>({});
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !getSingleLocalSyllabus(syllabusId));
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
   const [showDownloadMenu, setShowDownloadMenu] = useState(false);
@@ -82,7 +82,27 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
   useEffect(() => {
     let isMounted = true;
     async function load() {
-      setLoading(true);
+      const cached = getSingleLocalSyllabus(syllabusId);
+      if (!cached && !syllabus) {
+        setLoading(true);
+      } else if (cached && !activeSubtopic) {
+        // Prime subtopics and tree immediately from cache so 0ms display is guaranteed
+        const initialList: Subtopic[] = [];
+        (cached.learningOutcomes || []).forEach((lo) => {
+          (lo?.indicativeContents || []).forEach((ic) => {
+            (ic?.topics || []).forEach((top) => {
+              (top?.subtopics || []).forEach((sub) => {
+                if (sub) initialList.push(sub);
+              });
+            });
+          });
+        });
+        setAllSubtopics(initialList);
+        if (initialList.length > 0) {
+          setActiveSubtopic(initialList[0]);
+        }
+      }
+
       const user = getStoredSession();
       const admin = getAdminSession();
       if (isMounted) {
