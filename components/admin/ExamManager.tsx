@@ -46,10 +46,24 @@ import {
   CheckSquare,
   Radio,
   Flame,
-  UserCheck
+  UserCheck,
+  Download,
+  Upload,
+  FileSpreadsheet,
+  FileCode,
+  Check,
+  ChevronDown
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import {
+  downloadExamTemplateCSV,
+  downloadExamTemplateJSON,
+  exportExamQuestionsToCSV,
+  exportExamQuestionsToJSON,
+  parseCSVToQuestions,
+  parseJSONToQuestions
+} from "@/lib/examImportExport";
 
 interface ExamManagerProps {
   adminUser?: UserProfile | null;
@@ -112,6 +126,70 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
   const [editableGrades, setEditableGrades] = useState<Record<string, { awardedPoints: number; feedback: string }>>({});
   const [generalFeedback, setGeneralFeedback] = useState("");
   const [savingGrade, setSavingGrade] = useState(false);
+
+  // Bulk Question Import & Template State
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [importInputText, setImportInputText] = useState("");
+  const [importMode, setImportMode] = useState<"append" | "replace">("append");
+  const [parsedPreviewQuestions, setParsedPreviewQuestions] = useState<ExamQuestion[]>([]);
+  const [importErrors, setImportErrors] = useState<string[]>([]);
+  const [importFileName, setImportFileName] = useState<string | null>(null);
+  const [isTemplateMenuOpen, setIsTemplateMenuOpen] = useState(false);
+  const [isBuilderTemplateMenuOpen, setIsBuilderTemplateMenuOpen] = useState(false);
+
+  const runParseContent = (text: string, filenameHint?: string) => {
+    const trimmed = text.trim();
+    if (!trimmed) {
+      setParsedPreviewQuestions([]);
+      setImportErrors([]);
+      return;
+    }
+    const isJSON = trimmed.startsWith("[") || trimmed.startsWith("{") || filenameHint?.endsWith(".json");
+    if (isJSON) {
+      const result = parseJSONToQuestions(text);
+      setParsedPreviewQuestions(result.questions);
+      setImportErrors(result.errors);
+    } else {
+      const result = parseCSVToQuestions(text);
+      setParsedPreviewQuestions(result.questions);
+      setImportErrors(result.errors);
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const content = event.target?.result as string;
+      if (!content) return;
+      setImportInputText(content);
+      runParseContent(content, file.name);
+    };
+    reader.readAsText(file);
+    // Reset input value so re-selecting same file triggers onChange
+    e.target.value = "";
+  };
+
+  const handleTextareaChange = (text: string) => {
+    setImportInputText(text);
+    runParseContent(text);
+  };
+
+  const handleConfirmImport = () => {
+    if (parsedPreviewQuestions.length === 0) return;
+    if (importMode === "replace") {
+      setFormQuestions(parsedPreviewQuestions);
+    } else {
+      setFormQuestions(prev => [...prev, ...parsedPreviewQuestions]);
+    }
+    setIsImportModalOpen(false);
+    setImportInputText("");
+    setImportFileName(null);
+    setParsedPreviewQuestions([]);
+    setImportErrors([]);
+  };
 
   useEffect(() => {
     loadAll();
@@ -458,7 +536,56 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
           </p>
         </div>
 
-        <div className="flex items-center space-x-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Template Download Dropdown */}
+          <div className="relative">
+            <button
+              onClick={() => setIsTemplateMenuOpen(!isTemplateMenuOpen)}
+              className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white transition-all shadow hover:border-slate-500"
+            >
+              <Download className="h-3.5 w-3.5 text-[#06B6D4]" />
+              <span>Download Template</span>
+              <ChevronDown className="h-3 w-3 text-[#94A3B8]" />
+            </button>
+
+            {isTemplateMenuOpen && (
+              <div 
+                className="absolute right-0 mt-1 w-56 rounded-2xl border border-[#334155] bg-[#0B0F19] p-1.5 shadow-2xl z-30 space-y-1 animate-in fade-in"
+                onMouseLeave={() => setIsTemplateMenuOpen(false)}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    downloadExamTemplateCSV();
+                    setIsTemplateMenuOpen(false);
+                  }}
+                  className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all"
+                >
+                  <FileSpreadsheet className="h-4 w-4 text-emerald-400 shrink-0" />
+                  <div>
+                    <span className="font-bold block text-white">CSV Template</span>
+                    <span className="text-[10px] text-[#94A3B8] block">For Excel & Google Sheets</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    downloadExamTemplateJSON();
+                    setIsTemplateMenuOpen(false);
+                  }}
+                  className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all"
+                >
+                  <FileCode className="h-4 w-4 text-cyan-400 shrink-0" />
+                  <div>
+                    <span className="font-bold block text-white">JSON Template</span>
+                    <span className="text-[10px] text-[#94A3B8] block">For Developers & Data</span>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
+
           <button
             onClick={handleRefresh}
             title="Refresh database records"
@@ -1042,22 +1169,112 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                 <div className="space-y-6">
                   {/* Current Questions List */}
                   <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-bold font-mono text-[#94A3B8] uppercase tracking-wider">
-                        Assessment Questions ({formQuestions.length}) &bull; Total Points:{" "}
-                        <span className="text-[#06B6D4] font-bold">
-                          {formQuestions.reduce((s, q) => s + (Number(q.points) || 0), 0)} Pts
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                      <div>
+                        <span className="text-xs font-bold font-mono text-[#94A3B8] uppercase tracking-wider block">
+                          Assessment Questions ({formQuestions.length}) &bull; Total Points:{" "}
+                          <span className="text-[#06B6D4] font-bold">
+                            {formQuestions.reduce((s, q) => s + (Number(q.points) || 0), 0)} Pts
+                          </span>
                         </span>
-                      </span>
+                        <span className="text-[11px] text-[#64748B]">
+                          Supports Single Choice, Multi-Select Checkboxes, True/False, Short Answer & Essays.
+                        </span>
+                      </div>
 
-                      {editingQuestionIdx !== null && (
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Import Button */}
                         <button
-                          onClick={resetQuestionSubForm}
-                          className="text-xs text-amber-400 hover:underline font-mono"
+                          type="button"
+                          onClick={() => setIsImportModalOpen(true)}
+                          className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-950 bg-[#06B6D4] hover:bg-[#0891B2] hover:text-white transition-all shadow-md active:scale-95"
                         >
-                          + Cancel Edit &amp; Add New Question
+                          <Upload className="h-3.5 w-3.5" />
+                          <span>Import Questions</span>
                         </button>
-                      )}
+
+                        {/* Download Template Dropdown */}
+                        <div className="relative">
+                          <button
+                            type="button"
+                            onClick={() => setIsBuilderTemplateMenuOpen(!isBuilderTemplateMenuOpen)}
+                            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#CBD5E1] bg-[#0B0F19] border border-[#334155] hover:text-white hover:border-slate-500 transition-all"
+                          >
+                            <Download className="h-3.5 w-3.5 text-cyan-400" />
+                            <span>Template</span>
+                            <ChevronDown className="h-3 w-3 text-[#94A3B8]" />
+                          </button>
+
+                          {isBuilderTemplateMenuOpen && (
+                            <div 
+                              className="absolute right-0 mt-1 w-56 rounded-2xl border border-[#334155] bg-[#0B0F19] p-1.5 shadow-2xl z-30 space-y-1 animate-in fade-in"
+                              onMouseLeave={() => setIsBuilderTemplateMenuOpen(false)}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  downloadExamTemplateCSV();
+                                  setIsBuilderTemplateMenuOpen(false);
+                                }}
+                                className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all"
+                              >
+                                <FileSpreadsheet className="h-4 w-4 text-emerald-400 shrink-0" />
+                                <div>
+                                  <span className="font-bold block text-white">CSV Template</span>
+                                  <span className="text-[10px] text-[#94A3B8] block">Excel &amp; Google Sheets</span>
+                                </div>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  downloadExamTemplateJSON();
+                                  setIsBuilderTemplateMenuOpen(false);
+                                }}
+                                className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all"
+                              >
+                                <FileCode className="h-4 w-4 text-cyan-400 shrink-0" />
+                                <div>
+                                  <span className="font-bold block text-white">JSON Template</span>
+                                  <span className="text-[10px] text-[#94A3B8] block">Formatted Array Object</span>
+                                </div>
+                              </button>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Export Existing Questions (if any) */}
+                        {formQuestions.length > 0 && (
+                          <div className="flex items-center space-x-1 border-l border-[#334155] pl-2">
+                            <button
+                              type="button"
+                              title="Export questions to CSV"
+                              onClick={() => exportExamQuestionsToCSV(formQuestions, formTitle || "exam")}
+                              className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white hover:bg-slate-800 text-[11px] font-mono border border-[#334155]"
+                            >
+                              CSV
+                            </button>
+                            <button
+                              type="button"
+                              title="Export questions to JSON"
+                              onClick={() => exportExamQuestionsToJSON(formQuestions, formTitle || "exam")}
+                              className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white hover:bg-slate-800 text-[11px] font-mono border border-[#334155]"
+                            >
+                              JSON
+                            </button>
+                          </div>
+                        )}
+
+                        {editingQuestionIdx !== null && (
+                          <button
+                            type="button"
+                            onClick={resetQuestionSubForm}
+                            className="text-xs text-amber-400 hover:underline font-mono ml-1"
+                          >
+                            + Cancel Edit
+                          </button>
+                        )}
+                      </div>
                     </div>
 
                     {formQuestions.length === 0 ? (
@@ -1681,6 +1898,346 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
               >
                 <Award className="h-4 w-4" />
                 <span>{savingGrade ? "Saving..." : "Submit Grade & Evaluation"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ========================================================================= */}
+      {/* MODAL 4: BULK QUESTION IMPORT & TEMPLATE MODAL */}
+      {/* ========================================================================= */}
+      {isImportModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-6 backdrop-blur-md animate-in fade-in">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-[#334155] bg-[#0F172A] shadow-2xl flex flex-col">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
+              <div className="flex items-center space-x-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#06B6D4]/20 text-[#06B6D4]">
+                  <Upload className="h-5 w-5" />
+                </span>
+                <div>
+                  <h3 className="text-base font-extrabold text-white">
+                    Bulk Import Questions
+                  </h3>
+                  <p className="text-xs text-[#94A3B8]">
+                    Import questions using a spreadsheet (CSV) or JSON. Supports Single Choice, Checkboxes, True/False, Short Answer &amp; Essays.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => {
+                  setIsImportModalOpen(false);
+                  setImportInputText("");
+                  setImportFileName(null);
+                  setParsedPreviewQuestions([]);
+                  setImportErrors([]);
+                }}
+                className="rounded-xl p-1.5 text-[#94A3B8] hover:text-white hover:bg-slate-800"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Template Starter Cards */}
+              <div className="rounded-2xl border border-[#334155] bg-[#1E293B]/60 p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                  <div>
+                    <span className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center space-x-1.5">
+                      <Download className="h-4 w-4 text-[#06B6D4]" />
+                      <span>Download Starter Templates</span>
+                    </span>
+                    <p className="text-[11px] text-[#94A3B8] mt-0.5">
+                      Pre-filled templates with working examples of every question type. Open in Excel, Google Sheets, or any code editor.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center space-x-2 shrink-0">
+                    <button
+                      type="button"
+                      onClick={downloadExamTemplateCSV}
+                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition-all shadow"
+                    >
+                      <FileSpreadsheet className="h-3.5 w-3.5" />
+                      <span>Download CSV (Excel)</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={downloadExamTemplateJSON}
+                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 transition-all shadow"
+                    >
+                      <FileCode className="h-3.5 w-3.5" />
+                      <span>Download JSON</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick Schema Reference */}
+                <div className="rounded-xl bg-[#0B0F19] p-3 text-[11px] font-mono text-[#94A3B8] border border-[#334155] overflow-x-auto">
+                  <div className="text-white font-bold mb-1">CSV Column Specification:</div>
+                  <div className="text-cyan-300">type, prompt, points, options, correct_answer, explanation</div>
+                  <div className="text-[10px] text-[#64748B] mt-1 space-y-0.5">
+                    <div>&bull; <strong className="text-slate-300">multiple_choice:</strong> Options delimited by pipe (Option 1 | Option 2), answer is index (0, 1) or letter (A, B)</div>
+                    <div>&bull; <strong className="text-slate-300">multiple_select:</strong> Checkbox answers delimited by comma or pipe (e.g. 1,3,5 or A,C,E)</div>
+                    <div>&bull; <strong className="text-slate-300">true_false:</strong> Answer is True or False</div>
+                    <div>&bull; <strong className="text-slate-300">short_answer / essay:</strong> Options left blank, answer is sample/rubric</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Upload or Paste Section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Method 1: File Upload */}
+                <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4 flex flex-col justify-between">
+                  <div>
+                    <label className="block text-xs font-bold text-white mb-1">
+                      Option A: Upload File (.csv or .json)
+                    </label>
+                    <p className="text-[11px] text-[#94A3B8] mb-3">
+                      Select your completed template file from your computer.
+                    </p>
+                  </div>
+
+                  <label className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#334155] bg-[#0B0F19] p-6 cursor-pointer hover:border-[#06B6D4] transition-all group text-center">
+                    <Upload className="h-7 w-7 text-[#94A3B8] group-hover:text-[#06B6D4] transition-all mb-2" />
+                    <span className="text-xs font-bold text-white group-hover:text-[#06B6D4]">
+                      {importFileName ? importFileName : "Click to Browse or Drag File Here"}
+                    </span>
+                    <span className="text-[10px] text-[#64748B] mt-1">
+                      Supports .csv (Excel / Sheets) and .json files
+                    </span>
+                    <input
+                      type="file"
+                      accept=".csv,.json,text/csv,application/json"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                {/* Method 2: Paste Raw Content */}
+                <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4 flex flex-col">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-bold text-white">
+                      Option B: Paste Content Directly
+                    </label>
+                    {importInputText && (
+                      <button
+                        type="button"
+                        onClick={() => handleTextareaChange("")}
+                        className="text-[10px] text-rose-400 hover:underline"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-[#94A3B8] mb-2">
+                    Paste raw CSV rows or JSON array text into this box.
+                  </p>
+
+                  <textarea
+                    rows={6}
+                    value={importInputText}
+                    onChange={(e) => handleTextareaChange(e.target.value)}
+                    placeholder="type,prompt,points,options,correct_answer,explanation&#10;multiple_choice,&quot;What is 2+2?&quot;,1,&quot;3 | 4 | 5&quot;,1,&quot;Basic math&quot;"
+                    className="flex-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs font-mono text-[#CBD5E1] placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none resize-none"
+                  />
+                </div>
+              </div>
+
+              {/* Import Mode: Append vs Replace */}
+              <div className="flex items-center justify-between rounded-2xl border border-[#334155] bg-[#1E293B] p-4">
+                <div>
+                  <span className="text-xs font-bold text-white block">Import Action</span>
+                  <span className="text-[11px] text-[#94A3B8]">
+                    Choose how imported questions are merged with this assessment.
+                  </span>
+                </div>
+
+                <div className="flex items-center space-x-2 bg-[#0B0F19] p-1 rounded-xl border border-[#334155]">
+                  <button
+                    type="button"
+                    onClick={() => setImportMode("append")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      importMode === "append"
+                        ? "bg-[#06B6D4] text-slate-950 shadow"
+                        : "text-[#94A3B8] hover:text-white"
+                    }`}
+                  >
+                    Append to Existing ({formQuestions.length})
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setImportMode("replace")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      importMode === "replace"
+                        ? "bg-rose-500 text-white shadow"
+                        : "text-[#94A3B8] hover:text-white"
+                    }`}
+                  >
+                    Replace All Existing
+                  </button>
+                </div>
+              </div>
+
+              {/* Errors & Warnings if any */}
+              {importErrors.length > 0 && (
+                <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 space-y-1.5">
+                  <div className="flex items-center space-x-2 text-xs font-bold text-amber-400 font-mono">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span>Import Notices &amp; Warnings ({importErrors.length})</span>
+                  </div>
+                  <ul className="text-[11px] text-amber-200 list-disc list-inside space-y-0.5">
+                    {importErrors.map((err, i) => (
+                      <li key={i}>{err}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Live Preview of Parsed Questions */}
+              {parsedPreviewQuestions.length > 0 ? (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                      <span className="text-xs font-bold text-white uppercase font-mono tracking-wider">
+                        Valid Questions Ready to Import ({parsedPreviewQuestions.length}) &bull; Total Points:{" "}
+                        <span className="text-[#06B6D4]">
+                          {parsedPreviewQuestions.reduce((s, q) => s + (Number(q.points) || 0), 0)} Pts
+                        </span>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center space-x-1.5 text-[10px] font-mono">
+                      <span className="rounded bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 text-cyan-300">
+                        {parsedPreviewQuestions.filter(q => q.type === "multiple_choice").length} Single Choice
+                      </span>
+                      <span className="rounded bg-indigo-500/10 border border-indigo-500/30 px-2 py-0.5 text-indigo-300">
+                        {parsedPreviewQuestions.filter(q => q.type === "multiple_select").length} Multi-Select
+                      </span>
+                      <span className="rounded bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 text-purple-300">
+                        {parsedPreviewQuestions.filter(q => q.type === "true_false").length} True/False
+                      </span>
+                      <span className="rounded bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-emerald-300">
+                        {parsedPreviewQuestions.filter(q => q.type === "short_answer").length} Short
+                      </span>
+                      <span className="rounded bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 text-amber-300">
+                        {parsedPreviewQuestions.filter(q => q.type === "essay").length} Essay
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                    {parsedPreviewQuestions.map((q, idx) => (
+                      <div
+                        key={idx}
+                        className="rounded-xl border border-[#334155] bg-[#1E293B] p-3 text-xs space-y-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[#0B0F19] font-mono text-[10px] font-bold text-[#06B6D4]">
+                              {idx + 1}
+                            </span>
+                            <span className="rounded bg-[#0B0F19] border border-[#334155] px-1.5 py-0.2 text-[10px] font-mono uppercase text-cyan-300 font-bold">
+                              {q.type.replace("_", " ")}
+                            </span>
+                            <span className="text-[10px] font-mono text-emerald-400 font-bold">
+                              {q.points} Pts
+                            </span>
+                          </div>
+                        </div>
+
+                        <p className="text-white font-medium">{q.prompt}</p>
+
+                        {/* Options preview */}
+                        {q.options && q.options.length > 0 && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+                            {q.options.map((opt, oIdx) => {
+                              const isCorrect = Array.isArray(q.correctAnswer)
+                                ? q.correctAnswer.includes(String(oIdx))
+                                : String(q.correctAnswer) === String(oIdx);
+
+                              return (
+                                <div
+                                  key={oIdx}
+                                  className={`rounded-lg px-2.5 py-1 text-[11px] border flex items-center justify-between ${
+                                    isCorrect
+                                      ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300 font-bold"
+                                      : "border-[#334155] bg-[#0B0F19] text-[#94A3B8]"
+                                  }`}
+                                >
+                                  <span>{String.fromCharCode(65 + oIdx)}. {opt}</span>
+                                  {isCorrect && (
+                                    <Check className="h-3 w-3 text-emerald-400 shrink-0 ml-1" />
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+
+                        {/* True / False indicator */}
+                        {q.type === "true_false" && (
+                          <div className="text-[11px] text-emerald-300 font-bold">
+                            Correct Answer: {q.correctAnswer ? "True" : "False"}
+                          </div>
+                        )}
+
+                        {/* Short Answer / Essay Guideline */}
+                        {(q.type === "short_answer" || q.type === "essay") && q.correctAnswer && (
+                          <div className="text-[11px] text-slate-300">
+                            <span className="font-bold text-cyan-400">Accepted Answer / Rubric: </span>
+                            {String(q.correctAnswer)}
+                          </div>
+                        )}
+
+                        {q.explanation && (
+                          <div className="text-[10px] text-[#94A3B8] italic">
+                            Rationale: {q.explanation}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-dashed border-[#334155] bg-[#0B0F19]/60 p-8 text-center text-xs text-[#94A3B8]">
+                  Select a file or paste formatted CSV/JSON above to view preview and import questions.
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-between border-t border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsImportModalOpen(false);
+                  setImportInputText("");
+                  setImportFileName(null);
+                  setParsedPreviewQuestions([]);
+                  setImportErrors([]);
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-[#94A3B8] hover:text-white bg-[#0B0F19] border border-[#334155]"
+              >
+                Cancel
+              </button>
+
+              <button
+                type="button"
+                disabled={parsedPreviewQuestions.length === 0}
+                onClick={handleConfirmImport}
+                className="inline-flex items-center space-x-1.5 px-5 py-2 rounded-xl text-xs font-bold text-slate-950 bg-[#06B6D4] hover:bg-[#0891B2] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg active:scale-95"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                <span>
+                  Confirm &amp; Import ({parsedPreviewQuestions.length} Questions)
+                </span>
               </button>
             </div>
           </div>
