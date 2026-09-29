@@ -1499,17 +1499,26 @@ export default function StudentProgressManager() {
               No approved students matching the selected trade and level filter.
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-[#334155] bg-[#1E293B]">
-              <table className="w-full text-left text-xs">
+            <div className="overflow-x-auto rounded-2xl border border-[#334155] bg-[#1E293B] shadow-xl overscroll-x-contain">
+              {/* Mobile swipe indicator banner */}
+              <div className="flex sm:hidden items-center justify-between px-4 py-2 bg-[#0B0F19]/80 border-b border-[#334155] text-[11px] text-[#06B6D4] font-mono sticky left-0">
+                <span className="flex items-center space-x-1.5">
+                  <span className="animate-pulse font-bold">⇄</span>
+                  <span>Swipe horizontally to view full student matrix</span>
+                </span>
+                <span className="text-[#94A3B8] text-[10px] uppercase font-bold">7 Columns</span>
+              </div>
+
+              <table className="w-full min-w-[950px] text-left text-xs">
                 <thead className="border-b border-[#334155] bg-[#0B0F19]/50 font-mono text-[#94A3B8] uppercase">
                   <tr>
-                    <th className="px-6 py-4">Student Profile</th>
-                    <th className="px-6 py-4">Live Attention Status</th>
-                    <th className="px-6 py-4">Side Windows / Strikes</th>
-                    <th className="px-6 py-4">Trade & Level</th>
-                    <th className="px-6 py-4">Subtopic Progress</th>
-                    <th className="px-6 py-4">Academic Status</th>
-                    <th className="px-6 py-4 text-right">Actions</th>
+                    <th className="px-6 py-4 whitespace-nowrap min-w-[200px]">Student Profile</th>
+                    <th className="px-6 py-4 whitespace-nowrap min-w-[190px]">Live Attention Status</th>
+                    <th className="px-6 py-4 whitespace-nowrap min-w-[170px]">Side Windows / Strikes</th>
+                    <th className="px-6 py-4 whitespace-nowrap min-w-[140px]">Trade & Level</th>
+                    <th className="px-6 py-4 whitespace-nowrap min-w-[180px]">Subtopic Progress</th>
+                    <th className="px-6 py-4 whitespace-nowrap min-w-[140px]">Academic Status</th>
+                    <th className="px-6 py-4 text-right whitespace-nowrap min-w-[160px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#334155]">
@@ -1521,7 +1530,7 @@ export default function StudentProgressManager() {
 
                     return (
                       <tr key={st.userId} className="hover:bg-[#0B0F19]/30 transition-colors">
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 whitespace-nowrap min-w-[200px]">
                           <div className="font-bold text-white text-sm flex items-center space-x-2">
                             <span>{st.fullName}</span>
                           </div>
@@ -1536,7 +1545,7 @@ export default function StudentProgressManager() {
                         </td>
 
                         {/* LIVE ATTENTION STATUS COLUMN */}
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 min-w-[190px]">
                           {presenceState === 'actively_reading' ? (
                             <div className="flex flex-col">
                               <span className="inline-flex items-center space-x-1.5 text-xs font-bold text-[#10B981]">
@@ -1583,7 +1592,7 @@ export default function StudentProgressManager() {
                         </td>
 
                         {/* SIDE WINDOWS / FOCUS STRIKES */}
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 whitespace-nowrap min-w-[170px]">
                           <div className="flex items-center space-x-2">
                             {isSuspended ? (
                               <span className="inline-flex items-center space-x-1 rounded-full bg-rose-500/20 border border-rose-500/40 px-2.5 py-1 text-[11px] font-mono font-bold text-rose-300">
@@ -1617,7 +1626,7 @@ export default function StudentProgressManager() {
                           </div>
                         </td>
 
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 whitespace-nowrap min-w-[140px]">
                           <div className="font-semibold text-[#CBD5E1]">
                             {tradesMap[st.tradeId] || 'General'}
                           </div>
@@ -1650,7 +1659,7 @@ export default function StudentProgressManager() {
                           </div>
                         </td>
 
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 whitespace-nowrap min-w-[140px]">
                           {st.totalSubtopicsCount === 0 ? (
                             <span className="inline-flex items-center space-x-1 rounded-full bg-slate-700/30 px-2.5 py-1 text-[11px] font-bold text-slate-400 border border-slate-600/30">
                               <Clock className="h-3 w-3" />
@@ -1674,7 +1683,7 @@ export default function StudentProgressManager() {
                           )}
                         </td>
 
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-6 py-4 text-right whitespace-nowrap min-w-[160px]">
                           <div className="flex items-center justify-end space-x-2">
                             <button
                               onClick={() => {
