@@ -1,6 +1,94 @@
 import { ExamQuestion, QuestionType } from "@/types/exam";
 
 /**
+ * Plain Text / Markdown Template - optimized for humans and AI generators (ChatGPT, Claude, Gemini)
+ */
+export const PLAIN_TEXT_EXAM_TEMPLATE = `1. What is the primary function of an operating system's kernel?
+A) Manages hardware resources, CPU scheduling, and memory allocation
+B) Provides graphical design tools for digital artists
+C) Directly compiles high-level code to source text
+D) Formats external flash drives automatically
+Answer: A
+Points: 2
+Explanation: The kernel is the core component that manages system hardware, CPU, and memory allocation.
+
+2. Which of the following are primary renewable energy sources? (Select all that apply)
+A) Solar photovoltaic
+B) Bituminous coal
+C) Wind turbine power
+D) Natural gas
+E) Hydroelectric power
+Answer: A, C, E
+Points: 3
+Explanation: Solar, wind, and hydroelectric are non-depleting renewable energy sources.
+
+3. True or False: In modern web architecture, HTTPS encrypts all network communication using TLS.
+Answer: True
+Points: 1
+Explanation: Transport Layer Security (TLS) encrypts all HTTP requests and responses.
+
+4. What unit is used to measure electrical frequency in the International System of Units (SI)?
+Type: Short Answer
+Answer: Hertz
+Points: 2
+Explanation: Electrical frequency is measured in Hertz (Hz), representing cycles per second.
+
+5. Explain the fundamental differences between synchronous and asynchronous program execution with an everyday analogy.
+Type: Essay
+Points: 5
+Explanation: Synchronous halts subsequent operations until the current one finishes; asynchronous allows tasks to execute concurrently without blocking the main thread.
+`;
+
+/**
+ * Copyable AI Prompt template for teachers to generate questions in ChatGPT, Claude, Gemini, etc.
+ */
+export const AI_GENERATION_PROMPT = `Act as an expert technical instructor. Generate [NUMBER, e.g. 5 or 10] exam questions on the topic "[INSERT YOUR TOPIC HERE]" for my students.
+
+Cover a balanced mix of:
+- Multiple choice (single correct answer)
+- Multiple select checkboxes (select all that apply)
+- True / False
+- Short answer (keyword or short phrase)
+- Essay / open-ended explanation
+
+Strictly format every question using this clean plain-text standard so it can be automatically imported into our assessment engine:
+
+1. [Question text here]
+A) [Option 1]
+B) [Option 2]
+C) [Option 3]
+D) [Option 4]
+Answer: A
+Points: 2
+Explanation: [Brief rationale for the correct answer]
+
+2. [Multi-select question prompt] (Select all that apply)
+A) [Choice 1]
+B) [Choice 2]
+C) [Choice 3]
+D) [Choice 4]
+Answer: A, C
+Points: 3
+Explanation: [Brief explanation]
+
+3. True or False: [Statement here]
+Answer: True
+Points: 1
+Explanation: [Brief explanation]
+
+4. [Short answer question prompt]
+Type: Short Answer
+Answer: [Expected short answer phrase or keyword]
+Points: 2
+Explanation: [Brief explanation]
+
+5. [Essay question prompt]
+Type: Essay
+Points: 5
+Explanation: [Grading rubric or evaluation guidelines for the instructor]
+`;
+
+/**
  * Standard CSV Template Content covering all 5 question types
  */
 export const CSV_EXAM_TEMPLATE = `type,prompt,points,options,correct_answer,explanation
@@ -104,6 +192,79 @@ export function downloadExamTemplateJSON(): void {
     JSON.stringify(JSON_EXAM_TEMPLATE, null, 2),
     "application/json;charset=utf-8;"
   );
+}
+
+/**
+ * Downloads the starter Plain Text / AI friendly template
+ */
+export function downloadExamTemplatePlainText(): void {
+  triggerBrowserDownload(
+    "exam_questions_template.txt",
+    PLAIN_TEXT_EXAM_TEMPLATE,
+    "text/plain;charset=utf-8;"
+  );
+}
+
+/**
+ * Copies the AI prompt to user clipboard
+ */
+export async function copyAIPromptToClipboard(): Promise<boolean> {
+  if (typeof navigator === "undefined" || !navigator.clipboard) return false;
+  try {
+    await navigator.clipboard.writeText(AI_GENERATION_PROMPT);
+    return true;
+  } catch (e) {
+    console.error("Clipboard copy failed:", e);
+    return false;
+  }
+}
+
+/**
+ * Exports existing questions as clean Plain Text / Markdown
+ */
+export function exportExamQuestionsToPlainText(questions: ExamQuestion[], examTitle: string): void {
+  const blocks: string[] = [];
+
+  questions.forEach((q, idx) => {
+    let block = `${idx + 1}. ${q.prompt}\n`;
+    
+    if (q.type === "multiple_choice" || q.type === "multiple_select") {
+      (q.options || []).forEach((opt, oIdx) => {
+        const letter = String.fromCharCode(65 + oIdx);
+        block += `${letter}) ${opt}\n`;
+      });
+      
+      if (Array.isArray(q.correctAnswer)) {
+        const letters = q.correctAnswer.map(ans => {
+          const num = parseInt(ans, 10);
+          return !isNaN(num) && num < 26 ? String.fromCharCode(65 + num) : ans;
+        });
+        block += `Answer: ${letters.join(", ")}\n`;
+      } else {
+        const num = parseInt(String(q.correctAnswer), 10);
+        const letter = !isNaN(num) && num < 26 ? String.fromCharCode(65 + num) : String(q.correctAnswer);
+        block += `Answer: ${letter}\n`;
+      }
+    } else if (q.type === "true_false") {
+      block += `Answer: ${q.correctAnswer ? "True" : "False"}\n`;
+    } else if (q.type === "short_answer") {
+      block += `Type: Short Answer\n`;
+      block += `Answer: ${q.correctAnswer || ""}\n`;
+    } else if (q.type === "essay") {
+      block += `Type: Essay\n`;
+      if (q.correctAnswer) block += `Answer: ${q.correctAnswer}\n`;
+    }
+
+    block += `Points: ${q.points}\n`;
+    if (q.explanation) {
+      block += `Explanation: ${q.explanation}\n`;
+    }
+
+    blocks.push(block.trim());
+  });
+
+  const safeName = (examTitle || "questions").toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+  triggerBrowserDownload(`${safeName}_export.txt`, blocks.join("\n\n"), "text/plain;charset=utf-8;");
 }
 
 /**
@@ -531,3 +692,316 @@ export function parseJSONToQuestions(jsonText: string): { questions: ExamQuestio
 
   return { questions, errors };
 }
+
+/**
+ * Parses natural Plain Text or Markdown into structured ExamQuestion objects.
+ * Designed to seamlessly parse outputs from ChatGPT, Claude, Gemini, DeepSeek, and human teachers.
+ */
+export function parsePlainTextToQuestions(text: string): { questions: ExamQuestion[]; errors: string[] } {
+  const errors: string[] = [];
+  const questions: ExamQuestion[] = [];
+
+  if (!text || !text.trim()) {
+    errors.push("The text content is empty.");
+    return { questions, errors };
+  }
+
+  // Normalize line endings
+  const normalized = text.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+
+  const lines = normalized.split("\n");
+  const rawBlocks: string[][] = [];
+  let currentBlock: string[] = [];
+
+  // Matches start of a question block, e.g.:
+  // "1. ", "1) ", "Q1: ", "Q.1: ", "Question 1: ", "Question 1. ", "# 1. "
+  const qStartRegex = /^(?:#+\s*)?(?:Question\s+|Q\.?\s*)?(\d+)[\.\)\:\-]\s+(.+)$/i;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) {
+      if (currentBlock.length > 0) {
+        currentBlock.push(line);
+      }
+      continue;
+    }
+
+    if (qStartRegex.test(trimmed)) {
+      if (currentBlock.some(l => l.trim().length > 0)) {
+        rawBlocks.push(currentBlock);
+      }
+      currentBlock = [line];
+    } else {
+      currentBlock.push(line);
+    }
+  }
+
+  if (currentBlock.some(l => l.trim().length > 0)) {
+    rawBlocks.push(currentBlock);
+  }
+
+  // Fallback: If no numbered question headers were found, split by double newlines
+  if (rawBlocks.length === 0) {
+    const doubleNewlineBlocks = normalized.split(/\n\s*\n/).filter(b => b.trim().length > 0);
+    for (const b of doubleNewlineBlocks) {
+      rawBlocks.push(b.split("\n"));
+    }
+  }
+
+  rawBlocks.forEach((blockLines, idx) => {
+    const blockNum = idx + 1;
+    let rawPrompt = "";
+    let options: string[] = [];
+    let checkedCheckboxIndices: string[] = [];
+    let rawAnswer = "";
+    let rawPoints: number | null = null;
+    let explanation = "";
+    let explicitType: QuestionType | null = null;
+
+    let parsingState: "prompt" | "options" | "explanation" = "prompt";
+
+    for (let li = 0; li < blockLines.length; li++) {
+      const line = blockLines[li];
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+
+      // Check for Points line: e.g. "Points: 2", "Marks: 3", "2 Points", "Score: 1"
+      const pointsMatch = trimmed.match(/^(?:Points|Marks|Mark|Score|Pts)\s*[:\-]\s*(\d+)/i) ||
+                          trimmed.match(/^(\d+)\s*(?:points|marks|pts)\b/i);
+      if (pointsMatch) {
+        rawPoints = parseInt(pointsMatch[1], 10);
+        continue;
+      }
+
+      // Check for Type line: e.g. "Type: Multiple Choice", "Type: Essay"
+      const typeMatch = trimmed.match(/^(?:Type|Format)\s*[:\-]\s*(.+)$/i);
+      if (typeMatch) {
+        explicitType = normalizeQuestionType(typeMatch[1]);
+        continue;
+      }
+
+      // Check for Answer line: e.g. "Answer: A", "Correct Answer: True", "Correct: B, C", "Ans: Hertz"
+      const answerMatch = trimmed.match(/^(?:Correct\s+Answer|Answer|Ans|Correct|Key|Answer\s+Key)\s*[:\-]\s*(.+)$/i);
+      if (answerMatch) {
+        rawAnswer = answerMatch[1].trim();
+        parsingState = "prompt";
+        continue;
+      }
+
+      // Check for Explanation line: e.g. "Explanation: ...", "Rationale: ..."
+      const explMatch = trimmed.match(/^(?:Explanation|Rationale|Reason|Feedback|Note)\s*[:\-]\s*(.*)$/i);
+      if (explMatch) {
+        explanation = explMatch[1].trim();
+        parsingState = "explanation";
+        continue;
+      }
+
+      if (parsingState === "explanation") {
+        explanation += (explanation ? " " : "") + trimmed;
+        continue;
+      }
+
+      // Check for Option line:
+      // A) Option text, A. Option text, (A) Option text, a) Option text, [ ] text, [x] text
+      const optionMatch = trimmed.match(/^(?:\(?([A-Z0-9])\)|\(?([A-Z0-9])\.)\s+(.+)$/i) ||
+                          trimmed.match(/^\[([ xX])\]\s+(.+)$/i);
+
+      if (optionMatch) {
+        parsingState = "options";
+        if (optionMatch[1] && [" ", "x", "X"].includes(optionMatch[1])) {
+          // Checkbox syntax: [ ] or [x]
+          const isChecked = optionMatch[1].toLowerCase() === "x";
+          const optText = optionMatch[2].trim();
+          if (isChecked) {
+            checkedCheckboxIndices.push(String(options.length));
+          }
+          options.push(optText);
+        } else {
+          // Letter or number syntax: A) ...
+          const optText = (optionMatch[3] || optionMatch[2] || "").trim();
+          options.push(optText);
+        }
+        continue;
+      }
+
+      // If we haven't seen options yet, this line is part of the question prompt
+      if (parsingState === "prompt") {
+        if (!rawPrompt) {
+          // Strip leading question numbers from prompt: "1. What is ..." -> "What is ..."
+          const cleanPrompt = trimmed.replace(/^(?:#+\s*)?(?:Question\s+|Q\.?\s*)?\d+[\.\)\:\-]\s*/i, "");
+          rawPrompt = cleanPrompt;
+        } else {
+          rawPrompt += " " + trimmed;
+        }
+      }
+    }
+
+    if (!rawPrompt) {
+      return; // Skip empty block
+    }
+
+    // Check if prompt contains bracketed points: e.g. "What is CPU? [2 points]" or "(3 pts)"
+    const embeddedPoints = rawPrompt.match(/[\(\[]\s*(\d+)\s*(?:points|pts|marks)\s*[\)\]]/i);
+    if (embeddedPoints && rawPoints === null) {
+      rawPoints = parseInt(embeddedPoints[1], 10);
+      rawPrompt = rawPrompt.replace(embeddedPoints[0], "").trim();
+    }
+
+    const points = Math.max(1, rawPoints || (explicitType === "essay" ? 5 : 2));
+
+    // Determine Question Type
+    let type: QuestionType = explicitType || "multiple_choice";
+
+    if (!explicitType) {
+      const lowerPrompt = rawPrompt.toLowerCase();
+      const lowerAnswer = rawAnswer.toLowerCase();
+
+      if (lowerPrompt.includes("true or false") || lowerPrompt.includes("[true/false]") || lowerAnswer === "true" || lowerAnswer === "false") {
+        type = "true_false";
+      } else if (lowerPrompt.includes("select all") || lowerPrompt.includes("multiple select") || lowerPrompt.includes("checkbox") || checkedCheckboxIndices.length > 0 || (rawAnswer.includes(",") && options.length > 0)) {
+        type = "multiple_select";
+      } else if (options.length >= 2) {
+        type = "multiple_choice";
+      } else if (lowerPrompt.includes("essay") || lowerPrompt.includes("explain in detail") || lowerPrompt.includes("describe in detail") || points >= 5) {
+        type = "essay";
+      } else {
+        type = "short_answer";
+      }
+    }
+
+    // Resolve Correct Answer based on type
+    let correctAnswer: string | string[] | boolean = "";
+
+    if (type === "multiple_choice") {
+      if (options.length < 2) {
+        options = ["Option A", "Option B", "Option C", "Option D"];
+      }
+
+      const letterIdx = letterToIndex(rawAnswer);
+      if (letterIdx !== null && letterIdx < options.length) {
+        correctAnswer = String(letterIdx);
+      } else {
+        const num = parseInt(rawAnswer, 10);
+        if (!isNaN(num)) {
+          if (num >= 1 && num <= options.length) {
+            correctAnswer = String(num - 1);
+          } else if (num >= 0 && num < options.length) {
+            correctAnswer = String(num);
+          } else {
+            correctAnswer = "0";
+          }
+        } else {
+          const matchIdx = options.findIndex(o => o.toLowerCase() === rawAnswer.toLowerCase().trim());
+          correctAnswer = matchIdx !== -1 ? String(matchIdx) : "0";
+        }
+      }
+    } else if (type === "multiple_select") {
+      if (options.length < 2) {
+        options = ["Choice 1", "Choice 2", "Choice 3", "Choice 4"];
+      }
+
+      if (checkedCheckboxIndices.length > 0) {
+        correctAnswer = checkedCheckboxIndices;
+      } else {
+        const parts = (rawAnswer || "0")
+          .split(/[,|;]/)
+          .map(p => p.trim())
+          .filter(Boolean);
+
+        const indices: string[] = [];
+        for (const p of parts) {
+          const lIdx = letterToIndex(p);
+          if (lIdx !== null && lIdx < options.length) {
+            indices.push(String(lIdx));
+            continue;
+          }
+          const num = parseInt(p, 10);
+          if (!isNaN(num)) {
+            if (num >= 1 && num <= options.length) {
+              indices.push(String(num - 1));
+            } else if (num >= 0 && num < options.length) {
+              indices.push(String(num));
+            }
+            continue;
+          }
+          const matchIdx = options.findIndex(o => o.toLowerCase() === p.toLowerCase());
+          if (matchIdx !== -1) {
+            indices.push(String(matchIdx));
+          }
+        }
+        correctAnswer = indices.length > 0 ? Array.from(new Set(indices)) : ["0"];
+      }
+    } else if (type === "true_false") {
+      options = ["True", "False"];
+      const lower = rawAnswer.toLowerCase().trim();
+      correctAnswer = lower === "true" || lower === "t" || lower === "1" || lower === "yes";
+    } else if (type === "short_answer") {
+      correctAnswer = rawAnswer.trim();
+    } else if (type === "essay") {
+      options = [];
+      correctAnswer = rawAnswer.trim();
+    }
+
+    questions.push({
+      id: `q_txt_${Date.now()}_${Math.random().toString(36).substring(2, 7)}_${blockNum}`,
+      prompt: rawPrompt,
+      type,
+      options,
+      correctAnswer,
+      explanation,
+      points
+    });
+  });
+
+  if (questions.length === 0) {
+    errors.push("Could not find any recognizable questions in the text. Make sure questions start with a number (e.g. '1. What is...') followed by options (A, B...) or answers.");
+  }
+
+  return { questions, errors };
+}
+
+/**
+ * Automatically inspects the raw text and parses it using the best matching format
+ */
+export function autoDetectAndParseQuestions(
+  text: string, 
+  filenameHint?: string, 
+  forcedFormat?: "auto" | "plain_text" | "csv" | "json"
+): { questions: ExamQuestion[]; errors: string[]; detectedFormat: "plain_text" | "csv" | "json" } {
+  const trimmed = text.trim();
+  let format: "plain_text" | "csv" | "json" = "plain_text";
+
+  if (forcedFormat && forcedFormat !== "auto") {
+    format = forcedFormat;
+  } else if (trimmed.startsWith("[") || trimmed.startsWith("{") || filenameHint?.endsWith(".json")) {
+    format = "json";
+  } else if (filenameHint?.endsWith(".csv")) {
+    format = "csv";
+  } else {
+    // Check if first line has CSV headers like "type,prompt" or "prompt,points"
+    const firstLine = trimmed.split("\n")[0].toLowerCase();
+    if (
+      firstLine.includes("type,") || 
+      firstLine.includes("prompt,") || 
+      firstLine.includes(",options,") || 
+      firstLine.includes(",correct_answer") ||
+      (firstLine.includes(",") && firstLine.includes("answer") && !firstLine.startsWith("1."))
+    ) {
+      format = "csv";
+    } else {
+      format = "plain_text";
+    }
+  }
+
+  if (format === "json") {
+    const res = parseJSONToQuestions(text);
+    return { ...res, detectedFormat: "json" };
+  } else if (format === "csv") {
+    const res = parseCSVToQuestions(text);
+    return { ...res, detectedFormat: "csv" };
+  } else {
+    const res = parsePlainTextToQuestions(text);
+    return { ...res, detectedFormat: "plain_text" };
+  }
+}
+

@@ -52,17 +52,23 @@ import {
   FileSpreadsheet,
   FileCode,
   Check,
-  ChevronDown
+  ChevronDown,
+  Sparkles,
+  Copy,
+  Bot
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   downloadExamTemplateCSV,
   downloadExamTemplateJSON,
+  downloadExamTemplatePlainText,
+  copyAIPromptToClipboard,
   exportExamQuestionsToCSV,
   exportExamQuestionsToJSON,
-  parseCSVToQuestions,
-  parseJSONToQuestions
+  exportExamQuestionsToPlainText,
+  autoDetectAndParseQuestions,
+  AI_GENERATION_PROMPT
 } from "@/lib/examImportExport";
 
 interface ExamManagerProps {
@@ -136,24 +142,30 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
   const [importFileName, setImportFileName] = useState<string | null>(null);
   const [isTemplateMenuOpen, setIsTemplateMenuOpen] = useState(false);
   const [isBuilderTemplateMenuOpen, setIsBuilderTemplateMenuOpen] = useState(false);
+  const [importFormatSelection, setImportFormatSelection] = useState<"auto" | "plain_text" | "csv" | "json">("auto");
+  const [detectedFormat, setDetectedFormat] = useState<"plain_text" | "csv" | "json">("plain_text");
+  const [copiedAIPrompt, setCopiedAIPrompt] = useState(false);
 
-  const runParseContent = (text: string, filenameHint?: string) => {
+  const handleCopyAIPrompt = async () => {
+    const ok = await copyAIPromptToClipboard();
+    if (ok) {
+      setCopiedAIPrompt(true);
+      setTimeout(() => setCopiedAIPrompt(false), 2500);
+    }
+  };
+
+  const runParseContent = (text: string, filenameHint?: string, forcedFormat?: "auto" | "plain_text" | "csv" | "json") => {
     const trimmed = text.trim();
     if (!trimmed) {
       setParsedPreviewQuestions([]);
       setImportErrors([]);
       return;
     }
-    const isJSON = trimmed.startsWith("[") || trimmed.startsWith("{") || filenameHint?.endsWith(".json");
-    if (isJSON) {
-      const result = parseJSONToQuestions(text);
-      setParsedPreviewQuestions(result.questions);
-      setImportErrors(result.errors);
-    } else {
-      const result = parseCSVToQuestions(text);
-      setParsedPreviewQuestions(result.questions);
-      setImportErrors(result.errors);
-    }
+    const fmt = forcedFormat || importFormatSelection;
+    const res = autoDetectAndParseQuestions(text, filenameHint, fmt);
+    setParsedPreviewQuestions(res.questions);
+    setImportErrors(res.errors);
+    setDetectedFormat(res.detectedFormat);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -550,9 +562,51 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
             {isTemplateMenuOpen && (
               <div 
-                className="absolute right-0 mt-1 w-56 rounded-2xl border border-[#334155] bg-[#0B0F19] p-1.5 shadow-2xl z-30 space-y-1 animate-in fade-in"
+                className="absolute right-0 mt-1 w-64 rounded-2xl border border-[#334155] bg-[#0B0F19] p-2 shadow-2xl z-30 space-y-1 animate-in fade-in"
                 onMouseLeave={() => setIsTemplateMenuOpen(false)}
               >
+                <div className="px-2.5 py-1 text-[10px] font-mono uppercase font-bold text-[#64748B]">
+                  Question Starter Templates
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    downloadExamTemplatePlainText();
+                    setIsTemplateMenuOpen(false);
+                  }}
+                  className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all group"
+                >
+                  <FileText className="h-4 w-4 text-cyan-400 shrink-0 group-hover:scale-110 transition-transform" />
+                  <div>
+                    <span className="font-bold block text-white flex items-center space-x-1.5">
+                      <span>Plain Text Template (.txt)</span>
+                      <span className="rounded bg-cyan-500/20 text-cyan-300 text-[9px] px-1.5 py-0.2">AI Friendly</span>
+                    </span>
+                    <span className="text-[10px] text-[#94A3B8] block">Natural text for ChatGPT / Claude / Gemini</span>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleCopyAIPrompt();
+                    setIsTemplateMenuOpen(false);
+                  }}
+                  className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all group"
+                >
+                  <Sparkles className="h-4 w-4 text-amber-400 shrink-0 group-hover:scale-110 transition-transform" />
+                  <div>
+                    <span className="font-bold block text-white flex items-center space-x-1.5">
+                      <span>Copy AI Prompt</span>
+                      <span className="rounded bg-amber-500/20 text-amber-300 text-[9px] px-1.5 py-0.2">Instant</span>
+                    </span>
+                    <span className="text-[10px] text-[#94A3B8] block">Paste into any AI to generate full tests</span>
+                  </div>
+                </button>
+
+                <div className="border-t border-[#334155]/60 my-1" />
+
                 <button
                   type="button"
                   onClick={() => {
@@ -564,7 +618,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                   <FileSpreadsheet className="h-4 w-4 text-emerald-400 shrink-0" />
                   <div>
                     <span className="font-bold block text-white">CSV Template</span>
-                    <span className="text-[10px] text-[#94A3B8] block">For Excel & Google Sheets</span>
+                    <span className="text-[10px] text-[#94A3B8] block">For Microsoft Excel &amp; Sheets</span>
                   </div>
                 </button>
 
@@ -576,10 +630,10 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                   }}
                   className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all"
                 >
-                  <FileCode className="h-4 w-4 text-cyan-400 shrink-0" />
+                  <FileCode className="h-4 w-4 text-purple-400 shrink-0" />
                   <div>
                     <span className="font-bold block text-white">JSON Template</span>
-                    <span className="text-[10px] text-[#94A3B8] block">For Developers & Data</span>
+                    <span className="text-[10px] text-[#94A3B8] block">For Developers &amp; Data Pipeline</span>
                   </div>
                 </button>
               </div>
@@ -1207,9 +1261,51 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
                           {isBuilderTemplateMenuOpen && (
                             <div 
-                              className="absolute right-0 mt-1 w-56 rounded-2xl border border-[#334155] bg-[#0B0F19] p-1.5 shadow-2xl z-30 space-y-1 animate-in fade-in"
+                              className="absolute right-0 mt-1 w-64 rounded-2xl border border-[#334155] bg-[#0B0F19] p-2 shadow-2xl z-30 space-y-1 animate-in fade-in"
                               onMouseLeave={() => setIsBuilderTemplateMenuOpen(false)}
                             >
+                              <div className="px-2.5 py-1 text-[10px] font-mono uppercase font-bold text-[#64748B]">
+                                Question Starter Templates
+                              </div>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  downloadExamTemplatePlainText();
+                                  setIsBuilderTemplateMenuOpen(false);
+                                }}
+                                className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all group"
+                              >
+                                <FileText className="h-4 w-4 text-cyan-400 shrink-0 group-hover:scale-110 transition-transform" />
+                                <div>
+                                  <span className="font-bold block text-white flex items-center space-x-1.5">
+                                    <span>Plain Text Template (.txt)</span>
+                                    <span className="rounded bg-cyan-500/20 text-cyan-300 text-[9px] px-1.5 py-0.2">AI Friendly</span>
+                                  </span>
+                                  <span className="text-[10px] text-[#94A3B8] block">Natural text for ChatGPT / Claude / Gemini</span>
+                                </div>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  handleCopyAIPrompt();
+                                  setIsBuilderTemplateMenuOpen(false);
+                                }}
+                                className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all group"
+                              >
+                                <Sparkles className="h-4 w-4 text-amber-400 shrink-0 group-hover:scale-110 transition-transform" />
+                                <div>
+                                  <span className="font-bold block text-white flex items-center space-x-1.5">
+                                    <span>Copy AI Prompt</span>
+                                    <span className="rounded bg-amber-500/20 text-amber-300 text-[9px] px-1.5 py-0.2">Instant</span>
+                                  </span>
+                                  <span className="text-[10px] text-[#94A3B8] block">Paste into any AI to generate questions</span>
+                                </div>
+                              </button>
+
+                              <div className="border-t border-[#334155]/60 my-1" />
+
                               <button
                                 type="button"
                                 onClick={() => {
@@ -1233,7 +1329,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                                 }}
                                 className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all"
                               >
-                                <FileCode className="h-4 w-4 text-cyan-400 shrink-0" />
+                                <FileCode className="h-4 w-4 text-purple-400 shrink-0" />
                                 <div>
                                   <span className="font-bold block text-white">JSON Template</span>
                                   <span className="text-[10px] text-[#94A3B8] block">Formatted Array Object</span>
@@ -1248,9 +1344,17 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                           <div className="flex items-center space-x-1 border-l border-[#334155] pl-2">
                             <button
                               type="button"
+                              title="Export questions as plain text"
+                              onClick={() => exportExamQuestionsToPlainText(formQuestions, formTitle || "exam")}
+                              className="px-2 py-1 rounded-lg text-cyan-300 hover:text-white hover:bg-slate-800 text-[11px] font-mono border border-cyan-500/30"
+                            >
+                              TXT
+                            </button>
+                            <button
+                              type="button"
                               title="Export questions to CSV"
                               onClick={() => exportExamQuestionsToCSV(formQuestions, formTitle || "exam")}
-                              className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white hover:bg-slate-800 text-[11px] font-mono border border-[#334155]"
+                              className="px-2 py-1 rounded-lg text-[#94A3B8] hover:text-white hover:bg-slate-800 text-[11px] font-mono border border-[#334155]"
                             >
                               CSV
                             </button>
@@ -1258,7 +1362,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                               type="button"
                               title="Export questions to JSON"
                               onClick={() => exportExamQuestionsToJSON(formQuestions, formTitle || "exam")}
-                              className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white hover:bg-slate-800 text-[11px] font-mono border border-[#334155]"
+                              className="px-2 py-1 rounded-lg text-[#94A3B8] hover:text-white hover:bg-slate-800 text-[11px] font-mono border border-[#334155]"
                             >
                               JSON
                             </button>
@@ -1920,7 +2024,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     Bulk Import Questions
                   </h3>
                   <p className="text-xs text-[#94A3B8]">
-                    Import questions using a spreadsheet (CSV) or JSON. Supports Single Choice, Checkboxes, True/False, Short Answer &amp; Essays.
+                    Import questions from AI outputs (ChatGPT / Gemini / Claude), plain text documents, spreadsheets (CSV), or JSON.
                   </p>
                 </div>
               </div>
@@ -1941,50 +2045,152 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
             {/* Modal Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
-              {/* Template Starter Cards */}
-              <div className="rounded-2xl border border-[#334155] bg-[#1E293B]/60 p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              {/* AI Prompt & Templates Banner */}
+              <div className="rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/30 to-[#1E293B] p-4.5 space-y-3 shadow-lg">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                   <div>
                     <span className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center space-x-1.5">
-                      <Download className="h-4 w-4 text-[#06B6D4]" />
-                      <span>Download Starter Templates</span>
+                      <Sparkles className="h-4 w-4 text-cyan-400" />
+                      <span>AI Exam Generator &amp; Starter Templates</span>
                     </span>
                     <p className="text-[11px] text-[#94A3B8] mt-0.5">
-                      Pre-filled templates with working examples of every question type. Open in Excel, Google Sheets, or any code editor.
+                      Generate tests in seconds with ChatGPT, Gemini, or Claude, or download template files to write your questions.
                     </p>
                   </div>
 
-                  <div className="flex items-center space-x-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    {/* Copy AI Prompt Button */}
+                    <button
+                      type="button"
+                      onClick={handleCopyAIPrompt}
+                      className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 ${
+                        copiedAIPrompt
+                          ? "bg-emerald-400 text-slate-950 shadow-emerald-500/20"
+                          : "bg-cyan-500 hover:bg-cyan-400 text-slate-950"
+                      }`}
+                    >
+                      {copiedAIPrompt ? (
+                        <>
+                          <Check className="h-3.5 w-3.5 text-slate-950 font-bold" />
+                          <span>Copied to Clipboard!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="h-3.5 w-3.5" />
+                          <span>Copy AI Prompt</span>
+                        </>
+                      )}
+                    </button>
+
+                    {/* Download Plain Text */}
+                    <button
+                      type="button"
+                      onClick={downloadExamTemplatePlainText}
+                      className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 transition-all shadow"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      <span>Plain Text (.txt)</span>
+                    </button>
+
+                    {/* Download CSV */}
                     <button
                       type="button"
                       onClick={downloadExamTemplateCSV}
-                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition-all shadow"
+                      className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition-all shadow"
                     >
                       <FileSpreadsheet className="h-3.5 w-3.5" />
-                      <span>Download CSV (Excel)</span>
+                      <span>Excel CSV</span>
                     </button>
 
+                    {/* Download JSON */}
                     <button
                       type="button"
                       onClick={downloadExamTemplateJSON}
-                      className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 transition-all shadow"
+                      className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold text-purple-400 bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 transition-all shadow"
                     >
                       <FileCode className="h-3.5 w-3.5" />
-                      <span>Download JSON</span>
+                      <span>JSON</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Quick Schema Reference */}
-                <div className="rounded-xl bg-[#0B0F19] p-3 text-[11px] font-mono text-[#94A3B8] border border-[#334155] overflow-x-auto">
-                  <div className="text-white font-bold mb-1">CSV Column Specification:</div>
-                  <div className="text-cyan-300">type, prompt, points, options, correct_answer, explanation</div>
-                  <div className="text-[10px] text-[#64748B] mt-1 space-y-0.5">
-                    <div>&bull; <strong className="text-slate-300">multiple_choice:</strong> Options delimited by pipe (Option 1 | Option 2), answer is index (0, 1) or letter (A, B)</div>
-                    <div>&bull; <strong className="text-slate-300">multiple_select:</strong> Checkbox answers delimited by comma or pipe (e.g. 1,3,5 or A,C,E)</div>
-                    <div>&bull; <strong className="text-slate-300">true_false:</strong> Answer is True or False</div>
-                    <div>&bull; <strong className="text-slate-300">short_answer / essay:</strong> Options left blank, answer is sample/rubric</div>
+                {/* Natural Format Example Pill */}
+                <div className="rounded-xl bg-[#0B0F19] p-3 text-[11px] font-mono border border-[#334155] flex flex-col md:flex-row md:items-center justify-between gap-2">
+                  <div className="space-y-0.5 text-[#CBD5E1]">
+                    <div className="text-white font-bold flex items-center space-x-1.5">
+                      <Bot className="h-3.5 w-3.5 text-cyan-400" />
+                      <span>Natural AI / Plain Text Format Example:</span>
+                    </div>
+                    <div className="text-[#94A3B8]">
+                      1. What is the function of a router? &bull; A) Forwards network packets &bull; B) Cools the computer &bull; Answer: A &bull; Points: 2
+                    </div>
                   </div>
+                  <span className="text-[10px] text-cyan-300 font-bold bg-cyan-950/70 border border-cyan-500/30 px-2 py-1 rounded-lg shrink-0">
+                    Works automatically with any AI output!
+                  </span>
+                </div>
+              </div>
+
+              {/* Format Filter Selection */}
+              <div className="flex items-center space-x-2 text-xs">
+                <span className="font-mono text-[11px] text-[#94A3B8] font-bold uppercase">Format Mode:</span>
+                <div className="flex items-center space-x-1 bg-[#1E293B] p-1 rounded-xl border border-[#334155]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImportFormatSelection("auto");
+                      runParseContent(importInputText, importFileName || undefined, "auto");
+                    }}
+                    className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all ${
+                      importFormatSelection === "auto"
+                        ? "bg-[#06B6D4] text-slate-950 shadow"
+                        : "text-[#94A3B8] hover:text-white"
+                    }`}
+                  >
+                    Auto-Detect
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImportFormatSelection("plain_text");
+                      runParseContent(importInputText, importFileName || undefined, "plain_text");
+                    }}
+                    className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all ${
+                      importFormatSelection === "plain_text"
+                        ? "bg-[#06B6D4] text-slate-950 shadow"
+                        : "text-[#94A3B8] hover:text-white"
+                    }`}
+                  >
+                    Plain Text / AI
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImportFormatSelection("csv");
+                      runParseContent(importInputText, importFileName || undefined, "csv");
+                    }}
+                    className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all ${
+                      importFormatSelection === "csv"
+                        ? "bg-[#06B6D4] text-slate-950 shadow"
+                        : "text-[#94A3B8] hover:text-white"
+                    }`}
+                  >
+                    CSV (Excel)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setImportFormatSelection("json");
+                      runParseContent(importInputText, importFileName || undefined, "json");
+                    }}
+                    className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all ${
+                      importFormatSelection === "json"
+                        ? "bg-[#06B6D4] text-slate-950 shadow"
+                        : "text-[#94A3B8] hover:text-white"
+                    }`}
+                  >
+                    JSON
+                  </button>
                 </div>
               </div>
 
@@ -1994,10 +2200,10 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                 <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4 flex flex-col justify-between">
                   <div>
                     <label className="block text-xs font-bold text-white mb-1">
-                      Option A: Upload File (.csv or .json)
+                      Option A: Upload File (.txt, .csv, .json)
                     </label>
                     <p className="text-[11px] text-[#94A3B8] mb-3">
-                      Select your completed template file from your computer.
+                      Drop an AI output text file or saved spreadsheet.
                     </p>
                   </div>
 
@@ -2007,11 +2213,11 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                       {importFileName ? importFileName : "Click to Browse or Drag File Here"}
                     </span>
                     <span className="text-[10px] text-[#64748B] mt-1">
-                      Supports .csv (Excel / Sheets) and .json files
+                      Supports .txt (AI output), .csv (Excel / Sheets), and .json
                     </span>
                     <input
                       type="file"
-                      accept=".csv,.json,text/csv,application/json"
+                      accept=".txt,.csv,.json,text/plain,text/csv,application/json"
                       onChange={handleFileUpload}
                       className="hidden"
                     />
@@ -2035,14 +2241,14 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     )}
                   </div>
                   <p className="text-[11px] text-[#94A3B8] mb-2">
-                    Paste raw CSV rows or JSON array text into this box.
+                    Paste text copied straight from ChatGPT, Gemini, Claude, or Excel.
                   </p>
 
                   <textarea
                     rows={6}
                     value={importInputText}
                     onChange={(e) => handleTextareaChange(e.target.value)}
-                    placeholder="type,prompt,points,options,correct_answer,explanation&#10;multiple_choice,&quot;What is 2+2?&quot;,1,&quot;3 | 4 | 5&quot;,1,&quot;Basic math&quot;"
+                    placeholder="1. What is the function of a router?&#10;A) Forwards network packets across IP networks&#10;B) Cools the computer chassis&#10;Answer: A&#10;Points: 2&#10;Explanation: Routers connect networks and route IP traffic.&#10;&#10;2. True or False: Python is compiled directly to machine code.&#10;Answer: False&#10;Points: 1"
                     className="flex-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs font-mono text-[#CBD5E1] placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none resize-none"
                   />
                 </div>
@@ -2102,14 +2308,20 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
               {/* Live Preview of Parsed Questions */}
               {parsedPreviewQuestions.length > 0 ? (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center space-x-2">
                       <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                       <span className="text-xs font-bold text-white uppercase font-mono tracking-wider">
-                        Valid Questions Ready to Import ({parsedPreviewQuestions.length}) &bull; Total Points:{" "}
+                        Valid Questions Ready ({parsedPreviewQuestions.length}) &bull; Total Points:{" "}
                         <span className="text-[#06B6D4]">
                           {parsedPreviewQuestions.reduce((s, q) => s + (Number(q.points) || 0), 0)} Pts
                         </span>
+                      </span>
+                    </div>
+
+                    <div className="flex items-center space-x-2">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg border font-bold uppercase tracking-wider text-cyan-300 border-cyan-500/30 bg-cyan-500/10">
+                        Detected: {detectedFormat === "plain_text" ? "AI Plain Text" : detectedFormat.toUpperCase()}
                       </span>
                     </div>
 
