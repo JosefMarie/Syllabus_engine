@@ -11,6 +11,7 @@ import ActivityLogger from "@/components/admin/ActivityLogger";
 import StudentProgressManager from "@/components/admin/StudentProgressManager";
 import AssignmentManager from "@/components/admin/AssignmentManager";
 import GroupManager from "@/components/admin/GroupManager";
+import ExamManager from "@/components/admin/ExamManager";
 import AdminPresenceAlert from "@/components/admin/AdminPresenceAlert";
 import RestrictionsControl from "@/components/admin/RestrictionsControl";
 import { Trade } from "@/types/auth";
@@ -35,7 +36,8 @@ import {
   FileCode,
   Lock,
   AlertTriangle,
-  Smartphone
+  Smartphone,
+  FileQuestion
 } from "lucide-react";
 import Link from "next/link";
 
@@ -43,7 +45,7 @@ export default function AdminDashboardPage() {
   const router = useRouter();
 
   const [adminUser, setAdminUser] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<'syllabi' | 'trades' | 'students' | 'progress' | 'assignments' | 'groups' | 'activity'>('syllabi');
+  const [activeTab, setActiveTab] = useState<'syllabi' | 'trades' | 'students' | 'progress' | 'assignments' | 'groups' | 'activity' | 'exams'>('syllabi');
   const [syllabi, setSyllabi] = useState<Syllabus[]>(() => getLocalSyllabi());
   const [trades, setTrades] = useState<Trade[]>(() => getLocalTrades());
   const [pendingCount, setPendingCount] = useState(() => {
@@ -345,6 +347,18 @@ export default function AdminDashboardPage() {
           </button>
 
           <button
+            onClick={() => setActiveTab('exams')}
+            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
+              activeTab === 'exams'
+                ? 'border-[#06B6D4] text-[#06B6D4]'
+                : 'border-transparent text-[#94A3B8] hover:text-white'
+            }`}
+          >
+            <FileQuestion className="h-4 w-4 shrink-0" />
+            <span>Exams &amp; Quizzes</span>
+          </button>
+
+          <button
             onClick={() => setActiveTab('groups')}
             className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
               activeTab === 'groups'
@@ -526,6 +540,15 @@ export default function AdminDashboardPage() {
             syllabi={syllabi} 
             trades={trades} 
             adminEmail={adminUser?.email} 
+          />
+        </div>
+
+        {/* TAB: EXAMS & QUIZZES */}
+        <div className={activeTab === 'exams' ? 'block' : 'hidden'}>
+          <ExamManager
+            syllabi={syllabi}
+            trades={trades}
+            adminUser={adminUser}
           />
         </div>
 

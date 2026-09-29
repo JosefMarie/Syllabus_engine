@@ -4,6 +4,7 @@ import { StudentNotification, StudentProgressSummary } from "@/types/notificatio
 import { ActivityLog } from "@/types/activity";
 import { StudentTopicTimeRecord } from "@/types/timeTracking";
 import { StudentGroup, GroupMember } from "@/types/group";
+import { Exam, ExamQuestion, ExamAttempt, QuestionGrade } from "@/types/exam";
 import { db, isFirebaseConfigured } from "./firebase";
 import { 
   collection, 
@@ -128,7 +129,9 @@ export function cleanupLocalStorageQuota(): void {
       "syllabus_admin_session_v1",
       "syllabus_auth_session_v1",
       "syllabus_admin_presence_sound",
-      "syllabus_platform_users_v1"
+      "syllabus_platform_users_v1",
+      "syllabus_platform_exams_v1",
+      "syllabus_platform_exam_attempts_v1"
     ]);
 
     const keysToRemove: string[] = [];
@@ -2946,6 +2949,334 @@ export async function gradeGroupSubmission(
       await saveAssignmentSubmission(memberSubmission);
     }
   }
+}
+
+// ==========================================
+// EXAMS, QUIZZES & STUDENT ATTEMPTS
+// ==========================================
+const EXAMS_KEY = "syllabus_platform_exams_v1";
+const EXAM_ATTEMPTS_KEY = "syllabus_platform_exam_attempts_v1";
+
+export async function saveExam(exam: Exam): Promise<void> {
+  const sanitized = sanitizeForFirestore(exam);
+
+  // 1. LocalStorage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(EXAMS_KEY);
+      const list: Exam[] = raw ? JSON.parse(raw) : [];
+      const idx = list.findIndex(e => e.id === exam.id);
+      if (idx >= 0) {
+        list[idx] = exam;
+      } else {
+        list.unshift(exam);
+      }
+      localStorage.setItem(EXAMS_KEY, JSON.stringify(list));
+    } catch (e) {
+      console.error("Local save exam error:", e);
+    }
+  }
+
+  // 2. Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "exams", exam.id), sanitized, { merge: true });
+    } catch (e) {
+      console.error("Firestore save exam error:", e);
+    }
+  }
+}
+
+export async function deleteExam(examId: string): Promise<void> {
+  // 1. LocalStorage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(EXAMS_KEY);
+      if (raw) {
+        const list: Exam[] = JSON.parse(raw);
+        localStorage.setItem(EXAMS_KEY, JSON.stringify(list.filter(e => e.id !== examId)));
+      }
+    } catch (e) {}
+  }
+
+  // 2. Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, "exams", examId));
+    } catch (e) {
+      console.warn("Firestore delete exam error:", e);
+    }
+  }
+}
+
+export async function getExams(courseCode?: string, level?: string, tradeId?: string): Promise<Exam[]> {
+  let exams: Exam[] = [];
+
+  // 1. Try Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDocs(collection(db, "exams"));
+      exams = snap.docs.map(d => ({ ...d.data(), id: d.id } as Exam));
+      if (typeof window !== "undefined" && exams.length > 0) {
+        localStorage.setItem(EXAMS_KEY, JSON.stringify(exams));
+      }
+    } catch (e) {
+      console.warn("Firestore getExams error, using local fallback:", e);
+    }
+  }
+
+  // 2. Local fallback if empty or offline
+  if (exams.length === 0 && typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(EXAMS_KEY);
+      if (raw) {
+        exams = JSON.parse(raw);
+      }
+    } catch (e) {}
+  }
+
+  // 3. Filter if requested
+  return exams.filter(e => {
+    if (courseCode && courseCode !== "all" && e.courseCode !== courseCode) return false;
+    if (level && level !== "all" && e.level !== "all" && e.level !== level) return false;
+    if (tradeId && tradeId !== "all" && e.tradeId !== "all" && e.tradeId !== tradeId) return false;
+    return true;
+  });
+}
+
+export async function getExamById(examId: string): Promise<Exam | null> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDoc(doc(db, "exams", examId));
+      if (snap.exists()) {
+        return { ...snap.data(), id: snap.id } as Exam;
+      }
+    } catch (e) {}
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(EXAMS_KEY);
+      if (raw) {
+        const list: Exam[] = JSON.parse(raw);
+        return list.find(e => e.id === examId) || null;
+      }
+    } catch (e) {}
+  }
+  return null;
+}
+
+export function subscribeToExams(callback: (exams: Exam[]) => void): () => void {
+  let localFired = false;
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(EXAMS_KEY);
+      if (raw) {
+        callback(JSON.parse(raw));
+        localFired = true;
+      }
+    } catch (e) {}
+  }
+
+  if (!isFirebaseConfigured || !db) {
+    return () => {};
+  }
+
+  try {
+    const unsub = onSnapshot(collection(db, "exams"), (snap) => {
+      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as Exam));
+      if (typeof window !== "undefined") {
+        localStorage.setItem(EXAMS_KEY, JSON.stringify(list));
+      }
+      callback(list);
+    }, (err) => {
+      console.warn("subscribeToExams error:", err);
+      if (!localFired) {
+        getExams().then(callback);
+      }
+    });
+    return unsub;
+  } catch (e) {
+    return () => {};
+  }
+}
+
+// ATTEMPTS & SUBMISSIONS
+export async function saveExamAttempt(attempt: ExamAttempt): Promise<void> {
+  const sanitized = sanitizeForFirestore(attempt);
+
+  // 1. LocalStorage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(EXAM_ATTEMPTS_KEY);
+      const list: ExamAttempt[] = raw ? JSON.parse(raw) : [];
+      const idx = list.findIndex(a => a.id === attempt.id);
+      if (idx >= 0) {
+        list[idx] = attempt;
+      } else {
+        list.unshift(attempt);
+      }
+      localStorage.setItem(EXAM_ATTEMPTS_KEY, JSON.stringify(list));
+    } catch (e) {
+      console.error("Local save attempt error:", e);
+    }
+  }
+
+  // 2. Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "exam_attempts", attempt.id), sanitized, { merge: true });
+    } catch (e) {
+      console.error("Firestore save attempt error:", e);
+    }
+  }
+}
+
+export async function getAllExamAttempts(): Promise<ExamAttempt[]> {
+  let list: ExamAttempt[] = [];
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDocs(collection(db, "exam_attempts"));
+      list = snap.docs.map(d => ({ ...d.data(), id: d.id } as ExamAttempt));
+      if (typeof window !== "undefined" && list.length > 0) {
+        localStorage.setItem(EXAM_ATTEMPTS_KEY, JSON.stringify(list));
+      }
+    } catch (e) {
+      console.warn("Firestore getAllExamAttempts error:", e);
+    }
+  }
+
+  if (list.length === 0 && typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(EXAM_ATTEMPTS_KEY);
+      if (raw) list = JSON.parse(raw);
+    } catch (e) {}
+  }
+
+  return list;
+}
+
+export async function getExamAttemptsForStudent(studentUid: string): Promise<ExamAttempt[]> {
+  const all = await getAllExamAttempts();
+  return all.filter(a => a.studentUid === studentUid);
+}
+
+export async function getExamAttemptsForExam(examId: string): Promise<ExamAttempt[]> {
+  const all = await getAllExamAttempts();
+  return all.filter(a => a.examId === examId);
+}
+
+export function subscribeToExamAttempts(examId: string, callback: (attempts: ExamAttempt[]) => void): () => void {
+  if (!isFirebaseConfigured || !db) {
+    getExamAttemptsForExam(examId).then(callback);
+    return () => {};
+  }
+
+  try {
+    const q = query(collection(db, "exam_attempts"), where("examId", "==", examId));
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as ExamAttempt));
+      callback(list);
+    }, (err) => {
+      console.warn("subscribeToExamAttempts error:", err);
+      getExamAttemptsForExam(examId).then(callback);
+    });
+    return unsub;
+  } catch (e) {
+    getExamAttemptsForExam(examId).then(callback);
+    return () => {};
+  }
+}
+
+// AUTO-GRADING ENGINE
+export function calculateAutoGrade(exam: Exam, answers: Record<string, any>): {
+  score: number;
+  maxScore: number;
+  percentage: number;
+  passed: boolean;
+  questionGrades: Record<string, QuestionGrade>;
+  hasSubjectiveQuestions: boolean;
+} {
+  let score = 0;
+  let maxScore = exam.totalPoints || 0;
+  const questionGrades: Record<string, QuestionGrade> = {};
+  let hasSubjectiveQuestions = false;
+
+  exam.questions.forEach((q) => {
+    const studentAns = answers[q.id];
+    const points = q.points || 1;
+
+    if (q.type === "multiple_choice") {
+      const isCorrect = String(studentAns ?? "").trim() === String(q.correctAnswer ?? "").trim();
+      const awarded = isCorrect ? points : 0;
+      score += awarded;
+      questionGrades[q.id] = {
+        awardedPoints: awarded,
+        maxPoints: points,
+        autoGraded: true,
+        feedback: isCorrect ? "Correct answer" : "Incorrect selection"
+      };
+    } else if (q.type === "true_false") {
+      const isCorrect = String(studentAns).toLowerCase() === String(q.correctAnswer).toLowerCase();
+      const awarded = isCorrect ? points : 0;
+      score += awarded;
+      questionGrades[q.id] = {
+        awardedPoints: awarded,
+        maxPoints: points,
+        autoGraded: true,
+        feedback: isCorrect ? "Correct" : "Incorrect"
+      };
+    } else if (q.type === "multiple_select") {
+      const correctArr = Array.isArray(q.correctAnswer) ? q.correctAnswer.map(String) : [];
+      const studentArr = Array.isArray(studentAns) ? studentAns.map(String) : [];
+      
+      const isExactMatch = correctArr.length === studentArr.length && 
+        correctArr.every(val => studentArr.includes(val));
+      
+      const awarded = isExactMatch ? points : 0;
+      score += awarded;
+      questionGrades[q.id] = {
+        awardedPoints: awarded,
+        maxPoints: points,
+        autoGraded: true,
+        feedback: isExactMatch ? "All correct choices selected" : "Incomplete or incorrect selections"
+      };
+    } else if (q.type === "short_answer") {
+      const correctStr = String(q.correctAnswer ?? "").trim().toLowerCase();
+      const studentStr = String(studentAns ?? "").trim().toLowerCase();
+      const isCorrect = correctStr === studentStr;
+      const awarded = isCorrect ? points : 0;
+      score += awarded;
+      questionGrades[q.id] = {
+        awardedPoints: awarded,
+        maxPoints: points,
+        autoGraded: true,
+        feedback: isCorrect ? "Exact match" : "Does not match expected answer"
+      };
+    } else {
+      // essay / subjective: pending teacher evaluation
+      hasSubjectiveQuestions = true;
+      questionGrades[q.id] = {
+        awardedPoints: 0,
+        maxPoints: points,
+        autoGraded: false,
+        feedback: "Pending instructor review"
+      };
+    }
+  });
+
+  const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
+  const passed = percentage >= (exam.passPercentage || 70);
+
+  return {
+    score,
+    maxScore,
+    percentage,
+    passed,
+    questionGrades,
+    hasSubjectiveQuestions
+  };
 }
 
 export { 

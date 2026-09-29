@@ -28,7 +28,8 @@ import {
   Eye,
   Lock,
   Award,
-  Users
+  Users,
+  FileQuestion
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -37,6 +38,7 @@ import PresenceTracker from "@/components/common/PresenceTracker";
 import DisciplinaryLockdown from "@/components/common/DisciplinaryLockdown";
 import StudentAssignmentsView from "@/components/student/StudentAssignmentsView";
 import StudentGroupsView from "@/components/student/StudentGroupsView";
+import StudentExamsView from "@/components/student/StudentExamsView";
 
 export default function CatalogPage() {
   const router = useRouter();
@@ -48,7 +50,7 @@ export default function CatalogPage() {
     return map;
   });
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => getStoredSession());
-  const [studentPortalTab, setStudentPortalTab] = useState<"courses" | "assignments" | "groups">("courses");
+  const [studentPortalTab, setStudentPortalTab] = useState<"courses" | "assignments" | "groups" | "exams">("courses");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(() => getLocalSyllabi().length === 0);
   const [navigatingSyllabusId, setNavigatingSyllabusId] = useState<string | null>(null);
@@ -603,12 +605,12 @@ export default function CatalogPage() {
           </div>
         )}
 
-        {/* Student Dashboard Tabs: Course Syllabi vs Class Assignments */}
+        {/* Student Dashboard Tabs: Course Syllabi vs Class Assignments vs Study Groups vs Exams */}
         {currentUser && (
-          <div className="flex items-center space-x-3 border-b border-[#334155] pb-3 mb-6">
+          <div className="flex items-center space-x-3 border-b border-[#334155] pb-3 mb-6 overflow-x-auto">
             <button
               onClick={() => setStudentPortalTab("courses")}
-              className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all ${
+              className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
                 studentPortalTab === "courses"
                   ? "bg-[#06B6D4] text-slate-950 shadow-md"
                   : "bg-[#1E293B] text-[#94A3B8] hover:text-white border border-[#334155]"
@@ -620,7 +622,7 @@ export default function CatalogPage() {
 
             <button
               onClick={() => setStudentPortalTab("assignments")}
-              className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all ${
+              className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
                 studentPortalTab === "assignments"
                   ? "bg-[#06B6D4] text-slate-950 shadow-md"
                   : "bg-[#1E293B] text-[#94A3B8] hover:text-white border border-[#334155]"
@@ -632,7 +634,7 @@ export default function CatalogPage() {
 
             <button
               onClick={() => setStudentPortalTab("groups")}
-              className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all ${
+              className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
                 studentPortalTab === "groups"
                   ? "bg-[#06B6D4] text-slate-950 shadow-md"
                   : "bg-[#1E293B] text-[#94A3B8] hover:text-white border border-[#334155]"
@@ -641,10 +643,22 @@ export default function CatalogPage() {
               <Users className="h-4 w-4" />
               <span>My Study Groups</span>
             </button>
+
+            <button
+              onClick={() => setStudentPortalTab("exams")}
+              className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
+                studentPortalTab === "exams"
+                  ? "bg-[#06B6D4] text-slate-950 shadow-md"
+                  : "bg-[#1E293B] text-[#94A3B8] hover:text-white border border-[#334155]"
+              }`}
+            >
+              <FileQuestion className="h-4 w-4" />
+              <span>Exams & Quizzes</span>
+            </button>
           </div>
         )}
 
-        {/* ASSIGNMENTS VIEW OR GROUPS VIEW FOR LOGGED IN STUDENT */}
+        {/* ASSIGNMENTS VIEW, GROUPS VIEW, OR EXAMS VIEW FOR LOGGED IN STUDENT */}
         {currentUser && studentPortalTab === "assignments" ? (
           <StudentAssignmentsView currentUser={currentUser} syllabi={syllabi} />
         ) : currentUser && studentPortalTab === "groups" ? (
@@ -653,6 +667,8 @@ export default function CatalogPage() {
             syllabi={syllabi} 
             onNavigateToAssignments={() => setStudentPortalTab("assignments")}
           />
+        ) : currentUser && studentPortalTab === "exams" ? (
+          <StudentExamsView currentUser={currentUser} syllabi={syllabi} />
         ) : (
           <>
             {/* Syllabi Grid */}
