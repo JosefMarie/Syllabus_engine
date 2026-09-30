@@ -171,10 +171,13 @@ multiple_select,"Which of the following are primary renewable energy sources? (S
 true_false,"In modern web development, HTTPS encrypts network communication using TLS.",1,"True | False",True,"HTTPS uses Transport Layer Security (TLS) to encrypt all HTTP communication."
 short_answer,"What unit is used to measure electrical frequency in the SI system?",2,"",Hertz,"Electrical frequency is measured in Hertz (Hz), representing cycles per second."
 essay,"Explain the key differences between synchronous and asynchronous program execution with an everyday analogy.",5,"","Rubric: 1) Blocking vs non-blocking definition (2 pts), 2) Real-world analogy such as waiting in line vs order buzzer (2 pts), 3) Practical programming benefit (1 pt).","Synchronous execution halts subsequent operations until the current one finishes; asynchronous allows tasks to run concurrently without blocking the main thread."
+code_completion,"Complete the recursive factorial function with inline blanks ___1___ and ___2___.",3,"","1 | n - 1","Base case returns 1, recursive step is factorial(n - 1)."
+code_ordering,"Arrange the lines to implement findMax in javascript.",4,"function findMax(arr) { |     let max = arr[0]; |     for (let i = 1; i < arr.length; i++) { |         if (arr[i] > max) max = arr[i]; |     } |     return max; | }","function findMax(arr) { |     let max = arr[0]; |     for (let i = 1; i < arr.length; i++) { |         if (arr[i] > max) max = arr[i]; |     } |     return max; | }","Initializes max with first element, loops from index 1, and returns max."
+predict_output,"What will be printed when this list comprehension executes in Python: nums = [1, 2, 3, 4]; print([x * 2 for x in nums if x % 2 == 0])",2,"","[4, 8]","Only 2 and 4 are even, doubled to [4, 8]."
 `;
 
 /**
- * Standard JSON Template Content covering all 5 question types
+ * Standard JSON Template Content covering all 8 question types
  */
 export const JSON_EXAM_TEMPLATE: Omit<ExamQuestion, "id">[] = [
   {
@@ -227,6 +230,53 @@ export const JSON_EXAM_TEMPLATE: Omit<ExamQuestion, "id">[] = [
     options: [],
     correctAnswer: "Rubric: Input validation, asserting invariants, handling unexpected edge cases gracefully.",
     explanation: "Defensive programming ensures software functions predictably under unforeseen conditions."
+  },
+  {
+    type: "code_completion",
+    prompt: "Complete the recursive function to compute the factorial of n:",
+    points: 3,
+    codeLanguage: "python",
+    codeSnippet: "def factorial(n):\n    if n <= 1:\n        return ___1___\n    return n * factorial(___2___)",
+    codeBlanks: [
+      { id: "1", acceptedAnswers: ["1"] },
+      { id: "2", acceptedAnswers: ["n - 1", "n-1"] }
+    ],
+    correctAnswer: { "1": "1", "2": "n - 1" },
+    explanation: "Base case returns 1, while recursive step multiplies n by factorial(n - 1)."
+  },
+  {
+    type: "code_ordering",
+    prompt: "Reorder the following scrambled lines into a valid function that finds the maximum value in an array:",
+    points: 4,
+    codeLanguage: "javascript",
+    codeLines: [
+      "function findMax(arr) {",
+      "    let max = arr[0];",
+      "    for (let i = 1; i < arr.length; i++) {",
+      "        if (arr[i] > max) max = arr[i];",
+      "    }",
+      "    return max;",
+      "}"
+    ],
+    correctAnswer: [
+      "function findMax(arr) {",
+      "    let max = arr[0];",
+      "    for (let i = 1; i < arr.length; i++) {",
+      "        if (arr[i] > max) max = arr[i];",
+      "    }",
+      "    return max;",
+      "}"
+    ],
+    explanation: "Initializes max with first element, iterates through remaining elements, and returns max."
+  },
+  {
+    type: "predict_output",
+    prompt: "What will be printed to standard output when this Python list comprehension runs?",
+    points: 2,
+    codeLanguage: "python",
+    codeSnippet: "nums = [1, 2, 3, 4]\nres = [x * 2 for x in nums if x % 2 == 0]\nprint(res)",
+    correctAnswer: "[4, 8]",
+    explanation: "Only 2 and 4 are even. Multiplying each by 2 yields [4, 8]."
   }
 ];
 
