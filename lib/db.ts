@@ -3242,7 +3242,7 @@ export function calculateAutoGrade(exam: Exam, answers: Record<string, any>): {
         autoGraded: true,
         feedback: isExactMatch ? "All correct choices selected" : "Incomplete or incorrect selections"
       };
-    } else if (q.type === "short_answer") {
+    } else if (q.type === "short_answer" || q.type === "predict_output") {
       const correctStr = String(q.correctAnswer ?? "").trim().toLowerCase();
       const studentStr = String(studentAns ?? "").trim().toLowerCase();
       const isCorrect = correctStr === studentStr;
@@ -3252,7 +3252,64 @@ export function calculateAutoGrade(exam: Exam, answers: Record<string, any>): {
         awardedPoints: awarded,
         maxPoints: points,
         autoGraded: true,
-        feedback: isCorrect ? "Exact match" : "Does not match expected answer"
+        feedback: isCorrect ? "Exact match" : "Does not match expected terminal output"
+      };
+    } else if (q.type === "code_completion") {
+      const blanks = q.codeBlanks || [];
+      if (blanks.length > 0) {
+        let correctCount = 0;
+        const studentObj = (typeof studentAns === "object" && studentAns !== null) ? studentAns : {};
+
+        blanks.forEach((b, bIdx) => {
+          const rawVal = studentObj[b.id] ?? studentObj[String(bIdx + 1)] ?? studentObj[String(bIdx)] ?? "";
+          const userVal = String(rawVal).trim().toLowerCase();
+          const isMatch = b.acceptedAnswers.some(ans => ans.trim().toLowerCase() === userVal);
+          if (isMatch) correctCount++;
+        });
+
+        // Award proportional points
+        const awarded = Math.round((correctCount / blanks.length) * points);
+        score += awarded;
+        questionGrades[q.id] = {
+          awardedPoints: awarded,
+          maxPoints: points,
+          autoGraded: true,
+          feedback: correctCount === blanks.length 
+            ? "All code blanks filled correctly!" 
+            : `${correctCount} of ${blanks.length} code blanks correct`
+        };
+      } else {
+        // Fallback: single answer comparison
+        const correctStr = String(q.correctAnswer ?? "").trim().toLowerCase();
+        const studentStr = String(studentAns ?? "").trim().toLowerCase();
+        const isCorrect = correctStr === studentStr;
+        const awarded = isCorrect ? points : 0;
+        score += awarded;
+        questionGrades[q.id] = {
+          awardedPoints: awarded,
+          maxPoints: points,
+          autoGraded: true,
+          feedback: isCorrect ? "Code blank filled correctly" : "Code token did not match"
+        };
+      }
+    } else if (q.type === "code_ordering") {
+      const expectedLines = Array.isArray(q.codeLines) && q.codeLines.length > 0
+        ? q.codeLines
+        : (Array.isArray(q.correctAnswer) ? q.correctAnswer : []);
+      
+      const studentLines = Array.isArray(studentAns) ? studentAns : [];
+
+      const isExactMatch = expectedLines.length > 0 &&
+        expectedLines.length === studentLines.length &&
+        expectedLines.every((line, idx) => String(line).trim() === String(studentLines[idx]).trim());
+
+      const awarded = isExactMatch ? points : 0;
+      score += awarded;
+      questionGrades[q.id] = {
+        awardedPoints: awarded,
+        maxPoints: points,
+        autoGraded: true,
+        feedback: isExactMatch ? "Code lines ordered correctly!" : "Sequence order is incorrect"
       };
     } else {
       // essay / subjective: pending teacher evaluation

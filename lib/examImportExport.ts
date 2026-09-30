@@ -37,6 +37,47 @@ Explanation: Electrical frequency is measured in Hertz (Hz), representing cycles
 Type: Essay
 Points: 5
 Explanation: Synchronous halts subsequent operations until the current one finishes; asynchronous allows tasks to execute concurrently without blocking the main thread.
+
+6. Complete the recursive function to compute the factorial of n:
+Type: Code Completion
+Language: python
+\`\`\`python
+def factorial(n):
+    if n <= 1:
+        return ___1___
+    return n * factorial(___2___)
+\`\`\`
+Blank 1: 1
+Blank 2: n - 1
+Points: 3
+Explanation: Base case returns 1, while recursive step multiplies n by factorial(n - 1).
+
+7. Reorder the following scrambled lines into a valid function that finds the maximum value in an array:
+Type: Code Ordering
+Language: javascript
+\`\`\`javascript
+function findMax(arr) {
+    let max = arr[0];
+    for (let i = 1; i < arr.length; i++) {
+        if (arr[i] > max) max = arr[i];
+    }
+    return max;
+}
+\`\`\`
+Points: 4
+Explanation: Initializes max with first element, iterates through remaining elements, and returns max.
+
+8. What will be printed to standard output when this code executes?
+Type: Predict Output
+Language: python
+\`\`\`python
+nums = [1, 2, 3, 4]
+res = [x * 2 for x in nums if x % 2 == 0]
+print(res)
+\`\`\`
+Answer: [4, 8]
+Points: 2
+Explanation: Only 2 and 4 are even. Multiplying each by 2 yields [4, 8].
 `;
 
 /**
@@ -50,6 +91,9 @@ Cover a balanced mix of:
 - True / False
 - Short answer (keyword or short phrase)
 - Essay / open-ended explanation
+- Code Completion (fill in the blanks using ___1___, ___2___)
+- Code Ordering (scrambled code / Parson's puzzle with lines in correct order)
+- Predict Output (provide code snippet and target printed stdout)
 
 Strictly format every question using this clean plain-text standard so it can be automatically imported into our assessment engine:
 
@@ -86,6 +130,36 @@ Explanation: [Brief explanation]
 Type: Essay
 Points: 5
 Explanation: [Grading rubric or evaluation guidelines for the instructor]
+
+6. [Code completion question prompt]
+Type: Code Completion
+Language: [python / javascript / typescript / java / c / cpp]
+\`\`\`[language]
+[Code snippet containing inline blanks like ___1___ and ___2___]
+\`\`\`
+Blank 1: [Accepted answer for blank 1]
+Blank 2: [Accepted answer for blank 2]
+Points: 3
+Explanation: [Explanation of the missing code tokens]
+
+7. [Code ordering question prompt, e.g. 'Arrange the lines to implement...']
+Type: Code Ordering
+Language: [language]
+\`\`\`[language]
+[Write the complete code lines here in their CORRECT sequential order]
+\`\`\`
+Points: 4
+Explanation: [Explanation of algorithmic sequence]
+
+8. [Predict output question prompt, e.g. 'What will be printed to standard output?']
+Type: Predict Output
+Language: [language]
+\`\`\`[language]
+[Code snippet to execute]
+\`\`\`
+Answer: [Expected terminal stdout text]
+Points: 2
+Explanation: [Step-by-step trace of the execution]
 `;
 
 /**
@@ -253,6 +327,30 @@ export function exportExamQuestionsToPlainText(questions: ExamQuestion[], examTi
     } else if (q.type === "essay") {
       block += `Type: Essay\n`;
       if (q.correctAnswer) block += `Answer: ${q.correctAnswer}\n`;
+    } else if (q.type === "code_completion") {
+      block += `Type: Code Completion\n`;
+      if (q.codeLanguage) block += `Language: ${q.codeLanguage}\n`;
+      if (q.codeSnippet) {
+        block += `\`\`\`${q.codeLanguage || ""}\n${q.codeSnippet}\n\`\`\`\n`;
+      }
+      if (q.codeBlanks && q.codeBlanks.length > 0) {
+        q.codeBlanks.forEach(b => {
+          block += `Blank ${b.id}: ${b.acceptedAnswers.join(", ")}\n`;
+        });
+      }
+    } else if (q.type === "code_ordering") {
+      block += `Type: Code Ordering\n`;
+      if (q.codeLanguage) block += `Language: ${q.codeLanguage}\n`;
+      if (Array.isArray(q.codeLines) && q.codeLines.length > 0) {
+        block += `\`\`\`${q.codeLanguage || ""}\n${q.codeLines.join("\n")}\n\`\`\`\n`;
+      }
+    } else if (q.type === "predict_output") {
+      block += `Type: Predict Output\n`;
+      if (q.codeLanguage) block += `Language: ${q.codeLanguage}\n`;
+      if (q.codeSnippet) {
+        block += `\`\`\`${q.codeLanguage || ""}\n${q.codeSnippet}\n\`\`\`\n`;
+      }
+      block += `Answer: ${q.correctAnswer || ""}\n`;
     }
 
     block += `Points: ${q.points}\n`;
@@ -387,6 +485,15 @@ function parseRFC4180CSV(text: string): string[][] {
  */
 function normalizeQuestionType(raw: string): QuestionType {
   const clean = (raw || "").toLowerCase().trim().replace(/[- ]/g, "_");
+  if (clean.includes("completion") || clean.includes("fill_code") || clean.includes("blank") || clean === "code_completion") {
+    return "code_completion";
+  }
+  if (clean.includes("ordering") || clean.includes("parson") || clean.includes("scramble") || clean === "code_ordering") {
+    return "code_ordering";
+  }
+  if (clean.includes("predict") || clean.includes("output") || clean.includes("stdout") || clean === "predict_output") {
+    return "predict_output";
+  }
   if (clean.includes("select") || clean.includes("checkbox") || clean.includes("multi_choice") || clean === "multiple_answers") {
     return "multiple_select";
   }
@@ -670,9 +777,14 @@ export function parseJSONToQuestions(jsonText: string): { questions: ExamQuestio
         }
       } else if (type === "short_answer") {
         correctAnswer = String(correctAnswer || "");
-      } else if (type === "essay") {
+      } else if (type === "essay" || type === "predict_output") {
         options = [];
         correctAnswer = String(correctAnswer || "");
+      } else if (type === "code_ordering") {
+        options = [];
+        if (Array.isArray(correctAnswer)) {
+          correctAnswer = correctAnswer.map(String);
+        }
       }
 
       questions.push({
@@ -682,7 +794,11 @@ export function parseJSONToQuestions(jsonText: string): { questions: ExamQuestio
         options,
         correctAnswer,
         explanation,
-        points
+        points,
+        codeSnippet: item.codeSnippet || item.code_snippet,
+        codeLanguage: item.codeLanguage || item.code_language,
+        codeBlanks: item.codeBlanks || item.code_blanks,
+        codeLines: item.codeLines || item.code_lines
       });
     });
 
@@ -758,11 +874,37 @@ export function parsePlainTextToQuestions(text: string): { questions: ExamQuesti
     let explanation = "";
     let explicitType: QuestionType | null = null;
 
+    let detectedCodeSnippet = "";
+    let detectedCodeLanguage = "typescript";
+    let detectedCodeBlanks: { id: string; acceptedAnswers: string[] }[] = [];
+    let insideCodeFence = false;
+    let codeFenceLines: string[] = [];
+
     let parsingState: "prompt" | "options" | "explanation" = "prompt";
 
     for (let li = 0; li < blockLines.length; li++) {
       const line = blockLines[li];
       const trimmed = line.trim();
+
+      // Check for code fences (```python ... ```)
+      if (trimmed.startsWith("```")) {
+        if (!insideCodeFence) {
+          insideCodeFence = true;
+          const lang = trimmed.replace(/^```/, "").trim();
+          if (lang) detectedCodeLanguage = lang;
+          codeFenceLines = [];
+        } else {
+          insideCodeFence = false;
+          detectedCodeSnippet = codeFenceLines.join("\n");
+        }
+        continue;
+      }
+
+      if (insideCodeFence) {
+        codeFenceLines.push(line);
+        continue;
+      }
+
       if (!trimmed) continue;
 
       // Check for Points line: e.g. "Points: 2", "Marks: 3", "2 Points", "Score: 1"
@@ -773,7 +915,14 @@ export function parsePlainTextToQuestions(text: string): { questions: ExamQuesti
         continue;
       }
 
-      // Check for Type line: e.g. "Type: Multiple Choice", "Type: Essay"
+      // Check for Language line: e.g. "Language: python"
+      const langMatch = trimmed.match(/^(?:Language|Lang)\s*[:\-]\s*(.+)$/i);
+      if (langMatch) {
+        detectedCodeLanguage = langMatch[1].trim();
+        continue;
+      }
+
+      // Check for Type line: e.g. "Type: Multiple Choice", "Type: Code Completion"
       const typeMatch = trimmed.match(/^(?:Type|Format)\s*[:\-]\s*(.+)$/i);
       if (typeMatch) {
         explicitType = normalizeQuestionType(typeMatch[1]);
@@ -786,6 +935,17 @@ export function parsePlainTextToQuestions(text: string): { questions: ExamQuesti
         rawAnswer = answerMatch[1].trim();
         parsingState = "prompt";
         continue;
+      }
+
+      // Check for Blank line for code completion: e.g. "Blank 1: return", "Blank 2: n - 1"
+      const blankMatch = trimmed.match(/^(?:Blank\s+)?\[?(\w+)\]?\s*[:\-]\s*(.+)$/i);
+      if (blankMatch && (explicitType === "code_completion" || trimmed.toLowerCase().startsWith("blank"))) {
+        const bId = blankMatch[1];
+        const answers = blankMatch[2].split(/[,|]/).map(a => a.trim()).filter(Boolean);
+        if (answers.length > 0) {
+          detectedCodeBlanks.push({ id: bId, acceptedAnswers: answers });
+          continue;
+        }
       }
 
       // Check for Explanation line: e.g. "Explanation: ...", "Rationale: ..."
@@ -836,7 +996,7 @@ export function parsePlainTextToQuestions(text: string): { questions: ExamQuesti
       }
     }
 
-    if (!rawPrompt) {
+    if (!rawPrompt && !detectedCodeSnippet) {
       return; // Skip empty block
     }
 
@@ -856,7 +1016,19 @@ export function parsePlainTextToQuestions(text: string): { questions: ExamQuesti
       const lowerPrompt = rawPrompt.toLowerCase();
       const lowerAnswer = rawAnswer.toLowerCase();
 
-      if (lowerPrompt.includes("true or false") || lowerPrompt.includes("[true/false]") || lowerAnswer === "true" || lowerAnswer === "false") {
+      if (detectedCodeSnippet) {
+        if (lowerPrompt.includes("ordering") || lowerPrompt.includes("reorder") || lowerPrompt.includes("arrange")) {
+          type = "code_ordering";
+        } else if (lowerPrompt.includes("predict") || lowerPrompt.includes("output") || lowerPrompt.includes("printed")) {
+          type = "predict_output";
+        } else if (detectedCodeBlanks.length > 0 || /(___\w+___|\{\{\w+\}\})/.test(detectedCodeSnippet)) {
+          type = "code_completion";
+        } else if (options.length >= 2) {
+          type = "multiple_choice";
+        } else {
+          type = "essay";
+        }
+      } else if (lowerPrompt.includes("true or false") || lowerPrompt.includes("[true/false]") || lowerAnswer === "true" || lowerAnswer === "false") {
         type = "true_false";
       } else if (lowerPrompt.includes("select all") || lowerPrompt.includes("multiple select") || lowerPrompt.includes("checkbox") || checkedCheckboxIndices.length > 0 || (rawAnswer.includes(",") && options.length > 0)) {
         type = "multiple_select";
@@ -870,7 +1042,8 @@ export function parsePlainTextToQuestions(text: string): { questions: ExamQuesti
     }
 
     // Resolve Correct Answer based on type
-    let correctAnswer: string | string[] | boolean = "";
+    let correctAnswer: any = "";
+    let codeLines: string[] | undefined = undefined;
 
     if (type === "multiple_choice") {
       if (options.length < 2) {
@@ -940,6 +1113,31 @@ export function parsePlainTextToQuestions(text: string): { questions: ExamQuesti
     } else if (type === "essay") {
       options = [];
       correctAnswer = rawAnswer.trim();
+    } else if (type === "code_completion") {
+      options = [];
+      const blanksObj: Record<string, string> = {};
+      if (detectedCodeBlanks.length > 0) {
+        detectedCodeBlanks.forEach(b => {
+          blanksObj[b.id] = b.acceptedAnswers[0] || "";
+        });
+      } else if (rawAnswer) {
+        const parts = rawAnswer.split(/[,|]/).map(p => p.trim()).filter(Boolean);
+        parts.forEach((p, pIdx) => {
+          const bId = String(pIdx + 1);
+          blanksObj[bId] = p;
+          detectedCodeBlanks.push({ id: bId, acceptedAnswers: [p] });
+        });
+      }
+      correctAnswer = blanksObj;
+    } else if (type === "code_ordering") {
+      options = [];
+      if (detectedCodeSnippet) {
+        codeLines = detectedCodeSnippet.split("\n").filter(l => l.trim().length > 0);
+      }
+      correctAnswer = codeLines || [];
+    } else if (type === "predict_output") {
+      options = [];
+      correctAnswer = rawAnswer.trim();
     }
 
     questions.push({
@@ -949,7 +1147,11 @@ export function parsePlainTextToQuestions(text: string): { questions: ExamQuesti
       options,
       correctAnswer,
       explanation,
-      points
+      points,
+      codeSnippet: detectedCodeSnippet || undefined,
+      codeLanguage: detectedCodeLanguage || undefined,
+      codeBlanks: detectedCodeBlanks.length > 0 ? detectedCodeBlanks : undefined,
+      codeLines: codeLines || undefined
     });
   });
 

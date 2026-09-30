@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import CodeQuestionRenderer from "@/components/common/CodeQuestionRenderer";
 
 interface StudentExamsViewProps {
   currentUser: UserProfile;
@@ -65,6 +66,13 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
   const [submittingAttempt, setSubmittingAttempt] = useState(false);
   const [completedAttempt, setCompletedAttempt] = useState<ExamAttempt | null>(null);
   const [violationToast, setViolationToast] = useState<string | null>(null);
+
+  const isQuestionAnswered = (val: any): boolean => {
+    if (val === undefined || val === null || val === "") return false;
+    if (Array.isArray(val)) return val.length > 0;
+    if (typeof val === "object") return Object.keys(val).length > 0;
+    return true;
+  };
 
   // Review Past Attempt Modal
   const [reviewAttempt, setReviewAttempt] = useState<ExamAttempt | null>(null);
@@ -194,7 +202,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
   // Manual Submit
   const handleManualSubmit = () => {
     if (!activeExam) return;
-    const answeredCount = Object.keys(studentAnswers).filter(k => studentAnswers[k] !== undefined && studentAnswers[k] !== "").length;
+    const answeredCount = Object.keys(studentAnswers).filter(k => isQuestionAnswered(studentAnswers[k])).length;
     const unansweredCount = activeExam.questions.length - answeredCount;
 
     let confirmMsg = `Are you sure you want to submit your assessment?`;
@@ -680,7 +688,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                 {/* Question Palette Strip */}
                 <div className="border-b border-[#334155] bg-[#0B0F19] px-6 py-2 flex items-center overflow-x-auto space-x-2 shrink-0">
                   {activeExam.questions.map((q, idx) => {
-                    const hasAnswer = studentAnswers[q.id] !== undefined && studentAnswers[q.id] !== "";
+                    const hasAnswer = isQuestionAnswered(studentAnswers[q.id]);
                     const isFlagged = flaggedQuestions[q.id];
                     const isCurrent = currentQuestionIdx === idx;
 
@@ -859,6 +867,15 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                                 />
                               </div>
                             )}
+
+                            {["code_completion", "code_ordering", "predict_output"].includes(q.type) && (
+                              <CodeQuestionRenderer
+                                question={q}
+                                mode="take"
+                                studentAnswer={currentVal}
+                                onChange={(val) => handleAnswerChange(q.id, val)}
+                              />
+                            )}
                           </div>
                         </div>
                       );
@@ -878,7 +895,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                   </button>
 
                   <span className="text-xs font-mono text-[#94A3B8]">
-                    {Object.keys(studentAnswers).filter(k => studentAnswers[k] !== undefined && studentAnswers[k] !== "").length} of {activeExam.questions.length} Answered
+                    {Object.keys(studentAnswers).filter(k => isQuestionAnswered(studentAnswers[k])).length} of {activeExam.questions.length} Answered
                   </span>
 
                   <button
@@ -953,15 +970,25 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
                     <p className="text-xs text-white font-medium">{q.prompt}</p>
 
-                    <div className="rounded-xl bg-[#0B0F19] p-3 text-xs border border-[#334155]">
-                      <span className="text-[10px] font-mono text-[#94A3B8] uppercase block mb-1">Your Answer:</span>
-                      <div className="font-mono text-white">
-                        {ans !== undefined && ans !== null
-                          ? (Array.isArray(ans) ? ans.join(", ") : String(ans))
-                          : <span className="text-slate-500 italic">No answer submitted</span>
-                        }
+                    {["code_completion", "code_ordering", "predict_output"].includes(q.type) ? (
+                      <CodeQuestionRenderer
+                        question={q}
+                        mode="review"
+                        studentAnswer={ans}
+                        grade={grade}
+                        showCorrectAnswer={true}
+                      />
+                    ) : (
+                      <div className="rounded-xl bg-[#0B0F19] p-3 text-xs border border-[#334155]">
+                        <span className="text-[10px] font-mono text-[#94A3B8] uppercase block mb-1">Your Answer:</span>
+                        <div className="font-mono text-white">
+                          {ans !== undefined && ans !== null
+                            ? (Array.isArray(ans) ? ans.join(", ") : String(ans))
+                            : <span className="text-slate-500 italic">No answer submitted</span>
+                          }
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     {q.explanation && (
                       <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/20 p-3 text-xs text-cyan-200">

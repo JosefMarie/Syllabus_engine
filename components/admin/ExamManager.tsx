@@ -59,6 +59,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import CodeQuestionRenderer from "@/components/common/CodeQuestionRenderer";
 import {
   downloadExamTemplateCSV,
   downloadExamTemplateJSON,
@@ -121,6 +122,10 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
   const [qCorrectText, setQCorrectText] = useState("");
   const [qPoints, setQPoints] = useState(5);
   const [qExplanation, setQExplanation] = useState("");
+  const [qCodeSnippet, setQCodeSnippet] = useState("");
+  const [qCodeLanguage, setQCodeLanguage] = useState("typescript");
+  const [qCodeBlanksText, setQCodeBlanksText] = useState("");
+  const [qCodeLinesText, setQCodeLinesText] = useState("");
 
   // Submissions Desk State
   const [selectedExamForSubmissions, setSelectedExamForSubmissions] = useState<Exam | null>(null);
@@ -286,6 +291,10 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
     setQCorrectText("");
     setQPoints(5);
     setQExplanation("");
+    setQCodeSnippet("");
+    setQCodeLanguage("typescript");
+    setQCodeBlanksText("");
+    setQCodeLinesText("");
   };
 
   // Add / Update Question inside Builder
@@ -296,6 +305,9 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
     }
 
     let correctAnswer: any;
+    let codeBlanks: any[] | undefined = undefined;
+    let codeLines: string[] | undefined = undefined;
+
     if (qType === "multiple_choice") {
       correctAnswer = qCorrectSingle;
     } else if (qType === "multiple_select") {
@@ -305,6 +317,64 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
     } else if (qType === "short_answer") {
       if (!qCorrectText.trim()) {
         alert("Please specify the target accepted answer.");
+        return;
+      }
+      correctAnswer = qCorrectText.trim();
+    } else if (qType === "code_completion") {
+      if (!qCodeSnippet.trim()) {
+        alert("Please provide the code snippet containing inline blanks (e.g. ___1___ or {{1}}).");
+        return;
+      }
+      const parsedBlanks: any[] = [];
+      const lines = qCodeBlanksText.split("\n").map(l => l.trim()).filter(Boolean);
+      for (const line of lines) {
+        const match = line.match(/^(?:Blank\s+)?\[?(\w+)\]?\s*[:\-]\s*(.+)$/i);
+        if (match) {
+          const bId = match[1];
+          const answers = match[2].split(/[,|]/).map(a => a.trim()).filter(Boolean);
+          if (answers.length > 0) {
+            parsedBlanks.push({ id: bId, acceptedAnswers: answers });
+          }
+        } else {
+          const bId = String(parsedBlanks.length + 1);
+          parsedBlanks.push({ id: bId, acceptedAnswers: [line] });
+        }
+      }
+
+      if (parsedBlanks.length === 0) {
+        const tokens = qCodeSnippet.match(/(___\w+___|\{\{\w+\}\}|\[\w+\])/g) || [];
+        const uniqueTokens = Array.from(new Set(tokens));
+        uniqueTokens.forEach((tok, idx) => {
+          const rawKey = tok.replace(/[_{}\[\]]/g, "").trim();
+          parsedBlanks.push({ id: rawKey || String(idx + 1), acceptedAnswers: [""] });
+        });
+      }
+
+      codeBlanks = parsedBlanks;
+      const ansObj: Record<string, string> = {};
+      parsedBlanks.forEach(b => {
+        ansObj[b.id] = b.acceptedAnswers[0] || "";
+      });
+      correctAnswer = ansObj;
+    } else if (qType === "code_ordering") {
+      if (!qCodeLinesText.trim()) {
+        alert("Please provide the code lines in their correct sequential order.");
+        return;
+      }
+      const rawLines = qCodeLinesText.split("\n").map(l => l.trimEnd()).filter(Boolean);
+      if (rawLines.length < 2) {
+        alert("Please provide at least 2 lines of code for students to order.");
+        return;
+      }
+      codeLines = rawLines;
+      correctAnswer = rawLines;
+    } else if (qType === "predict_output") {
+      if (!qCodeSnippet.trim()) {
+        alert("Please provide the code snippet for students to analyze.");
+        return;
+      }
+      if (!qCorrectText.trim()) {
+        alert("Please provide the expected standard terminal output.");
         return;
       }
       correctAnswer = qCorrectText.trim();
@@ -322,7 +392,11 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
         : undefined,
       correctAnswer,
       points: Number(qPoints) || 1,
-      explanation: qExplanation.trim() || undefined
+      explanation: qExplanation.trim() || undefined,
+      codeSnippet: (qType === "code_completion" || qType === "predict_output") ? qCodeSnippet.trim() : undefined,
+      codeLanguage: (qType === "code_completion" || qType === "code_ordering" || qType === "predict_output") ? qCodeLanguage : undefined,
+      codeBlanks: qType === "code_completion" ? codeBlanks : undefined,
+      codeLines: qType === "code_ordering" ? codeLines : undefined
     };
 
     if (editingQuestionIdx !== null) {
@@ -353,6 +427,21 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
     } else if (q.type === "true_false") {
       setQCorrectTF(Boolean(q.correctAnswer));
     } else if (q.type === "short_answer") {
+      setQCorrectText(String(q.correctAnswer ?? ""));
+    } else if (q.type === "code_completion") {
+      setQCodeSnippet(q.codeSnippet || "");
+      setQCodeLanguage(q.codeLanguage || "typescript");
+      if (q.codeBlanks && q.codeBlanks.length > 0) {
+        setQCodeBlanksText(q.codeBlanks.map(b => `Blank ${b.id}: ${b.acceptedAnswers.join(", ")}`).join("\n"));
+      } else {
+        setQCodeBlanksText("");
+      }
+    } else if (q.type === "code_ordering") {
+      setQCodeLanguage(q.codeLanguage || "typescript");
+      setQCodeLinesText((q.codeLines || []).join("\n"));
+    } else if (q.type === "predict_output") {
+      setQCodeSnippet(q.codeSnippet || "");
+      setQCodeLanguage(q.codeLanguage || "typescript");
       setQCorrectText(String(q.correctAnswer ?? ""));
     }
   };
@@ -1464,6 +1553,9 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                           <option value="true_false">True / False</option>
                           <option value="short_answer">Short Answer / Code Output</option>
                           <option value="essay">Open Essay / Code Solution</option>
+                          <option value="code_completion">💻 Fill-in-the-Code Blanks</option>
+                          <option value="code_ordering">🧩 Scrambled Code Ordering (Parson&apos;s)</option>
+                          <option value="predict_output">⚡ Predict Terminal Output</option>
                         </select>
                       </div>
                     </div>
@@ -1638,6 +1730,235 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                         <p>
                           💡 <strong>Open-ended Question:</strong> Student answers will be saved and presented in the Teacher Grading Desk for manual scoring and custom feedback.
                         </p>
+                      </div>
+                    )}
+
+                    {/* Code Completion Editor */}
+                    {qType === "code_completion" && (
+                      <div className="space-y-3 rounded-2xl bg-[#0B0F19] p-4 border border-[#334155]">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-cyan-400 font-mono flex items-center space-x-1.5">
+                            <Code className="h-4 w-4" />
+                            <span>Code Snippet with Interactive Blanks</span>
+                          </label>
+
+                          <div className="flex items-center space-x-2">
+                            <span className="text-[10px] font-mono text-[#94A3B8]">Language:</span>
+                            <select
+                              value={qCodeLanguage}
+                              onChange={(e) => setQCodeLanguage(e.target.value)}
+                              className="rounded-lg border border-[#334155] bg-[#1E293B] px-2 py-0.5 text-xs font-mono text-cyan-300 focus:border-cyan-400 focus:outline-none"
+                            >
+                              <option value="python">Python</option>
+                              <option value="javascript">JavaScript</option>
+                              <option value="typescript">TypeScript</option>
+                              <option value="java">Java</option>
+                              <option value="c">C</option>
+                              <option value="cpp">C++</option>
+                              <option value="csharp">C#</option>
+                              <option value="sql">SQL</option>
+                              <option value="html">HTML</option>
+                              <option value="css">CSS</option>
+                              <option value="rust">Rust</option>
+                              <option value="go">Go</option>
+                              <option value="php">PHP</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <p className="text-[11px] text-[#94A3B8]">
+                          Mark missing tokens with <code className="text-cyan-300 font-mono bg-slate-800 px-1 py-0.5 rounded">___1___</code>, <code className="text-cyan-300 font-mono bg-slate-800 px-1 py-0.5 rounded">___2___</code> or <code className="text-cyan-300 font-mono bg-slate-800 px-1 py-0.5 rounded">{"{{1}}"}</code> where students need to type.
+                        </p>
+
+                        <textarea
+                          rows={6}
+                          value={qCodeSnippet}
+                          onChange={(e) => setQCodeSnippet(e.target.value)}
+                          placeholder={`def factorial(n):\n    if n <= 1:\n        return ___1___\n    return n * factorial(___2___)`}
+                          className="w-full rounded-xl border border-[#334155] bg-[#020617] p-3 text-xs font-mono text-cyan-200 placeholder-slate-600 focus:border-cyan-400 focus:outline-none leading-relaxed"
+                        />
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-[#CBD5E1] mb-1">
+                            Accepted Answers for Blanks (One blank per line, aliases separated by <code className="text-cyan-400">|</code> or commas):
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={qCodeBlanksText}
+                            onChange={(e) => setQCodeBlanksText(e.target.value)}
+                            placeholder={`Blank 1: 1\nBlank 2: n - 1`}
+                            className="w-full rounded-xl border border-[#334155] bg-[#020617] p-2.5 text-xs font-mono text-emerald-400 placeholder-slate-600 focus:border-cyan-400 focus:outline-none"
+                          />
+                        </div>
+
+                        {qCodeSnippet && (
+                          <div className="pt-2">
+                            <span className="block text-[10px] font-mono uppercase text-[#94A3B8] mb-1.5 font-bold">
+                              Student Interactive Preview:
+                            </span>
+                            <CodeQuestionRenderer
+                              question={{
+                                id: "preview_completion",
+                                prompt: qPrompt || "Fill in the missing code:",
+                                type: "code_completion",
+                                points: qPoints,
+                                codeSnippet: qCodeSnippet,
+                                codeLanguage: qCodeLanguage,
+                                codeBlanks: (() => {
+                                  const lines = qCodeBlanksText.split("\n").map(l => l.trim()).filter(Boolean);
+                                  return lines.map((l, i) => {
+                                    const m = l.match(/^(?:Blank\s+)?\[?(\w+)\]?\s*[:\-]\s*(.+)$/i);
+                                    return {
+                                      id: m ? m[1] : String(i + 1),
+                                      acceptedAnswers: m ? m[2].split(/[,|]/).map(a => a.trim()) : [l]
+                                    };
+                                  });
+                                })()
+                              }}
+                              mode="preview"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Scrambled Code Ordering Editor */}
+                    {qType === "code_ordering" && (
+                      <div className="space-y-3 rounded-2xl bg-[#0B0F19] p-4 border border-[#334155]">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-cyan-400 font-mono flex items-center space-x-1.5">
+                            <Shuffle className="h-4 w-4" />
+                            <span>Code Lines (In Correct Sequential Order)</span>
+                          </label>
+
+                          <div className="flex items-center space-x-2">
+                            <span className="text-[10px] font-mono text-[#94A3B8]">Language:</span>
+                            <select
+                              value={qCodeLanguage}
+                              onChange={(e) => setQCodeLanguage(e.target.value)}
+                              className="rounded-lg border border-[#334155] bg-[#1E293B] px-2 py-0.5 text-xs font-mono text-cyan-300 focus:border-cyan-400 focus:outline-none"
+                            >
+                              <option value="python">Python</option>
+                              <option value="javascript">JavaScript</option>
+                              <option value="typescript">TypeScript</option>
+                              <option value="java">Java</option>
+                              <option value="c">C</option>
+                              <option value="cpp">C++</option>
+                              <option value="csharp">C#</option>
+                              <option value="sql">SQL</option>
+                              <option value="html">HTML</option>
+                              <option value="css">CSS</option>
+                              <option value="rust">Rust</option>
+                              <option value="go">Go</option>
+                              <option value="php">PHP</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <p className="text-[11px] text-[#94A3B8]">
+                          Enter the full program lines here in their <strong>correct working sequence</strong>. During the student examination, lines are automatically shuffled into interactive draggable/touch-sortable blocks (Parson&apos;s puzzle).
+                        </p>
+
+                        <textarea
+                          rows={6}
+                          value={qCodeLinesText}
+                          onChange={(e) => setQCodeLinesText(e.target.value)}
+                          placeholder={`def find_max(arr):\n    max_val = arr[0]\n    for num in arr:\n        if num > max_val:\n            max_val = num\n    return max_val`}
+                          className="w-full rounded-xl border border-[#334155] bg-[#020617] p-3 text-xs font-mono text-cyan-200 placeholder-slate-600 focus:border-cyan-400 focus:outline-none leading-relaxed"
+                        />
+
+                        {qCodeLinesText && (
+                          <div className="pt-2">
+                            <span className="block text-[10px] font-mono uppercase text-[#94A3B8] mb-1.5 font-bold">
+                              Student Interactive Preview (Shuffled cards with touch controls):
+                            </span>
+                            <CodeQuestionRenderer
+                              question={{
+                                id: "preview_ordering",
+                                prompt: qPrompt || "Arrange the code lines in the correct logical order:",
+                                type: "code_ordering",
+                                points: qPoints,
+                                codeLanguage: qCodeLanguage,
+                                codeLines: qCodeLinesText.split("\n").map(l => l.trimEnd()).filter(Boolean)
+                              }}
+                              mode="preview"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Predict Output Editor */}
+                    {qType === "predict_output" && (
+                      <div className="space-y-3 rounded-2xl bg-[#0B0F19] p-4 border border-[#334155]">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-cyan-400 font-mono flex items-center space-x-1.5">
+                            <Code className="h-4 w-4" />
+                            <span>Source Code for Analysis</span>
+                          </label>
+
+                          <div className="flex items-center space-x-2">
+                            <span className="text-[10px] font-mono text-[#94A3B8]">Language:</span>
+                            <select
+                              value={qCodeLanguage}
+                              onChange={(e) => setQCodeLanguage(e.target.value)}
+                              className="rounded-lg border border-[#334155] bg-[#1E293B] px-2 py-0.5 text-xs font-mono text-cyan-300 focus:border-cyan-400 focus:outline-none"
+                            >
+                              <option value="python">Python</option>
+                              <option value="javascript">JavaScript</option>
+                              <option value="typescript">TypeScript</option>
+                              <option value="java">Java</option>
+                              <option value="c">C</option>
+                              <option value="cpp">C++</option>
+                              <option value="csharp">C#</option>
+                              <option value="sql">SQL</option>
+                              <option value="rust">Rust</option>
+                              <option value="go">Go</option>
+                              <option value="php">PHP</option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <textarea
+                          rows={6}
+                          value={qCodeSnippet}
+                          onChange={(e) => setQCodeSnippet(e.target.value)}
+                          placeholder={`nums = [1, 2, 3, 4]\nres = [x * 2 for x in nums if x % 2 == 0]\nprint(res)`}
+                          className="w-full rounded-xl border border-[#334155] bg-[#020617] p-3 text-xs font-mono text-cyan-200 placeholder-slate-600 focus:border-cyan-400 focus:outline-none leading-relaxed"
+                        />
+
+                        <div>
+                          <label className="block text-[11px] font-bold text-[#CBD5E1] mb-1">
+                            Exact Expected Standard Terminal Output (stdout):
+                          </label>
+                          <input
+                            type="text"
+                            value={qCorrectText}
+                            onChange={(e) => setQCorrectText(e.target.value)}
+                            placeholder="e.g. [4, 8] or Hello, World!"
+                            className="w-full rounded-xl border border-[#334155] bg-[#020617] px-3.5 py-2 text-xs font-mono text-emerald-400 font-bold focus:border-cyan-400 focus:outline-none"
+                          />
+                        </div>
+
+                        {qCodeSnippet && (
+                          <div className="pt-2">
+                            <span className="block text-[10px] font-mono uppercase text-[#94A3B8] mb-1.5 font-bold">
+                              Student Interactive Preview (IDE + Terminal View):
+                            </span>
+                            <CodeQuestionRenderer
+                              question={{
+                                id: "preview_predict",
+                                prompt: qPrompt || "Predict the printed output of this program:",
+                                type: "predict_output",
+                                points: qPoints,
+                                codeSnippet: qCodeSnippet,
+                                codeLanguage: qCodeLanguage,
+                                correctAnswer: qCorrectText
+                              }}
+                              mode="preview"
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -2325,7 +2646,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                       </span>
                     </div>
 
-                    <div className="flex items-center space-x-1.5 text-[10px] font-mono">
+                    <div className="flex items-center flex-wrap gap-1.5 text-[10px] font-mono">
                       <span className="rounded bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 text-cyan-300">
                         {parsedPreviewQuestions.filter(q => q.type === "multiple_choice").length} Single Choice
                       </span>
@@ -2341,6 +2662,21 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                       <span className="rounded bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 text-amber-300">
                         {parsedPreviewQuestions.filter(q => q.type === "essay").length} Essay
                       </span>
+                      {parsedPreviewQuestions.some(q => q.type === "code_completion") && (
+                        <span className="rounded bg-sky-500/10 border border-sky-500/30 px-2 py-0.5 text-sky-300">
+                          {parsedPreviewQuestions.filter(q => q.type === "code_completion").length} Code Blanks
+                        </span>
+                      )}
+                      {parsedPreviewQuestions.some(q => q.type === "code_ordering") && (
+                        <span className="rounded bg-teal-500/10 border border-teal-500/30 px-2 py-0.5 text-teal-300">
+                          {parsedPreviewQuestions.filter(q => q.type === "code_ordering").length} Code Ordering
+                        </span>
+                      )}
+                      {parsedPreviewQuestions.some(q => q.type === "predict_output") && (
+                        <span className="rounded bg-blue-500/10 border border-blue-500/30 px-2 py-0.5 text-blue-300">
+                          {parsedPreviewQuestions.filter(q => q.type === "predict_output").length} Predict Output
+                        </span>
+                      )}
                     </div>
                   </div>
 

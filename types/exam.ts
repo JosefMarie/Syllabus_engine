@@ -5,19 +5,35 @@ export type QuestionType =
   | 'multiple_select'   // Multiple correct choices (checkboxes)
   | 'true_false'        // Binary True / False
   | 'short_answer'      // Exact keyword or phrase match
-  | 'essay';            // Extended text or code snippet for teacher manual grading
+  | 'essay'             // Extended text or code snippet for teacher manual grading
+  | 'code_completion'   // Interactive code with inline blank tokens (e.g. ___1___)
+  | 'code_ordering'     // Parson's puzzle (scrambled lines to arrange into working sequence)
+  | 'predict_output';   // Code snippet + predict terminal stdout/return value
 
 export type ExamType = 'quiz' | 'exam';
 export type ExamStatus = 'draft' | 'published' | 'archived';
+
+export interface CodeBlank {
+  id: string; // e.g. "1", "2"
+  acceptedAnswers: string[]; // Variations accepted (e.g. ["reduce", ".reduce"])
+  placeholder?: string;
+  hint?: string;
+}
 
 export interface ExamQuestion {
   id: string;
   prompt: string; // Markdown supported for code snippets and formatting
   type: QuestionType;
   options?: string[]; // For multiple choice / select
-  correctAnswer?: string | string[] | boolean; // For auto-grading (e.g. index string '0', array ['0','2'], or boolean)
+  correctAnswer?: string | string[] | boolean | Record<string, string>; // For auto-grading
   explanation?: string; // Helpful explanation shown after evaluation
   points: number;
+
+  // Dedicated coding fields
+  codeSnippet?: string; // Code template containing blanks (e.g. `___1___`) or code snippet
+  codeLanguage?: string; // 'javascript' | 'typescript' | 'python' | 'html' | 'css' | 'sql' | 'java' | 'bash'
+  codeBlanks?: CodeBlank[]; // Configured blanks for code_completion
+  codeLines?: string[]; // Original/scrambled lines for code_ordering
 }
 
 export interface Exam {
