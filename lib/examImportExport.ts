@@ -330,6 +330,17 @@ export function downloadExamTemplatePlainText(): void {
 }
 
 /**
+ * Downloads the starter Markdown (.md) exam template
+ */
+export function downloadExamTemplateMarkdown(): void {
+  triggerBrowserDownload(
+    "exam_questions_template.md",
+    PLAIN_TEXT_EXAM_TEMPLATE,
+    "text/markdown;charset=utf-8;"
+  );
+}
+
+/**
  * Copies the AI prompt to user clipboard
  */
 export async function copyAIPromptToClipboard(): Promise<boolean> {
@@ -413,6 +424,77 @@ export function exportExamQuestionsToPlainText(questions: ExamQuestion[], examTi
 
   const safeName = (examTitle || "questions").toLowerCase().replace(/[^a-z0-9_-]/g, "_");
   triggerBrowserDownload(`${safeName}_export.txt`, blocks.join("\n\n"), "text/plain;charset=utf-8;");
+}
+
+/**
+ * Exports existing questions as a clean, standardized Markdown (.md) document
+ */
+export function exportExamQuestionsToMarkdown(questions: ExamQuestion[], examTitle: string): void {
+  const blocks: string[] = [];
+  const safeName = (examTitle || "exam").toLowerCase().replace(/[^a-z0-9_-]/g, "_");
+  
+  // Frontmatter header
+  blocks.push(`---
+title: "${examTitle || "Assessment"}"
+exported_at: "${new Date().toISOString()}"
+total_questions: ${questions.length}
+total_points: ${questions.reduce((sum, q) => sum + (q.points || 0), 0)}
+---
+
+# ${examTitle || "Assessment Questions"}`);
+
+  questions.forEach((q, idx) => {
+    let block = `### Question ${idx + 1} [${q.type}] (${q.points || 1} pts)\n${q.prompt}\n`;
+    
+    if (q.type === "multiple_choice" || q.type === "multiple_select") {
+      (q.options || []).forEach((opt, oIdx) => {
+        const letter = String.fromCharCode(65 + oIdx);
+        block += `* ${letter}) ${opt}\n`;
+      });
+      
+      if (Array.isArray(q.correctAnswer)) {
+        const letters = q.correctAnswer.map(ans => {
+          const num = parseInt(ans, 10);
+          return !isNaN(num) && num < 26 ? String.fromCharCode(65 + num) : ans;
+        });
+        block += `* Answer: ${letters.join(", ")}\n`;
+      } else {
+        const num = parseInt(String(q.correctAnswer), 10);
+        const letter = !isNaN(num) && num < 26 ? String.fromCharCode(65 + num) : String(q.correctAnswer);
+        block += `* Answer: ${letter}\n`;
+      }
+    } else if (q.type === "true_false") {
+      block += `* Answer: ${q.correctAnswer ? "True" : "False"}\n`;
+    } else if (q.type === "short_answer" || q.type === "essay") {
+      if (q.correctAnswer) block += `* Answer: ${q.correctAnswer}\n`;
+    } else if (q.type === "code_completion") {
+      if (q.codeSnippet) {
+        block += `\`\`\`${q.codeLanguage || "text"}\n${q.codeSnippet}\n\`\`\`\n`;
+      }
+      if (q.codeBlanks && q.codeBlanks.length > 0) {
+        q.codeBlanks.forEach(b => {
+          block += `* Blank ${b.id}: ${b.acceptedAnswers.join(", ")}\n`;
+        });
+      }
+    } else if (q.type === "code_ordering") {
+      if (Array.isArray(q.codeLines) && q.codeLines.length > 0) {
+        block += `\`\`\`${q.codeLanguage || "text"}\n${q.codeLines.join("\n")}\n\`\`\`\n`;
+      }
+    } else if (q.type === "predict_output") {
+      if (q.codeSnippet) {
+        block += `\`\`\`${q.codeLanguage || "text"}\n${q.codeSnippet}\n\`\`\`\n`;
+      }
+      block += `* Output: ${q.correctAnswer || ""}\n`;
+    }
+
+    if (q.explanation) {
+      block += `* Explanation: ${q.explanation}\n`;
+    }
+
+    blocks.push(block.trim());
+  });
+
+  triggerBrowserDownload(`${safeName}.md`, blocks.join("\n\n"), "text/markdown;charset=utf-8;");
 }
 
 /**
@@ -1229,6 +1311,8 @@ export function autoDetectAndParseQuestions(
     format = "json";
   } else if (filenameHint?.endsWith(".csv")) {
     format = "csv";
+  } else if (filenameHint?.endsWith(".md") || filenameHint?.endsWith(".markdown")) {
+    format = "plain_text";
   } else {
     // Check if first line has CSV headers like "type,prompt" or "prompt,points"
     const firstLine = trimmed.split("\n")[0].toLowerCase();

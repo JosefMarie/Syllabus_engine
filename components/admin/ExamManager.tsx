@@ -55,7 +55,10 @@ import {
   ChevronDown,
   Sparkles,
   Copy,
-  Bot
+  Bot,
+  Server,
+  WifiOff,
+  ExternalLink
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -64,10 +67,12 @@ import {
   downloadExamTemplateCSV,
   downloadExamTemplateJSON,
   downloadExamTemplatePlainText,
+  downloadExamTemplateMarkdown,
   copyAIPromptToClipboard,
   exportExamQuestionsToCSV,
   exportExamQuestionsToJSON,
   exportExamQuestionsToPlainText,
+  exportExamQuestionsToMarkdown,
   autoDetectAndParseQuestions,
   AI_GENERATION_PROMPT
 } from "@/lib/examImportExport";
@@ -150,6 +155,93 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
   const [importFormatSelection, setImportFormatSelection] = useState<"auto" | "plain_text" | "csv" | "json">("auto");
   const [detectedFormat, setDetectedFormat] = useState<"plain_text" | "csv" | "json">("plain_text");
   const [copiedAIPrompt, setCopiedAIPrompt] = useState(false);
+
+  // Import Source Tab: upload file, paste text, or live sync from Python AMS
+  const [importSourceTab, setImportSourceTab] = useState<"upload" | "paste" | "ams_sync">("upload");
+
+  // AMS Live Sync State
+  const [amsEndpointUrl, setAmsEndpointUrl] = useState("http://127.0.0.1:8000/api/exams/generate/");
+  const [amsTopic, setAmsTopic] = useState("");
+  const [amsQuestionCount, setAmsQuestionCount] = useState(5);
+  const [amsDifficulty, setAmsDifficulty] = useState<"easy" | "medium" | "hard">("medium");
+  const [amsSyncing, setAmsSyncing] = useState(false);
+  const [amsSyncError, setAmsSyncError] = useState<string | null>(null);
+  const [amsSyncSuccess, setAmsSyncSuccess] = useState<string | null>(null);
+
+  // Load persisted AMS URL from localStorage
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("ams_exam_api_url");
+      if (saved) setAmsEndpointUrl(saved);
+    } catch {}
+  }, []);
+
+  const handleSyncWithAMS = async () => {
+    setAmsSyncError(null);
+    setAmsSyncSuccess(null);
+    setAmsSyncing(true);
+
+    try {
+      localStorage.setItem("ams_exam_api_url", amsEndpointUrl.trim());
+    } catch {}
+
+    const topicQuery = amsTopic.trim() || formTitle.trim() || "Computer Science Assessment";
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 12000);
+
+      const res = await fetch(amsEndpointUrl.trim(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Accept": "application/json, text/markdown, text/plain"
+        },
+        body: JSON.stringify({
+          topic: topicQuery,
+          num_questions: amsQuestionCount,
+          difficulty: amsDifficulty
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!res.ok) {
+        throw new Error(`AMS responded with status ${res.status}: ${res.statusText}`);
+      }
+
+      const contentType = res.headers.get("content-type") || "";
+      let markdownContent = "";
+
+      if (contentType.includes("application/json")) {
+        const data = await res.json();
+        markdownContent = data.markdown || data.text || data.content || (typeof data === "string" ? data : JSON.stringify(data, null, 2));
+      } else {
+        markdownContent = await res.text();
+      }
+
+      if (!markdownContent || !markdownContent.trim()) {
+        throw new Error("AMS server returned empty content.");
+      }
+
+      setImportInputText(markdownContent);
+      setImportFileName("ams_generated_exam.md");
+      runParseContent(markdownContent, "ams_generated_exam.md", "plain_text");
+      setAmsSyncSuccess(`Successfully fetched and parsed questions for "${topicQuery}" from AMS!`);
+    } catch (err: any) {
+      console.error("AMS sync error:", err);
+      let errMsg = err.message || "Failed to connect to AMS.";
+      if (err.name === "AbortError") {
+        errMsg = "Request timed out after 12 seconds. Ensure your Django server is running and reachable.";
+      } else if (errMsg.includes("Failed to fetch") || errMsg.includes("NetworkError")) {
+        errMsg = `Could not connect to AMS at ${amsEndpointUrl}. If your Django server is running locally on HTTP and this app is accessed over HTTPS, the browser blocks direct requests (Mixed Content).`;
+      }
+      setAmsSyncError(errMsg);
+    } finally {
+      setAmsSyncing(false);
+    }
+  };
 
   const handleCopyAIPrompt = async () => {
     const ok = await copyAIPromptToClipboard();
@@ -1360,6 +1452,24 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                               <button
                                 type="button"
                                 onClick={() => {
+                                  downloadExamTemplateMarkdown();
+                                  setIsBuilderTemplateMenuOpen(false);
+                                }}
+                                className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all group"
+                              >
+                                <FileText className="h-4 w-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
+                                <div>
+                                  <span className="font-bold block text-white flex items-center space-x-1.5">
+                                    <span>Markdown Template (.md)</span>
+                                    <span className="rounded bg-emerald-500/20 text-emerald-300 text-[9px] px-1.5 py-0.2">Recommended</span>
+                                  </span>
+                                  <span className="text-[10px] text-[#94A3B8] block">Standard formatted document with code blocks</span>
+                                </div>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
                                   downloadExamTemplatePlainText();
                                   setIsBuilderTemplateMenuOpen(false);
                                 }}
@@ -1431,6 +1541,14 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                         {/* Export Existing Questions (if any) */}
                         {formQuestions.length > 0 && (
                           <div className="flex items-center space-x-1 border-l border-[#334155] pl-2">
+                            <button
+                              type="button"
+                              title="Export questions as Markdown (.md)"
+                              onClick={() => exportExamQuestionsToMarkdown(formQuestions, formTitle || "exam")}
+                              className="px-2 py-1 rounded-lg text-emerald-300 hover:text-white hover:bg-slate-800 text-[11px] font-mono border border-emerald-500/30"
+                            >
+                              MD
+                            </button>
                             <button
                               type="button"
                               title="Export questions as plain text"
@@ -2403,6 +2521,16 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                       )}
                     </button>
 
+                    {/* Download Markdown (.md) */}
+                    <button
+                      type="button"
+                      onClick={downloadExamTemplateMarkdown}
+                      className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition-all shadow"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      <span>Markdown (.md)</span>
+                    </button>
+
                     {/* Download Plain Text */}
                     <button
                       type="button"
@@ -2482,7 +2610,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                         : "text-[#94A3B8] hover:text-white"
                     }`}
                   >
-                    Plain Text / AI
+                    Markdown / AI (.md)
                   </button>
                   <button
                     type="button"
@@ -2515,65 +2643,247 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                 </div>
               </div>
 
-              {/* Upload or Paste Section */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Method 1: File Upload */}
-                <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4 flex flex-col justify-between">
-                  <div>
-                    <label className="block text-xs font-bold text-white mb-1">
-                      Option A: Upload File (.txt, .csv, .json)
-                    </label>
-                    <p className="text-[11px] text-[#94A3B8] mb-3">
-                      Drop an AI output text file or saved spreadsheet.
-                    </p>
+              {/* Import Source Tabs */}
+              <div className="flex border-b border-[#334155] space-x-4">
+                <button
+                  type="button"
+                  onClick={() => setImportSourceTab("upload")}
+                  className={`pb-3 text-xs font-bold transition-all flex items-center space-x-2 border-b-2 ${
+                    importSourceTab === "upload"
+                      ? "border-[#06B6D4] text-[#06B6D4]"
+                      : "border-transparent text-[#94A3B8] hover:text-white"
+                  }`}
+                >
+                  <Upload className="h-4 w-4" />
+                  <span>Upload File (.md, .txt, .csv, .json)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImportSourceTab("paste")}
+                  className={`pb-3 text-xs font-bold transition-all flex items-center space-x-2 border-b-2 ${
+                    importSourceTab === "paste"
+                      ? "border-[#06B6D4] text-[#06B6D4]"
+                      : "border-transparent text-[#94A3B8] hover:text-white"
+                  }`}
+                >
+                  <FileText className="h-4 w-4" />
+                  <span>Paste Raw Text / Markdown</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImportSourceTab("ams_sync")}
+                  className={`pb-3 text-xs font-bold transition-all flex items-center space-x-2 border-b-2 relative ${
+                    importSourceTab === "ams_sync"
+                      ? "border-emerald-400 text-emerald-400"
+                      : "border-transparent text-[#94A3B8] hover:text-white"
+                  }`}
+                >
+                  <Server className="h-4 w-4 text-emerald-400" />
+                  <span>Live Sync with AMS (Python)</span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    Bridge
+                  </span>
+                </button>
+              </div>
+
+              {/* Source Tab Contents */}
+              {importSourceTab === "upload" && (
+                <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div>
+                      <label className="block text-xs font-bold text-white mb-0.5">
+                        Drop or Select Your Assessment File
+                      </label>
+                      <p className="text-[11px] text-[#94A3B8]">
+                        Supports Markdown (<strong>.md</strong>), Plain Text (<strong>.txt</strong>), Excel CSV (<strong>.csv</strong>), and JSON (<strong>.json</strong>).
+                      </p>
+                    </div>
+                    {importFileName && (
+                      <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-950/70 border border-cyan-500/30 px-2.5 py-1 rounded-lg">
+                        {importFileName}
+                      </span>
+                    )}
                   </div>
 
-                  <label className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#334155] bg-[#0B0F19] p-6 cursor-pointer hover:border-[#06B6D4] transition-all group text-center">
-                    <Upload className="h-7 w-7 text-[#94A3B8] group-hover:text-[#06B6D4] transition-all mb-2" />
-                    <span className="text-xs font-bold text-white group-hover:text-[#06B6D4]">
+                  <label className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#334155] bg-[#0B0F19] p-8 cursor-pointer hover:border-[#06B6D4] transition-all group text-center">
+                    <Upload className="h-8 w-8 text-[#94A3B8] group-hover:text-[#06B6D4] transition-all mb-2.5" />
+                    <span className="text-sm font-bold text-white group-hover:text-[#06B6D4]">
                       {importFileName ? importFileName : "Click to Browse or Drag File Here"}
                     </span>
-                    <span className="text-[10px] text-[#64748B] mt-1">
-                      Supports .txt (AI output), .csv (Excel / Sheets), and .json
+                    <span className="text-[11px] text-[#64748B] mt-1.5">
+                      Accepts .md (Markdown), .txt (AI output), .csv (Spreadsheet), and .json
                     </span>
                     <input
                       type="file"
-                      accept=".txt,.csv,.json,text/plain,text/csv,application/json"
+                      accept=".md,.markdown,.txt,.csv,.json,text/markdown,text/plain,text/csv,application/json"
                       onChange={handleFileUpload}
                       className="hidden"
                     />
                   </label>
                 </div>
+              )}
 
-                {/* Method 2: Paste Raw Content */}
-                <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4 flex flex-col">
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold text-white">
-                      Option B: Paste Content Directly
-                    </label>
+              {importSourceTab === "paste" && (
+                <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5 flex flex-col">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <label className="block text-xs font-bold text-white mb-0.5">
+                        Paste Raw AI Output or Markdown Document
+                      </label>
+                      <p className="text-[11px] text-[#94A3B8]">
+                        Paste text copied straight from ChatGPT, Gemini, Claude, or your Python AMS output.
+                      </p>
+                    </div>
                     {importInputText && (
                       <button
                         type="button"
                         onClick={() => handleTextareaChange("")}
-                        className="text-[10px] text-rose-400 hover:underline"
+                        className="text-xs text-rose-400 hover:underline font-bold"
                       >
-                        Clear
+                        Clear Text
                       </button>
                     )}
                   </div>
-                  <p className="text-[11px] text-[#94A3B8] mb-2">
-                    Paste text copied straight from ChatGPT, Gemini, Claude, or Excel.
-                  </p>
 
                   <textarea
-                    rows={6}
+                    rows={8}
                     value={importInputText}
                     onChange={(e) => handleTextareaChange(e.target.value)}
-                    placeholder="1. What is the function of a router?&#10;A) Forwards network packets across IP networks&#10;B) Cools the computer chassis&#10;Answer: A&#10;Points: 2&#10;Explanation: Routers connect networks and route IP traffic.&#10;&#10;2. True or False: Python is compiled directly to machine code.&#10;Answer: False&#10;Points: 1"
-                    className="flex-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs font-mono text-[#CBD5E1] placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none resize-none"
+                    placeholder={`### Question 1 [multiple_choice] (3 pts)\nWhich data structure is immutable in Python?\n* A) List\n* B) Tuple (Correct)\n* C) Set\n* D) Dictionary\n\n### Question 2 [code_completion] (5 pts)\nFill in the missing loop operator:\n\`\`\`python\ntotal = 0\nfor x in items:\n    total ___1___ x\nreturn total\n\`\`\`\n* Blank 1: +=\n\n### Question 3 [predict_output] (4 pts)\nWhat will this print?\n\`\`\`python\nprint("Hello" * 2)\n\`\`\`\n* Output: HelloHello`}
+                    className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3.5 text-xs font-mono text-[#CBD5E1] placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none resize-none leading-relaxed"
                   />
                 </div>
-              </div>
+              )}
+
+              {importSourceTab === "ams_sync" && (
+                <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/20 via-[#1E293B] to-[#0B0F19] p-5 space-y-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="flex items-center space-x-2">
+                        <Server className="h-5 w-5 text-emerald-400" />
+                        <h4 className="text-sm font-bold text-white">Live Python AMS Curriculum Sync</h4>
+                      </div>
+                      <p className="text-xs text-[#94A3B8] mt-1">
+                        Directly queries your Python Django AMS backend to generate and parse assessment questions on demand.
+                      </p>
+                    </div>
+                    <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950 border border-emerald-500/40 px-2.5 py-1 rounded-lg shrink-0">
+                      Python ↔ Next.js
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                        AMS API Endpoint URL
+                      </label>
+                      <input
+                        type="url"
+                        value={amsEndpointUrl}
+                        onChange={(e) => setAmsEndpointUrl(e.target.value)}
+                        placeholder="http://127.0.0.1:8000/api/exams/generate/"
+                        className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3.5 py-2.5 text-xs font-mono text-white placeholder-[#64748B] focus:border-emerald-400 focus:outline-none"
+                      />
+                      <span className="text-[10px] text-[#64748B] mt-1 block">
+                        Defaults to local Django endpoint. Supports ngrok or hosted URLs.
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                        Subject / Topic Query
+                      </label>
+                      <input
+                        type="text"
+                        value={amsTopic}
+                        onChange={(e) => setAmsTopic(e.target.value)}
+                        placeholder={formTitle || "e.g., Python Data Structures & Functions"}
+                        className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3.5 py-2.5 text-xs text-white placeholder-[#64748B] focus:border-emerald-400 focus:outline-none"
+                      />
+                      <span className="text-[10px] text-[#64748B] mt-1 block">
+                        Leave blank to use current assessment title ({formTitle || "Assessment"}).
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                    <div className="flex items-center space-x-3 text-xs">
+                      <div>
+                        <span className="text-[#94A3B8] text-xs mr-2 font-bold">Questions:</span>
+                        <select
+                          value={amsQuestionCount}
+                          onChange={(e) => setAmsQuestionCount(Number(e.target.value))}
+                          className="rounded-lg border border-[#334155] bg-[#0B0F19] px-2.5 py-1 text-xs text-white focus:outline-none font-bold"
+                        >
+                          <option value={3}>3 questions</option>
+                          <option value={5}>5 questions</option>
+                          <option value={10}>10 questions</option>
+                          <option value={15}>15 questions</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <span className="text-[#94A3B8] text-xs mr-2 font-bold">Difficulty:</span>
+                        <select
+                          value={amsDifficulty}
+                          onChange={(e) => setAmsDifficulty(e.target.value as any)}
+                          className="rounded-lg border border-[#334155] bg-[#0B0F19] px-2.5 py-1 text-xs text-white focus:outline-none font-bold capitalize"
+                        >
+                          <option value="easy">Easy</option>
+                          <option value="medium">Medium</option>
+                          <option value="hard">Hard</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={amsSyncing}
+                      onClick={handleSyncWithAMS}
+                      className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-all shadow-md active:scale-95 disabled:opacity-50"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${amsSyncing ? "animate-spin" : ""}`} />
+                      <span>{amsSyncing ? "Connecting to AMS..." : "Generate & Pull from AMS"}</span>
+                    </button>
+                  </div>
+
+                  {/* Sync Success Banner */}
+                  {amsSyncSuccess && (
+                    <div className="flex items-center space-x-2 rounded-xl bg-emerald-950/60 border border-emerald-500/40 p-3 text-xs text-emerald-300">
+                      <Check className="h-4 w-4 shrink-0 text-emerald-400" />
+                      <span>{amsSyncSuccess}</span>
+                    </div>
+                  )}
+
+                  {/* Sync Error with Graceful Fallback Explanation */}
+                  {amsSyncError && (
+                    <div className="rounded-xl bg-rose-950/40 border border-rose-500/40 p-3.5 space-y-2 text-xs">
+                      <div className="flex items-start space-x-2 text-rose-300">
+                        <WifiOff className="h-4 w-4 shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <span className="font-bold block">AMS Connection Notice:</span>
+                          <span className="block text-[#CBD5E1] text-[11px] leading-relaxed">
+                            {amsSyncError}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="border-t border-rose-500/20 pt-2 flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-[10px] text-[#94A3B8]">
+                          Tip: If AMS is not hosted, copy the Markdown generated in Python and paste it directly.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setImportSourceTab("paste")}
+                          className="text-[11px] font-bold text-cyan-300 hover:underline"
+                        >
+                          Switch to Paste Markdown &rarr;
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Import Mode: Append vs Replace */}
               <div className="flex items-center justify-between rounded-2xl border border-[#334155] bg-[#1E293B] p-4">
