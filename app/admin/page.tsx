@@ -221,9 +221,9 @@ export default function AdminDashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-[#CBD5E1]">
+    <div className="min-h-screen bg-transparent text-[#CBD5E1]">
       {/* Admin Top Header */}
-      <header className="sticky top-0 z-30 border-b border-[#334155] bg-[#0B0F19]/90 px-3 sm:px-6 py-2.5 sm:py-4 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-[#334155]/60 bg-[#0B0F19]/80 px-3 sm:px-6 py-2.5 sm:py-4 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-2">
           {/* Left Brand & Navigation */}
           <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">

@@ -162,9 +162,9 @@ export default function AdminLoginPage() {
   const isLockedOut = Boolean(lockoutUntil && Date.now() < lockoutUntil);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-4 text-[#CBD5E1]">
-      <div className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#1E293B] p-8 shadow-2xl relative">
-        <div className="mb-6 flex items-center justify-between border-b border-[#334155] pb-4">
+    <div className="flex min-h-screen items-center justify-center bg-transparent p-4 text-[#CBD5E1]">
+      <div className="w-full max-w-md rounded-2xl border border-[#334155]/80 bg-[#1E293B]/85 backdrop-blur-xl p-8 shadow-2xl relative">
+        <div className="mb-6 flex items-center justify-between border-b border-[#334155]/60 pb-4">
           <Link
             href="/"
             prefetch={false}

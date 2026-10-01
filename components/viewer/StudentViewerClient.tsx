@@ -472,7 +472,7 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
       userFullName={currentUser?.fullName}
       userEmail={currentUser?.email}
     >
-      <div className="flex h-screen overflow-hidden bg-[#0B0F19] text-[#CBD5E1]">
+      <div className="flex h-screen overflow-hidden bg-transparent text-[#CBD5E1]">
         {currentUser && (
           <>
             <NotificationAlert userId={currentUser.uid} />
@@ -507,7 +507,7 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
         {/* Main Workspace Pane */}
         <div ref={scrollContainerRef} onScroll={handleScroll} className="flex flex-1 flex-col overflow-y-auto w-full min-w-0 relative">
           {/* Top Sticky Header */}
-          <header className="sticky top-0 z-30 flex items-center justify-between border-b border-[#334155] bg-[#0B0F19]/95 px-3 sm:px-6 py-2.5 sm:py-3 backdrop-blur-md relative">
+          <header className="sticky top-0 z-30 flex items-center justify-between border-b border-[#334155]/60 bg-[#0B0F19]/80 px-3 sm:px-6 py-2.5 sm:py-3 backdrop-blur-xl relative">
             <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
               {/* Mobile & Tablet Outline Drawer Trigger */}
               <button

@@ -53,8 +53,8 @@ function LoginForm() {
   };
 
   return (
-    <div className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#1E293B] p-8 shadow-2xl">
-      <div className="mb-6 flex items-center justify-between border-b border-[#334155] pb-4">
+    <div className="w-full max-w-md rounded-2xl border border-[#334155]/80 bg-[#1E293B]/85 backdrop-blur-xl p-8 shadow-2xl">
+      <div className="mb-6 flex items-center justify-between border-b border-[#334155]/60 pb-4">
         <Link
           href="/"
           prefetch={false}
@@ -152,9 +152,9 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-4 text-[#CBD5E1]">
+    <div className="flex min-h-screen items-center justify-center bg-transparent p-4 text-[#CBD5E1]">
       <Suspense fallback={
-        <div className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#1E293B] p-8 shadow-2xl flex justify-center items-center h-64">
+        <div className="w-full max-w-md rounded-2xl border border-[#334155]/80 bg-[#1E293B]/85 backdrop-blur-xl p-8 shadow-2xl flex justify-center items-center h-64">
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent" />
         </div>
       }>
