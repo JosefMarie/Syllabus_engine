@@ -5,17 +5,26 @@ import { Syllabus } from "@/types/syllabus";
 import { UserProfile } from "@/types/auth";
 import { getAllSyllabi, deleteSyllabus, getAllUserProfiles, getLocalSyllabi, getLocalTrades, getAllTrades, subscribeToAllUserProfiles, getLocalUserProfiles } from "@/lib/db";
 import { getAdminSession, logoutAdmin, getStoredSession, subscribeToAdminSessionRevocation, revokeAllAdminSessions } from "@/lib/auth";
-import TradesManager from "@/components/admin/TradesManager";
-import StudentApprovals from "@/components/admin/StudentApprovals";
-import ActivityLogger from "@/components/admin/ActivityLogger";
-import StudentProgressManager from "@/components/admin/StudentProgressManager";
-import AssignmentManager from "@/components/admin/AssignmentManager";
-import GroupManager from "@/components/admin/GroupManager";
-import ExamManager from "@/components/admin/ExamManager";
-import AdminPresenceAlert from "@/components/admin/AdminPresenceAlert";
-import RestrictionsControl from "@/components/admin/RestrictionsControl";
+import dynamic from "next/dynamic";
 import { Trade } from "@/types/auth";
 import { useRouter } from "next/navigation";
+
+const TabLoadingPlaceholder = () => (
+  <div className="flex flex-col items-center justify-center p-16 rounded-2xl border border-[#334155]/60 bg-[#0F172A]/50 backdrop-blur-md text-[#94A3B8]">
+    <div className="h-8 w-8 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent mb-3" />
+    <span className="text-xs font-semibold tracking-wide">Loading module workspace...</span>
+  </div>
+);
+
+const TradesManager = dynamic(() => import("@/components/admin/TradesManager"), { ssr: false, loading: TabLoadingPlaceholder });
+const StudentApprovals = dynamic(() => import("@/components/admin/StudentApprovals"), { ssr: false, loading: TabLoadingPlaceholder });
+const StudentProgressManager = dynamic(() => import("@/components/admin/StudentProgressManager"), { ssr: false, loading: TabLoadingPlaceholder });
+const AssignmentManager = dynamic(() => import("@/components/admin/AssignmentManager"), { ssr: false, loading: TabLoadingPlaceholder });
+const ExamManager = dynamic(() => import("@/components/admin/ExamManager"), { ssr: false, loading: TabLoadingPlaceholder });
+const GroupManager = dynamic(() => import("@/components/admin/GroupManager"), { ssr: false, loading: TabLoadingPlaceholder });
+const ActivityLogger = dynamic(() => import("@/components/admin/ActivityLogger"), { ssr: false, loading: TabLoadingPlaceholder });
+import AdminPresenceAlert from "@/components/admin/AdminPresenceAlert";
+import RestrictionsControl from "@/components/admin/RestrictionsControl";
 import { downloadSyllabusAsJSON, downloadSyllabusAsText, downloadAllSyllabiAsJSON } from "@/lib/exportSyllabus";
 import { 
   ShieldCheck, 

@@ -40,9 +40,44 @@ service cloud.firestore {
       allow delete: if isTeacher();
     }
 
+    // Group Evaluations & Presentation Defense Marks
+    // Only authenticated instructors can write or delete group evaluations; students have read-only access
+    match /group_evaluations/{evalId} {
+      allow read: if true;
+      allow write: if isTeacher();
+      allow delete: if isTeacher();
+    }
+
+    // Student Project & Study Groups
+    match /student_groups/{groupId} {
+      allow read: if true;
+      allow write: if true;
+      allow delete: if isTeacher();
+    }
+
+    // Exam Attempts & Quizzes
+    match /exam_attempts/{attemptId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if isTeacher();
+    }
+
+    // Assignments & Student Submissions
+    match /assignments/{assignmentId} {
+      allow read: if true;
+      allow write: if isTeacher();
+      allow delete: if isTeacher();
+    }
+    match /submissions/{submissionId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if isTeacher();
+    }
+
     // Syllabi, Trades, Notifications, Activities, Presence, TimeTracking
     match /syllabi/{syllabusId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow write: if true;
     }
     match /presence/{userId} {
       allow read, write: if true;

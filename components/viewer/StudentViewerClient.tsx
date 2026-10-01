@@ -13,6 +13,7 @@ import { downloadSyllabusAsJSON, downloadSyllabusAsText } from "@/lib/exportSyll
 import { ArrowLeft, Menu, ShieldCheck, Lock, AlertTriangle, LogIn, UserPlus, Download, FileText, FileCode, CheckCircle2, Circle, AlertCircle, ArrowRight, Eye, RotateCcw, BookOpen, Maximize2, Minimize2, X, Sparkles } from "lucide-react";
 import { UserProfile, StudentLevel } from "@/types/auth";
 import NotificationAlert from "@/components/common/NotificationAlert";
+import NotificationBell from "@/components/common/NotificationBell";
 import PresenceTracker from "@/components/common/PresenceTracker";
 import DisciplinaryLockdown from "@/components/common/DisciplinaryLockdown";
 
@@ -606,6 +607,10 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
                     <span className="hidden sm:inline">Edit in Admin Portal</span>
                   </Link>
                 </>
+              )}
+
+              {currentUser && (
+                <NotificationBell userId={currentUser.uid} />
               )}
             </div>
             {/* Sticky Reading Progress Bar on bottom edge of header */}

@@ -33,6 +33,7 @@ import {
   subscribeToSystemRestrictions, 
   getLocalRestrictions 
 } from "./restrictions";
+import { idbSet, idbGet, idbDelete, IDB_STORES } from "./database/indexedDb";
 
 const STORAGE_KEY = "syllabus_platform_syllabi_v1";
 const PROGRESS_KEY = "syllabus_platform_progress_v1";
@@ -292,6 +293,9 @@ export function saveSingleLocalSyllabus(syllabus: Syllabus): void {
       console.warn("Could not cache single syllabus to localStorage even after cleanup:", e);
     }
   }
+
+  // 3. Persist full uncapped document in native IndexedDB (no 5MB quota limit)
+  idbSet(IDB_STORES.SYLLABI, syllabus.id, syllabus).catch(() => {});
 }
 
 export function removeSingleLocalSyllabus(id: string): void {
@@ -301,6 +305,13 @@ export function removeSingleLocalSyllabus(id: string): void {
   } catch (e) {
     // Ignore
   }
+  idbDelete(IDB_STORES.SYLLABI, id).catch(() => {});
+}
+
+export async function getSingleLocalSyllabusAsync(id: string): Promise<Syllabus | null> {
+  const syncSyl = getSingleLocalSyllabus(id);
+  if (syncSyl) return syncSyl;
+  return await idbGet<Syllabus>(IDB_STORES.SYLLABI, id);
 }
 
 // Build fast lookup citations map across the 5 levels
@@ -3255,6 +3266,8 @@ export async function getExamAttemptsForStudent(studentUid: string): Promise<Exa
   const all = await getAllExamAttempts();
   return all.filter(a => a.studentUid === studentUid);
 }
+
+export const getStudentExamAttempts = getExamAttemptsForStudent;
 
 export async function getExamAttemptsForExam(examId: string): Promise<ExamAttempt[]> {
   const all = await getAllExamAttempts();

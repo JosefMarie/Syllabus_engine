@@ -686,3 +686,197 @@ ${rawText.slice(0, 30000)}`;
     totalPoints: 100
   };
 }
+
+/**
+ * AI Presentation Rubric Copilot
+ * Generates insightful pedagogical critique, commendations, and actionable feedback
+ * for classroom project/PowerPoint presentations and defense.
+ */
+export async function generatePresentationFeedback(params: {
+  groupName: string;
+  presentationTitle: string;
+  courseCode?: string;
+  groupScore: number;
+  memberSummary?: string;
+  rubricFocus?: string;
+}): Promise<string> {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+
+  if (apiKey && apiKey.trim().length > 10) {
+    const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash"];
+
+    for (const modelName of modelsToTry) {
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const prompt = `You are a TVET / Engineering Course Instructor providing constructive, encouraging, and rigorous presentation evaluation feedback.
+Team Name: ${params.groupName}
+Presentation Topic: ${params.presentationTitle}
+Course: ${params.courseCode || "Technical Module"}
+Overall Team Score Awarded: ${params.groupScore}/100
+Members Defense Info: ${params.memberSummary || "Members participated in presentation defense."}
+Rubric Focus: ${params.rubricFocus || "Technical accuracy, slide design, problem solving, individual verbal defense"}
+
+Write a 3-paragraph instructor evaluation feedback:
+1. Commendations on slides, collaboration, and delivery strengths.
+2. Critique on technical rigor, question defense, and depth.
+3. Actionable guidance for next milestone or project iteration.
+Keep tone professional, motivating, and specific to the given score.`;
+
+        const model = genAI.getGenerativeModel({ model: modelName });
+        const res = await model.generateContent(prompt);
+        const feedback = res.response.text();
+        if (feedback && feedback.trim()) {
+          return feedback.trim();
+        }
+      } catch (err) {
+        console.warn(`Gemini presentation feedback failed with ${modelName}:`, err);
+      }
+    }
+  }
+
+  // Fallback template if Gemini is offline
+  return `The team presented "${params.presentationTitle}" with satisfactory structure and preparation. ` +
+    `Slide organization demonstrated good team coordination, and the core objectives were communicated. ` +
+    `For future presentations, aim to provide deeper technical justifications during the oral defense and back implementation decisions with live metrics or architectural diagrams.`;
+}
+
+/**
+ * Student AI Concept Explainer
+ * Generates an easy-to-understand breakdown, key takeaways, and real-world analogy
+ * for any syllabus subtopic.
+ */
+export async function explainSubtopicConcept(params: {
+  subtopicTitle: string;
+  markdownContent: string;
+  level?: string;
+}): Promise<{ summary: string; keyPoints: string[]; realWorldExample: string }> {
+  const apiKey = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+
+  if (apiKey && apiKey.trim().length > 10) {
+    const modelsToTry = ["gemini-2.0-flash", "gemini-1.5-flash"];
+
+    for (const modelName of modelsToTry) {
+      try {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const prompt = `You are an expert tutor explaining this technical subtopic to a ${params.level || "TVET/Engineering"} student.
+Subtopic: ${params.subtopicTitle}
+Content:
+${params.markdownContent.slice(0, 15000)}
+
+Provide a structured JSON breakdown:
+- "summary": A clear, intuitive 2-sentence explanation of what this concept is and why it matters.
+- "keyPoints": Array of 3 to 5 core bullet points students must remember for exams.
+- "realWorldExample": An intuitive real-world analogy or industry application.`;
+
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          generationConfig: {
+            temperature: 0.3,
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: SchemaType.OBJECT,
+              properties: {
+                summary: { type: SchemaType.STRING },
+                keyPoints: {
+                  type: SchemaType.ARRAY,
+                  items: { type: SchemaType.STRING }
+                },
+                realWorldExample: { type: SchemaType.STRING }
+              },
+              required: ["summary", "keyPoints", "realWorldExample"]
+            }
+          }
+        });
+
+        const res = await model.generateContent(prompt);
+        const text = res.response.text();
+        if (text) {
+          const parsed = JSON.parse(text);
+          return {
+            summary: parsed.summary || "",
+            keyPoints: Array.isArray(parsed.keyPoints) ? parsed.keyPoints : [],
+            realWorldExample: parsed.realWorldExample || ""
+          };
+        }
+      } catch (err) {
+        console.warn(`Gemini concept explain failed with ${modelName}:`, err);
+      }
+    }
+  }
+
+  // Fallback heuristic explanation
+  return {
+    summary: `${params.subtopicTitle} is a core competency covering fundamental principles, implementation techniques, and best practices.`,
+    keyPoints: [
+      "Understand the primary definitions and purpose.",
+      "Identify the core syntax or execution flow.",
+      "Review edge cases and practical exercises."
+    ],
+    realWorldExample: `In professional software development, ${params.subtopicTitle} is utilized to ensure system reliability and clear structure.`
+  };
+}
+
+/**
+ * AMS (Academic Management System) Curriculum & Session Plan Importer
+ * Parses JSON or textual session plans exported from AMS into Syllabus Engine structure.
+ */
+export async function parseAmsCurriculumOrSessionPlan(rawContent: string): Promise<Partial<Syllabus>> {
+  const trimmed = rawContent.trim();
+
+  // 1. If valid JSON from AMS
+  if (trimmed.startsWith("{") && trimmed.endsWith("}")) {
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed.module_code || parsed.courseCode || parsed.session_plans || parsed.learning_outcomes) {
+        const title = parsed.title || parsed.module_title || parsed.module_name || "AMS Imported Curriculum";
+        const courseCode = parsed.module_code || parsed.courseCode || "AMS-101";
+        const description = parsed.description || parsed.course_aim || "Imported from Academic Management System (AMS)";
+        
+        // Build LOs from AMS session plans or learning outcomes
+        const los = (parsed.learning_outcomes || parsed.los || []).map((lo: any, idx: number) => ({
+          id: `lo-ams-${Date.now()}-${idx}`,
+          code: lo.code || `LO-${idx + 1}`,
+          title: lo.title || lo.name || `Learning Outcome ${idx + 1}`,
+          order: idx + 1,
+          description: lo.description || "",
+          indicativeContents: (lo.indicative_contents || lo.sessions || []).map((ic: any, icIdx: number) => ({
+            id: `ic-ams-${Date.now()}-${idx}-${icIdx}`,
+            code: ic.code || `IC-${idx + 1}.${icIdx + 1}`,
+            title: ic.title || ic.name || `Indicative Content ${icIdx + 1}`,
+            order: icIdx + 1,
+            topics: [
+              {
+                id: `top-ams-${Date.now()}-${idx}-${icIdx}`,
+                title: ic.topic_title || ic.title || "Key Session",
+                order: 1,
+                subtopics: [
+                  {
+                    id: `sub-ams-${Date.now()}-${idx}-${icIdx}`,
+                    title: ic.subtopic_title || ic.title || "Core Concepts",
+                    order: 1,
+                    contentMarkdown: ic.content || ic.summary || ic.notes || "Imported session content from AMS.",
+                    citations: []
+                  }
+                ]
+              }
+            ]
+          }))
+        }));
+
+        return {
+          title,
+          courseCode,
+          description,
+          status: "draft",
+          learningOutcomes: los
+        };
+      }
+    } catch {
+      // Fall through to AI parser
+    }
+  }
+
+  // 2. Use Gemini AI parser for unformatted text/curriculum documents
+  const result = await parseSyllabusWithGemini(rawContent);
+  return result.syllabus;
+}

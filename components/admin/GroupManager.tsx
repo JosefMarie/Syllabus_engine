@@ -19,6 +19,7 @@ import {
   getAllGroupEvaluations,
   deleteGroupEvaluation
 } from "@/lib/db";
+import { generatePresentationFeedback } from "@/lib/gemini";
 import { 
   Users, 
   UserPlus, 
@@ -48,7 +49,9 @@ import {
   Eye,
   Percent,
   Calendar,
-  UserX
+  UserX,
+  Tablet,
+  Zap
 } from "lucide-react";
 import RestrictionsControl from "./RestrictionsControl";
 
@@ -93,6 +96,8 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
   const [evalGroupFeedback, setEvalGroupFeedback] = useState("");
   const [evalMembers, setEvalMembers] = useState<Record<string, { individualScore: number; status: MemberParticipationStatus; privateFeedback: string }>>({});
   const [savingEvaluation, setSavingEvaluation] = useState(false);
+  const [touchHudMode, setTouchHudMode] = useState(false);
+  const [generatingAiFeedback, setGeneratingAiFeedback] = useState(false);
 
   // History Drawer State
   const [isHistoryDrawerOpen, setIsHistoryDrawerOpen] = useState(false);
@@ -271,6 +276,30 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
       alert("Failed to save evaluation. Please try again.");
     } finally {
       setSavingEvaluation(false);
+    }
+  };
+
+  const handleAiSuggestFeedback = async () => {
+    if (!evaluatingGroup) return;
+    setGeneratingAiFeedback(true);
+    try {
+      const memberSummary = evaluatingGroup.members.map(m => {
+        const data = evalMembers[m.uid];
+        return `${m.fullName}: ${data?.status || "present"} (individual: ${data?.individualScore ?? evalGroupScore}/100)`;
+      }).join(", ");
+
+      const critique = await generatePresentationFeedback({
+        groupName: evaluatingGroup.name,
+        presentationTitle: evalPresentationTitle,
+        courseCode: evalCourseCode || evaluatingGroup.courseCode,
+        groupScore: evalGroupScore,
+        memberSummary
+      });
+      setEvalGroupFeedback(critique);
+    } catch (err) {
+      console.error("AI feedback generation failed:", err);
+    } finally {
+      setGeneratingAiFeedback(false);
     }
   };
 
@@ -1531,12 +1560,27 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                   </p>
                 </div>
               </div>
-              <button
-                onClick={() => setIsEvalModalOpen(false)}
-                className="rounded-lg p-1.5 text-[#94A3B8] hover:bg-[#1E293B] hover:text-white"
-              >
-                <X className="h-5 w-5" />
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setTouchHudMode(!touchHudMode)}
+                  className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
+                    touchHudMode
+                      ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-sm shadow-emerald-500/20"
+                      : "bg-[#1E293B] text-[#94A3B8] border-[#334155] hover:text-white"
+                  }`}
+                  title="Toggle Quick Touch HUD for tablet/mobile grading"
+                >
+                  <Tablet className="h-3.5 w-3.5" />
+                  <span>{touchHudMode ? "HUD Active" : "Tablet / HUD Mode"}</span>
+                </button>
+                <button
+                  onClick={() => setIsEvalModalOpen(false)}
+                  className="rounded-lg p-1.5 text-[#94A3B8] hover:bg-[#1E293B] hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
             </div>
 
             {/* Offline / PowerPoint Presentation Banner Notice */}
@@ -1733,9 +1777,20 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
               {/* Group Feedback */}
               <div>
-                <label className="block text-[11px] font-semibold text-[#CBD5E1] mb-1">
-                  General Group Feedback / Teacher Critique (Visible to all team members)
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[11px] font-semibold text-[#CBD5E1]">
+                    General Group Feedback / Teacher Critique (Visible to all team members)
+                  </label>
+                  <button
+                    type="button"
+                    disabled={generatingAiFeedback}
+                    onClick={handleAiSuggestFeedback}
+                    className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30 text-[11px] font-bold transition-all disabled:opacity-50"
+                  >
+                    <Sparkles className="h-3 w-3 text-teal-400" />
+                    <span>{generatingAiFeedback ? "Drafting Critique..." : "✨ AI Suggest Feedback"}</span>
+                  </button>
+                </div>
                 <textarea
                   rows={2}
                   value={evalGroupFeedback}
@@ -1856,29 +1911,84 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
                         {/* Individual Score Input */}
                         <div className="flex items-center space-x-3">
-                          <div className="flex items-center space-x-1.5">
-                            <label className="text-[11px] text-[#94A3B8] whitespace-nowrap">
-                              Indiv Score:
-                            </label>
-                            <input
-                              type="number"
-                              min="0"
-                              max="100"
-                              disabled={mData.status === "absent" && evalStrictAbsentZero}
-                              value={mData.status === "absent" && evalStrictAbsentZero ? 0 : mData.individualScore}
-                              onChange={(e) => {
-                                const val = Math.min(100, Math.max(0, Number(e.target.value) || 0));
-                                setEvalMembers(prev => ({
-                                  ...prev,
-                                  [member.uid]: {
-                                    ...mData,
-                                    individualScore: val
-                                  }
-                                }));
-                              }}
-                              className="w-16 rounded-lg border border-[#334155] bg-[#0B0F19] p-1.5 text-center text-xs font-bold text-white focus:border-emerald-400 focus:outline-none disabled:opacity-40"
-                            />
-                            <span className="text-xs text-[#64748B]">/100</span>
+                          <div className="flex flex-col space-y-1">
+                            <div className="flex items-center space-x-1.5">
+                              <label className="text-[11px] text-[#94A3B8] whitespace-nowrap">
+                                Indiv Score:
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                max="100"
+                                disabled={mData.status === "absent" && evalStrictAbsentZero}
+                                value={mData.status === "absent" && evalStrictAbsentZero ? 0 : mData.individualScore}
+                                onChange={(e) => {
+                                  const val = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+                                  setEvalMembers(prev => ({
+                                    ...prev,
+                                    [member.uid]: {
+                                      ...mData,
+                                      individualScore: val
+                                    }
+                                  }));
+                                }}
+                                className="w-16 rounded-lg border border-[#334155] bg-[#0B0F19] p-1.5 text-center text-xs font-bold text-white focus:border-emerald-400 focus:outline-none disabled:opacity-40"
+                              />
+                              <span className="text-xs text-[#64748B]">/100</span>
+                            </div>
+
+                            {/* Touch Scorer Quick Pills (visible on touchHudMode or small devices) */}
+                            {(touchHudMode || true) && (
+                              <div className="flex items-center space-x-1 pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = Math.max(0, mData.individualScore - 5);
+                                    setEvalMembers(prev => ({
+                                      ...prev,
+                                      [member.uid]: { ...mData, individualScore: next }
+                                    }));
+                                  }}
+                                  className="h-6 w-6 rounded bg-[#1E293B] hover:bg-[#334155] text-xs font-bold text-[#94A3B8] hover:text-white transition-all flex items-center justify-center border border-[#334155]"
+                                  title="Subtract 5"
+                                >
+                                  -5
+                                </button>
+                                {[60, 75, 85, 95].map((preset) => (
+                                  <button
+                                    key={preset}
+                                    type="button"
+                                    onClick={() => {
+                                      setEvalMembers(prev => ({
+                                        ...prev,
+                                        [member.uid]: { ...mData, individualScore: preset }
+                                      }));
+                                    }}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-all ${
+                                      mData.individualScore === preset
+                                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                        : "bg-[#0B0F19] text-[#94A3B8] border-[#334155] hover:text-white"
+                                    }`}
+                                  >
+                                    {preset}
+                                  </button>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const next = Math.min(100, mData.individualScore + 5);
+                                    setEvalMembers(prev => ({
+                                      ...prev,
+                                      [member.uid]: { ...mData, individualScore: next }
+                                    }));
+                                  }}
+                                  className="h-6 w-6 rounded bg-[#1E293B] hover:bg-[#334155] text-xs font-bold text-[#94A3B8] hover:text-white transition-all flex items-center justify-center border border-[#334155]"
+                                  title="Add 5"
+                                >
+                                  +5
+                                </button>
+                              </div>
+                            )}
                           </div>
 
                           {/* Computed Final Score Badge */}

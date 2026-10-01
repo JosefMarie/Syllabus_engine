@@ -8,6 +8,7 @@ import rehypeRaw from "rehype-raw";
 import dynamic from "next/dynamic";
 import ImageLightbox from "./ImageLightbox";
 import { CheckCircle2, Circle, BookOpen, Monitor, AlignLeft, ChevronLeft, ChevronRight, Sparkles, Lightbulb, ZoomIn, X, Image as ImageIcon } from "lucide-react";
+import { explainSubtopicConcept } from "@/lib/gemini";
 
 const SandpackPlayground = dynamic(() => import("./SandpackPlayground"), {
   ssr: false,
@@ -45,6 +46,34 @@ export default function SubtopicView({
   totalSubtopics = 1,
 }: Props) {
   const [viewMode, setViewMode] = useState<'slide' | 'continuous'>('slide');
+  const [explanation, setExplanation] = useState<{ summary: string; keyPoints: string[]; realWorldExample: string } | null>(null);
+  const [loadingExplanation, setLoadingExplanation] = useState(false);
+  const [showExplanation, setShowExplanation] = useState(false);
+
+  useEffect(() => {
+    setExplanation(null);
+    setShowExplanation(false);
+  }, [subtopic?.id]);
+
+  const handleExplainConcept = async () => {
+    if (explanation) {
+      setShowExplanation(!showExplanation);
+      return;
+    }
+    setLoadingExplanation(true);
+    setShowExplanation(true);
+    try {
+      const data = await explainSubtopicConcept({
+        subtopicTitle: subtopic.title,
+        markdownContent: subtopic.contentMarkdown || ""
+      });
+      setExplanation(data);
+    } catch (err) {
+      console.error("Failed to generate AI concept explanation:", err);
+    } finally {
+      setLoadingExplanation(false);
+    }
+  };
 
   // Keyboard Left / Right arrow navigation for slides
   useEffect(() => {
@@ -204,7 +233,7 @@ export default function SubtopicView({
   const safeUrlTransform = (url: string) => {
     if (!url) return "";
     const clean = url.trim();
-    if (/^(javascript|vbscript):/i.test(clean)) {
+    if (/^(javascript|vbscript|data:text\/html)/i.test(clean)) {
       return "";
     }
     return clean;
@@ -419,17 +448,29 @@ export default function SubtopicView({
                 <span className="text-[#94A3B8] hidden sm:inline truncate">Use ← → Arrow Keys</span>
               </div>
 
-              <button
-                onClick={onToggleComplete}
-                className={`inline-flex items-center space-x-1.5 rounded-xl px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold transition-all shrink-0 ${
-                  isCompleted
-                    ? "bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40"
-                    : "bg-[#1E293B] text-[#CBD5E1] border border-[#334155] hover:border-[#06B6D4]"
-                }`}
-              >
-                {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#10B981]" /> : <Circle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#94A3B8]" />}
-                <span>{isCompleted ? "Completed" : "Mark Complete"}</span>
-              </button>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={handleExplainConcept}
+                  className="inline-flex items-center space-x-1.5 rounded-xl px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold transition-all bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-300 border border-indigo-500/30 shrink-0 shadow-sm"
+                  title="Explain this technical concept with AI"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+                  <span>{loadingExplanation ? "Analyzing..." : showExplanation ? "Hide Explanation" : "✨ Explain Concept"}</span>
+                </button>
+
+                <button
+                  onClick={onToggleComplete}
+                  className={`inline-flex items-center space-x-1.5 rounded-xl px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold transition-all shrink-0 ${
+                    isCompleted
+                      ? "bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40"
+                      : "bg-[#1E293B] text-[#CBD5E1] border border-[#334155] hover:border-[#06B6D4]"
+                  }`}
+                >
+                  {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#10B981]" /> : <Circle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#94A3B8]" />}
+                  <span>{isCompleted ? "Completed" : "Mark Complete"}</span>
+                </button>
+              </div>
             </div>
 
             {/* Slide Subtopic Title */}
@@ -441,6 +482,60 @@ export default function SubtopicView({
                 {subtopic.title}
               </h1>
             </div>
+
+            {/* AI Concept Explainer Card */}
+            {showExplanation && (
+              <div className="mb-4 sm:mb-6 rounded-2xl border border-indigo-500/40 bg-gradient-to-br from-indigo-950/70 via-[#0F172A] to-purple-950/40 p-4 sm:p-6 shadow-xl backdrop-blur-md">
+                <div className="flex items-center justify-between border-b border-indigo-500/20 pb-3 mb-3">
+                  <div className="flex items-center space-x-2">
+                    <Sparkles className="h-4 w-4 text-indigo-400" />
+                    <h4 className="text-xs sm:text-sm font-bold text-indigo-200 uppercase tracking-wider font-mono">
+                      AI Concept Explainer & Exam Summary
+                    </h4>
+                  </div>
+                  <button
+                    onClick={() => setShowExplanation(false)}
+                    className="rounded-lg p-1 text-indigo-400/60 hover:text-white hover:bg-indigo-500/20"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                {loadingExplanation ? (
+                  <div className="flex items-center space-x-3 py-4 text-indigo-300">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-indigo-400 border-t-transparent" />
+                    <span className="text-xs font-semibold">Gemini is synthesizing key concepts, exam tips, and real-world analogies...</span>
+                  </div>
+                ) : explanation ? (
+                  <div className="space-y-3.5 text-xs sm:text-sm">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase text-indigo-400 tracking-wider">Quick Breakdown:</span>
+                      <p className="text-slate-200 mt-1 leading-relaxed">{explanation.summary}</p>
+                    </div>
+
+                    {explanation.keyPoints?.length > 0 && (
+                      <div>
+                        <span className="text-[10px] font-bold uppercase text-indigo-400 tracking-wider">Must-Know Exam Points:</span>
+                        <ul className="mt-1.5 space-y-1 list-disc list-inside text-slate-300">
+                          {explanation.keyPoints.map((pt, i) => (
+                            <li key={i} className="leading-relaxed">{pt}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {explanation.realWorldExample && (
+                      <div className="rounded-xl bg-indigo-500/10 border border-indigo-500/20 p-3">
+                        <span className="text-[10px] font-bold uppercase text-indigo-300 tracking-wider flex items-center gap-1">
+                          <Lightbulb className="h-3 w-3" /> Real-World Analogy:
+                        </span>
+                        <p className="text-xs text-indigo-200/90 mt-1 leading-relaxed">{explanation.realWorldExample}</p>
+                      </div>
+                    )}
+                  </div>
+                ) : null}
+              </div>
+            )}
 
             {/* Slide Smart Markdown Content (Rendered on White Paper Sheet) */}
             <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 text-black shadow-lg border border-slate-200 visual-word-sheet my-3 sm:my-4 overflow-x-auto break-words w-full">

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Syllabus, LearningOutcome, IndicativeContent, Topic, Subtopic } from "@/types/syllabus";
-import { parseSyllabusWithGemini } from "@/lib/gemini";
+import { parseSyllabusWithGemini, parseAmsCurriculumOrSessionPlan } from "@/lib/gemini";
 import { saveSyllabus, getAllTrades } from "@/lib/db";
 import { uploadFileToStorage } from "@/lib/storage";
 import MarkdownEditor from "./MarkdownEditor";
@@ -281,8 +281,26 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
     setExtractionStatusStep("Step 1/3: Reading document text...");
 
     try {
-      setTimeout(() => setExtractionStatusStep("Step 2/3: Parsing 5-Level Hierarchy (LOs, ICs, Key Readings)..."), 800);
-      setTimeout(() => setExtractionStatusStep("Step 3/3: Auto-extracting Acronym Citations & Formatting..."), 1600);
+      setTimeout(() => setExtractionStatusStep("Step 2/3: Parsing Hierarchy (LOs, ICs, Key Readings/Sessions)..."), 800);
+      setTimeout(() => setExtractionStatusStep("Step 3/3: Auto-extracting Citations & Structure..."), 1600);
+
+      // Check if text is AMS JSON or session plans
+      if (textToProcess.trim().startsWith("{") && (textToProcess.includes("session_plans") || textToProcess.includes("module_code") || textToProcess.includes("learning_outcomes"))) {
+        const amsSyllabus = await parseAmsCurriculumOrSessionPlan(textToProcess);
+        setSyllabus(prev => ({
+          ...prev,
+          ...amsSyllabus,
+          id: prev.id || amsSyllabus.id || `syl-${Date.now()}`,
+          createdAt: prev.createdAt || amsSyllabus.createdAt || new Date().toISOString(),
+          status: 'draft',
+          learningOutcomes: amsSyllabus.learningOutcomes || prev.learningOutcomes
+        }));
+        setExtractSuccess(`Successfully imported curriculum from Academic Management System (AMS)!`);
+        setActiveTab('scratch');
+        setSelectedKey("course");
+        expandAllTree();
+        return;
+      }
 
       const result = await parseSyllabusWithGemini(textToProcess);
       setSyllabus(prev => ({

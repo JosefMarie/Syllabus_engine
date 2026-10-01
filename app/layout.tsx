@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import PWAProvider from "@/components/common/PWAProvider";
+import CommandPalette from "@/components/common/CommandPalette";
 
 export const viewport: Viewport = {
   themeColor: "#0B0F19",
@@ -68,6 +69,7 @@ export default function RootLayout({
       </head>
       <body className="bg-[#0B0F19] text-[#CBD5E1] antialiased selection:bg-[#06B6D4] selection:text-white">
         <PWAProvider>
+          <CommandPalette />
           {children}
         </PWAProvider>
       </body>

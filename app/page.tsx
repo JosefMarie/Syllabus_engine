@@ -34,11 +34,13 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import NotificationAlert from "@/components/common/NotificationAlert";
+import NotificationBell from "@/components/common/NotificationBell";
 import PresenceTracker from "@/components/common/PresenceTracker";
 import DisciplinaryLockdown from "@/components/common/DisciplinaryLockdown";
 import StudentAssignmentsView from "@/components/student/StudentAssignmentsView";
 import StudentGroupsView from "@/components/student/StudentGroupsView";
 import StudentExamsView from "@/components/student/StudentExamsView";
+import StudentAcademicStanding from "@/components/student/StudentAcademicStanding";
 
 export default function CatalogPage() {
   const router = useRouter();
@@ -68,6 +70,16 @@ export default function CatalogPage() {
   const [activeLevelFilter, setActiveLevelFilter] = useState<string>("all");
   const [studentProgressMap, setStudentProgressMap] = useState<Record<string, boolean>>({});
   const [adminUser, setAdminUser] = useState<UserProfile | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab === "courses" || tab === "assignments" || tab === "groups" || tab === "exams") {
+        setStudentPortalTab(tab);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     async function loadData() {
@@ -340,7 +352,27 @@ export default function CatalogPage() {
             </div>
           </Link>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2.5">
+            {/* Quick Command Palette Trigger Button */}
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, ctrlKey: true }));
+              }}
+              className="hidden md:flex items-center space-x-2 rounded-xl border border-[#334155] bg-[#1E293B]/70 px-3 py-1.5 text-xs text-[#94A3B8] hover:border-cyan-500/50 hover:text-white transition-all shadow-sm"
+              title="Search courses, exams, groups (Cmd+K)"
+            >
+              <Search className="h-3.5 w-3.5 text-cyan-400" />
+              <span>Search &amp; Jump</span>
+              <kbd className="rounded bg-[#0B0F19] px-1.5 py-0.5 text-[10px] font-mono text-[#64748B] border border-[#334155]">
+                ⌘K
+              </kbd>
+            </button>
+
+            {currentUser && (
+              <NotificationBell userId={currentUser.uid} />
+            )}
+
             {currentUser ? (
               <div className="flex items-center space-x-3">
                 <div className="hidden sm:flex flex-col text-right">
@@ -603,6 +635,15 @@ export default function CatalogPage() {
               ))}
             </div>
           </div>
+        )}
+
+        {/* 1. Student Academic Performance & Standing Dashboard */}
+        {currentUser && currentUser.role === "student" && (
+          <StudentAcademicStanding
+            currentUser={currentUser}
+            syllabi={syllabi}
+            onTabChange={setStudentPortalTab}
+          />
         )}
 
         {/* Student Dashboard Tabs: Course Syllabi vs Class Assignments vs Study Groups vs Exams */}
