@@ -95,9 +95,9 @@ export default function SidebarTree({
   const courseTitleDisplay = syllabus?.title || "Syllabus";
 
   const contentTree = (
-    <div className="flex h-full flex-col bg-[#1E293B] text-[#CBD5E1]">
+    <div className="flex h-full flex-col bg-[#1E293B]/80 backdrop-blur-xl border-r border-[#334155]/60 text-[#CBD5E1]">
       {/* Syllabus Header */}
-      <div className="border-b border-[#334155] p-4">
+      <div className="border-b border-[#334155]/60 p-4">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center space-x-2 text-white hover:text-[#06B6D4] transition-colors">
             <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#06B6D4] text-xs font-bold font-mono text-slate-950">
@@ -290,7 +290,7 @@ export default function SidebarTree({
             className="fixed inset-0 bg-black/75 backdrop-blur-xs transition-opacity" 
             onClick={() => setDrawerOpen(false)} 
           />
-          <div className="relative z-50 w-80 max-w-[85vw] h-full bg-[#1E293B] shadow-2xl flex flex-col animate-in slide-in-from-left duration-200">
+          <div className="relative z-50 w-80 max-w-[85vw] h-full bg-[#1E293B]/95 backdrop-blur-2xl shadow-2xl flex flex-col animate-in slide-in-from-left duration-200 border-r border-[#334155]/70">
             {contentTree}
           </div>
         </div>

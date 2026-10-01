@@ -175,8 +175,8 @@ export default function AdminDashboardPage() {
 
   if (!adminUser) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-4 text-[#CBD5E1]">
-        <div className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#1E293B] p-8 text-center shadow-2xl space-y-6 animate-in fade-in zoom-in duration-200">
+      <div className="flex min-h-screen items-center justify-center bg-transparent p-4 text-[#CBD5E1]">
+        <div className="w-full max-w-md rounded-2xl border border-[#334155]/70 bg-[#1E293B]/85 backdrop-blur-xl p-8 text-center shadow-2xl space-y-6 animate-in fade-in zoom-in duration-200">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30">
             <Lock className="h-8 w-8" />
           </div>
@@ -443,7 +443,7 @@ export default function AdminDashboardPage() {
               {syllabi.map((syllabus) => (
                 <div
                   key={syllabus.id}
-                  className="flex flex-col justify-between rounded-2xl border border-[#334155] bg-[#1E293B] p-6 shadow-xl hover:border-[#06B6D4]/50 transition-all"
+                  className="flex flex-col justify-between rounded-2xl border border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-md p-6 shadow-xl hover:bg-[#1E293B]/90 hover:border-[#06B6D4]/50 transition-all"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-3">

@@ -281,8 +281,8 @@ export default function CatalogPage() {
   if (currentUser && currentUser.status === "pending_approval" && currentUser.role === "student") {
     const wasReset = (currentUser.unfocusedCount || 0) === 0;
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-6 text-[#CBD5E1]">
-        <div className="w-full max-w-md rounded-2xl border border-amber-500/40 bg-[#1E293B] p-8 text-center shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
+      <div className="flex min-h-screen items-center justify-center bg-transparent p-6 text-[#CBD5E1]">
+        <div className="w-full max-w-md rounded-2xl border border-amber-500/40 bg-[#1E293B]/85 backdrop-blur-xl p-8 text-center shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
             <AlertTriangle className="h-8 w-8" />
           </div>
@@ -487,12 +487,12 @@ export default function CatalogPage() {
               placeholder="Search course title, code (e.g. CS101), or topic..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-2xl border border-[#334155] bg-[#1E293B] py-3 pl-11 pr-4 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none shadow-xl"
+              className="w-full rounded-2xl border border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-md py-3 pl-11 pr-4 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none shadow-xl"
             />
           </div>
 
           {/* Hello & Study Focus Instructions Banner */}
-          <div className="mt-8 rounded-2xl border border-[#334155] bg-[#1E293B]/90 backdrop-blur-md p-5 sm:p-6 shadow-2xl relative overflow-hidden">
+          <div className="mt-8 rounded-2xl border border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
             <div className="absolute top-0 right-0 h-40 w-40 bg-gradient-to-bl from-[#06B6D4]/15 to-transparent rounded-full blur-2xl pointer-events-none" />
             
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#334155]/80 pb-4">
@@ -536,7 +536,7 @@ export default function CatalogPage() {
 
             {/* Instruction Highlights */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-4 text-xs text-left">
-              <div className="rounded-xl bg-[#0B0F19]/80 border border-[#334155]/60 p-4 space-y-1.5 hover:border-[#06B6D4]/40 transition-colors">
+              <div className="rounded-xl bg-[#0B0F19]/60 backdrop-blur-sm border border-[#334155]/60 p-4 space-y-1.5 hover:border-[#06B6D4]/40 transition-colors">
                 <div className="font-bold text-[#06B6D4] flex items-center space-x-2">
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#06B6D4]/20 text-[11px] font-mono">1</span>
                   <span>Keep Active Focus</span>
@@ -546,7 +546,7 @@ export default function CatalogPage() {
                 </p>
               </div>
 
-              <div className="rounded-xl bg-[#0B0F19]/80 border border-amber-500/30 p-4 space-y-1.5 hover:border-amber-500/50 transition-colors">
+              <div className="rounded-xl bg-[#0B0F19]/60 backdrop-blur-sm border border-amber-500/30 p-4 space-y-1.5 hover:border-amber-500/50 transition-colors">
                 <div className="font-bold text-amber-400 flex items-center space-x-2">
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-[11px] font-mono">2</span>
                   <span>Side Windows Are Monitored</span>
@@ -556,7 +556,7 @@ export default function CatalogPage() {
                 </p>
               </div>
 
-              <div className="rounded-xl bg-[#0B0F19]/80 border border-rose-500/40 bg-rose-950/10 p-4 space-y-1.5 hover:border-rose-500/60 transition-colors">
+              <div className="rounded-xl bg-[#0B0F19]/60 backdrop-blur-sm border border-rose-500/40 bg-rose-950/10 p-4 space-y-1.5 hover:border-rose-500/60 transition-colors">
                 <div className="font-bold text-rose-400 flex items-center space-x-2">
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500/20 text-[11px] font-mono">3</span>
                   <span>10 Strikes = Account Rejection</span>
@@ -574,8 +574,8 @@ export default function CatalogPage() {
       <main className="mx-auto max-w-7xl px-6 py-8">
         {/* Student Level Tabs (if logged in as student) */}
         {currentUser && currentUser.role === "student" && (
-          <div className="mb-8 rounded-2xl border border-[#334155] bg-[#1E293B] p-4 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#334155] pb-3 gap-3">
+          <div className="mb-8 rounded-2xl border border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-xl p-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#334155]/60 pb-3 gap-3">
               <div className="flex items-center space-x-2">
                 <GraduationCap className="h-5 w-5 text-[#06B6D4]" />
                 <span className="text-sm font-bold text-white">
@@ -589,7 +589,7 @@ export default function CatalogPage() {
             </div>
 
             {/* Level-Specific Subtopic Progress Bar */}
-            <div className="mt-4 p-3 rounded-xl border border-[#334155] bg-[#0B0F19]">
+            <div className="mt-4 p-3 rounded-xl border border-[#334155]/60 bg-[#0B0F19]/60 backdrop-blur-sm">
               <div className="flex items-center justify-between text-xs font-mono mb-1.5">
                 <span className="text-[#CBD5E1]">
                   <strong className="text-[#06B6D4]">{currentUser.level}</strong> Required Academic Progress
@@ -650,13 +650,13 @@ export default function CatalogPage() {
 
         {/* Student Dashboard Tabs: Course Syllabi vs Class Assignments vs Study Groups vs Exams */}
         {currentUser && (
-          <div className="flex items-center space-x-3 border-b border-[#334155] pb-3 mb-6 overflow-x-auto">
+          <div className="flex items-center space-x-3 border-b border-[#334155]/60 pb-3 mb-6 overflow-x-auto">
             <button
               onClick={() => setStudentPortalTab("courses")}
               className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
                 studentPortalTab === "courses"
                   ? "bg-[#06B6D4] text-slate-950 shadow-md"
-                  : "bg-[#1E293B] text-[#94A3B8] hover:text-white border border-[#334155]"
+                  : "bg-[#1E293B]/75 backdrop-blur-sm text-[#94A3B8] hover:text-white border border-[#334155]/70 hover:bg-[#1E293B]/95"
               }`}
             >
               <BookOpen className="h-4 w-4" />
@@ -668,7 +668,7 @@ export default function CatalogPage() {
               className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
                 studentPortalTab === "assignments"
                   ? "bg-[#06B6D4] text-slate-950 shadow-md"
-                  : "bg-[#1E293B] text-[#94A3B8] hover:text-white border border-[#334155]"
+                  : "bg-[#1E293B]/75 backdrop-blur-sm text-[#94A3B8] hover:text-white border border-[#334155]/70 hover:bg-[#1E293B]/95"
               }`}
             >
               <Award className="h-4 w-4" />
@@ -680,7 +680,7 @@ export default function CatalogPage() {
               className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
                 studentPortalTab === "groups"
                   ? "bg-[#06B6D4] text-slate-950 shadow-md"
-                  : "bg-[#1E293B] text-[#94A3B8] hover:text-white border border-[#334155]"
+                  : "bg-[#1E293B]/75 backdrop-blur-sm text-[#94A3B8] hover:text-white border border-[#334155]/70 hover:bg-[#1E293B]/95"
               }`}
             >
               <Users className="h-4 w-4" />
@@ -692,7 +692,7 @@ export default function CatalogPage() {
               className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
                 studentPortalTab === "exams"
                   ? "bg-[#06B6D4] text-slate-950 shadow-md"
-                  : "bg-[#1E293B] text-[#94A3B8] hover:text-white border border-[#334155]"
+                  : "bg-[#1E293B]/75 backdrop-blur-sm text-[#94A3B8] hover:text-white border border-[#334155]/70 hover:bg-[#1E293B]/95"
               }`}
             >
               <FileQuestion className="h-4 w-4" />
@@ -766,10 +766,10 @@ export default function CatalogPage() {
                   }}
                   className={`group relative flex flex-col justify-between rounded-2xl border transition-all overflow-hidden p-6 shadow-xl ${
                     isNavigatingThis
-                      ? 'border-[#06B6D4] bg-[#162032] shadow-[#06B6D4]/20 ring-2 ring-[#06B6D4]/50 cursor-wait scale-[1.01]'
+                      ? 'border-[#06B6D4] bg-[#162032]/90 shadow-[#06B6D4]/20 ring-2 ring-[#06B6D4]/50 cursor-wait scale-[1.01]'
                       : isLocked
-                      ? 'opacity-60 border-[#334155] bg-[#1E293B] cursor-not-allowed'
-                      : 'border-[#334155] bg-[#1E293B] hover:border-[#06B6D4] hover:shadow-[#06B6D4]/10 cursor-pointer'
+                      ? 'opacity-60 border-[#334155]/60 bg-[#1E293B]/70 backdrop-blur-md cursor-not-allowed'
+                      : 'border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-md hover:bg-[#1E293B]/90 hover:border-[#06B6D4]/70 hover:shadow-[0_8px_30px_rgba(6,182,212,0.15)] cursor-pointer'
                   }`}
                 >
                   {isNavigatingThis && (
@@ -778,7 +778,7 @@ export default function CatalogPage() {
 
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="rounded-lg bg-[#0B0F19] px-2.5 py-1 font-mono text-xs font-bold text-[#06B6D4] border border-[#334155]">
+                      <span className="rounded-lg bg-[#0B0F19]/70 backdrop-blur-sm px-2.5 py-1 font-mono text-xs font-bold text-[#06B6D4] border border-[#334155]/60">
                         {syl.courseCode}
                       </span>
                       {syl.level && (
@@ -831,7 +831,7 @@ export default function CatalogPage() {
       {/* AUTHENTICATION REQUIRED MODAL FOR GUESTS */}
       {authPromptSyl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
-          <div className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#1E293B] p-7 text-center shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
+          <div className="w-full max-w-md rounded-2xl border border-[#334155]/80 bg-[#1E293B]/85 backdrop-blur-2xl p-7 text-center shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
             <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#06B6D4]/15 text-[#06B6D4] border border-[#06B6D4]/30">
               <Lock className="h-8 w-8" />
             </div>

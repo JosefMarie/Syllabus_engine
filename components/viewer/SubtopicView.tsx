@@ -399,7 +399,7 @@ export default function SubtopicView({
     <div className="mx-auto max-w-5xl px-2.5 sm:px-6 py-4 sm:py-6 md:px-8 relative w-full min-w-0 overflow-x-hidden">
 
       {/* Presentation View Mode Switcher Header */}
-      <div className="flex flex-col xs:flex-row sm:items-center justify-between gap-3 bg-[#1E293B] p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-[#334155] shadow-xl mb-4 sm:mb-6">
+      <div className="flex flex-col xs:flex-row sm:items-center justify-between gap-3 bg-[#1E293B]/75 backdrop-blur-md p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-[#334155]/70 shadow-xl mb-4 sm:mb-6">
         <div className="flex items-center space-x-2 text-xs font-mono text-[#94A3B8]">
           <Sparkles className="h-4 w-4 text-[#06B6D4] shrink-0" />
           <span className="hidden xs:inline">Mode:</span>
@@ -592,7 +592,7 @@ export default function SubtopicView({
           </div>
 
           {/* Floating Slide Deck Controls Bar */}
-          <div className="flex items-center justify-between gap-1.5 sm:gap-2 bg-[#1E293B] p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-[#334155] shadow-xl">
+          <div className="flex items-center justify-between gap-1.5 sm:gap-2 bg-[#1E293B]/75 backdrop-blur-md p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-[#334155]/70 shadow-xl">
             {onPrevSubtopic ? (
               <button
                 onClick={onPrevSubtopic}

@@ -294,8 +294,8 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
 
   if (!syllabus) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-6 text-[#CBD5E1]">
-        <div className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#1E293B] p-8 text-center shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200">
+      <div className="flex min-h-screen items-center justify-center bg-transparent p-6 text-[#CBD5E1]">
+        <div className="w-full max-w-md rounded-2xl border border-[#334155]/70 bg-[#1E293B]/85 backdrop-blur-xl p-8 text-center shadow-2xl space-y-4 animate-in fade-in zoom-in duration-200">
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30">
             <BookOpen className="h-7 w-7" />
           </div>
@@ -329,8 +329,8 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
   // 1. GUEST USER PROTECTION: Not logged in
   if (!currentUser && !isAdminLoggedIn) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-6 text-[#CBD5E1]">
-        <div className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#1E293B] p-8 text-center shadow-2xl space-y-5">
+      <div className="flex min-h-screen items-center justify-center bg-transparent p-6 text-[#CBD5E1]">
+        <div className="w-full max-w-md rounded-2xl border border-[#334155]/70 bg-[#1E293B]/85 backdrop-blur-xl p-8 text-center shadow-2xl space-y-5">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#06B6D4]/15 text-[#06B6D4] border border-[#06B6D4]/30">
             <Lock className="h-8 w-8" />
           </div>
@@ -378,8 +378,8 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
   // 2. LEVEL HIERARCHY PROTECTION: Student level not permitted
   if (!isLevelAllowed()) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-6 text-[#CBD5E1]">
-        <div className="w-full max-w-md rounded-2xl border border-rose-500/30 bg-[#1E293B] p-8 text-center shadow-2xl space-y-5">
+      <div className="flex min-h-screen items-center justify-center bg-transparent p-6 text-[#CBD5E1]">
+        <div className="w-full max-w-md rounded-2xl border border-rose-500/40 bg-[#1E293B]/85 backdrop-blur-xl p-8 text-center shadow-2xl space-y-5">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30">
             <AlertTriangle className="h-8 w-8" />
           </div>
@@ -425,8 +425,8 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
   if (currentUser && currentUser.status === "pending_approval" && !isAdminLoggedIn) {
     const wasReset = (currentUser.unfocusedCount || 0) === 0;
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-6 text-[#CBD5E1]">
-        <div className="w-full max-w-md rounded-2xl border border-amber-500/40 bg-[#1E293B] p-8 text-center shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
+      <div className="flex min-h-screen items-center justify-center bg-transparent p-6 text-[#CBD5E1]">
+        <div className="w-full max-w-md rounded-2xl border border-amber-500/40 bg-[#1E293B]/85 backdrop-blur-xl p-8 text-center shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
             <AlertTriangle className="h-8 w-8" />
           </div>
@@ -643,7 +643,7 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
             ) : (
               <div className="max-w-4xl mx-auto py-10 px-6 space-y-6">
                 {/* Hello & Study Focus Welcome Card */}
-                <div className="rounded-2xl border border-[#334155] bg-[#1E293B]/90 backdrop-blur-md p-6 sm:p-8 shadow-2xl relative overflow-hidden space-y-6">
+                <div className="rounded-2xl border border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-xl p-6 sm:p-8 shadow-2xl relative overflow-hidden space-y-6">
                   <div className="absolute top-0 right-0 h-44 w-44 bg-gradient-to-bl from-[#06B6D4]/15 to-transparent rounded-full blur-2xl pointer-events-none" />
 
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#334155]/80 pb-5">
