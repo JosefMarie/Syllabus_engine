@@ -314,7 +314,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center rounded-xl bg-[#0B0F19] p-1 border border-[#334155]">
+          <div className="flex items-center rounded-xl bg-[#0B0F19]/50 backdrop-blur-md p-1 border border-[#334155]/60">
             <button
               onClick={() => setFilterType("all")}
               className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
@@ -344,7 +344,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
           <select
             value={filterCourse}
             onChange={(e) => setFilterCourse(e.target.value)}
-            className="rounded-xl bg-[#0B0F19] border border-[#334155] px-3 py-1.5 text-xs font-semibold text-[#CBD5E1] focus:border-[#06B6D4] focus:outline-none"
+            className="rounded-xl bg-[#0B0F19]/60 backdrop-blur-md border border-[#334155]/70 px-3 py-1.5 text-xs font-semibold text-[#CBD5E1] focus:border-[#06B6D4] focus:outline-none"
           >
             <option value="all">All Courses</option>
             {syllabi.map((s) => (
@@ -397,12 +397,12 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                         <span className="uppercase">{exam.type}</span>
                       </span>
 
-                      <span className="rounded-md bg-[#0B0F19] border border-[#334155] px-2 py-0.5 text-[10px] font-mono text-[#CBD5E1]">
+                      <span className="rounded-md bg-[#0B0F19]/60 backdrop-blur-sm border border-[#334155]/60 px-2 py-0.5 text-[10px] font-mono text-[#CBD5E1]">
                         {exam.courseCode}
                       </span>
                     </div>
 
-                    <span className="rounded-md bg-[#0B0F19] border border-[#334155] px-2 py-0.5 text-[10px] font-mono text-emerald-400">
+                    <span className="rounded-md bg-[#0B0F19]/60 backdrop-blur-sm border border-[#334155]/60 px-2 py-0.5 text-[10px] font-mono text-emerald-400">
                       {exam.totalPoints} Pts
                     </span>
                   </div>
@@ -417,7 +417,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
                   {/* Metadata Chips */}
                   <div className="grid grid-cols-2 gap-2 text-[11px] font-mono mb-4">
-                    <div className="rounded-xl bg-[#0B0F19] p-2 border border-[#334155]">
+                    <div className="rounded-xl bg-[#0B0F19]/50 backdrop-blur-md p-2 border border-[#334155]/60">
                       <span className="text-[#64748B] block text-[10px]">TIME ALLOWED</span>
                       <span className="text-white font-bold flex items-center space-x-1 mt-0.5">
                         <Clock className="h-3 w-3 text-cyan-400" />
@@ -425,7 +425,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                       </span>
                     </div>
 
-                    <div className="rounded-xl bg-[#0B0F19] p-2 border border-[#334155]">
+                    <div className="rounded-xl bg-[#0B0F19]/50 backdrop-blur-md p-2 border border-[#334155]/60">
                       <span className="text-[#64748B] block text-[10px]">QUESTIONS</span>
                       <span className="text-white font-bold flex items-center space-x-1 mt-0.5">
                         <FileQuestion className="h-3 w-3 text-emerald-400" />

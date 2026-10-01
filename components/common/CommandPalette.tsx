@@ -202,11 +202,11 @@ export default function CommandPalette() {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-md pt-[12vh] px-4 animate-in fade-in duration-150">
       <div 
-        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-cyan-500/30 bg-[#0F172A] shadow-2xl shadow-cyan-950/40"
+        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-cyan-500/40 bg-[#1E293B]/85 backdrop-blur-2xl shadow-2xl shadow-cyan-950/40"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input Bar */}
-        <div className="flex items-center px-4 py-3.5 border-b border-[#334155]/80 bg-[#0B0F19]">
+        <div className="flex items-center px-4 py-3.5 border-b border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md">
           <Search className="h-5 w-5 text-cyan-400 shrink-0 mr-3" />
           <input
             ref={inputRef}
@@ -228,7 +228,7 @@ export default function CommandPalette() {
               <X className="h-4 w-4" />
             </button>
           ) : (
-            <kbd className="hidden sm:inline-flex items-center gap-1 rounded bg-[#1E293B] px-2 py-0.5 text-[10px] font-mono text-[#94A3B8] border border-[#334155]">
+            <kbd className="hidden sm:inline-flex items-center gap-1 rounded bg-[#1E293B]/80 px-2 py-0.5 text-[10px] font-mono text-[#94A3B8] border border-[#334155]/70">
               ESC
             </kbd>
           )}
@@ -300,7 +300,7 @@ export default function CommandPalette() {
         </div>
 
         {/* Footer Helper */}
-        <div className="flex items-center justify-between px-4 py-2 border-t border-[#334155]/60 bg-[#0B0F19] text-[10px] text-[#64748B]">
+        <div className="flex items-center justify-between px-4 py-2 border-t border-[#334155]/60 bg-[#0B0F19]/50 backdrop-blur-md text-[10px] text-[#64748B]">
           <div className="flex items-center space-x-3">
             <span>&uarr;&darr; Navigate</span>
             <span>&crarr; Select</span>

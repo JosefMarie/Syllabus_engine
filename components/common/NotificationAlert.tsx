@@ -102,7 +102,7 @@ export default function NotificationAlert({ userId }: { userId: string }) {
       aria-label="Teacher Announcement"
       className="fixed top-20 right-4 sm:right-6 z-[9999] w-[calc(100vw-2rem)] sm:w-full max-w-md animate-in slide-in-from-top-4 fade-in-50 duration-300 pointer-events-auto"
     >
-      <div className="relative rounded-2xl border-2 border-[#06B6D4]/50 bg-[#111827]/95 p-5 shadow-[0_20px_60px_-15px_rgba(6,182,212,0.35)] backdrop-blur-xl text-white border-l-4 border-l-[#06B6D4]">
+      <div className="relative rounded-2xl border-2 border-[#06B6D4]/50 bg-[#1E293B]/85 p-5 shadow-[0_20px_60px_-15px_rgba(6,182,212,0.35)] backdrop-blur-2xl text-white border-l-4 border-l-[#06B6D4]">
         {/* Glow halo */}
         <div className="absolute -top-1 -right-1 flex h-3 w-3">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#06B6D4] opacity-75"></span>
@@ -142,7 +142,7 @@ export default function NotificationAlert({ userId }: { userId: string }) {
         </div>
 
         {/* Message Content */}
-        <div className="mt-3.5 rounded-xl border border-[#334155]/80 bg-[#0B0F19]/80 p-3.5 shadow-inner">
+        <div className="mt-3.5 rounded-xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 shadow-inner">
           <p className="text-xs text-slate-100 leading-relaxed font-sans select-text">
             &ldquo;{activeNotif.message}&rdquo;
           </p>
@@ -192,7 +192,7 @@ export default function NotificationAlert({ userId }: { userId: string }) {
           <div className="flex items-center space-x-2">
             <button
               onClick={handleClose}
-              className="rounded-xl border border-[#334155] px-2.5 py-1.5 text-xs font-semibold text-[#94A3B8] hover:text-white hover:bg-[#1E293B] transition-all"
+              className="rounded-xl border border-[#334155]/70 bg-[#1E293B]/60 backdrop-blur-sm px-2.5 py-1.5 text-xs font-semibold text-[#94A3B8] hover:text-white hover:bg-[#1E293B] transition-all"
             >
               Later
             </button>

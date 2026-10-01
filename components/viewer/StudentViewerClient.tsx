@@ -513,7 +513,7 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
               <button
                 onClick={() => setIsMobileSidebarOpen(true)}
                 title="Open Course Syllabus Outline"
-                className="inline-flex lg:hidden items-center space-x-1.5 rounded-lg border border-[#334155] bg-[#1E293B] px-2.5 py-1.5 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-[#06B6D4] transition-all shrink-0"
+                className="inline-flex lg:hidden items-center space-x-1.5 rounded-lg border border-[#334155]/70 bg-[#1E293B]/70 backdrop-blur-md px-2.5 py-1.5 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-[#06B6D4] transition-all shrink-0"
               >
                 <Menu className="h-4 w-4 text-[#06B6D4]" />
                 <span className="hidden xs:inline font-mono text-[11px]">Outline</span>
@@ -548,7 +548,7 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
                   className={`hidden sm:inline-flex items-center space-x-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all border ${
                     isFocusMode
                       ? "bg-[#06B6D4] text-slate-950 font-bold border-[#06B6D4] shadow-md shadow-[#06B6D4]/30"
-                      : "border-[#334155] bg-[#1E293B] text-[#CBD5E1] hover:text-white hover:border-[#06B6D4]"
+                      : "border-[#334155]/70 bg-[#1E293B]/70 backdrop-blur-md text-[#CBD5E1] hover:text-white hover:border-[#06B6D4]"
                   }`}
                 >
                   {isFocusMode ? (
@@ -576,13 +576,13 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
                     </button>
 
                     {showDownloadMenu && (
-                      <div className="absolute right-0 mt-2 w-52 rounded-xl border border-[#334155] bg-[#1E293B] p-1.5 shadow-2xl z-30">
+                      <div className="absolute right-0 mt-2 w-52 rounded-xl border border-[#334155]/70 bg-[#1E293B]/90 backdrop-blur-xl p-1.5 shadow-2xl z-30">
                         <button
                           onClick={() => {
                             downloadSyllabusAsText(syllabus);
                             setShowDownloadMenu(false);
                           }}
-                          className="flex w-full items-center space-x-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[#CBD5E1] hover:bg-[#0B0F19] hover:text-white transition-colors"
+                          className="flex w-full items-center space-x-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[#CBD5E1] hover:bg-[#0B0F19]/60 hover:text-white transition-colors"
                         >
                           <FileText className="h-3.5 w-3.5 text-[#06B6D4]" />
                           <span>Formatted Document (.txt)</span>
@@ -592,7 +592,7 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
                             downloadSyllabusAsJSON(syllabus);
                             setShowDownloadMenu(false);
                           }}
-                          className="flex w-full items-center space-x-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[#CBD5E1] hover:bg-[#0B0F19] hover:text-white transition-colors"
+                          className="flex w-full items-center space-x-2 rounded-lg px-3 py-2 text-left text-xs font-medium text-[#CBD5E1] hover:bg-[#0B0F19]/60 hover:text-white transition-colors"
                         >
                           <FileCode className="h-3.5 w-3.5 text-[#10B981]" />
                           <span>Raw JSON Data (.json)</span>
@@ -603,7 +603,7 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
 
                   <Link
                     href={`/admin/builder?id=${syllabus.id}`}
-                    className="inline-flex items-center space-x-1.5 rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-1.5 text-xs font-semibold text-white hover:border-[#06B6D4] transition-all"
+                    className="inline-flex items-center space-x-1.5 rounded-lg border border-[#334155]/70 bg-[#1E293B]/70 backdrop-blur-md px-3 py-1.5 text-xs font-semibold text-white hover:border-[#06B6D4] transition-all"
                   >
                     <ShieldCheck className="h-3.5 w-3.5 text-[#06B6D4]" />
                     <span className="hidden sm:inline">Edit in Admin Portal</span>
@@ -685,7 +685,7 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
                   </div>
 
                   {syllabus?.description && (
-                    <p className="text-xs text-[#CBD5E1] leading-relaxed bg-[#0B0F19]/60 p-4 rounded-xl border border-[#334155]/60">
+                    <p className="text-xs text-[#CBD5E1] leading-relaxed bg-[#0B0F19]/50 backdrop-blur-md p-4 rounded-xl border border-[#334155]/60">
                       {syllabus.description}
                     </p>
                   )}
@@ -698,7 +698,7 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
                     </h4>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 text-xs">
-                      <div className="rounded-xl bg-[#0B0F19] border border-[#334155] p-4 space-y-1.5">
+                      <div className="rounded-xl bg-[#0B0F19]/50 backdrop-blur-md border border-[#334155]/70 p-4 space-y-1.5">
                         <div className="font-bold text-[#06B6D4] flex items-center space-x-2">
                           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#06B6D4]/20 text-[11px] font-mono">1</span>
                           <span>Active Focus Mandatory</span>
@@ -708,7 +708,7 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
                         </p>
                       </div>
 
-                      <div className="rounded-xl bg-[#0B0F19] border border-amber-500/30 p-4 space-y-1.5">
+                      <div className="rounded-xl bg-[#0B0F19]/50 backdrop-blur-md border border-amber-500/30 p-4 space-y-1.5">
                         <div className="font-bold text-amber-400 flex items-center space-x-2">
                           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-[11px] font-mono">2</span>
                           <span>Side Windows Monitored</span>
@@ -718,7 +718,7 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
                         </p>
                       </div>
 
-                      <div className="rounded-xl bg-[#0B0F19] border border-rose-500/40 bg-rose-950/10 p-4 space-y-1.5">
+                      <div className="rounded-xl bg-[#0B0F19]/50 backdrop-blur-md border border-rose-500/40 bg-rose-950/20 p-4 space-y-1.5">
                         <div className="font-bold text-rose-400 flex items-center space-x-2">
                           <span className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500/20 text-[11px] font-mono">3</span>
                           <span>10 Strikes Rejection</span>
@@ -731,7 +731,7 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
                   </div>
 
                   {/* Getting Started Action */}
-                  <div className="pt-2 rounded-xl bg-[#0B0F19]/70 border border-[#334155] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="pt-2 rounded-xl bg-[#0B0F19]/50 backdrop-blur-md border border-[#334155]/70 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="text-xs text-[#94A3B8]">
                       Ready to begin? Select any topic or subtopic from the hierarchy on the left.
                     </div>

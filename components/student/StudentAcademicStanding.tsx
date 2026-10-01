@@ -131,7 +131,7 @@ export default function StudentAcademicStanding({
   if (loading) return null;
 
   return (
-    <div className="rounded-3xl border border-cyan-500/30 bg-gradient-to-br from-[#0F172A] via-[#131D33] to-[#0B0F19] p-5 sm:p-6 shadow-2xl relative overflow-hidden mb-6">
+    <div className="rounded-3xl border border-cyan-500/30 bg-[#1E293B]/75 backdrop-blur-xl p-5 sm:p-6 shadow-2xl relative overflow-hidden mb-6">
       {/* Background ambient glow */}
       <div className="absolute -top-24 -right-24 h-56 w-56 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
       <div className="absolute -bottom-24 -left-24 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
@@ -158,7 +158,7 @@ export default function StudentAcademicStanding({
         </div>
 
         {cumulativeGrade !== null && (
-          <div className="flex items-center space-x-2 bg-[#0B0F19]/80 border border-cyan-500/30 rounded-2xl px-4 py-2">
+          <div className="flex items-center space-x-2 bg-[#0B0F19]/50 backdrop-blur-md border border-cyan-500/30 rounded-2xl px-4 py-2">
             <span className="text-[11px] text-[#94A3B8] font-semibold">Cumulative Grade:</span>
             <span className="text-xl font-black font-mono text-cyan-300">
               {cumulativeGrade}%
@@ -172,7 +172,7 @@ export default function StudentAcademicStanding({
         {/* Metric 1: Course Progress */}
         <div 
           onClick={() => onTabChange?.("courses")}
-          className="rounded-2xl border border-[#334155] bg-[#0B0F19]/60 p-3.5 hover:border-cyan-500/40 transition-all cursor-pointer group"
+          className="rounded-2xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 hover:border-cyan-500/40 transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between text-[#94A3B8] mb-1.5">
             <span className="text-[11px] font-bold">Curriculum Topics</span>
@@ -195,7 +195,7 @@ export default function StudentAcademicStanding({
         {/* Metric 2: Exam Average */}
         <div 
           onClick={() => onTabChange?.("exams")}
-          className="rounded-2xl border border-[#334155] bg-[#0B0F19]/60 p-3.5 hover:border-purple-500/40 transition-all cursor-pointer group"
+          className="rounded-2xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 hover:border-purple-500/40 transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between text-[#94A3B8] mb-1.5">
             <span className="text-[11px] font-bold">Exam Average</span>
@@ -218,7 +218,7 @@ export default function StudentAcademicStanding({
         {/* Metric 3: Group Presentation Defense */}
         <div 
           onClick={() => onTabChange?.("groups")}
-          className="rounded-2xl border border-[#334155] bg-[#0B0F19]/60 p-3.5 hover:border-emerald-500/40 transition-all cursor-pointer group"
+          className="rounded-2xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 hover:border-emerald-500/40 transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between text-[#94A3B8] mb-1.5">
             <span className="text-[11px] font-bold">Live Defense</span>
@@ -241,7 +241,7 @@ export default function StudentAcademicStanding({
         {/* Metric 4: Assignments Submitted */}
         <div 
           onClick={() => onTabChange?.("assignments")}
-          className="rounded-2xl border border-[#334155] bg-[#0B0F19]/60 p-3.5 hover:border-amber-500/40 transition-all cursor-pointer group"
+          className="rounded-2xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 hover:border-amber-500/40 transition-all cursor-pointer group"
         >
           <div className="flex items-center justify-between text-[#94A3B8] mb-1.5">
             <span className="text-[11px] font-bold">Assignments</span>

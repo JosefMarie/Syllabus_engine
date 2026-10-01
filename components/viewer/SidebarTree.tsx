@@ -138,7 +138,7 @@ export default function SidebarTree({
             placeholder="Search 5-level hierarchy..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-[#334155] bg-[#0B0F19] py-1.5 pl-8 pr-3 text-xs text-white placeholder-[#94A3B8] focus:border-[#06B6D4] focus:outline-none"
+            className="w-full rounded-lg border border-[#334155]/60 bg-[#0B0F19]/50 backdrop-blur-md py-1.5 pl-8 pr-3 text-xs text-white placeholder-[#94A3B8] focus:border-[#06B6D4] focus:outline-none"
           />
         </div>
       </div>
@@ -153,11 +153,11 @@ export default function SidebarTree({
           (syllabus?.learningOutcomes || []).map((lo) => {
             const isLOOpen = Boolean(expandedLOs[lo.id] || searchQuery.length > 0);
             return (
-              <div key={lo.id} className="rounded-xl border border-[#334155]/60 bg-[#0B0F19]/50 overflow-hidden">
+              <div key={lo.id} className="rounded-xl border border-[#334155]/60 bg-[#0B0F19]/40 backdrop-blur-sm overflow-hidden">
                 {/* Level 2: Learning Outcome (LO) Header */}
                 <button
                   onClick={() => toggleLO(lo.id)}
-                  className="flex w-full items-center justify-between p-2.5 text-left hover:bg-[#1E293B] transition-colors"
+                  className="flex w-full items-center justify-between p-2.5 text-left hover:bg-[#1E293B]/70 transition-colors"
                 >
                   <div className="flex items-center space-x-2 min-w-0">
                     {isLOOpen ? (
@@ -179,10 +179,10 @@ export default function SidebarTree({
                     {(lo?.indicativeContents || []).map((ic) => {
                       const isICOpen = Boolean(expandedICs[ic.id] || searchQuery.length > 0);
                       return (
-                        <div key={ic.id} className="ml-2 rounded-lg border-l-2 border-[#06B6D4]/40 bg-[#1E293B]/40">
+                        <div key={ic.id} className="ml-2 rounded-lg border-l-2 border-[#06B6D4]/40 bg-[#1E293B]/30 backdrop-blur-xs">
                           <button
                             onClick={() => toggleIC(ic.id)}
-                            className="flex w-full items-center justify-between p-2 text-left hover:bg-[#1E293B] transition-colors"
+                            className="flex w-full items-center justify-between p-2 text-left hover:bg-[#1E293B]/70 transition-colors"
                           >
                             <div className="flex items-center space-x-2 min-w-0">
                               {isICOpen ? (

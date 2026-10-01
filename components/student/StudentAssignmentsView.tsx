@@ -553,7 +553,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                     required
                     value={selectedCourseCode}
                     onChange={(e) => setSelectedCourseCode(e.target.value)}
-                    className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                    className="w-full rounded-xl border border-[#334155]/70 bg-[#0B0F19]/60 backdrop-blur-md px-3 py-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
                   >
                     <option value="">-- Choose Course --</option>
                     {studentCourses.map((c) => (
@@ -574,7 +574,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                     value={customTitle}
                     onChange={(e) => setCustomTitle(e.target.value)}
                     placeholder="e.g. Lab 2: Binary Search Tree Solution"
-                    className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3.5 py-2.5 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                    className="w-full rounded-xl border border-[#334155]/70 bg-[#0B0F19]/60 backdrop-blur-md px-3.5 py-2.5 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
                   />
                 </div>
               </div>
@@ -588,7 +588,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                   value={customMarkdown}
                   onChange={(e) => setCustomMarkdown(e.target.value)}
                   placeholder="Provide answers, code snippets, or notes about your submission..."
-                  className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs font-mono text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none leading-relaxed"
+                  className="w-full rounded-xl border border-[#334155]/70 bg-[#0B0F19]/60 backdrop-blur-md p-3 text-xs font-mono text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none leading-relaxed"
                 />
               </div>
 
@@ -710,7 +710,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
             {/* Content notes */}
             {viewingSubmission.contentMarkdown && (
-              <div className="rounded-xl border border-[#334155] bg-[#0B0F19] p-4 space-y-2">
+              <div className="rounded-xl border border-[#334155]/60 bg-[#0B0F19]/50 backdrop-blur-md p-4 space-y-2">
                 <span className="text-[10px] font-mono text-[#06B6D4] uppercase tracking-wider block">Your Notes / Solution:</span>
                 <div className="prose prose-invert prose-xs max-w-none text-[#CBD5E1]">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -722,7 +722,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
             {/* Attached file */}
             {viewingSubmission.fileData && (
-              <div className="flex items-center justify-between rounded-xl border border-[#334155] bg-[#0B0F19] p-3.5">
+              <div className="flex items-center justify-between rounded-xl border border-[#334155]/60 bg-[#0B0F19]/50 backdrop-blur-md p-3.5">
                 <div className="flex items-center space-x-2.5">
                   <FileCheck className="h-5 w-5 text-[#06B6D4]" />
                   <div>
@@ -748,7 +748,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
             <div className="flex justify-end pt-2 border-t border-[#334155]">
               <button
                 onClick={() => setViewingSubmission(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#0B0F19] border border-[#334155]"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#0B0F19]/60 backdrop-blur-sm border border-[#334155]/70 hover:bg-[#0B0F19]/90"
               >
                 Close
               </button>

@@ -410,7 +410,7 @@ export default function StudentGroupsView({
                       )}
 
                       {/* Share Code Box */}
-                      <div className="rounded-2xl bg-[#0B0F19] p-3 border border-[#334155] mb-3.5 flex items-center justify-between">
+                      <div className="rounded-2xl bg-[#0B0F19]/50 backdrop-blur-md p-3 border border-[#334155]/60 mb-3.5 flex items-center justify-between">
                         <div>
                           <span className="block text-[10px] font-mono text-[#64748B] uppercase tracking-wider">
                             Invite Classmates (Join Code)
@@ -422,7 +422,7 @@ export default function StudentGroupsView({
 
                         <button
                           onClick={() => handleCopyCode(group.joinCode)}
-                          className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3 py-1.5 text-xs font-bold text-white hover:border-[#06B6D4] transition-all"
+                          className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155]/70 bg-[#1E293B]/70 backdrop-blur-sm px-3 py-1.5 text-xs font-bold text-white hover:border-[#06B6D4] transition-all"
                         >
                           {copiedCode === group.joinCode ? (
                             <>
@@ -449,7 +449,7 @@ export default function StudentGroupsView({
                           {group.members.map((member) => (
                             <div
                               key={member.uid}
-                              className="flex items-center justify-between rounded-xl bg-[#0B0F19]/60 px-3 py-2 border border-[#334155]"
+                              className="flex items-center justify-between rounded-xl bg-[#0B0F19]/50 backdrop-blur-sm px-3 py-2 border border-[#334155]/60"
                             >
                               <div className="flex items-center space-x-2">
                                 {member.isLeader ? (
@@ -593,7 +593,7 @@ export default function StudentGroupsView({
                     {/* 3 Metric Score Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {/* 1. Whole Group Score */}
-                      <div className="rounded-2xl border border-teal-500/30 bg-[#0B0F19] p-4 text-center">
+                      <div className="rounded-2xl border border-teal-500/30 bg-[#0B0F19]/50 backdrop-blur-md p-4 text-center">
                         <span className="text-[10px] font-mono text-[#64748B] uppercase tracking-wider block mb-1">
                           1. Whole Group Mark ({ev.groupWeight}%)
                         </span>
@@ -606,7 +606,7 @@ export default function StudentGroupsView({
                       </div>
 
                       {/* 2. Individual Defense Score */}
-                      <div className="rounded-2xl border border-emerald-500/30 bg-[#0B0F19] p-4 text-center">
+                      <div className="rounded-2xl border border-emerald-500/30 bg-[#0B0F19]/50 backdrop-blur-md p-4 text-center">
                         <span className="text-[10px] font-mono text-[#64748B] uppercase tracking-wider block mb-1">
                           2. Your Individual Defense ({ev.individualWeight}%)
                         </span>
@@ -619,7 +619,7 @@ export default function StudentGroupsView({
                       </div>
 
                       {/* 3. Final Weighted Grade */}
-                      <div className="rounded-2xl border border-emerald-400/50 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 p-4 text-center shadow-lg">
+                      <div className="rounded-2xl border border-emerald-400/50 bg-[#1E293B]/70 backdrop-blur-md p-4 text-center shadow-lg">
                         <span className="text-[10px] font-mono text-emerald-300 uppercase tracking-wider block mb-1 font-bold">
                           Official Final Mark
                         </span>

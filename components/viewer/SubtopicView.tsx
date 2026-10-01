@@ -406,7 +406,7 @@ export default function SubtopicView({
           <span className="text-white font-bold">{viewMode === 'slide' ? 'Slide Deck' : 'Continuous'}</span>
         </div>
 
-        <div className="flex items-center space-x-1.5 sm:space-x-2 bg-[#0B0F19] p-1 rounded-xl border border-[#334155] self-stretch xs:self-auto justify-center">
+        <div className="flex items-center space-x-1.5 sm:space-x-2 bg-[#0B0F19]/50 backdrop-blur-md p-1 rounded-xl border border-[#334155]/60 self-stretch xs:self-auto justify-center">
           <button
             onClick={() => setViewMode('slide')}
             className={`flex-1 xs:flex-initial inline-flex items-center justify-center space-x-1.5 rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-bold transition-all ${
@@ -464,7 +464,7 @@ export default function SubtopicView({
                   className={`inline-flex items-center space-x-1.5 rounded-xl px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold transition-all shrink-0 ${
                     isCompleted
                       ? "bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40"
-                      : "bg-[#1E293B] text-[#CBD5E1] border border-[#334155] hover:border-[#06B6D4]"
+                      : "bg-[#1E293B]/70 backdrop-blur-md text-[#CBD5E1] border border-[#334155]/70 hover:border-[#06B6D4]"
                   }`}
                 >
                   {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#10B981]" /> : <Circle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#94A3B8]" />}
@@ -596,7 +596,7 @@ export default function SubtopicView({
             {onPrevSubtopic ? (
               <button
                 onClick={onPrevSubtopic}
-                className="inline-flex items-center space-x-1 sm:space-x-2 rounded-xl bg-[#0B0F19] px-3 sm:px-5 py-2.5 sm:py-3 text-xs font-bold text-white border border-[#334155] hover:border-[#06B6D4] hover:bg-[#334155] transition-all shadow-md shrink-0"
+                className="inline-flex items-center space-x-1 sm:space-x-2 rounded-xl bg-[#0B0F19]/60 backdrop-blur-sm px-3 sm:px-5 py-2.5 sm:py-3 text-xs font-bold text-white border border-[#334155]/70 hover:border-[#06B6D4] hover:bg-[#334155]/50 transition-all shadow-md shrink-0"
               >
                 <ChevronLeft className="w-4 h-4 text-[#06B6D4] shrink-0" />
                 <span className="hidden xs:inline">Prev</span>
@@ -604,7 +604,7 @@ export default function SubtopicView({
               </button>
             ) : <div />}
 
-            <div className="text-center font-mono text-[11px] sm:text-xs text-[#06B6D4] font-bold bg-[#06B6D4]/10 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-[#06B6D4]/30 shrink-0">
+            <div className="text-center font-mono text-[11px] sm:text-xs text-[#06B6D4] font-bold bg-[#06B6D4]/10 backdrop-blur-sm px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-[#06B6D4]/30 shrink-0">
               {currentIndex} / {totalSubtopics}
             </div>
 
@@ -641,7 +641,7 @@ export default function SubtopicView({
               className={`inline-flex items-center space-x-2 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs font-semibold shadow-md transition-all self-start sm:self-auto shrink-0 ${
                 isCompleted
                   ? "bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40"
-                  : "bg-[#1E293B] text-[#CBD5E1] border border-[#334155] hover:border-[#06B6D4] hover:text-white"
+                  : "bg-[#1E293B]/70 backdrop-blur-md text-[#CBD5E1] border border-[#334155]/70 hover:border-[#06B6D4] hover:text-white"
               }`}
             >
               {isCompleted ? (

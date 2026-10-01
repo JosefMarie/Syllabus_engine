@@ -74,9 +74,9 @@ export default function NotificationBell({ userId }: { userId: string }) {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-[#334155] bg-[#0F172A] shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-[#334155]/70 bg-[#1E293B]/90 backdrop-blur-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-[#334155]/80 bg-[#0B0F19] px-4 py-3">
+          <div className="flex items-center justify-between border-b border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md px-4 py-3">
             <div className="flex items-center space-x-2">
               <Bell className="h-4 w-4 text-[#06B6D4]" />
               <span className="text-xs font-bold text-white">Notifications</span>
@@ -115,8 +115,8 @@ export default function NotificationBell({ userId }: { userId: string }) {
                     key={n.id}
                     className={`rounded-xl border p-3 transition-all ${
                       isUnread
-                        ? "border-cyan-500/40 bg-cyan-500/10 text-white"
-                        : "border-[#334155]/60 bg-[#0B0F19]/60 text-[#94A3B8]"
+                        ? "border-cyan-500/40 bg-cyan-500/10 text-white backdrop-blur-sm"
+                        : "border-[#334155]/60 bg-[#0B0F19]/50 backdrop-blur-sm text-[#94A3B8]"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
