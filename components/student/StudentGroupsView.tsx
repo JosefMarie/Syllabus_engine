@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { StudentGroup, GroupMember } from "@/types/group";
+import { StudentGroup, GroupMember, GroupEvaluation } from "@/types/group";
 import { UserProfile } from "@/types/auth";
 import { Syllabus } from "@/types/syllabus";
 import { 
@@ -9,7 +9,8 @@ import {
   saveGroup, 
   leaveGroup, 
   joinGroupByCode, 
-  generateGroupJoinCode 
+  generateGroupJoinCode,
+  getStudentGroupEvaluations
 } from "@/lib/db";
 import { 
   Users, 
@@ -25,7 +26,14 @@ import {
   Sparkles, 
   Layers, 
   CheckCircle2, 
-  AlertCircle 
+  AlertCircle,
+  Award,
+  Calendar,
+  UserCheck,
+  FileText,
+  Sliders,
+  TrendingUp,
+  MessageSquare
 } from "lucide-react";
 
 interface StudentGroupsViewProps {
@@ -40,6 +48,8 @@ export default function StudentGroupsView({
   onNavigateToAssignments
 }: StudentGroupsViewProps) {
   const [myGroups, setMyGroups] = useState<StudentGroup[]>([]);
+  const [evaluations, setEvaluations] = useState<GroupEvaluation[]>([]);
+  const [activeTab, setActiveTab] = useState<"groups" | "evaluations">("groups");
   const [loading, setLoading] = useState(true);
 
   // Modals
@@ -73,10 +83,14 @@ export default function StudentGroupsView({
   const loadGroups = async () => {
     setLoading(true);
     try {
-      const data = await getStudentGroups(currentUser.uid);
-      setMyGroups(data);
+      const [groupsData, evalsData] = await Promise.all([
+        getStudentGroups(currentUser.uid),
+        getStudentGroupEvaluations(currentUser.uid)
+      ]);
+      setMyGroups(groupsData);
+      setEvaluations(evalsData);
     } catch (err) {
-      console.error("Error loading student groups:", err);
+      console.error("Error loading student groups & evaluations:", err);
     } finally {
       setLoading(false);
     }
@@ -243,176 +257,447 @@ export default function StudentGroupsView({
         </div>
       </div>
 
-      {/* Banner if already enrolled in a group */}
-      {myGroups.length > 0 && (
-        <div className="rounded-2xl border border-[#06B6D4]/30 bg-[#06B6D4]/10 p-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <CheckCircle2 className="h-5 w-5 text-[#06B6D4] shrink-0" />
-            <div className="text-xs">
-              <span className="font-bold text-white block">Official Class Group: {myGroups[0].name}</span>
-              <span className="text-[#94A3B8]">
-                This is your designated team for your entire class. This group will automatically collaborate and submit on all group assignments across all courses and modules.
-              </span>
+      {/* View Mode Navigation Tabs */}
+      <div className="flex items-center space-x-2 border-b border-[#334155]/60 pb-1">
+        <button
+          onClick={() => setActiveTab("groups")}
+          className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-bold rounded-xl transition-all ${
+            activeTab === "groups"
+              ? "bg-[#06B6D4] text-slate-950 shadow-md"
+              : "text-[#94A3B8] hover:text-white hover:bg-[#1E293B]"
+          }`}
+        >
+          <Users className="h-4 w-4" />
+          <span>My Teams &amp; Groups ({myGroups.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("evaluations")}
+          className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-bold rounded-xl transition-all ${
+            activeTab === "evaluations"
+              ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md"
+              : "text-[#94A3B8] hover:text-white hover:bg-[#1E293B]"
+          }`}
+        >
+          <Award className="h-4 w-4" />
+          <span>Presentation Marks &amp; Defense</span>
+          {evaluations.length > 0 && (
+            <span className="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-bold">
+              {evaluations.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* TAB 1: TEAMS & GROUPS */}
+      {activeTab === "groups" && (
+        <>
+          {/* Banner if already enrolled in a group */}
+          {myGroups.length > 0 && (
+            <div className="rounded-2xl border border-[#06B6D4]/30 bg-[#06B6D4]/10 p-4 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <CheckCircle2 className="h-5 w-5 text-[#06B6D4] shrink-0" />
+                <div className="text-xs">
+                  <span className="font-bold text-white block">Official Class Group: {myGroups[0].name}</span>
+                  <span className="text-[#94A3B8]">
+                    This is your designated team for your entire class. This group will automatically collaborate and submit on all group assignments across all courses and modules.
+                  </span>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* Groups List */}
-      {myGroups.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-[#334155] bg-[#1E293B]/30 p-10 text-center">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#06B6D4]/10 border border-[#06B6D4]/20 text-[#06B6D4] mb-3">
-            <Users className="h-7 w-7" />
-          </div>
-          <h3 className="text-base font-bold text-white">No Groups Joined Yet</h3>
-          <p className="text-xs text-[#94A3B8] max-w-md mx-auto mt-1 mb-5">
-            You haven&apos;t joined any project or study teams yet. Create a group for one of your courses or join an existing group with your friend&apos;s code!
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-4 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Create New Group</span>
-            </button>
-            <button
-              onClick={() => setIsJoinModalOpen(true)}
-              className="inline-flex items-center space-x-2 rounded-xl border border-[#334155] bg-[#1E293B] px-4 py-2 text-xs font-bold text-white hover:border-[#06B6D4] transition-all"
-            >
-              <Key className="h-4 w-4 text-amber-400" />
-              <span>Enter Join Code</span>
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {myGroups.map((group) => {
-            const isUserLeader = group.members.some(m => m.uid === currentUser.uid && m.isLeader);
+          {/* Groups List */}
+          {myGroups.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-[#334155] bg-[#1E293B]/30 p-10 text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#06B6D4]/10 border border-[#06B6D4]/20 text-[#06B6D4] mb-3">
+                <Users className="h-7 w-7" />
+              </div>
+              <h3 className="text-base font-bold text-white">No Groups Joined Yet</h3>
+              <p className="text-xs text-[#94A3B8] max-w-md mx-auto mt-1 mb-5">
+                You haven&apos;t joined any project or study teams yet. Create a group for one of your courses or join an existing group with your friend&apos;s code!
+              </p>
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                <button
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-4 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Create New Group</span>
+                </button>
+                <button
+                  onClick={() => setIsJoinModalOpen(true)}
+                  className="inline-flex items-center space-x-2 rounded-xl border border-[#334155] bg-[#1E293B] px-4 py-2 text-xs font-bold text-white hover:border-[#06B6D4] transition-all"
+                >
+                  <Key className="h-4 w-4 text-amber-400" />
+                  <span>Enter Join Code</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {myGroups.map((group) => {
+                const isUserLeader = group.members.some(m => m.uid === currentUser.uid && m.isLeader);
+                const groupEvals = evaluations.filter(e => e.groupId === group.id);
+                const latestEval = groupEvals[0];
+                const myLatestScore = latestEval?.members?.[currentUser.uid]?.finalScore;
 
-            return (
-              <div
-                key={group.id}
-                className="rounded-3xl border border-[#334155] bg-[#1E293B] p-5 shadow-xl flex flex-col justify-between"
-              >
-                <div>
-                  {/* Top Bar */}
-                  <div className="flex items-start justify-between gap-3 border-b border-[#334155] pb-3 mb-3">
+                return (
+                  <div
+                    key={group.id}
+                    className="rounded-3xl border border-[#334155] bg-[#1E293B] p-5 shadow-xl flex flex-col justify-between"
+                  >
                     <div>
-                      <div className="flex items-center space-x-2">
-                        <h4 className="text-base font-extrabold text-white">{group.name}</h4>
-                        {isUserLeader && (
-                          <span className="inline-flex items-center space-x-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] font-mono text-amber-400 border border-amber-500/20">
-                            <Crown className="h-3 w-3" />
-                            <span>Leader</span>
+                      {/* Top Bar */}
+                      <div className="flex items-start justify-between gap-3 border-b border-[#334155] pb-3 mb-3">
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <h4 className="text-base font-extrabold text-white">{group.name}</h4>
+                            {isUserLeader && (
+                              <span className="inline-flex items-center space-x-1 rounded-md bg-amber-500/10 px-2 py-0.5 text-[10px] font-mono text-amber-400 border border-amber-500/20">
+                                <Crown className="h-3 w-3" />
+                                <span>Leader</span>
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs font-mono text-[#06B6D4] mt-0.5">
+                            {group.level} Class Team &bull; Works on All Courses &amp; Assignments
+                          </p>
+                        </div>
+
+                        {group.isLocked ? (
+                          <span className="inline-flex items-center space-x-1 rounded-lg bg-rose-500/10 px-2.5 py-1 text-[11px] font-mono text-rose-400 border border-rose-500/20 shrink-0">
+                            <Lock className="h-3.5 w-3.5" />
+                            <span>Roster Locked</span>
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center space-x-1 rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[11px] font-mono text-emerald-400 border border-emerald-500/20 shrink-0">
+                            <span>Open Team</span>
                           </span>
                         )}
                       </div>
-                      <p className="text-xs font-mono text-[#06B6D4] mt-0.5">
-                        {group.level} Class Team &bull; Works on All Courses &amp; Assignments
-                      </p>
-                    </div>
 
-                    {group.isLocked ? (
-                      <span className="inline-flex items-center space-x-1 rounded-lg bg-rose-500/10 px-2.5 py-1 text-[11px] font-mono text-rose-400 border border-rose-500/20 shrink-0">
-                        <Lock className="h-3.5 w-3.5" />
-                        <span>Roster Locked</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center space-x-1 rounded-lg bg-emerald-500/10 px-2.5 py-1 text-[11px] font-mono text-emerald-400 border border-emerald-500/20 shrink-0">
-                        <span>Open Team</span>
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Share Code Box */}
-                  <div className="rounded-2xl bg-[#0B0F19] p-3 border border-[#334155] mb-3.5 flex items-center justify-between">
-                    <div>
-                      <span className="block text-[10px] font-mono text-[#64748B] uppercase tracking-wider">
-                        Invite Classmates (Join Code)
-                      </span>
-                      <span className="text-sm font-mono font-extrabold text-amber-400 tracking-wider">
-                        {group.joinCode}
-                      </span>
-                    </div>
-
-                    <button
-                      onClick={() => handleCopyCode(group.joinCode)}
-                      className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3 py-1.5 text-xs font-bold text-white hover:border-[#06B6D4] transition-all"
-                    >
-                      {copiedCode === group.joinCode ? (
-                        <>
-                          <Check className="h-3.5 w-3.5 text-emerald-400" />
-                          <span className="text-emerald-400">Copied!</span>
-                        </>
-                      ) : (
-                        <>
-                          <Copy className="h-3.5 w-3.5 text-[#06B6D4]" />
-                          <span>Copy Code</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  {/* Members */}
-                  <div>
-                    <div className="flex items-center justify-between text-xs font-mono text-[#94A3B8] mb-2">
-                      <span>Roster ({group.members.length} / {group.maxMembers} members)</span>
-                      <span>Level: {group.level}</span>
-                    </div>
-
-                    <div className="space-y-1.5 mb-4">
-                      {group.members.map((member) => (
-                        <div
-                          key={member.uid}
-                          className="flex items-center justify-between rounded-xl bg-[#0B0F19]/60 px-3 py-2 border border-[#334155]"
-                        >
-                          <div className="flex items-center space-x-2">
-                            {member.isLeader ? (
-                              <span title="Group Leader" className="inline-flex shrink-0">
-                                <Crown className="h-4 w-4 text-amber-400" />
-                              </span>
-                            ) : (
-                              <div className="h-2 w-2 rounded-full bg-[#06B6D4] shrink-0 ml-1 mr-1" />
-                            )}
+                      {/* Presentation Marks Quick Banner (if graded) */}
+                      {latestEval && (
+                        <div className="mb-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/25 p-3 flex items-center justify-between">
+                          <div className="flex items-center space-x-2.5">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-300">
+                              <Award className="h-4 w-4" />
+                            </div>
                             <div>
-                              <span className="text-xs font-bold text-white block">
-                                {member.fullName} {member.uid === currentUser.uid ? "(You)" : ""}
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-300 block">
+                                Presentation Graded
                               </span>
-                              <span className="text-[10px] font-mono text-[#64748B]">@{member.username}</span>
+                              <span className="text-xs font-semibold text-white">
+                                {latestEval.presentationTitle}
+                              </span>
                             </div>
                           </div>
+                          <div className="flex items-center space-x-2.5">
+                            {myLatestScore !== undefined && (
+                              <span className="font-mono text-xs font-extrabold text-emerald-400 bg-emerald-500/20 border border-emerald-500/30 px-2 py-0.5 rounded-lg">
+                                Your Mark: {myLatestScore}%
+                              </span>
+                            )}
+                            <button
+                              onClick={() => setActiveTab("evaluations")}
+                              className="text-xs font-bold text-teal-400 hover:text-teal-300 underline"
+                            >
+                              Details &rarr;
+                            </button>
+                          </div>
                         </div>
-                      ))}
+                      )}
+
+                      {/* Share Code Box */}
+                      <div className="rounded-2xl bg-[#0B0F19] p-3 border border-[#334155] mb-3.5 flex items-center justify-between">
+                        <div>
+                          <span className="block text-[10px] font-mono text-[#64748B] uppercase tracking-wider">
+                            Invite Classmates (Join Code)
+                          </span>
+                          <span className="text-sm font-mono font-extrabold text-amber-400 tracking-wider">
+                            {group.joinCode}
+                          </span>
+                        </div>
+
+                        <button
+                          onClick={() => handleCopyCode(group.joinCode)}
+                          className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3 py-1.5 text-xs font-bold text-white hover:border-[#06B6D4] transition-all"
+                        >
+                          {copiedCode === group.joinCode ? (
+                            <>
+                              <Check className="h-3.5 w-3.5 text-emerald-400" />
+                              <span className="text-emerald-400">Copied!</span>
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3.5 w-3.5 text-[#06B6D4]" />
+                              <span>Copy Code</span>
+                            </>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Members */}
+                      <div>
+                        <div className="flex items-center justify-between text-xs font-mono text-[#94A3B8] mb-2">
+                          <span>Roster ({group.members.length} / {group.maxMembers} members)</span>
+                          <span>Level: {group.level}</span>
+                        </div>
+
+                        <div className="space-y-1.5 mb-4">
+                          {group.members.map((member) => (
+                            <div
+                              key={member.uid}
+                              className="flex items-center justify-between rounded-xl bg-[#0B0F19]/60 px-3 py-2 border border-[#334155]"
+                            >
+                              <div className="flex items-center space-x-2">
+                                {member.isLeader ? (
+                                  <span title="Group Leader" className="inline-flex shrink-0">
+                                    <Crown className="h-4 w-4 text-amber-400" />
+                                  </span>
+                                ) : (
+                                  <div className="h-2 w-2 rounded-full bg-[#06B6D4] shrink-0 ml-1 mr-1" />
+                                )}
+                                <div>
+                                  <span className="text-xs font-bold text-white block">
+                                    {member.fullName} {member.uid === currentUser.uid ? "(You)" : ""}
+                                  </span>
+                                  <span className="text-[10px] font-mono text-[#64748B]">@{member.username}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer Buttons */}
+                    <div className="pt-3 border-t border-[#334155] flex items-center justify-between">
+                      {onNavigateToAssignments && (
+                        <button
+                          onClick={onNavigateToAssignments}
+                          className="inline-flex items-center space-x-1.5 text-xs font-mono text-[#06B6D4] hover:underline"
+                        >
+                          <Sparkles className="h-3.5 w-3.5" />
+                          <span>View Course Assignments &rarr;</span>
+                        </button>
+                      )}
+
+                      {!group.isLocked && (
+                        <button
+                          onClick={() => handleLeaveGroup(group)}
+                          className="inline-flex items-center space-x-1.5 text-xs text-rose-400 hover:text-rose-300 ml-auto transition-colors"
+                        >
+                          <LogOut className="h-3.5 w-3.5" />
+                          <span>Leave Team</span>
+                        </button>
+                      )}
                     </div>
                   </div>
-                </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
 
-                {/* Footer Buttons */}
-                <div className="pt-3 border-t border-[#334155] flex items-center justify-between">
-                  {onNavigateToAssignments && (
-                    <button
-                      onClick={onNavigateToAssignments}
-                      className="inline-flex items-center space-x-1.5 text-xs font-mono text-[#06B6D4] hover:underline"
-                    >
-                      <Sparkles className="h-3.5 w-3.5" />
-                      <span>View Course Assignments &rarr;</span>
-                    </button>
-                  )}
+      {/* TAB 2: PRESENTATION MARKS & DEFENSE */}
+      {activeTab === "evaluations" && (
+        <div className="space-y-5">
+          {/* Offline / PowerPoint Presentation Banner Notice */}
+          <div className="rounded-2xl bg-emerald-500/10 border border-emerald-500/25 p-4 flex items-start space-x-3.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400 shrink-0">
+              <Award className="h-5 w-5" />
+            </div>
+            <div className="text-xs text-emerald-200/90 leading-relaxed">
+              <strong className="text-emerald-300 font-bold block mb-0.5">
+                Classroom Presentation &amp; PowerPoint Defense Mode:
+              </strong>
+              You do <span className="underline font-bold text-white">not</span> need to be logged into your group on this web app during your live presentation! Present your slides in front of class (e.g. PowerPoint / projector). Your instructor evaluates whole-team delivery and individual member defense live in the classroom. You can log in anytime later to see your published marks, weight distribution, and teacher feedback below.
+            </div>
+          </div>
 
-                  {!group.isLocked && (
-                    <button
-                      onClick={() => handleLeaveGroup(group)}
-                      className="inline-flex items-center space-x-1.5 text-xs text-rose-400 hover:text-rose-300 ml-auto transition-colors"
-                    >
-                      <LogOut className="h-3.5 w-3.5" />
-                      <span>Leave Team</span>
-                    </button>
-                  )}
-                </div>
+          {evaluations.length === 0 ? (
+            <div className="rounded-3xl border border-dashed border-[#334155] bg-[#1E293B]/40 p-12 text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-3">
+                <Award className="h-7 w-7" />
               </div>
-            );
-          })}
+              <h3 className="text-base font-bold text-white mb-1">
+                No Presentation Marks Published Yet
+              </h3>
+              <p className="text-xs text-[#94A3B8] max-w-md mx-auto mb-4">
+                When your team defends a PowerPoint presentation or project pitch in class, your instructor will record your team and individual scores. Your marks and teacher comments will appear here.
+              </p>
+              <button
+                onClick={() => setActiveTab("groups")}
+                className="inline-flex items-center space-x-2 rounded-xl bg-[#1E293B] border border-[#334155] px-4 py-2 text-xs font-bold text-white hover:border-[#06B6D4] transition-all"
+              >
+                <Users className="h-4 w-4 text-[#06B6D4]" />
+                <span>Back to My Groups</span>
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {evaluations.map((ev) => {
+                const myEval = ev.members?.[currentUser.uid];
+                const isAbsentPenalty = myEval?.status === "absent" && ev.strictAbsentZero;
+
+                return (
+                  <div
+                    key={ev.id}
+                    className="rounded-3xl border border-emerald-500/30 bg-[#1E293B] p-6 shadow-xl space-y-4"
+                  >
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-[#334155] pb-4">
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <h4 className="text-base font-bold text-white">
+                            {ev.presentationTitle}
+                          </h4>
+                          <span className="rounded-full bg-teal-500/20 text-teal-300 text-[10px] font-bold px-2.5 py-0.5 border border-teal-500/30">
+                            {ev.courseCode || "Class Team"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#94A3B8] mt-1">
+                          Team: <strong className="text-white">{ev.groupName}</strong> &bull; Evaluated by <span className="text-[#CBD5E1]">{ev.evaluatedBy || "Instructor"}</span> on {new Date(ev.evaluatedAt).toLocaleDateString()} at {new Date(ev.evaluatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+
+                      {/* Student Status Badge */}
+                      {myEval && (
+                        <div className="flex items-center space-x-2 shrink-0">
+                          <span className={`rounded-xl px-3 py-1 text-xs font-bold border ${
+                            myEval.status === "absent"
+                              ? "bg-red-500/10 text-red-300 border-red-500/30"
+                              : myEval.status === "partial"
+                              ? "bg-amber-500/10 text-amber-300 border-amber-500/30"
+                              : "bg-emerald-500/10 text-emerald-300 border-emerald-500/30"
+                          }`}>
+                            {myEval.status === "absent" ? "Absent / No Show" : myEval.status === "partial" ? "Partial Defense" : "Defended / Active"}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Absent Warning Banner */}
+                    {isAbsentPenalty && (
+                      <div className="rounded-xl bg-red-500/10 border border-red-500/30 p-3 flex items-center space-x-2 text-xs text-red-300">
+                        <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+                        <span>
+                          <strong>Anti-Freeloader Strict Penalty:</strong> You were marked absent for this live presentation defense. Under course policy, your final score is locked to 0% so free points are not awarded from team slides.
+                        </span>
+                      </div>
+                    )}
+
+                    {/* 3 Metric Score Cards */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {/* 1. Whole Group Score */}
+                      <div className="rounded-2xl border border-teal-500/30 bg-[#0B0F19] p-4 text-center">
+                        <span className="text-[10px] font-mono text-[#64748B] uppercase tracking-wider block mb-1">
+                          1. Whole Group Mark ({ev.groupWeight}%)
+                        </span>
+                        <div className="text-2xl font-extrabold font-mono text-teal-300">
+                          {ev.groupScore}%
+                        </div>
+                        <span className="text-[10px] text-[#94A3B8] block mt-1">
+                          Slides, team structure &amp; delivery
+                        </span>
+                      </div>
+
+                      {/* 2. Individual Defense Score */}
+                      <div className="rounded-2xl border border-emerald-500/30 bg-[#0B0F19] p-4 text-center">
+                        <span className="text-[10px] font-mono text-[#64748B] uppercase tracking-wider block mb-1">
+                          2. Your Individual Defense ({ev.individualWeight}%)
+                        </span>
+                        <div className="text-2xl font-extrabold font-mono text-emerald-300">
+                          {myEval ? myEval.individualScore : 0}%
+                        </div>
+                        <span className="text-[10px] text-[#94A3B8] block mt-1">
+                          Speaking, mastery &amp; Q&amp;A defense
+                        </span>
+                      </div>
+
+                      {/* 3. Final Weighted Grade */}
+                      <div className="rounded-2xl border border-emerald-400/50 bg-gradient-to-br from-emerald-500/10 to-teal-500/10 p-4 text-center shadow-lg">
+                        <span className="text-[10px] font-mono text-emerald-300 uppercase tracking-wider block mb-1 font-bold">
+                          Official Final Mark
+                        </span>
+                        <div className={`text-2xl font-black font-mono ${
+                          isAbsentPenalty 
+                            ? "text-red-400" 
+                            : (myEval?.finalScore || 0) >= 80 
+                            ? "text-emerald-400" 
+                            : (myEval?.finalScore || 0) >= 60 
+                            ? "text-amber-400" 
+                            : "text-rose-400"
+                        }`}>
+                          {myEval ? myEval.finalScore : 0}%
+                        </div>
+                        <span className="text-[10px] text-[#94A3B8] font-mono block mt-1">
+                          ({ev.groupScore} &times; {ev.groupWeight}%) + ({myEval?.individualScore || 0} &times; {ev.individualWeight}%)
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Teacher Feedback Sections */}
+                    <div className="space-y-2.5 pt-1">
+                      {/* Group Feedback */}
+                      {ev.groupFeedback && (
+                        <div className="rounded-xl border border-teal-500/20 bg-teal-500/5 p-3 text-xs text-teal-200">
+                          <strong className="text-teal-300 block mb-0.5">Whole Team Feedback:</strong>
+                          <p className="leading-relaxed">{ev.groupFeedback}</p>
+                        </div>
+                      )}
+
+                      {/* Private Student Feedback */}
+                      {myEval?.privateFeedback && (
+                        <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-xs text-emerald-200">
+                          <strong className="text-emerald-300 block mb-0.5">
+                            Teacher Note to You ({currentUser.fullName.split(" ")[0]}):
+                          </strong>
+                          <p className="leading-relaxed font-medium">{myEval.privateFeedback}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Team Members Defense Overview Table */}
+                    <div className="pt-2 border-t border-[#334155]/60">
+                      <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block mb-2">
+                        Team Defense Performance:
+                      </span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
+                        {Object.values(ev.members || {}).map((m) => (
+                          <div
+                            key={m.uid}
+                            className={`rounded-xl border p-2.5 text-xs flex items-center justify-between ${
+                              m.uid === currentUser.uid
+                                ? "border-emerald-500/40 bg-emerald-500/10"
+                                : "border-[#334155] bg-[#0B0F19]"
+                            }`}
+                          >
+                            <div>
+                              <span className="font-semibold text-white block truncate max-w-[120px]">
+                                {m.studentName} {m.uid === currentUser.uid ? "(You)" : ""}
+                              </span>
+                              <span className={`text-[10px] ${
+                                m.status === "absent" ? "text-red-400" : "text-[#94A3B8]"
+                              }`}>
+                                {m.status}
+                              </span>
+                            </div>
+                            <span className="font-mono font-bold text-emerald-400">
+                              {m.finalScore}%
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

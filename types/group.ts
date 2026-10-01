@@ -24,3 +24,35 @@ export interface StudentGroup {
   createdAt: string;
   updatedAt: string;
 }
+
+export type MemberParticipationStatus = 'present' | 'partial' | 'minimal' | 'absent';
+
+export interface MemberEvaluation {
+  uid: string;
+  studentName: string;
+  username?: string;
+  individualScore: number; // 0 - 100
+  finalScore: number;      // Calculated weighted mark e.g. (Group * Wg + Indiv * Wi)
+  status: MemberParticipationStatus;
+  privateFeedback?: string;
+}
+
+export interface GroupEvaluation {
+  id: string;
+  groupId: string;
+  groupName: string;
+  presentationTitle: string; // e.g. "PowerPoint Presentation: Chapter 4"
+  courseCode?: string;
+  courseTitle?: string;
+  evaluatedAt: string;
+  evaluatedBy: string; // Teacher email or name
+  groupScore: number; // 0 - 100
+  groupWeight: number; // default 50 (50%)
+  individualWeight: number; // default 50 (50%)
+  strictAbsentZero: boolean; // If student is absent, final score is strictly 0%
+  groupFeedback?: string;
+  members: Record<string, MemberEvaluation>;
+  createdAt: string;
+  updatedAt: string;
+}
+

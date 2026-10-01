@@ -3,7 +3,7 @@ import { Trade, UserProfile, AccountStatus, StudentLevel } from "@/types/auth";
 import { StudentNotification, StudentProgressSummary } from "@/types/notification";
 import { ActivityLog } from "@/types/activity";
 import { StudentTopicTimeRecord } from "@/types/timeTracking";
-import { StudentGroup, GroupMember } from "@/types/group";
+import { StudentGroup, GroupMember, GroupEvaluation, MemberEvaluation } from "@/types/group";
 import { Exam, ExamQuestion, ExamAttempt, QuestionGrade } from "@/types/exam";
 import { db, isFirebaseConfigured } from "./firebase";
 import { 
@@ -2947,6 +2947,100 @@ export async function gradeGroupSubmission(
         studentUsername: member.username
       };
       await saveAssignmentSubmission(memberSubmission);
+    }
+  }
+}
+
+// ==========================================
+// GROUP PRESENTATION EVALUATIONS & GRADES
+// ==========================================
+export const GROUP_EVALUATIONS_KEY = "syllabus_platform_group_evaluations_v1";
+
+export async function saveGroupEvaluation(evaluation: GroupEvaluation): Promise<void> {
+  const sanitized = sanitizeForFirestore(evaluation);
+
+  // 1. LocalStorage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(GROUP_EVALUATIONS_KEY);
+      const list: GroupEvaluation[] = raw ? JSON.parse(raw) : [];
+      const idx = list.findIndex(e => e.id === evaluation.id);
+      if (idx >= 0) {
+        list[idx] = evaluation;
+      } else {
+        list.unshift(evaluation);
+      }
+      localStorage.setItem(GROUP_EVALUATIONS_KEY, JSON.stringify(list));
+    } catch (e) {
+      console.warn("LocalStorage saveGroupEvaluation error:", e);
+    }
+  }
+
+  // 2. Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "group_evaluations", evaluation.id), sanitized, { merge: true });
+    } catch (e) {
+      console.warn("Firestore saveGroupEvaluation error:", e);
+    }
+  }
+}
+
+export async function getAllGroupEvaluations(): Promise<GroupEvaluation[]> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(collection(db, "group_evaluations"), orderBy("evaluatedAt", "desc"));
+      const snap = await getDocs(q);
+      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as GroupEvaluation));
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(GROUP_EVALUATIONS_KEY, JSON.stringify(list));
+        } catch (e) {}
+      }
+      return list;
+    } catch (e) {
+      console.warn("Firestore getAllGroupEvaluations error, using local fallback:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(GROUP_EVALUATIONS_KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) {}
+  }
+  return [];
+}
+
+export async function getGroupEvaluations(groupId: string): Promise<GroupEvaluation[]> {
+  const all = await getAllGroupEvaluations();
+  return all.filter(e => e.groupId === groupId);
+}
+
+export async function getStudentGroupEvaluations(studentUid: string): Promise<GroupEvaluation[]> {
+  const all = await getAllGroupEvaluations();
+  return all.filter(e => e.members && Boolean(e.members[studentUid]));
+}
+
+export async function deleteGroupEvaluation(evalId: string): Promise<void> {
+  // 1. LocalStorage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(GROUP_EVALUATIONS_KEY);
+      if (raw) {
+        const list: GroupEvaluation[] = JSON.parse(raw);
+        const filtered = list.filter(e => e.id !== evalId);
+        localStorage.setItem(GROUP_EVALUATIONS_KEY, JSON.stringify(filtered));
+      }
+    } catch (e) {}
+  }
+
+  // 2. Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, "group_evaluations", evalId));
+    } catch (e) {
+      console.warn("Firestore deleteGroupEvaluation error:", e);
     }
   }
 }
