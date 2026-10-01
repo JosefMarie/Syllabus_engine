@@ -57,6 +57,7 @@ function LoginForm() {
       <div className="mb-6 flex items-center justify-between border-b border-[#334155] pb-4">
         <Link
           href="/"
+          prefetch={false}
           className="inline-flex items-center space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -128,7 +129,7 @@ function LoginForm() {
         <div className="pt-4 border-t border-[#334155] flex flex-col gap-2 text-center text-xs text-[#94A3B8]">
           <div>
             Don't have an account?{" "}
-            <Link href="/auth/register" className="font-bold text-[#06B6D4] hover:underline">
+            <Link href="/auth/register" prefetch={false} className="font-bold text-[#06B6D4] hover:underline">
               Create Student Account
             </Link>
           </div>
@@ -136,6 +137,7 @@ function LoginForm() {
           <div className="pt-2">
             <Link
               href="/admin"
+              prefetch={false}
               className="inline-flex items-center space-x-1.5 text-xs text-[#94A3B8] hover:text-[#06B6D4] transition-colors"
             >
               <ShieldCheck className="h-4 w-4 text-[#06B6D4]" />

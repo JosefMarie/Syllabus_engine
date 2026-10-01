@@ -20,6 +20,19 @@
         ]
       },
       {
+        "source": "**/*.txt",
+        "headers": [
+          {
+            "key": "Content-Type",
+            "value": "text/x-component; charset=utf-8"
+          },
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, no-store, must-revalidate"
+          }
+        ]
+      },
+      {
         "source": "_next/static/**",
         "headers": [
           {

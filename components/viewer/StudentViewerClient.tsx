@@ -346,6 +346,7 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
           <div className="grid gap-3 pt-2">
             <Link
               href="/auth/login"
+              prefetch={false}
               className="inline-flex w-full items-center justify-center space-x-2 rounded-xl bg-[#06B6D4] py-3 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg"
             >
               <LogIn className="h-4 w-4" />
@@ -354,6 +355,7 @@ export default function StudentViewerClient({ syllabusId }: { syllabusId: string
 
             <Link
               href="/auth/register"
+              prefetch={false}
               className="inline-flex w-full items-center justify-center space-x-2 rounded-xl border border-[#334155] bg-[#0B0F19] py-3 text-xs font-semibold text-white hover:border-[#06B6D4] transition-all"
             >
               <UserPlus className="h-4 w-4 text-[#06B6D4]" />

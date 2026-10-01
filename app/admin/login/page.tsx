@@ -167,6 +167,7 @@ export default function AdminLoginPage() {
         <div className="mb-6 flex items-center justify-between border-b border-[#334155] pb-4">
           <Link
             href="/"
+            prefetch={false}
             className="inline-flex items-center space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors bg-[#0B0F19] px-3 py-1.5 rounded-lg border border-[#334155]"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -258,7 +259,7 @@ export default function AdminLoginPage() {
 
             <div className="pt-4 border-t border-[#334155] text-center text-xs text-[#94A3B8]">
               Need Student Portal access?{" "}
-              <Link href="/auth/login" className="font-bold text-[#06B6D4] hover:underline">
+              <Link href="/auth/login" prefetch={false} className="font-bold text-[#06B6D4] hover:underline">
                 Student Login
               </Link>
             </div>

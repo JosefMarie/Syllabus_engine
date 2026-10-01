@@ -1,4 +1,4 @@
-const CACHE_NAME = "syllabus-pwa-v6";
+const CACHE_NAME = "syllabus-pwa-v7";
 
 // Static assets to precache immediately on install (public safe assets only)
 const PRECACHE_ASSETS = [
@@ -48,6 +48,14 @@ self.addEventListener("fetch", (event) => {
     url.hostname.includes("securetoken") ||
     event.request.method !== "GET"
   ) {
+    return;
+  }
+
+  // 1.5. If the user's browser performs a direct address bar navigation to a .txt file (e.g. /auth/login.txt),
+  // redirect immediately to the clean route (/auth/login).
+  if (event.request.mode === "navigate" && url.pathname.endsWith(".txt")) {
+    const cleanPath = url.pathname.replace(/\.txt$/, "");
+    event.respondWith(Response.redirect(new URL(cleanPath, url.origin).href, 302));
     return;
   }
 

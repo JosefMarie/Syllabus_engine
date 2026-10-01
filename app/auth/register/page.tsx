@@ -96,6 +96,7 @@ export default function RegisterPage() {
         <div className="mb-6 flex items-center justify-between border-b border-[#334155] pb-4">
           <Link
             href="/"
+            prefetch={false}
             className="inline-flex items-center space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors"
           >
             <ArrowLeft className="h-4 w-4" />
@@ -121,6 +122,7 @@ export default function RegisterPage() {
             <div className="pt-4">
               <Link
                 href="/auth/login"
+                prefetch={false}
                 className="inline-flex w-full items-center justify-center rounded-xl bg-[#06B6D4] py-3 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg"
               >
                 Go to Student Login
@@ -261,7 +263,7 @@ export default function RegisterPage() {
 
             <div className="pt-2 text-center text-xs text-[#94A3B8]">
               Already have an account?{" "}
-              <Link href="/auth/login" className="font-bold text-[#06B6D4] hover:underline">
+              <Link href="/auth/login" prefetch={false} className="font-bold text-[#06B6D4] hover:underline">
                 Log In
               </Link>
             </div>
