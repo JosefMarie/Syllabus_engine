@@ -11,7 +11,7 @@ import {
 } from "@/lib/db";
 import { subscribeToSystemRestrictions } from "@/lib/restrictions";
 import { PresenceState } from "@/types/presence";
-import { Layers, AlertTriangle, EyeOff, Clock, Users } from "lucide-react";
+import { Layers, AlertTriangle, EyeOff, Clock, Users, X } from "lucide-react";
 import DisciplinaryLockdown from "@/components/common/DisciplinaryLockdown";
 
 interface PresenceTrackerProps {
@@ -49,6 +49,7 @@ export default function PresenceTracker({
   const [showAttentionPrompt, setShowAttentionPrompt] = useState(false);
   const [promptCountdown, setPromptCountdown] = useState(60);
   const [restrictionsDisabled, setRestrictionsDisabled] = useState(false);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
   const restrictionsDisabledRef = useRef(false);
 
   useEffect(() => {
@@ -59,6 +60,7 @@ export default function PresenceTracker({
         setShowAttentionPrompt(false);
         setMultiWindowDetected(false);
         unfocusedStartTimeRef.current = null;
+        setBannerDismissed(false);
       }
     });
     return () => unsubRestrictions();
@@ -563,10 +565,25 @@ export default function PresenceTracker({
   return (
     <>
       {/* Floating indicator when Instructor has enabled Group Work Mode */}
-      {restrictionsDisabled && (
-        <div className="fixed top-3 right-4 z-40 flex items-center space-x-2 rounded-xl bg-purple-950/85 border border-purple-500/40 px-3 py-1.5 text-[11px] font-mono font-bold text-purple-300 shadow-2xl backdrop-blur-md animate-in fade-in">
+      {restrictionsDisabled && !bannerDismissed && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 md:top-3.5 md:bottom-auto md:left-1/2 md:-translate-x-1/2 z-40 flex items-center space-x-2.5 rounded-full bg-[#1e1035]/95 border border-purple-500/50 px-3.5 py-1.5 text-[11px] font-mono font-medium text-purple-200 shadow-[0_4px_20px_rgba(168,85,247,0.25)] backdrop-blur-md animate-in fade-in slide-in-from-top-1 duration-200 pointer-events-auto">
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+          </span>
           <Users className="h-3.5 w-3.5 text-purple-400 shrink-0" />
-          <span>Group Work Mode Active • Restrictions Paused</span>
+          <span className="hidden sm:inline font-bold">Group Work Mode Active</span>
+          <span className="hidden sm:inline text-purple-400/80">•</span>
+          <span className="hidden sm:inline text-purple-300">Restrictions Paused</span>
+          <span className="sm:hidden font-bold">Group Work Active</span>
+          <button
+            type="button"
+            onClick={() => setBannerDismissed(true)}
+            className="ml-1 rounded-full p-0.5 text-purple-400 hover:bg-purple-800/60 hover:text-white transition-colors"
+            title="Dismiss notice"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
 
