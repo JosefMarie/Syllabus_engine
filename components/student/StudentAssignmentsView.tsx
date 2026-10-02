@@ -70,9 +70,11 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   // Group for the currently active assignment if it is a group project
-  // In the class-based group system, the student's class group does all group assignments
+  // In the class-based group system, checks if assignment is targeted to a specific group or class-wide
   const activeMatchedGroup = activeAssignment?.submissionType === "group"
-    ? (myGroups.length > 0 ? myGroups[0] : null)
+    ? (activeAssignment.targetGroupId && activeAssignment.targetGroupId !== "all_groups"
+        ? (myGroups.find(g => g.id === activeAssignment.targetGroupId) || null)
+        : (myGroups.length > 0 ? myGroups[0] : null))
     : null;
 
   // Available courses filtered by student level/trade
@@ -103,7 +105,15 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
         if (a.status !== "published") return false;
         const matchesLevel = a.level === "all" || a.level === currentUser.level;
         const matchesTrade = a.tradeId === "all" || !currentUser.tradeId || a.tradeId === currentUser.tradeId;
-        return matchesLevel && matchesTrade;
+        if (!matchesLevel || !matchesTrade) return false;
+
+        // If targeted to a specific group, only members of that group receive this assignment
+        if (a.submissionType === "group" && a.targetGroupId && a.targetGroupId !== "all_groups") {
+          const isMemberOfGroup = groupsData.some(g => g.id === a.targetGroupId);
+          if (!isMemberOfGroup) return false;
+        }
+
+        return true;
       });
 
       setAssignments(relevant);
@@ -186,7 +196,9 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
     const isGroupProject = activeAssignment.submissionType === "group";
     const matchedGroup = isGroupProject 
-      ? (myGroups.length > 0 ? myGroups[0] : null)
+      ? (activeAssignment.targetGroupId && activeAssignment.targetGroupId !== "all_groups"
+          ? (myGroups.find(g => g.id === activeAssignment.targetGroupId) || null)
+          : (myGroups.length > 0 ? myGroups[0] : null))
       : null;
 
     if (isGroupProject && !matchedGroup) {
@@ -461,7 +473,11 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                         {asg.submissionType === "group" && (
                           <span className="inline-flex items-center space-x-1 rounded-md bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-purple-400">
                             <Users className="h-3 w-3" />
-                            <span>Group Project</span>
+                            <span>
+                              {asg.targetGroupId && asg.targetGroupId !== "all_groups"
+                                ? `Team Task (${myGroups.find(g => g.id === asg.targetGroupId)?.name || "Assigned Team"})`
+                                : "Group Project"}
+                            </span>
                           </span>
                         )}
                       </div>

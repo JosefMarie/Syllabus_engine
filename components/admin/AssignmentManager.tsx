@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Assignment, AssignmentSubmission } from "@/types/assignment";
 import { StudentGroup } from "@/types/group";
 import { Syllabus } from "@/types/syllabus";
@@ -36,10 +36,51 @@ import {
   Search,
   ExternalLink,
   BookOpen,
-  Filter
+  Filter,
+  Crown
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+// Helper functions for matching target cohorts and groups
+const isLevelMatch = (groupLevel?: string, targetLevel?: string) => {
+  if (!targetLevel || targetLevel === "all") return true;
+  if (!groupLevel || groupLevel === "all") return true;
+  return groupLevel.toLowerCase().trim() === targetLevel.toLowerCase().trim();
+};
+
+const isTradeMatch = (groupTrade?: string, targetTrade?: string, tradesList: Trade[] = []) => {
+  if (!targetTrade || targetTrade === "all") return true;
+  if (!groupTrade || groupTrade === "all") return true;
+  if (groupTrade === targetTrade) return true;
+  if (groupTrade.toLowerCase() === targetTrade.toLowerCase()) return true;
+  const found = tradesList.find(t => t.id === targetTrade || t.name === targetTrade);
+  if (found) {
+    if (groupTrade === found.id || groupTrade === found.name) return true;
+    if (groupTrade.toLowerCase() === found.name.toLowerCase()) return true;
+  }
+  return false;
+};
+
+const isCourseMatch = (groupCourse?: string, targetCourse?: string) => {
+  if (!targetCourse) return true;
+  if (!groupCourse || groupCourse === "all") return true;
+  return groupCourse.toLowerCase().trim() === targetCourse.toLowerCase().trim();
+};
+
+const getGroupLeaderName = (g: StudentGroup): string => {
+  if (g.leaderName && g.leaderName.trim() && g.leaderName !== "Instructor Assigned") {
+    return g.leaderName.trim();
+  }
+  const leaderMember = g.members?.find(m => m.isLeader);
+  if (leaderMember && leaderMember.fullName) {
+    return leaderMember.fullName;
+  }
+  if (g.members && g.members.length > 0 && g.members[0].fullName) {
+    return g.members[0].fullName;
+  }
+  return g.leaderName || "Unassigned";
+};
 
 interface AssignmentManagerProps {
   syllabi: Syllabus[];
@@ -88,6 +129,26 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
   const [pastedRawText, setPastedRawText] = useState("");
   const [isParsingDoc, setIsParsingDoc] = useState(false);
   const [parseStatus, setParseStatus] = useState<string | null>(null);
+
+  // Compute eligible student groups filtered by target level, trade, and course
+  const targetableGroups = useMemo(() => {
+    return courseGroups.filter(g => {
+      const matchLvl = isLevelMatch(g.level, formLevel);
+      const matchTrd = isTradeMatch(g.tradeId, formTradeId, trades);
+      const matchCrs = isCourseMatch(g.courseCode, formCourseCode);
+      return matchLvl && matchTrd && matchCrs;
+    });
+  }, [courseGroups, formLevel, formTradeId, formCourseCode, trades]);
+
+  // If a previously selected group is no longer valid for the updated level/trade, reset to all_groups
+  useEffect(() => {
+    if (formTargetGroupId !== "all_groups" && targetableGroups.length > 0) {
+      const exists = targetableGroups.some(g => g.id === formTargetGroupId);
+      if (!exists) {
+        setFormTargetGroupId("all_groups");
+      }
+    }
+  }, [targetableGroups, formTargetGroupId]);
 
   useEffect(() => {
     loadAllData();
@@ -436,12 +497,15 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                           {asg.courseCode || "General"}
                         </span>
                         <div className="flex items-center space-x-1.5">
-                          {asg.submissionType === "group" && (
-                            <span className="rounded-md bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-purple-300 flex items-center space-x-1">
-                              <Users className="h-3 w-3" />
-                              <span>Group Project</span>
-                            </span>
-                          )}
+                          {asg.submissionType === "group" && (() => {
+                            const targetedGrp = courseGroups.find(g => g.id === asg.targetGroupId);
+                            return (
+                              <span className="rounded-md bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-purple-300 flex items-center space-x-1">
+                                <Users className="h-3 w-3" />
+                                <span>{targetedGrp ? `Team: ${targetedGrp.name}` : "Group Task"}</span>
+                              </span>
+                            );
+                          })()}
                           <span className="rounded-md bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-mono text-emerald-400">
                             {asg.totalPoints} Pts
                           </span>
@@ -461,6 +525,26 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                           <Users className="h-3.5 w-3.5 text-[#94A3B8]" />
                           <span>Class: {asg.level === "all" ? "All Levels" : asg.level} • {asg.tradeId === "all" ? "All Trades" : targetTrade?.name || asg.tradeId}</span>
                         </div>
+                        {asg.submissionType === "group" && (
+                          <div className="flex items-center space-x-2 text-[11px] text-purple-300">
+                            <Users className="h-3.5 w-3.5 text-purple-400 shrink-0" />
+                            <span>
+                              {asg.targetGroupId && asg.targetGroupId !== "all_groups" ? (() => {
+                                const targetedGrp = courseGroups.find(g => g.id === asg.targetGroupId);
+                                if (!targetedGrp) return "Target: Specific Team";
+                                const ldr = getGroupLeaderName(targetedGrp);
+                                return (
+                                  <>
+                                    <span className="font-bold text-purple-200">Target Group:</span> {targetedGrp.name}
+                                    {" "}<span className="text-amber-300 font-semibold">(Leader: {ldr})</span>
+                                  </>
+                                );
+                              })() : (
+                                <span>Assigned to: <strong className="text-purple-200">All Groups in Level</strong></span>
+                              )}
+                            </span>
+                          </div>
+                        )}
                         {asg.dueDate && (
                           <div className={`flex items-center space-x-2 ${isOverdue ? "text-rose-400 font-bold" : "text-[#94A3B8]"}`}>
                             <Calendar className="h-3.5 w-3.5" />
@@ -834,22 +918,92 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                   </div>
 
                   {formSubmissionType === "group" && (
-                    <div className="pt-2 border-t border-[#334155]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="text-[11px] text-purple-300">
-                        <span>👥 One submission represents the entire team. Grades &amp; feedback cascade to all members.</span>
+                    <div className="pt-3 border-t border-[#334155]/60 space-y-3">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div className="text-[11px] text-purple-300">
+                          <span>👥 One submission represents the entire team. Grades &amp; feedback cascade to all members.</span>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <label className="text-[11px] font-bold text-[#CBD5E1] whitespace-nowrap">
+                            Target Group:
+                          </label>
+                          <select
+                            value={formTargetGroupId}
+                            onChange={(e) => setFormTargetGroupId(e.target.value)}
+                            className="rounded-xl border border-purple-500/40 bg-[#1E293B] px-3 py-2 text-xs text-white focus:border-purple-400 focus:outline-none min-w-[280px]"
+                          >
+                            <option value="all_groups">
+                              Target: All Groups in {formLevel !== "all" ? formLevel : "Course"} ({targetableGroups.length} available)
+                            </option>
+                            {targetableGroups.map(g => {
+                              const leader = getGroupLeaderName(g);
+                              return (
+                                <option key={g.id} value={g.id}>
+                                  Specific: {g.name} — Leader: {leader} ({g.members?.length || 0} members)
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
                       </div>
-                      <select
-                        value={formTargetGroupId}
-                        onChange={(e) => setFormTargetGroupId(e.target.value)}
-                        className="rounded-xl border border-[#334155] bg-[#1E293B] px-3 py-1.5 text-xs text-white focus:border-purple-400 focus:outline-none"
-                      >
-                        <option value="all_groups">Target: All Groups in Course</option>
-                        {courseGroups
-                          .filter(g => !formCourseCode || g.courseCode === formCourseCode)
-                          .map(g => (
-                            <option key={g.id} value={g.id}>Specific: {g.name} ({g.members.length} members)</option>
-                          ))}
-                      </select>
+
+                      {/* Targeted Group Preview Card */}
+                      {formTargetGroupId !== "all_groups" && (() => {
+                        const selectedGroup = targetableGroups.find(g => g.id === formTargetGroupId) || courseGroups.find(g => g.id === formTargetGroupId);
+                        if (!selectedGroup) return null;
+                        const leader = getGroupLeaderName(selectedGroup);
+                        return (
+                          <div className="p-3.5 rounded-xl bg-purple-950/40 border border-purple-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-inner">
+                            <div className="space-y-1">
+                              <div className="flex items-center space-x-2">
+                                <span className="font-extrabold text-white text-sm">{selectedGroup.name}</span>
+                                <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-mono text-[10px] font-bold border border-purple-500/30">
+                                  {selectedGroup.level}
+                                </span>
+                                <span className="text-[#94A3B8] text-xs">
+                                  • {selectedGroup.members?.length || 0} registered members
+                                </span>
+                              </div>
+                              <div className="flex items-center space-x-2 text-amber-300 text-xs font-semibold">
+                                <Crown className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+                                <span>Head / Group Leader: <strong className="text-white underline">{leader}</strong></span>
+                              </div>
+                              {selectedGroup.members && selectedGroup.members.length > 0 && (
+                                <div className="text-[11px] text-[#94A3B8] flex flex-wrap gap-1.5 items-center pt-1">
+                                  <span className="text-[#64748B] font-mono">Members:</span>
+                                  {selectedGroup.members.map((m, idx) => (
+                                    <span
+                                      key={m.uid || idx}
+                                      className={`px-2 py-0.5 rounded text-[10px] font-mono ${
+                                        m.isLeader || m.fullName === leader
+                                          ? "bg-amber-400/20 text-amber-200 border border-amber-400/40 font-bold"
+                                          : "bg-[#0B0F19] text-[#CBD5E1] border border-[#334155]"
+                                      }`}
+                                    >
+                                      {m.fullName} {m.isLeader || m.fullName === leader ? "👑" : ""}
+                                    </span>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                            <div className="shrink-0 sm:text-right">
+                              <span className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-bold">
+                                <span>✓ Assigned to this Team</span>
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {targetableGroups.length === 0 && (
+                        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center space-x-2">
+                          <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
+                          <span>
+                            No student groups found matching {formLevel !== "all" ? formLevel : "All Levels"} {formTradeId !== "all" ? `(${formTradeId})` : ""}.
+                            You can create new groups in the <strong>Groups</strong> tab, or adjust Level/Trade filters.
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -966,6 +1120,16 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                 <span>{selectedAssignment.courseCode || "General"}</span>
                 <span>•</span>
                 <span>Max Points: {selectedAssignment.totalPoints}</span>
+                {selectedAssignment.submissionType === "group" && (
+                  <>
+                    <span>•</span>
+                    <span className="text-purple-300 font-bold">
+                      {selectedAssignment.targetGroupId && selectedAssignment.targetGroupId !== "all_groups"
+                        ? `Target Group: ${courseGroups.find(g => g.id === selectedAssignment.targetGroupId)?.name || "Specific Group"}`
+                        : "Target: All Groups"}
+                    </span>
+                  </>
+                )}
               </div>
               <h2 className="text-base font-extrabold text-white">{selectedAssignment.title}</h2>
             </div>
