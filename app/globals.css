@@ -2,8 +2,8 @@
 
 @theme {
   /* Typography Variables */
-  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'Fira Code', 'JetBrains Mono', monospace;
+  --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
   /* Color Palette Tokens */
   --color-slate-base: #0B0F19;      /* Deep Slate/Navy background */
@@ -29,11 +29,13 @@ body {
   background-color: var(--color-slate-base);
   color: var(--color-text-body);
   font-family: var(--font-sans);
+  letter-spacing: -0.01em;
   overflow-x: hidden;
 }
 
 code, pre, .font-mono {
   font-family: var(--font-mono);
+  font-feature-settings: "liga" 1, "calt" 1; /* Enables programming ligatures (=>, ===, !=) */
 }
 
 /* Custom Scrollbar */
