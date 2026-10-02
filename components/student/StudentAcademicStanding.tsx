@@ -19,7 +19,10 @@ import {
   Sparkles, 
   BookOpen, 
   GraduationCap,
-  ChevronRight
+  ChevronRight,
+  FileText,
+  Printer,
+  X
 } from "lucide-react";
 
 interface StudentAcademicStandingProps {
@@ -39,6 +42,7 @@ export default function StudentAcademicStanding({
   const [completedSubtopicsCount, setCompletedSubtopicsCount] = useState(0);
   const [totalSubtopicsCount, setTotalSubtopicsCount] = useState(0);
   const [submissionCount, setSubmissionCount] = useState(0);
+  const [showReportCard, setShowReportCard] = useState(false);
 
   useEffect(() => {
     async function loadStats() {
@@ -131,136 +135,261 @@ export default function StudentAcademicStanding({
   if (loading) return null;
 
   return (
-    <div className="rounded-3xl border border-cyan-500/30 bg-[#1E293B]/75 backdrop-blur-xl p-5 sm:p-6 shadow-2xl relative overflow-hidden mb-6">
-      {/* Background ambient glow */}
-      <div className="absolute -top-24 -right-24 h-56 w-56 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-24 -left-24 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
+    <>
+      <div className="rounded-3xl border border-cyan-500/30 bg-[#1E293B]/75 backdrop-blur-xl p-5 sm:p-6 shadow-2xl relative overflow-hidden mb-6">
+        {/* Background ambient glow */}
+        <div className="absolute -top-24 -right-24 h-56 w-56 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
 
-      {/* Header Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#334155]/60 pb-4 mb-5">
-        <div className="flex items-center space-x-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 border border-cyan-500/30 text-cyan-400">
-            <GraduationCap className="h-6 w-6" />
-          </div>
-          <div>
-            <div className="flex items-center space-x-2">
-              <h3 className="text-base font-extrabold text-white">
-                Academic Standing &amp; Performance
-              </h3>
-              <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${standing.color}`}>
-                {standing.label}
-              </span>
+        {/* Header Bar */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#334155]/60 pb-4 mb-5">
+          <div className="flex items-center space-x-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 border border-cyan-500/30 text-cyan-400">
+              <GraduationCap className="h-6 w-6" />
             </div>
-            <p className="text-xs text-[#94A3B8]">
-              {currentUser.fullName} • {currentUser.level} Class Cohort
-            </p>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h3 className="text-base font-extrabold text-white">
+                  Academic Standing &amp; Performance
+                </h3>
+                <span className={`text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border ${standing.color}`}>
+                  {standing.label}
+                </span>
+              </div>
+              <p className="text-xs text-[#94A3B8]">
+                {currentUser.fullName} • {currentUser.level} Class Cohort
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            {cumulativeGrade !== null && (
+              <div className="flex items-center space-x-2 bg-[#0B0F19]/50 backdrop-blur-md border border-cyan-500/30 rounded-2xl px-4 py-2">
+                <span className="text-[11px] text-[#94A3B8] font-semibold">Cumulative Grade:</span>
+                <span className="text-xl font-black font-mono text-cyan-300">
+                  {cumulativeGrade}%
+                </span>
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowReportCard(true)}
+              className="inline-flex items-center space-x-1.5 rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-3.5 py-2 text-xs font-mono font-bold text-cyan-300 hover:bg-cyan-500/20 transition-all shadow-sm"
+              title="View & Print Official Academic Transcript"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Report Card</span>
+            </button>
           </div>
         </div>
 
-        {cumulativeGrade !== null && (
-          <div className="flex items-center space-x-2 bg-[#0B0F19]/50 backdrop-blur-md border border-cyan-500/30 rounded-2xl px-4 py-2">
-            <span className="text-[11px] text-[#94A3B8] font-semibold">Cumulative Grade:</span>
-            <span className="text-xl font-black font-mono text-cyan-300">
-              {cumulativeGrade}%
+        {/* 4 Performance Metric Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          {/* Metric 1: Course Progress */}
+          <div 
+            onClick={() => onTabChange?.("courses")}
+            className="rounded-2xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 hover:border-cyan-500/40 transition-all cursor-pointer group"
+          >
+            <div className="flex items-center justify-between text-[#94A3B8] mb-1.5">
+              <span className="text-[11px] font-bold">Curriculum Topics</span>
+              <BookOpen className="h-4 w-4 text-cyan-400 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-xl sm:text-2xl font-black font-mono text-white mb-1">
+              {progressPercent}%
+            </div>
+            <div className="w-full bg-[#1E293B] h-1.5 rounded-full overflow-hidden mb-1.5">
+              <div 
+                className="bg-cyan-500 h-full rounded-full transition-all duration-500" 
+                style={{ width: `${progressPercent}%` }} 
+              />
+            </div>
+            <span className="text-[10px] text-[#64748B] block truncate">
+              {completedSubtopicsCount} of {totalSubtopicsCount} topics read
             </span>
           </div>
-        )}
-      </div>
 
-      {/* 4 Performance Metric Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
-        {/* Metric 1: Course Progress */}
-        <div 
-          onClick={() => onTabChange?.("courses")}
-          className="rounded-2xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 hover:border-cyan-500/40 transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between text-[#94A3B8] mb-1.5">
-            <span className="text-[11px] font-bold">Curriculum Topics</span>
-            <BookOpen className="h-4 w-4 text-cyan-400 group-hover:scale-110 transition-transform" />
+          {/* Metric 2: Exam Average */}
+          <div 
+            onClick={() => onTabChange?.("exams")}
+            className="rounded-2xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 hover:border-purple-500/40 transition-all cursor-pointer group"
+          >
+            <div className="flex items-center justify-between text-[#94A3B8] mb-1.5">
+              <span className="text-[11px] font-bold">Exam Average</span>
+              <FileQuestion className="h-4 w-4 text-purple-400 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-xl sm:text-2xl font-black font-mono text-purple-300 mb-1">
+              {examAvg !== null ? `${examAvg}%` : "—"}
+            </div>
+            <div className="w-full bg-[#1E293B] h-1.5 rounded-full overflow-hidden mb-1.5">
+              <div 
+                className="bg-purple-500 h-full rounded-full transition-all duration-500" 
+                style={{ width: `${examAvg || 0}%` }} 
+              />
+            </div>
+            <span className="text-[10px] text-[#64748B] block truncate">
+              {examAvg !== null ? "Quizzes & official assessments" : "No exam attempts yet"}
+            </span>
           </div>
-          <div className="text-xl sm:text-2xl font-black font-mono text-white mb-1">
-            {progressPercent}%
-          </div>
-          <div className="w-full bg-[#1E293B] h-1.5 rounded-full overflow-hidden mb-1.5">
-            <div 
-              className="bg-cyan-500 h-full rounded-full transition-all duration-500" 
-              style={{ width: `${progressPercent}%` }} 
-            />
-          </div>
-          <span className="text-[10px] text-[#64748B] block truncate">
-            {completedSubtopicsCount} of {totalSubtopicsCount} topics read
-          </span>
-        </div>
 
-        {/* Metric 2: Exam Average */}
-        <div 
-          onClick={() => onTabChange?.("exams")}
-          className="rounded-2xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 hover:border-purple-500/40 transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between text-[#94A3B8] mb-1.5">
-            <span className="text-[11px] font-bold">Exam Average</span>
-            <FileQuestion className="h-4 w-4 text-purple-400 group-hover:scale-110 transition-transform" />
+          {/* Metric 3: Group Presentation Defense */}
+          <div 
+            onClick={() => onTabChange?.("groups")}
+            className="rounded-2xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 hover:border-emerald-500/40 transition-all cursor-pointer group"
+          >
+            <div className="flex items-center justify-between text-[#94A3B8] mb-1.5">
+              <span className="text-[11px] font-bold">Live Defense</span>
+              <Award className="h-4 w-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-xl sm:text-2xl font-black font-mono text-emerald-300 mb-1">
+              {presentationAvg !== null ? `${presentationAvg}%` : "—"}
+            </div>
+            <div className="w-full bg-[#1E293B] h-1.5 rounded-full overflow-hidden mb-1.5">
+              <div 
+                className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
+                style={{ width: `${presentationAvg || 0}%` }} 
+              />
+            </div>
+            <span className="text-[10px] text-[#64748B] block truncate">
+              {presentationAvg !== null ? "PowerPoint & slide defense" : "Pending class presentation"}
+            </span>
           </div>
-          <div className="text-xl sm:text-2xl font-black font-mono text-purple-300 mb-1">
-            {examAvg !== null ? `${examAvg}%` : "—"}
-          </div>
-          <div className="w-full bg-[#1E293B] h-1.5 rounded-full overflow-hidden mb-1.5">
-            <div 
-              className="bg-purple-500 h-full rounded-full transition-all duration-500" 
-              style={{ width: `${examAvg || 0}%` }} 
-            />
-          </div>
-          <span className="text-[10px] text-[#64748B] block truncate">
-            {examAvg !== null ? "Quizzes & official assessments" : "No exam attempts yet"}
-          </span>
-        </div>
 
-        {/* Metric 3: Group Presentation Defense */}
-        <div 
-          onClick={() => onTabChange?.("groups")}
-          className="rounded-2xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 hover:border-emerald-500/40 transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between text-[#94A3B8] mb-1.5">
-            <span className="text-[11px] font-bold">Live Defense</span>
-            <Award className="h-4 w-4 text-emerald-400 group-hover:scale-110 transition-transform" />
+          {/* Metric 4: Assignments Submitted */}
+          <div 
+            onClick={() => onTabChange?.("assignments")}
+            className="rounded-2xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 hover:border-amber-500/40 transition-all cursor-pointer group"
+          >
+            <div className="flex items-center justify-between text-[#94A3B8] mb-1.5">
+              <span className="text-[11px] font-bold">Assignments</span>
+              <Layers className="h-4 w-4 text-amber-400 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="text-xl sm:text-2xl font-black font-mono text-amber-300 mb-1">
+              {submissionCount}
+            </div>
+            <div className="w-full bg-[#1E293B] h-1.5 rounded-full overflow-hidden mb-1.5">
+              <div 
+                className="bg-amber-500 h-full rounded-full transition-all duration-500" 
+                style={{ width: `${Math.min(100, submissionCount * 25)}%` }} 
+              />
+            </div>
+            <span className="text-[10px] text-[#64748B] block truncate">
+              Completed deliverables
+            </span>
           </div>
-          <div className="text-xl sm:text-2xl font-black font-mono text-emerald-300 mb-1">
-            {presentationAvg !== null ? `${presentationAvg}%` : "—"}
-          </div>
-          <div className="w-full bg-[#1E293B] h-1.5 rounded-full overflow-hidden mb-1.5">
-            <div 
-              className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
-              style={{ width: `${presentationAvg || 0}%` }} 
-            />
-          </div>
-          <span className="text-[10px] text-[#64748B] block truncate">
-            {presentationAvg !== null ? "PowerPoint & slide defense" : "Pending class presentation"}
-          </span>
-        </div>
-
-        {/* Metric 4: Assignments Submitted */}
-        <div 
-          onClick={() => onTabChange?.("assignments")}
-          className="rounded-2xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 hover:border-amber-500/40 transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between text-[#94A3B8] mb-1.5">
-            <span className="text-[11px] font-bold">Assignments</span>
-            <Layers className="h-4 w-4 text-amber-400 group-hover:scale-110 transition-transform" />
-          </div>
-          <div className="text-xl sm:text-2xl font-black font-mono text-amber-300 mb-1">
-            {submissionCount}
-          </div>
-          <div className="w-full bg-[#1E293B] h-1.5 rounded-full overflow-hidden mb-1.5">
-            <div 
-              className="bg-amber-500 h-full rounded-full transition-all duration-500" 
-              style={{ width: `${Math.min(100, submissionCount * 25)}%` }} 
-            />
-          </div>
-          <span className="text-[10px] text-[#64748B] block truncate">
-            Completed deliverables
-          </span>
         </div>
       </div>
-    </div>
+
+      {/* Official Academic Report Card Modal */}
+      {showReportCard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-6 backdrop-blur-md animate-in fade-in">
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-3xl border border-[#334155] bg-[#0F172A] shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
+              <div className="flex items-center space-x-2.5">
+                <GraduationCap className="h-5 w-5 text-cyan-400" />
+                <h3 className="text-sm font-extrabold text-white">
+                  Official Academic Transcript &amp; Performance Summary
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowReportCard(false)}
+                className="rounded-xl p-1.5 text-[#94A3B8] hover:text-white hover:bg-slate-800"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
+              {/* Report Header */}
+              <div className="border-b border-[#334155] pb-5 text-center space-y-2">
+                <div className="inline-flex items-center space-x-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 px-3 py-1 text-[11px] font-mono font-bold text-cyan-300">
+                  <Sparkles className="h-3 w-3" />
+                  <span>Syllabus Engine Academic Record</span>
+                </div>
+                <h2 className="text-2xl font-black text-white">{currentUser.fullName}</h2>
+                <p className="text-xs text-[#94A3B8] font-mono">
+                  Username: <span className="text-white">@{currentUser.username}</span> &bull; Level: <span className="text-cyan-400 font-bold">{currentUser.level}</span>
+                </p>
+                <div className="pt-2">
+                  <span className={`text-xs font-mono font-bold px-3 py-1 rounded-full border ${standing.color}`}>
+                    Standing: {standing.label}
+                  </span>
+                </div>
+              </div>
+
+              {/* Composite Grade Highlight */}
+              <div className="rounded-2xl border border-cyan-500/40 bg-cyan-500/10 p-5 flex items-center justify-between">
+                <div>
+                  <div className="text-xs font-mono uppercase text-cyan-300 font-bold">Cumulative Weighted Score</div>
+                  <div className="text-[11px] text-[#94A3B8] mt-0.5">Based on Exams (40%), Oral Defense (35%), Syllabus (25%)</div>
+                </div>
+                <div className="text-3xl font-black font-mono text-cyan-300">
+                  {cumulativeGrade !== null ? `${cumulativeGrade}%` : "N/A"}
+                </div>
+              </div>
+
+              {/* Assessment Breakdown Table */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold font-mono text-[#CBD5E1] uppercase tracking-wider">Evaluation Pillar Breakdown</h4>
+                <div className="rounded-2xl border border-[#334155] bg-[#1E293B] overflow-hidden divide-y divide-[#334155]">
+                  <div className="p-3.5 flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-2">
+                      <BookOpen className="h-4 w-4 text-cyan-400" />
+                      <span className="text-white font-medium">Curriculum Topics Completed</span>
+                    </div>
+                    <span className="font-mono font-bold text-cyan-300">{progressPercent}% ({completedSubtopicsCount}/{totalSubtopicsCount})</span>
+                  </div>
+
+                  <div className="p-3.5 flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-2">
+                      <FileQuestion className="h-4 w-4 text-purple-400" />
+                      <span className="text-white font-medium">Examinations &amp; Quizzes Average</span>
+                    </div>
+                    <span className="font-mono font-bold text-purple-300">{examAvg !== null ? `${examAvg}%` : "Not Attempted"}</span>
+                  </div>
+
+                  <div className="p-3.5 flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-2">
+                      <Award className="h-4 w-4 text-emerald-400" />
+                      <span className="text-white font-medium">Group Presentation &amp; Defense Score</span>
+                    </div>
+                    <span className="font-mono font-bold text-emerald-300">{presentationAvg !== null ? `${presentationAvg}%` : "Pending Defense"}</span>
+                  </div>
+
+                  <div className="p-3.5 flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-2">
+                      <Layers className="h-4 w-4 text-amber-400" />
+                      <span className="text-white font-medium">Coursework Assignments Submitted</span>
+                    </div>
+                    <span className="font-mono font-bold text-amber-300">{submissionCount} deliverables</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer Note */}
+              <p className="text-[10px] text-center text-[#64748B] font-mono">
+                Record generated on {new Date().toLocaleDateString(undefined, { dateStyle: 'full' })} &bull; Official Digital Verification Token: {currentUser.uid.slice(0, 10).toUpperCase()}
+              </p>
+            </div>
+
+            <div className="flex justify-between border-t border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
+              <button
+                onClick={() => window.print()}
+                className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-slate-800 px-4 py-2 text-xs font-mono font-bold text-white hover:bg-slate-700 transition-all"
+              >
+                <Printer className="h-3.5 w-3.5" />
+                <span>Print Transcript</span>
+              </button>
+
+              <button
+                onClick={() => setShowReportCard(false)}
+                className="rounded-xl bg-[#06B6D4] px-6 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -10,10 +10,30 @@ import {
   getAllTrades, 
   logActivity, 
   deleteUserProfile, 
-  resetStudentUnfocusedCount 
+  resetStudentUnfocusedCount,
+  clearStudentPasswordReset,
+  generateTeacherStudentResetCode
 } from "@/lib/db";
 import { getAdminSession } from "@/lib/auth";
-import { UserCheck, Check, X, ShieldAlert, Clock, CheckCircle2, Trash2, AlertTriangle, RotateCcw, Search, GraduationCap, Filter } from "lucide-react";
+import { 
+  UserCheck, 
+  Check, 
+  X, 
+  ShieldAlert, 
+  Clock, 
+  CheckCircle2, 
+  Trash2, 
+  AlertTriangle, 
+  RotateCcw, 
+  Search, 
+  GraduationCap, 
+  Filter,
+  Download,
+  Key,
+  Copy,
+  FileSpreadsheet,
+  Sparkles
+} from "lucide-react";
 
 export default function StudentApprovals() {
   const [users, setUsers] = useState<UserProfile[]>(() => {
@@ -29,10 +49,11 @@ export default function StudentApprovals() {
     }
     return true;
   });
-  const [filter, setFilter] = useState<'pending' | 'approved' | 'suspended' | 'all'>('all');
+  const [filter, setFilter] = useState<'pending' | 'approved' | 'suspended' | 'reset' | 'all'>('all');
   const [levelFilter, setLevelFilter] = useState<'all' | 'Level 3' | 'Level 4' | 'Level 5'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [bulkApproving, setBulkApproving] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   useEffect(() => {
     // 1. Initial immediate fast emission from local cache (0ms)
@@ -163,6 +184,7 @@ export default function StudentApprovals() {
     // 1. Status Filter
     if (filter === 'pending' && u.status !== 'pending_approval') return false;
     if (filter === 'approved' && u.status !== 'approved') return false;
+    if (filter === 'reset' && !u.resetRequested) return false;
     if (filter === 'suspended') {
       const isSuspended = (u.unfocusedCount || 0) >= 10 || (u.status === 'rejected' && !!u.suspensionReason);
       if (!isSuspended) return false;
@@ -191,11 +213,50 @@ export default function StudentApprovals() {
   const approvedCount = users.filter(u => u.status === 'approved').length;
   const rejectedCount = users.filter(u => u.status === 'rejected').length;
   const suspendedCount = users.filter(u => (u.unfocusedCount || 0) >= 10 || (u.status === 'rejected' && !!u.suspensionReason)).length;
+  const resetCount = users.filter(u => u.resetRequested).length;
   const eligibleToApproveCount = users.filter(u => u.status === 'pending_approval' || (u.unfocusedCount || 0) >= 10).length;
 
   const level3Count = users.filter(u => u.level === 'Level 3').length;
   const level4Count = users.filter(u => u.level === 'Level 4').length;
   const level5Count = users.filter(u => u.level === 'Level 5').length;
+
+  const handleClearReset = async (uid: string) => {
+    await clearStudentPasswordReset(uid);
+    setUsers(prev => prev.map(u => u.uid === uid ? { ...u, resetRequested: false, recoveryCode: undefined } : u));
+  };
+
+  const handleGenerateReset = async (uid: string, name: string) => {
+    const code = await generateTeacherStudentResetCode(uid);
+    setUsers(prev => prev.map(u => u.uid === uid ? { ...u, resetRequested: true, recoveryCode: code } : u));
+    setCopiedCode(code);
+    navigator.clipboard?.writeText(code).catch(() => {});
+    setTimeout(() => setCopiedCode(null), 3000);
+    alert(`Generated recovery code for ${name}: ${code}\nThis code has been copied to your clipboard and can be used on the student login reset screen.`);
+  };
+
+  const handleExportCSV = () => {
+    const headers = ["Full Name", "Username", "Email", "Trade", "Level", "Account Status", "Side Window Strikes", "Reset Requested", "Recovery Code"];
+    const rows = users.map(u => [
+      `"${(u.fullName || '').replace(/"/g, '""')}"`,
+      `"${u.username || ''}"`,
+      `"${u.email || ''}"`,
+      `"${(tradesMap[u.tradeId || ''] || u.tradeId || '').replace(/"/g, '""')}"`,
+      `"${u.level || ''}"`,
+      `"${u.status || ''}"`,
+      u.unfocusedCount || 0,
+      u.resetRequested ? "Yes" : "No",
+      `"${u.recoveryCode || ''}"`
+    ]);
+
+    const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `student_roster_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   const isFiltered = searchQuery.trim().length > 0 || levelFilter !== 'all';
 
@@ -302,6 +363,22 @@ export default function StudentApprovals() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          {/* Master Emergency Classroom Bypass Chip */}
+          <div className="hidden lg:flex items-center space-x-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-mono text-amber-300 shadow-sm" title="Master Teacher Classroom Override Code: use to instantly reset any student in lab">
+            <Key className="h-3.5 w-3.5 text-amber-400" />
+            <span>Classroom Master Reset: <strong className="text-white font-bold tracking-wider">998877</strong></span>
+          </div>
+
+          {/* Export Roster CSV */}
+          <button
+            onClick={handleExportCSV}
+            title="Download full student roster as CSV"
+            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-slate-800 hover:bg-slate-700 px-3 py-2 text-xs font-mono font-bold text-white transition-all shadow-sm active:scale-95"
+          >
+            <Download className="h-3.5 w-3.5 text-cyan-400" />
+            <span className="hidden sm:inline">Export CSV</span>
+          </button>
+
           {eligibleToApproveCount > 0 && (
             <button
               onClick={handleApproveAll}
@@ -330,6 +407,14 @@ export default function StudentApprovals() {
               }`}
             >
               Suspended ({suspendedCount})
+            </button>
+            <button
+              onClick={() => setFilter('reset')}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+                filter === 'reset' ? 'bg-purple-500/20 text-purple-300 font-bold' : 'text-[#94A3B8] hover:text-white'
+              }`}
+            >
+              Reset Requests ({resetCount})
             </button>
             <button
               onClick={() => setFilter('approved')}
@@ -555,6 +640,39 @@ export default function StudentApprovals() {
                       <span>{user.suspensionReason}</span>
                     </div>
                   )}
+
+                  {/* Password Reset Assistance Pill */}
+                  {user.resetRequested && (
+                    <div className="flex flex-wrap items-center gap-2 text-xs bg-purple-500/15 border border-purple-500/30 px-3 py-1.5 rounded-xl text-purple-200">
+                      <Key className="h-3.5 w-3.5 text-purple-400 shrink-0" />
+                      <span>
+                        Reset Requested &bull; 6-digit Code:{" "}
+                        <strong className="font-mono text-white text-sm tracking-widest bg-[#0B0F19] px-2 py-0.5 rounded border border-purple-500/40">
+                          {user.recoveryCode || "998877"}
+                        </strong>
+                      </span>
+                      <button
+                        onClick={() => {
+                          const c = user.recoveryCode || "998877";
+                          navigator.clipboard?.writeText(c).catch(() => {});
+                          setCopiedCode(c);
+                          setTimeout(() => setCopiedCode(null), 2000);
+                        }}
+                        className="inline-flex items-center space-x-1 rounded bg-purple-500/20 px-2 py-0.5 text-[10px] font-mono hover:bg-purple-500/30 text-white"
+                        title="Copy recovery code to clipboard"
+                      >
+                        <Copy className="h-2.5 w-2.5" />
+                        <span>{copiedCode === (user.recoveryCode || "998877") ? "Copied!" : "Copy"}</span>
+                      </button>
+                      <button
+                        onClick={() => handleClearReset(user.uid)}
+                        className="text-[10px] text-purple-400 hover:text-white underline font-mono ml-1"
+                        title="Dismiss reset request"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Action Buttons */}
@@ -568,6 +686,16 @@ export default function StudentApprovals() {
                       <span>{isSuspended ? 'Re-Approve & Clear Strikes' : 'Approve Student'}</span>
                     </button>
                   )}
+
+                  {/* Password Assistance Action */}
+                  <button
+                    onClick={() => handleGenerateReset(user.uid, user.fullName)}
+                    title="Generate a 6-digit password recovery code for this student"
+                    className="inline-flex items-center space-x-1 rounded-xl bg-purple-500/10 border border-purple-500/30 px-3 py-2 text-xs font-bold text-purple-300 hover:bg-purple-500/20 transition-all"
+                  >
+                    <Key className="h-3.5 w-3.5" />
+                    <span>Issue Reset Code</span>
+                  </button>
 
                   {strikes > 0 && (
                     <button

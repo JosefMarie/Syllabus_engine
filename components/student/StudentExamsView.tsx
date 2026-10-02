@@ -78,6 +78,42 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
   const [reviewAttempt, setReviewAttempt] = useState<ExamAttempt | null>(null);
   const [reviewExam, setReviewExam] = useState<Exam | null>(null);
 
+  // Live timer for countdowns
+  const [currentTime, setCurrentTime] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const getReviewUnlockStatus = (attempt?: ExamAttempt | null, exam?: Exam | null) => {
+    if (!attempt) return { isLocked: false, remainingMs: 0, unlockTime: null };
+    if (!exam || !exam.timeLimitMinutes || exam.timeLimitMinutes <= 0) {
+      return { isLocked: false, remainingMs: 0, unlockTime: null };
+    }
+    const startMs = new Date(attempt.startedAt).getTime();
+    const durationMs = exam.timeLimitMinutes * 60 * 1000;
+    const unlockMs = startMs + durationMs;
+    const remainingMs = Math.max(0, unlockMs - currentTime);
+
+    return {
+      isLocked: remainingMs > 0,
+      remainingMs,
+      unlockTime: new Date(unlockMs)
+    };
+  };
+
+  const formatRemainingTime = (ms: number) => {
+    const totalSec = Math.ceil(ms / 1000);
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    if (m >= 60) {
+      const h = Math.floor(m / 60);
+      const remM = m % 60;
+      return `${h}h ${remM}m ${s < 10 ? "0" : ""}${s}s`;
+    }
+    return `${m}m ${s < 10 ? "0" : ""}${s}s`;
+  };
+
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -461,15 +497,30 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
                 {/* Footer Actions */}
                 <div className="pt-3 border-t border-[#334155] flex items-center justify-between gap-2">
-                  {latestAttempt ? (
-                    <button
-                      onClick={() => handleOpenReview(latestAttempt)}
-                      className="inline-flex items-center space-x-1 text-xs font-mono text-[#06B6D4] hover:underline"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      <span>Review Answers</span>
-                    </button>
-                  ) : (
+                  {latestAttempt ? (() => {
+                    const unlockInfo = getReviewUnlockStatus(latestAttempt, exam);
+                    if (unlockInfo.isLocked) {
+                      return (
+                        <button
+                          onClick={() => handleOpenReview(latestAttempt)}
+                          className="inline-flex items-center space-x-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-mono text-amber-300 hover:bg-amber-500/20 transition-colors"
+                          title={`Review unlocks at ${unlockInfo.unlockTime?.toLocaleTimeString()} when the exam time is over`}
+                        >
+                          <Lock className="h-3 w-3 text-amber-400 shrink-0" />
+                          <span>Review in {formatRemainingTime(unlockInfo.remainingMs)}</span>
+                        </button>
+                      );
+                    }
+                    return (
+                      <button
+                        onClick={() => handleOpenReview(latestAttempt)}
+                        className="inline-flex items-center space-x-1 text-xs font-mono text-[#06B6D4] hover:underline"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>Review &amp; Explanations</span>
+                      </button>
+                    );
+                  })() : (
                     <span className="text-[11px] font-mono text-[#64748B]">
                       {exam.maxAttempts === 1 ? "1 Attempt Only" : "Multiple Attempts"}
                     </span>
@@ -631,14 +682,62 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                       </p>
                     )}
                   </div>
+
+                  {/* Review Availability Banner */}
+                  {(() => {
+                    const unlockInfo = getReviewUnlockStatus(completedAttempt, activeExam);
+                    if (unlockInfo.isLocked) {
+                      return (
+                        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-left space-y-2">
+                          <div className="flex items-center space-x-2 text-amber-300 font-bold text-xs font-mono">
+                            <Lock className="h-4 w-4 text-amber-400 shrink-0" />
+                            <span>Exam Review &amp; Explanations Locked</span>
+                          </div>
+                          <p className="text-xs text-[#CBD5E1] leading-relaxed">
+                            In accordance with academic testing protocols, full question explanations and official solutions will be unlocked once the {activeExam.timeLimitMinutes}-minute exam session is over.
+                          </p>
+                          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-amber-500/20 text-[11px] font-mono text-amber-300">
+                            <span>Unlocks at: {unlockInfo.unlockTime?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                            <span className="font-bold flex items-center space-x-1.5 text-amber-400">
+                              <Clock className="h-3.5 w-3.5 animate-pulse" />
+                              <span>Unlocks in {formatRemainingTime(unlockInfo.remainingMs)}</span>
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    }
+                    return (
+                      <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 text-left space-y-2">
+                        <div className="flex items-center space-x-2 text-emerald-300 font-bold text-xs font-mono">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                          <span>Exam Review &amp; Explanations Available</span>
+                        </div>
+                        <p className="text-xs text-[#CBD5E1] leading-relaxed">
+                          The designated exam duration has concluded. You may now review question-by-question explanations and correct answers.
+                        </p>
+                      </div>
+                    );
+                  })()}
                 </div>
 
-                <div className="flex justify-center pt-6 border-t border-[#334155]">
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-6 border-t border-[#334155]">
                   <button
                     onClick={handleCloseExamHall}
-                    className="rounded-xl bg-[#06B6D4] px-8 py-2.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+                    className="rounded-xl bg-slate-800 border border-[#334155] px-6 py-2.5 text-xs font-bold text-white hover:bg-slate-700 transition-all shadow-md"
                   >
                     Return to Exam Portal
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      const att = completedAttempt;
+                      handleCloseExamHall();
+                      handleOpenReview(att);
+                    }}
+                    className="inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4] px-6 py-2.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+                  >
+                    <Eye className="h-4 w-4" />
+                    <span>View Exam Review</span>
                   </button>
                 </div>
               </div>
@@ -938,67 +1037,195 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              {/* Teacher Feedback if graded */}
-              {reviewAttempt.teacherFeedback && (
-                <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4 space-y-1">
-                  <span className="text-xs font-bold text-cyan-300 font-mono flex items-center space-x-1.5">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    <span>Teacher Remarks &amp; Feedback:</span>
-                  </span>
-                  <p className="text-xs text-[#CBD5E1] italic">"{reviewAttempt.teacherFeedback}"</p>
-                </div>
-              )}
+              {(() => {
+                const unlockInfo = getReviewUnlockStatus(reviewAttempt, reviewExam);
 
-              {/* Questions breakdown */}
-              {reviewExam && reviewExam.questions.map((q, idx) => {
-                const ans = reviewAttempt.answers[q.id];
-                const grade = reviewAttempt.questionGrades?.[q.id];
-                const isFullPoints = (grade?.awardedPoints ?? 0) === q.points;
+                if (unlockInfo.isLocked) {
+                  return (
+                    <div className="flex flex-col items-center justify-center p-6 sm:p-10 text-center space-y-5 my-auto">
+                      <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-amber-500/15 border border-amber-500/30 text-amber-400 shadow-xl">
+                        <Lock className="h-10 w-10 animate-bounce" />
+                      </div>
 
-                return (
-                  <div key={q.id} className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4 space-y-3">
-                    <div className="flex items-center justify-between border-b border-[#334155]/60 pb-2">
-                      <span className="text-xs font-mono font-bold text-[#06B6D4]">
-                        Question #{idx + 1}
-                      </span>
-                      <span className={`text-xs font-mono font-bold ${
-                        isFullPoints ? "text-emerald-400" : "text-amber-400"
-                      }`}>
-                        {grade?.awardedPoints ?? 0} / {q.points} Points
-                      </span>
-                    </div>
+                      <div className="space-y-2 max-w-md">
+                        <span className="inline-flex items-center space-x-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 px-3 py-1 text-[11px] font-mono font-bold text-amber-300">
+                          <Clock className="h-3 w-3" />
+                          <span>Timed Assessment Protocol</span>
+                        </span>
+                        <h4 className="text-xl font-extrabold text-white">Review &amp; Explanations Locked</h4>
+                        <p className="text-xs text-[#94A3B8] leading-relaxed">
+                          This assessment has a time limit of <strong className="text-white">{reviewExam?.timeLimitMinutes} minutes</strong>. Detailed question explanations, correct answers, and solution breakdowns will automatically unlock once the time set for the exam is over.
+                        </p>
+                      </div>
 
-                    <p className="text-xs text-white font-medium">{q.prompt}</p>
-
-                    {["code_completion", "code_ordering", "predict_output"].includes(q.type) ? (
-                      <CodeQuestionRenderer
-                        question={q}
-                        mode="review"
-                        studentAnswer={ans}
-                        grade={grade}
-                        showCorrectAnswer={true}
-                      />
-                    ) : (
-                      <div className="rounded-xl bg-[#0B0F19] p-3 text-xs border border-[#334155]">
-                        <span className="text-[10px] font-mono text-[#94A3B8] uppercase block mb-1">Your Answer:</span>
-                        <div className="font-mono text-white">
-                          {ans !== undefined && ans !== null
-                            ? (Array.isArray(ans) ? ans.join(", ") : String(ans))
-                            : <span className="text-slate-500 italic">No answer submitted</span>
-                          }
+                      {/* Live countdown card */}
+                      <div className="rounded-2xl border border-amber-500/30 bg-[#0B0F19] p-5 w-full max-w-sm space-y-2.5 shadow-inner text-left">
+                        <div className="flex items-center justify-between text-xs font-mono text-[#94A3B8]">
+                          <span>Unlocks In:</span>
+                          <span className="text-amber-400 font-bold flex items-center space-x-1.5">
+                            <Clock className="h-3.5 w-3.5 animate-pulse" />
+                            <span>{formatRemainingTime(unlockInfo.remainingMs)}</span>
+                          </span>
+                        </div>
+                        <div className="w-full bg-[#1E293B] h-2 rounded-full overflow-hidden">
+                          <div 
+                            className="bg-amber-400 h-full rounded-full transition-all duration-1000"
+                            style={{ 
+                              width: `${Math.max(5, Math.min(100, 100 - (unlockInfo.remainingMs / ((reviewExam?.timeLimitMinutes || 1) * 60000)) * 100))}%` 
+                            }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-[10px] font-mono text-[#64748B] pt-1 border-t border-[#1E293B]">
+                          <span>Started: {new Date(reviewAttempt.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span>Unlocks: {unlockInfo.unlockTime?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                         </div>
                       </div>
-                    )}
 
-                    {q.explanation && (
-                      <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/20 p-3 text-xs text-cyan-200">
-                        <strong className="block text-[10px] font-mono uppercase text-cyan-300 mb-0.5">Explanation:</strong>
-                        <span>{q.explanation}</span>
+                      <div className="text-xs text-[#94A3B8]">
+                        Evaluation score: <strong className={reviewAttempt.passed ? "text-emerald-400" : "text-rose-400"}>{reviewAttempt.score} / {reviewAttempt.maxScore} ({reviewAttempt.percentage}%)</strong>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  <>
+                    {/* Unlocked banner */}
+                    <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4 flex items-center justify-between">
+                      <div className="flex items-center space-x-2.5">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
+                        <div>
+                          <div className="text-xs font-bold text-emerald-300 font-mono">Exam Session Concluded — Review Unlocked</div>
+                          <p className="text-[11px] text-[#94A3B8]">You can now view official answers, instructor rationales, and detailed explanations.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Teacher Feedback if graded */}
+                    {reviewAttempt.teacherFeedback && (
+                      <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4 space-y-1">
+                        <span className="text-xs font-bold text-cyan-300 font-mono flex items-center space-x-1.5">
+                          <Sparkles className="h-3.5 w-3.5" />
+                          <span>Teacher Remarks &amp; Feedback:</span>
+                        </span>
+                        <p className="text-xs text-[#CBD5E1] italic">"{reviewAttempt.teacherFeedback}"</p>
                       </div>
                     )}
-                  </div>
+
+                    {/* Questions breakdown */}
+                    {reviewExam && reviewExam.questions.map((q, idx) => {
+                      const ans = reviewAttempt.answers[q.id];
+                      const grade = reviewAttempt.questionGrades?.[q.id];
+                      const isFullPoints = (grade?.awardedPoints ?? 0) === q.points;
+
+                      return (
+                        <div key={q.id} className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4 space-y-3">
+                          <div className="flex items-center justify-between border-b border-[#334155]/60 pb-2">
+                            <span className="text-xs font-mono font-bold text-[#06B6D4]">
+                              Question #{idx + 1} &bull; <span className="uppercase text-[10px] text-[#94A3B8]">{q.type.replace('_', ' ')}</span>
+                            </span>
+                            <span className={`text-xs font-mono font-bold ${
+                              isFullPoints ? "text-emerald-400" : "text-amber-400"
+                            }`}>
+                              {grade?.awardedPoints ?? 0} / {q.points} Points
+                            </span>
+                          </div>
+
+                          <p className="text-xs text-white font-medium">{q.prompt}</p>
+
+                          {["code_completion", "code_ordering", "predict_output"].includes(q.type) ? (
+                            <CodeQuestionRenderer
+                              question={q}
+                              mode="review"
+                              studentAnswer={ans}
+                              grade={grade}
+                              showCorrectAnswer={true}
+                            />
+                          ) : q.options && (q.type === "multiple_choice" || q.type === "true_false" || q.type === "multiple_select") ? (
+                            <div className="space-y-1.5 pt-1">
+                              <span className="text-[10px] font-mono text-[#94A3B8] uppercase block">Choices &amp; Answers:</span>
+                              {q.options.map((opt, optIdx) => {
+                                const isUserSelected = Array.isArray(ans) ? ans.includes(opt) : ans === opt;
+                                const isOfficialCorrect = Array.isArray(q.correctAnswer)
+                                  ? q.correctAnswer.includes(opt)
+                                  : String(q.correctAnswer).toLowerCase() === String(opt).toLowerCase();
+
+                                return (
+                                  <div
+                                    key={optIdx}
+                                    className={`flex items-center justify-between p-2.5 rounded-xl text-xs border transition-colors ${
+                                      isOfficialCorrect
+                                        ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-200"
+                                        : isUserSelected && !isOfficialCorrect
+                                        ? "bg-rose-500/15 border-rose-500/40 text-rose-200"
+                                        : "bg-[#0B0F19] border-[#334155]/60 text-[#CBD5E1]"
+                                    }`}
+                                  >
+                                    <div className="flex items-center space-x-2">
+                                      <span className="font-mono text-[10px] text-[#64748B]">
+                                        {String.fromCharCode(65 + optIdx)}.
+                                      </span>
+                                      <span>{opt}</span>
+                                    </div>
+
+                                    <div className="flex items-center space-x-1.5 shrink-0 text-[10px] font-mono">
+                                      {isOfficialCorrect && (
+                                        <span className="inline-flex items-center space-x-1 rounded bg-emerald-500/20 px-2 py-0.5 text-emerald-400 font-bold">
+                                          <Check className="h-3 w-3" />
+                                          <span>Correct Answer</span>
+                                        </span>
+                                      )}
+                                      {isUserSelected && (
+                                        <span className={`inline-flex items-center space-x-1 rounded px-2 py-0.5 font-bold ${
+                                          isOfficialCorrect ? "bg-emerald-500/20 text-emerald-300" : "bg-rose-500/20 text-rose-300"
+                                        }`}>
+                                          <span>Your Selection</span>
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="rounded-xl bg-[#0B0F19] p-3 text-xs border border-[#334155]">
+                                <span className="text-[10px] font-mono text-[#94A3B8] uppercase block mb-1">Your Submitted Answer:</span>
+                                <div className="font-mono text-white whitespace-pre-wrap">
+                                  {ans !== undefined && ans !== null
+                                    ? (Array.isArray(ans) ? ans.join(", ") : String(ans))
+                                    : <span className="text-slate-500 italic">No answer submitted</span>
+                                  }
+                                </div>
+                              </div>
+
+                              {q.correctAnswer && (
+                                <div className="rounded-xl bg-emerald-500/10 p-3 text-xs border border-emerald-500/30">
+                                  <span className="text-[10px] font-mono text-emerald-400 uppercase block mb-1">Expected Correct Answer:</span>
+                                  <div className="font-mono text-emerald-300 whitespace-pre-wrap">
+                                    {String(q.correctAnswer)}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Question Explanation */}
+                          {q.explanation && (
+                            <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/25 p-3.5 text-xs text-cyan-200 space-y-1">
+                              <strong className="flex items-center space-x-1.5 text-[10px] font-mono uppercase text-cyan-300">
+                                <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+                                <span>Explanation &amp; Solution Rationale:</span>
+                              </strong>
+                              <p className="leading-relaxed text-[#E2E8F0]">{q.explanation}</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </>
                 );
-              })}
+              })()}
             </div>
 
             <div className="flex justify-end border-t border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">

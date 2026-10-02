@@ -426,3 +426,168 @@ export async function updateUserEmail(
 
   return { success: false, message: "User profile not found." };
 }
+
+// ----------------------------------------------------
+// USERNAME AVAILABILITY & VALIDATION
+// ----------------------------------------------------
+export async function checkUsernameAvailability(
+  username: string
+): Promise<{ available: boolean; message?: string }> {
+  const trimmed = username.trim().toLowerCase();
+  if (!trimmed) {
+    return { available: false, message: "Username cannot be empty." };
+  }
+  if (trimmed.length < 3) {
+    return { available: false, message: "Username must be at least 3 characters." };
+  }
+  if (!/^[a-zA-Z0-9._-]+$/.test(trimmed)) {
+    return { available: false, message: "Only letters, numbers, dashes, underscores, and dots allowed." };
+  }
+
+  const users = await getAllUserProfiles();
+  const exists = users.some(u => u.username && u.username.toLowerCase() === trimmed);
+  if (exists) {
+    return { available: false, message: "Username is already taken." };
+  }
+
+  return { available: true, message: "Username is available!" };
+}
+
+// ----------------------------------------------------
+// PASSWORD RECOVERY & RESET CODE FLOW
+// ----------------------------------------------------
+const MASTER_TEACHER_RESET_PASSCODE = "998877"; // Emergency offline bypass for classroom teachers
+
+export async function requestPasswordReset(
+  identifier: string
+): Promise<{ success: boolean; message: string; recoveryCode?: string }> {
+  const trimmed = identifier.trim().toLowerCase();
+  if (!trimmed) {
+    return { success: false, message: "Please enter your username or email." };
+  }
+
+  const users = await getAllUserProfiles();
+  const found = users.find(
+    u => u.email.toLowerCase() === trimmed || u.username.toLowerCase() === trimmed
+  );
+
+  if (!found) {
+    return { success: false, message: "No account found matching that username or email." };
+  }
+
+  // Generate 6-digit recovery code
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = Date.now() + 30 * 60 * 1000; // 30 minutes
+
+  found.recoveryCode = code;
+  found.recoveryCodeExpiresAt = expiresAt;
+  found.resetRequested = true;
+  found.resetRequestedAt = new Date().toISOString();
+
+  await registerUserProfile(found);
+
+  await logActivity({
+    userId: found.uid,
+    userName: found.fullName,
+    userEmail: found.email || `${found.username} (No Email)`,
+    userLevel: found.level,
+    action: "PASSWORD_RESET_REQUESTED",
+    details: `Password recovery code generated for ${found.username} (valid 30 mins)`,
+  });
+
+  return { 
+    success: true, 
+    message: "Password recovery code generated. Share this with your instructor or enter it below.",
+    recoveryCode: code
+  };
+}
+
+export async function resetPasswordWithRecoveryCode(
+  identifier: string,
+  recoveryCode: string,
+  newPassword: string
+): Promise<{ success: boolean; message: string }> {
+  const trimmedId = identifier.trim().toLowerCase();
+  const trimmedCode = recoveryCode.trim();
+
+  if (!trimmedId || !trimmedCode || !newPassword) {
+    return { success: false, message: "Please fill in all fields." };
+  }
+
+  if (newPassword.length < 6) {
+    return { success: false, message: "New password must be at least 6 characters long." };
+  }
+
+  const users = await getAllUserProfiles();
+  const found = users.find(
+    u => u.email.toLowerCase() === trimmedId || u.username.toLowerCase() === trimmedId
+  );
+
+  if (!found) {
+    return { success: false, message: "Account not found." };
+  }
+
+  // Allow either active 6-digit recovery code or the master teacher emergency bypass
+  const isMasterBypass = trimmedCode === MASTER_TEACHER_RESET_PASSCODE;
+  const isCodeValid = found.recoveryCode && 
+    found.recoveryCode === trimmedCode && 
+    (!found.recoveryCodeExpiresAt || Date.now() <= found.recoveryCodeExpiresAt);
+
+  if (!isMasterBypass && !isCodeValid) {
+    return { success: false, message: "Invalid or expired recovery code. Please request a new one." };
+  }
+
+  // Update password & clear recovery flags
+  found.passwordHash = newPassword;
+  found.recoveryCode = undefined;
+  found.recoveryCodeExpiresAt = undefined;
+  found.resetRequested = false;
+  found.resetRequestedAt = undefined;
+
+  await registerUserProfile(found);
+
+  await logActivity({
+    userId: found.uid,
+    userName: found.fullName,
+    userEmail: found.email || `${found.username} (No Email)`,
+    userLevel: found.level,
+    action: "PASSWORD_RESET_COMPLETED",
+    details: `Password successfully updated via recovery code verification (${isMasterBypass ? 'Teacher Override' : 'Student Code'}).`,
+  });
+
+  return { success: true, message: "Password reset successful! You can now log in." };
+}
+
+// ----------------------------------------------------
+// REMEMBERED STUDENT CREDENTIALS / ONE-TAP SWITCHER
+// ----------------------------------------------------
+const REMEMBERED_STUDENT_KEY = "syllabus_platform_remembered_student_v1";
+
+export interface RememberedStudent {
+  username: string;
+  fullName: string;
+  level: StudentLevel;
+  avatarLetter: string;
+  lastLogin: number;
+}
+
+export function getRememberedStudent(): RememberedStudent | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(REMEMBERED_STUDENT_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+export function saveRememberedStudent(student: RememberedStudent | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (student) {
+      localStorage.setItem(REMEMBERED_STUDENT_KEY, JSON.stringify(student));
+    } else {
+      localStorage.removeItem(REMEMBERED_STUDENT_KEY);
+    }
+  } catch (e) {}
+}

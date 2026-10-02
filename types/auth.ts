@@ -24,4 +24,8 @@ export interface UserProfile {
   suspensionReason?: string;
   sessionIssuedAt?: number;
   sessionExpiresAt?: number;
+  recoveryCode?: string;
+  recoveryCodeExpiresAt?: number;
+  resetRequested?: boolean;
+  resetRequestedAt?: string;
 }

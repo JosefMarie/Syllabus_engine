@@ -924,6 +924,32 @@ export async function updateUserStatus(uid: string, status: AccountStatus): Prom
   }
 }
 
+export async function clearStudentPasswordReset(uid: string): Promise<void> {
+  const all = await getAllUserProfiles();
+  const target = all.find(u => u.uid === uid);
+  if (target) {
+    target.resetRequested = false;
+    target.recoveryCode = undefined;
+    target.recoveryCodeExpiresAt = undefined;
+    target.resetRequestedAt = undefined;
+    await saveUserProfile(target);
+  }
+}
+
+export async function generateTeacherStudentResetCode(uid: string): Promise<string> {
+  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const all = await getAllUserProfiles();
+  const target = all.find(u => u.uid === uid);
+  if (target) {
+    target.recoveryCode = code;
+    target.recoveryCodeExpiresAt = Date.now() + 60 * 60 * 1000; // 1 hour
+    target.resetRequested = true;
+    target.resetRequestedAt = new Date().toISOString();
+    await saveUserProfile(target);
+  }
+  return code;
+}
+
 /**
  * Records a student side-window / unfocused incident (strike).
  * If strikes reach 10, the student's account is automatically set to 'rejected' (suspended),
