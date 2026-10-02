@@ -54,10 +54,22 @@ const isTradeMatch = (groupTrade?: string, targetTrade?: string, tradesList: Tra
   if (!groupTrade || groupTrade === "all") return true;
   if (groupTrade === targetTrade) return true;
   if (groupTrade.toLowerCase() === targetTrade.toLowerCase()) return true;
-  const found = tradesList.find(t => t.id === targetTrade || t.name === targetTrade);
-  if (found) {
-    if (groupTrade === found.id || groupTrade === found.name) return true;
-    if (groupTrade.toLowerCase() === found.name.toLowerCase()) return true;
+  
+  const targetTradeObj = tradesList.find(t => t.id === targetTrade || t.name === targetTrade);
+  const groupTradeObj = tradesList.find(t => t.id === groupTrade || t.name === groupTrade);
+
+  if (targetTradeObj && groupTradeObj) {
+    return targetTradeObj.id === groupTradeObj.id;
+  }
+  if (targetTradeObj) {
+    if (groupTrade === targetTradeObj.id || groupTrade === targetTradeObj.name) return true;
+    if (groupTrade.toLowerCase() === targetTradeObj.name.toLowerCase()) return true;
+    if (groupTrade.toLowerCase() === targetTradeObj.id.toLowerCase()) return true;
+  }
+  if (groupTradeObj) {
+    if (groupTradeObj.id === targetTrade || groupTradeObj.name === targetTrade) return true;
+    if (groupTradeObj.name.toLowerCase() === targetTrade.toLowerCase()) return true;
+    if (groupTradeObj.id.toLowerCase() === targetTrade.toLowerCase()) return true;
   }
   return false;
 };
@@ -130,15 +142,15 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
   const [isParsingDoc, setIsParsingDoc] = useState(false);
   const [parseStatus, setParseStatus] = useState<string | null>(null);
 
-  // Compute eligible student groups filtered by target level, trade, and course
+  // Compute eligible student groups filtered by target level and trade.
+  // In this system, student groups represent the entire class cohort for that level, serving all courses taught within that level.
   const targetableGroups = useMemo(() => {
     return courseGroups.filter(g => {
       const matchLvl = isLevelMatch(g.level, formLevel);
       const matchTrd = isTradeMatch(g.tradeId, formTradeId, trades);
-      const matchCrs = isCourseMatch(g.courseCode, formCourseCode);
-      return matchLvl && matchTrd && matchCrs;
+      return matchLvl && matchTrd;
     });
-  }, [courseGroups, formLevel, formTradeId, formCourseCode, trades]);
+  }, [courseGroups, formLevel, formTradeId, trades]);
 
   // If a previously selected group is no longer valid for the updated level/trade, reset to all_groups
   useEffect(() => {
@@ -999,7 +1011,7 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                         <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs flex items-center space-x-2">
                           <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
                           <span>
-                            No student groups found matching {formLevel !== "all" ? formLevel : "All Levels"} {formTradeId !== "all" ? `(${formTradeId})` : ""}.
+                            No student groups found matching {formLevel !== "all" ? formLevel : "All Levels"} {formTradeId !== "all" ? `(${trades.find(t => t.id === formTradeId)?.name || formTradeId})` : ""}.
                             You can create new groups in the <strong>Groups</strong> tab, or adjust Level/Trade filters.
                           </span>
                         </div>
