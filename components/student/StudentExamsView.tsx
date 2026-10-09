@@ -35,7 +35,9 @@ import {
   Send,
   BookOpen,
   Lock,
-  Sparkles
+  Sparkles,
+  Maximize2,
+  Minimize2
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -77,6 +79,61 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
   // Review Past Attempt Modal
   const [reviewAttempt, setReviewAttempt] = useState<ExamAttempt | null>(null);
   const [reviewExam, setReviewExam] = useState<Exam | null>(null);
+
+  // Fullscreen examination hall state
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!(document.fullscreenElement || (document as any).webkitFullscreenElement));
+    };
+    document.addEventListener("fullscreenchange", handleFsChange);
+    document.addEventListener("webkitfullscreenchange", handleFsChange);
+    return () => {
+      document.removeEventListener("fullscreenchange", handleFsChange);
+      document.removeEventListener("webkitfullscreenchange", handleFsChange);
+    };
+  }, []);
+
+  const enterFullscreen = () => {
+    try {
+      if (typeof document !== "undefined") {
+        const el = document.documentElement as any;
+        if (el.requestFullscreen) {
+          el.requestFullscreen().catch(() => {});
+        } else if (el.webkitRequestFullscreen) {
+          el.webkitRequestFullscreen();
+        } else if (el.msRequestFullscreen) {
+          el.msRequestFullscreen();
+        }
+      }
+    } catch (e) {}
+  };
+
+  const exitFullscreen = () => {
+    try {
+      if (typeof document !== "undefined") {
+        const doc = document as any;
+        if (doc.fullscreenElement || doc.webkitFullscreenElement || doc.mozFullScreenElement || doc.msFullscreenElement) {
+          if (doc.exitFullscreen) {
+            doc.exitFullscreen().catch(() => {});
+          } else if (doc.webkitExitFullscreen) {
+            doc.webkitExitFullscreen();
+          } else if (doc.msExitFullscreen) {
+            doc.msExitFullscreen();
+          }
+        }
+      }
+    } catch (e) {}
+  };
+
+  const toggleFullscreen = () => {
+    if (typeof document !== "undefined" && (document.fullscreenElement || (document as any).webkitFullscreenElement)) {
+      exitFullscreen();
+    } else {
+      enterFullscreen();
+    }
+  };
 
   // Live timer for countdowns
   const [currentTime, setCurrentTime] = useState(Date.now());
@@ -211,6 +268,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
   const handleStartExamConfirmed = () => {
     setExamStarted(true);
+    enterFullscreen();
   };
 
   // Select Answer
@@ -297,6 +355,8 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
       await saveExamAttempt(attemptPayload);
       setMyAttempts(prev => [attemptPayload, ...prev]);
       setCompletedAttempt(attemptPayload);
+      setExamStarted(false);
+      exitFullscreen();
     } catch (e) {
       console.error("Failed to submit exam attempt:", e);
       alert("Error submitting answers. Please try again.");
@@ -306,6 +366,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
   };
 
   const handleCloseExamHall = () => {
+    exitFullscreen();
     setActiveExam(null);
     setExamStarted(false);
     setCompletedAttempt(null);
@@ -551,8 +612,14 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
       {/* EXAM HALL MODAL */}
       {/* ========================================================================= */}
       {activeExam && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-2 sm:p-6 backdrop-blur-lg animate-in fade-in">
-          <div className="h-full max-h-[96vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-[#334155] bg-[#0F172A] shadow-2xl flex flex-col relative">
+        <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black/95 ${
+          examStarted ? "p-0 w-screen h-screen h-[100dvh]" : "p-3 sm:p-6"
+        } backdrop-blur-md animate-in fade-in`}>
+          <div className={`h-full w-full ${
+            examStarted
+              ? "h-[100dvh] max-h-screen w-screen max-w-none rounded-none border-0"
+              : "max-h-[96vh] max-w-4xl rounded-3xl border border-[#334155]"
+          } overflow-hidden bg-[#0F172A] shadow-2xl flex flex-col relative transition-all duration-300`}>
             
             {/* Proctoring Violation Floating Alert Toast */}
             {violationToast && (
@@ -745,17 +812,20 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
               /* ACTIVE TEST TAKING WORKSPACE */
               <>
                 {/* Header with Countdown & Controls */}
-                <div className="flex items-center justify-between border-b border-[#334155] px-6 py-3.5 bg-[#1E293B]/80 shrink-0">
+                <div className="flex items-center justify-between border-b border-[#334155] px-4 sm:px-6 py-3.5 bg-[#1E293B]/90 shrink-0">
                   <div className="flex items-center space-x-3">
                     <span className="text-xs font-mono font-bold text-[#06B6D4] uppercase">
                       {activeExam.courseCode}
                     </span>
-                    <span className="text-xs text-white font-bold truncate max-w-[200px] sm:max-w-xs">
+                    <span className="text-xs text-white font-bold truncate max-w-[160px] sm:max-w-md">
                       {activeExam.title}
+                    </span>
+                    <span className="hidden md:inline-flex items-center space-x-1 rounded-md bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 text-[10px] font-mono text-purple-300">
+                      <span>Live Examination</span>
                     </span>
                   </div>
 
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2 sm:space-x-3">
                     {/* Live Countdown Timer */}
                     {activeExam.timeLimitMinutes > 0 && (
                       <div className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl font-mono font-extrabold text-xs border ${
@@ -773,10 +843,30 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                       </div>
                     )}
 
+                    {/* Fullscreen Toggle Button */}
+                    <button
+                      onClick={toggleFullscreen}
+                      type="button"
+                      title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen Mode"}
+                      className="p-2 rounded-xl text-[#94A3B8] hover:text-white bg-[#0B0F19] border border-[#334155] hover:border-cyan-400/50 transition-all flex items-center space-x-1.5 text-xs font-mono"
+                    >
+                      {isFullscreen ? (
+                        <>
+                          <Minimize2 className="h-4 w-4 text-cyan-400" />
+                          <span className="hidden lg:inline text-[11px]">Exit Fullscreen</span>
+                        </>
+                      ) : (
+                        <>
+                          <Maximize2 className="h-4 w-4 text-cyan-400" />
+                          <span className="hidden lg:inline text-[11px]">Fit Full Screen</span>
+                        </>
+                      )}
+                    </button>
+
                     <button
                       onClick={handleManualSubmit}
                       disabled={submittingAttempt}
-                      className="inline-flex items-center space-x-1.5 rounded-xl bg-emerald-400 px-4 py-1.5 text-xs font-bold text-slate-950 hover:bg-emerald-500 hover:text-white transition-all shadow-md disabled:opacity-50"
+                      className="inline-flex items-center space-x-1.5 rounded-xl bg-emerald-400 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-emerald-500 hover:text-white transition-all shadow-md disabled:opacity-50"
                     >
                       <Send className="h-3.5 w-3.5" />
                       <span>{submittingAttempt ? "Submitting..." : "Finish & Submit"}</span>
@@ -816,14 +906,14 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
                 {/* Active Question Workspace */}
                 {activeExam.questions[currentQuestionIdx] && (
-                  <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
+                  <div className="flex-1 overflow-y-auto p-6 sm:p-10 space-y-6">
                     {(() => {
                       const q = activeExam.questions[currentQuestionIdx];
                       const currentVal = studentAnswers[q.id];
                       const isFlagged = flaggedQuestions[q.id];
 
                       return (
-                        <div className="space-y-6 max-w-2xl mx-auto">
+                        <div className="space-y-6 max-w-4xl mx-auto">
                           {/* Question Prompt Header */}
                           <div className="flex items-center justify-between border-b border-[#334155] pb-3">
                             <span className="text-xs font-mono font-bold text-[#06B6D4] uppercase">
