@@ -94,3 +94,30 @@ export interface ExamAttempt {
   gradedBy?: string;
   gradedAt?: string;
 }
+
+export type ProctoringSessionStatus = 'active' | 'submitted' | 'flagged' | 'force_submitted' | 'disconnected';
+
+export interface LiveProctoringSession {
+  id: string; // `${examId}_${studentUid}`
+  examId: string;
+  examTitle: string;
+  courseCode: string;
+  studentUid: string;
+  studentName: string;
+  studentUsername?: string;
+  studentLevel: StudentLevel;
+  studentTradeId?: string;
+  status: ProctoringSessionStatus;
+  startedAt: string;
+  lastHeartbeat: string;
+  timeLimitMinutes: number;
+  timeRemainingSeconds: number;
+  extraTimeGrantedMinutes: number;
+  tabSwitchViolations: number;
+  answeredQuestionsCount: number;
+  totalQuestions: number;
+  currentQuestionIndex: number;
+  flagReason?: string;
+  lastViolationAt?: string;
+  forceSubmitRequested?: boolean;
+}

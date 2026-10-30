@@ -5,7 +5,8 @@ import {
   Exam, 
   ExamQuestion, 
   ExamAttempt, 
-  QuestionGrade 
+  QuestionGrade,
+  LiveProctoringSession
 } from "@/types/exam";
 import { Syllabus } from "@/types/syllabus";
 import { UserProfile } from "@/types/auth";
@@ -13,7 +14,10 @@ import {
   getExams, 
   getExamAttemptsForStudent, 
   saveExamAttempt, 
-  calculateAutoGrade 
+  calculateAutoGrade,
+  saveLiveProctoringSession,
+  subscribeToStudentLiveSession,
+  deleteLiveExamSession
 } from "@/lib/db";
 import { 
   FileQuestion, 
@@ -443,6 +447,66 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
     };
   }, [examStarted, activeExam]);
 
+  // Real-Time Proctoring Listener & Heartbeat Sync
+  useEffect(() => {
+    if (!examStarted || !activeExam) return;
+
+    let prevExtraTime = 0;
+
+    // 1. Reactive listener: receive instructor actions (extra time, force-submit)
+    const unsub = subscribeToStudentLiveSession(currentUser.uid, activeExam.id, (live) => {
+      if (!live) return;
+
+      // Handle extra time grant from teacher
+      if (live.extraTimeGrantedMinutes > prevExtraTime) {
+        const addedMins = live.extraTimeGrantedMinutes - prevExtraTime;
+        prevExtraTime = live.extraTimeGrantedMinutes;
+        setTimeRemainingSeconds(prev => prev + (addedMins * 60));
+        setViolationToast(`⏱️ Proctor Notice: Instructor granted you +${addedMins} minute(s) extra time!`);
+        setTimeout(() => setViolationToast(null), 6000);
+      }
+
+      // Handle remote call-in / force submit
+      if (live.forceSubmitRequested || live.status === "force_submitted") {
+        alert("⚠️ Proctoring Notice: Your assessment has been force-submitted by the instructor.");
+        finalizeSubmission(true);
+      }
+    });
+
+    // 2. Periodic Heartbeat sync (every 5 seconds)
+    const heartbeatTimer = setInterval(() => {
+      const answeredCount = Object.keys(studentAnswers).filter(k => isQuestionAnswered(studentAnswers[k])).length;
+      const livePayload: LiveProctoringSession = {
+        id: `${activeExam.id}_${currentUser.uid}`,
+        examId: activeExam.id,
+        examTitle: activeExam.title,
+        courseCode: activeExam.courseCode,
+        studentUid: currentUser.uid,
+        studentName: currentUser.fullName,
+        studentUsername: currentUser.username,
+        studentLevel: currentUser.level,
+        studentTradeId: currentUser.tradeId,
+        status: "active",
+        startedAt: examStartedAtRef.current || new Date().toISOString(),
+        lastHeartbeat: new Date().toISOString(),
+        timeLimitMinutes: activeExam.timeLimitMinutes,
+        timeRemainingSeconds,
+        extraTimeGrantedMinutes: prevExtraTime,
+        tabSwitchViolations,
+        answeredQuestionsCount: answeredCount,
+        totalQuestions: activeExam.questions.length,
+        currentQuestionIndex: currentQuestionIdx
+      };
+
+      saveLiveProctoringSession(livePayload);
+    }, 5000);
+
+    return () => {
+      unsub();
+      clearInterval(heartbeatTimer);
+    };
+  }, [examStarted, activeExam, timeRemainingSeconds, studentAnswers, tabSwitchViolations, currentQuestionIdx]);
+
   // Resume or Discard Interrupted Session
   const handleResumeRecoveredSession = () => {
     if (!recoveredSession || !recoveredExam) return;
@@ -481,9 +545,35 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
   };
 
   const handleStartExamConfirmed = () => {
-    examStartedAtRef.current = new Date().toISOString();
+    const startedAt = new Date().toISOString();
+    examStartedAtRef.current = startedAt;
     setExamStarted(true);
     enterFullscreen();
+
+    if (activeExam) {
+      const initialLiveSession: LiveProctoringSession = {
+        id: `${activeExam.id}_${currentUser.uid}`,
+        examId: activeExam.id,
+        examTitle: activeExam.title,
+        courseCode: activeExam.courseCode,
+        studentUid: currentUser.uid,
+        studentName: currentUser.fullName,
+        studentUsername: currentUser.username,
+        studentLevel: currentUser.level,
+        studentTradeId: currentUser.tradeId,
+        status: "active",
+        startedAt,
+        lastHeartbeat: startedAt,
+        timeLimitMinutes: activeExam.timeLimitMinutes,
+        timeRemainingSeconds: activeExam.timeLimitMinutes > 0 ? activeExam.timeLimitMinutes * 60 : 0,
+        extraTimeGrantedMinutes: 0,
+        tabSwitchViolations: 0,
+        answeredQuestionsCount: 0,
+        totalQuestions: activeExam.questions.length,
+        currentQuestionIndex: 0
+      };
+      saveLiveProctoringSession(initialLiveSession);
+    }
   };
 
   // Select Answer
@@ -573,6 +663,32 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
       setCompletedAttempt(attemptPayload);
       setExamStarted(false);
       exitFullscreen();
+
+      // Update live session status to submitted
+      try {
+        const livePayload: LiveProctoringSession = {
+          id: `${activeExam.id}_${currentUser.uid}`,
+          examId: activeExam.id,
+          examTitle: activeExam.title,
+          courseCode: activeExam.courseCode,
+          studentUid: currentUser.uid,
+          studentName: currentUser.fullName,
+          studentUsername: currentUser.username,
+          studentLevel: currentUser.level,
+          studentTradeId: currentUser.tradeId,
+          status: "submitted",
+          startedAt: examStartedAtRef.current || new Date().toISOString(),
+          lastHeartbeat: new Date().toISOString(),
+          timeLimitMinutes: activeExam.timeLimitMinutes,
+          timeRemainingSeconds: 0,
+          extraTimeGrantedMinutes: 0,
+          tabSwitchViolations,
+          answeredQuestionsCount: activeExam.questions.length,
+          totalQuestions: activeExam.questions.length,
+          currentQuestionIndex: activeExam.questions.length - 1
+        };
+        await saveLiveProctoringSession(livePayload);
+      } catch (e) {}
     } catch (e) {
       console.error("Failed to submit exam attempt:", e);
       alert("Error submitting answers. Please try again.");

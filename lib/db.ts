@@ -4,7 +4,7 @@ import { StudentNotification, StudentProgressSummary } from "@/types/notificatio
 import { ActivityLog } from "@/types/activity";
 import { StudentTopicTimeRecord } from "@/types/timeTracking";
 import { StudentGroup, GroupMember, GroupEvaluation, MemberEvaluation } from "@/types/group";
-import { Exam, ExamQuestion, ExamAttempt, QuestionGrade } from "@/types/exam";
+import { Exam, ExamQuestion, ExamAttempt, QuestionGrade, LiveProctoringSession } from "@/types/exam";
 import { DeveloperTip } from "@/types/tip";
 import { StudentSuggestion, SuggestionStatus } from "@/types/suggestion";
 import { INITIAL_DEVELOPER_TIPS } from "./tipsSeed";
@@ -3471,6 +3471,214 @@ export function calculateAutoGrade(exam: Exam, answers: Record<string, any>): {
     hasSubjectiveQuestions
   };
 }
+
+// ============================================================================
+// LIVE EXAM PROCTORING & REAL-TIME HALL MONITOR
+// ============================================================================
+const LIVE_PROCTORING_STORAGE_KEY = "syllabus_platform_live_proctoring_v1";
+
+export async function saveLiveProctoringSession(session: LiveProctoringSession): Promise<void> {
+  const sanitized = sanitizeForFirestore(session);
+
+  // 1. LocalStorage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(LIVE_PROCTORING_STORAGE_KEY);
+      const list: LiveProctoringSession[] = raw ? JSON.parse(raw) : [];
+      const idx = list.findIndex(s => s.id === session.id);
+      if (idx >= 0) {
+        list[idx] = session;
+      } else {
+        list.unshift(session);
+      }
+      localStorage.setItem(LIVE_PROCTORING_STORAGE_KEY, JSON.stringify(list));
+    } catch (e) {
+      console.warn("Local save live session error:", e);
+    }
+  }
+
+  // 2. Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "live_exam_sessions", session.id), sanitized, { merge: true });
+    } catch (e) {
+      console.warn("Firestore save live session error:", e);
+    }
+  }
+}
+
+export async function getLiveProctoringSessions(): Promise<LiveProctoringSession[]> {
+  let list: LiveProctoringSession[] = [];
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDocs(collection(db, "live_exam_sessions"));
+      list = snap.docs.map(d => ({ ...d.data(), id: d.id } as LiveProctoringSession));
+      if (typeof window !== "undefined" && list.length > 0) {
+        localStorage.setItem(LIVE_PROCTORING_STORAGE_KEY, JSON.stringify(list));
+      }
+    } catch (e) {
+      console.warn("Firestore getLiveProctoringSessions error:", e);
+    }
+  }
+
+  if (list.length === 0 && typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(LIVE_PROCTORING_STORAGE_KEY);
+      if (raw) list = JSON.parse(raw);
+    } catch (e) {}
+  }
+
+  return list;
+}
+
+export function subscribeToLiveProctoringSessions(callback: (sessions: LiveProctoringSession[]) => void): () => void {
+  let localFired = false;
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(LIVE_PROCTORING_STORAGE_KEY);
+      if (raw) {
+        const list: LiveProctoringSession[] = JSON.parse(raw);
+        callback(list);
+        localFired = true;
+      }
+    } catch (e) {}
+  }
+
+  if (!isFirebaseConfigured || !db) {
+    return () => {};
+  }
+
+  try {
+    const unsub = onSnapshot(collection(db, "live_exam_sessions"), (snap) => {
+      const sessions = snap.docs.map(d => ({ ...d.data(), id: d.id } as LiveProctoringSession));
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(LIVE_PROCTORING_STORAGE_KEY, JSON.stringify(sessions));
+        } catch (e) {}
+      }
+      callback(sessions);
+    }, (err) => {
+      console.warn("Firestore live sessions subscription error:", err);
+      if (!localFired) getLiveProctoringSessions().then(callback);
+    });
+
+    return unsub;
+  } catch (e) {
+    console.warn("Failed to subscribe to live exam sessions:", e);
+    return () => {};
+  }
+}
+
+export function subscribeToStudentLiveSession(
+  studentUid: string, 
+  examId: string, 
+  callback: (session: LiveProctoringSession | null) => void
+): () => void {
+  const sessionId = `${examId}_${studentUid}`;
+
+  if (!isFirebaseConfigured || !db) {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(LIVE_PROCTORING_STORAGE_KEY);
+        if (raw) {
+          const list: LiveProctoringSession[] = JSON.parse(raw);
+          const found = list.find(s => s.id === sessionId);
+          callback(found || null);
+        }
+      } catch (e) {}
+    }
+    return () => {};
+  }
+
+  try {
+    const unsub = onSnapshot(doc(db, "live_exam_sessions", sessionId), (snap) => {
+      if (snap.exists()) {
+        callback({ ...snap.data(), id: snap.id } as LiveProctoringSession);
+      } else {
+        callback(null);
+      }
+    }, (err) => {
+      console.warn("Student live session snapshot error:", err);
+    });
+
+    return unsub;
+  } catch (e) {
+    console.warn("Failed to subscribe to student live session:", e);
+    return () => {};
+  }
+}
+
+export async function grantExtraExamTime(sessionId: string, additionalMinutes: number): Promise<void> {
+  const sessions = await getLiveProctoringSessions();
+  const target = sessions.find(s => s.id === sessionId);
+  if (!target) return;
+
+  const currentExtra = target.extraTimeGrantedMinutes || 0;
+  const newExtra = currentExtra + additionalMinutes;
+  const newRemaining = (target.timeRemainingSeconds || 0) + (additionalMinutes * 60);
+
+  const updated: LiveProctoringSession = {
+    ...target,
+    extraTimeGrantedMinutes: newExtra,
+    timeRemainingSeconds: newRemaining,
+    lastHeartbeat: new Date().toISOString()
+  };
+
+  await saveLiveProctoringSession(updated);
+}
+
+export async function flagExamSession(sessionId: string, flagged: boolean, reason?: string): Promise<void> {
+  const sessions = await getLiveProctoringSessions();
+  const target = sessions.find(s => s.id === sessionId);
+  if (!target) return;
+
+  const updated: LiveProctoringSession = {
+    ...target,
+    status: flagged ? 'flagged' : 'active',
+    flagReason: flagged ? (reason || 'Flagged for suspicious window activity') : undefined,
+    lastHeartbeat: new Date().toISOString()
+  };
+
+  await saveLiveProctoringSession(updated);
+}
+
+export async function forceSubmitExamSession(sessionId: string): Promise<void> {
+  const sessions = await getLiveProctoringSessions();
+  const target = sessions.find(s => s.id === sessionId);
+  if (!target) return;
+
+  const updated: LiveProctoringSession = {
+    ...target,
+    status: 'force_submitted',
+    forceSubmitRequested: true,
+    lastHeartbeat: new Date().toISOString()
+  };
+
+  await saveLiveProctoringSession(updated);
+}
+
+export async function deleteLiveExamSession(sessionId: string): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, "live_exam_sessions", sessionId));
+    } catch (e) {
+      console.warn("Firestore delete live session error:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(LIVE_PROCTORING_STORAGE_KEY);
+      if (raw) {
+        const list: LiveProctoringSession[] = JSON.parse(raw);
+        const filtered = list.filter(s => s.id !== sessionId);
+        localStorage.setItem(LIVE_PROCTORING_STORAGE_KEY, JSON.stringify(filtered));
+      }
+    } catch (e) {}
+  }
+}
+
 
 export { 
   getSystemRestrictions, 

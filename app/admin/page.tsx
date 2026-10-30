@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Syllabus } from "@/types/syllabus";
 import { UserProfile } from "@/types/auth";
-import { getAllSyllabi, deleteSyllabus, getAllUserProfiles, getLocalSyllabi, getLocalTrades, getAllTrades, subscribeToAllUserProfiles, getLocalUserProfiles, subscribeToSuggestions } from "@/lib/db";
+import { getAllSyllabi, deleteSyllabus, getAllUserProfiles, getLocalSyllabi, getLocalTrades, getAllTrades, subscribeToAllUserProfiles, getLocalUserProfiles, subscribeToSuggestions, subscribeToLiveProctoringSessions } from "@/lib/db";
 import { getAdminSession, logoutAdmin, getStoredSession, subscribeToAdminSessionRevocation, revokeAllAdminSessions } from "@/lib/auth";
 import dynamic from "next/dynamic";
 import { Trade } from "@/types/auth";
@@ -25,6 +25,7 @@ const GroupManager = dynamic(() => import("@/components/admin/GroupManager"), { 
 const ActivityLogger = dynamic(() => import("@/components/admin/ActivityLogger"), { ssr: false, loading: TabLoadingPlaceholder });
 const TipsManager = dynamic(() => import("@/components/admin/TipsManager"), { ssr: false, loading: TabLoadingPlaceholder });
 const SuggestionsInbox = dynamic(() => import("@/components/admin/SuggestionsInbox"), { ssr: false, loading: TabLoadingPlaceholder });
+const LiveExamProctoring = dynamic(() => import("@/components/admin/LiveExamProctoring"), { ssr: false, loading: TabLoadingPlaceholder });
 import AdminPresenceAlert from "@/components/admin/AdminPresenceAlert";
 import RestrictionsControl from "@/components/admin/RestrictionsControl";
 import { downloadSyllabusAsJSON, downloadSyllabusAsText, downloadAllSyllabiAsJSON } from "@/lib/exportSyllabus";
@@ -50,7 +51,8 @@ import {
   Smartphone,
   FileQuestion,
   Sparkles,
-  Inbox
+  Inbox,
+  Radio
 } from "lucide-react";
 import Link from "next/link";
 
@@ -58,7 +60,7 @@ export default function AdminDashboardPage() {
   const router = useRouter();
 
   const [adminUser, setAdminUser] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<'syllabi' | 'trades' | 'students' | 'progress' | 'assignments' | 'groups' | 'activity' | 'exams' | 'tips' | 'suggestions'>('syllabi');
+  const [activeTab, setActiveTab] = useState<'syllabi' | 'trades' | 'students' | 'progress' | 'assignments' | 'groups' | 'activity' | 'exams' | 'tips' | 'suggestions' | 'proctoring'>('syllabi');
   const [syllabi, setSyllabi] = useState<Syllabus[]>(() => getLocalSyllabi());
   const [trades, setTrades] = useState<Trade[]>(() => getLocalTrades());
   const [pendingCount, setPendingCount] = useState(() => {
@@ -68,6 +70,7 @@ export default function AdminDashboardPage() {
     return 0;
   });
   const [newSuggestionsCount, setNewSuggestionsCount] = useState<number>(0);
+  const [activeExamsCount, setActiveExamsCount] = useState<number>(0);
   const [loading, setLoading] = useState(false);
 
   const [studentSession, setStudentSession] = useState<UserProfile | null>(null);
@@ -96,6 +99,14 @@ export default function AdminDashboardPage() {
       if (isMounted) {
         const unread = allSuggestions.filter(s => s.status === 'new').length;
         setNewSuggestionsCount(unread);
+      }
+    });
+
+    // Real-time listener: keep live active exams count live
+    const unsubProctoring = subscribeToLiveProctoringSessions((allLive) => {
+      if (isMounted) {
+        const liveCount = allLive.filter(s => s.status === 'active' || s.status === 'flagged').length;
+        setActiveExamsCount(liveCount);
       }
     });
 
@@ -433,6 +444,23 @@ export default function AdminDashboardPage() {
               </span>
             )}
           </button>
+
+          <button
+            onClick={() => setActiveTab('proctoring')}
+            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
+              activeTab === 'proctoring'
+                ? 'border-rose-500 text-rose-400'
+                : 'border-transparent text-[#94A3B8] hover:text-white'
+            }`}
+          >
+            <Radio className={`h-4 w-4 shrink-0 text-rose-400 ${activeExamsCount > 0 ? "animate-pulse" : ""}`} />
+            <span>Live Proctoring 🚨</span>
+            {activeExamsCount > 0 && (
+              <span className="ml-1 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-mono font-extrabold text-white shadow-md animate-pulse">
+                {activeExamsCount} Live
+              </span>
+            )}
+          </button>
         </div>
 
         {/* TAB 1: SYLLABI MANAGEMENT */}
@@ -627,6 +655,11 @@ export default function AdminDashboardPage() {
         {/* TAB 9: SUGGESTIONS & FEEDBACK INBOX */}
         <div className={activeTab === 'suggestions' ? 'block' : 'hidden'}>
           <SuggestionsInbox adminUser={adminUser} />
+        </div>
+
+        {/* TAB 10: LIVE EXAM PROCTORING HALL */}
+        <div className={activeTab === 'proctoring' ? 'block' : 'hidden'}>
+          <LiveExamProctoring adminUser={adminUser} />
         </div>
       </main>
     </div>
