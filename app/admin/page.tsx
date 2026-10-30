@@ -28,6 +28,7 @@ const SuggestionsInbox = dynamic(() => import("@/components/admin/SuggestionsInb
 const LiveExamProctoring = dynamic(() => import("@/components/admin/LiveExamProctoring"), { ssr: false, loading: TabLoadingPlaceholder });
 const BroadcastManager = dynamic(() => import("@/components/admin/BroadcastManager"), { ssr: false, loading: TabLoadingPlaceholder });
 const MasterGradebook = dynamic(() => import("@/components/admin/MasterGradebook"), { ssr: false, loading: TabLoadingPlaceholder });
+const ChallengeStudio = dynamic(() => import("@/components/admin/ChallengeStudio"), { ssr: false, loading: TabLoadingPlaceholder });
 import AdminPresenceAlert from "@/components/admin/AdminPresenceAlert";
 import RestrictionsControl from "@/components/admin/RestrictionsControl";
 import { downloadSyllabusAsJSON, downloadSyllabusAsText, downloadAllSyllabiAsJSON } from "@/lib/exportSyllabus";
@@ -56,7 +57,8 @@ import {
   Inbox,
   Radio,
   Megaphone,
-  GraduationCap
+  GraduationCap,
+  Code2
 } from "lucide-react";
 import Link from "next/link";
 
@@ -489,6 +491,18 @@ export default function AdminDashboardPage() {
             <GraduationCap className="h-4 w-4 shrink-0 text-emerald-400" />
             <span>Master Gradebook 📊</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('challenges')}
+            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
+              activeTab === 'challenges'
+                ? 'border-amber-400 text-amber-300'
+                : 'border-transparent text-[#94A3B8] hover:text-white'
+            }`}
+          >
+            <Code2 className="h-4 w-4 shrink-0 text-amber-400" />
+            <span>Coding Challenges ⚡</span>
+          </button>
         </div>
 
         {/* TAB 1: SYLLABI MANAGEMENT */}
@@ -698,6 +712,11 @@ export default function AdminDashboardPage() {
         {/* TAB 12: ACADEMIC MASTER GRADEBOOK & EXPORTER */}
         <div className={activeTab === 'gradebook' ? 'block' : 'hidden'}>
           <MasterGradebook adminUser={adminUser} trades={trades} />
+        </div>
+
+        {/* TAB 13: WEEKLY CODING CHALLENGES STUDIO */}
+        <div className={activeTab === 'challenges' ? 'block' : 'hidden'}>
+          <ChallengeStudio adminUser={adminUser} />
         </div>
       </main>
     </div>

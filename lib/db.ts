@@ -8,6 +8,7 @@ import { Exam, ExamQuestion, ExamAttempt, QuestionGrade, LiveProctoringSession }
 import { DeveloperTip } from "@/types/tip";
 import { StudentSuggestion, SuggestionStatus } from "@/types/suggestion";
 import { BroadcastBulletin } from "@/types/bulletin";
+import { CodingChallenge, ChallengeSubmission } from "@/types/challenge";
 import { INITIAL_DEVELOPER_TIPS } from "./tipsSeed";
 import { db, isFirebaseConfigured } from "./firebase";
 import { 
@@ -4199,4 +4200,433 @@ export async function deleteBulletin(bulletinId: string): Promise<void> {
     } catch (e) {}
   }
 }
+
+// ==========================================
+// WEEKLY CODING CHALLENGES & ARENA SYSTEM
+// ==========================================
+
+const CHALLENGES_STORAGE_KEY = "syllabus_platform_challenges_v1";
+const CHALLENGE_SUBS_STORAGE_KEY = "syllabus_platform_challenge_submissions_v1";
+
+export const INITIAL_CODING_CHALLENGES: CodingChallenge[] = [
+  {
+    id: "ch-two-sum",
+    title: "Two-Sum Array Indices",
+    slug: "two-sum",
+    difficulty: "easy",
+    language: "javascript",
+    tradeId: "all",
+    level: "all",
+    points: 50,
+    weekNumber: 1,
+    active: true,
+    createdByName: "Platform Instructor",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    descriptionMarkdown: `### Two Sum Challenge
+Given an array of integers \`nums\` and an integer \`target\`, return the **indices** of the two numbers such that they add up to \`target\`.
+
+- Each input will have exactly one solution.
+- You may not use the same element twice.
+- Return the indices as an array \`[index1, index2]\`.
+
+**Example:**
+\`\`\`javascript
+twoSum([2, 7, 11, 15], 9) // returns [0, 1]
+twoSum([3, 2, 4], 6)       // returns [1, 2]
+\`\`\``,
+    functionName: "twoSum",
+    starterCode: `function twoSum(nums, target) {
+  // Write your code here
+  const map = new Map();
+  for (let i = 0; i < nums.length; i++) {
+    const complement = target - nums[i];
+    if (map.has(complement)) {
+      return [map.get(complement), i];
+    }
+    map.set(nums[i], i);
+  }
+  return [];
+}`,
+    testCases: [
+      {
+        id: "tc-1",
+        input: "[[2, 7, 11, 15], 9]",
+        expectedOutput: "[0,1]",
+        description: "Basic array with target 9"
+      },
+      {
+        id: "tc-2",
+        input: "[[3, 2, 4], 6]",
+        expectedOutput: "[1,2]",
+        description: "Middle elements adding up to 6"
+      },
+      {
+        id: "tc-3",
+        input: "[[3, 3], 6]",
+        expectedOutput: "[0,1]",
+        description: "Duplicate numbers"
+      },
+      {
+        id: "tc-4",
+        input: "[[1, 5, 8, 12, 19], 20]",
+        expectedOutput: "[0,4]",
+        description: "First and last elements",
+        isHidden: true
+      }
+    ]
+  },
+  {
+    id: "ch-palindrome",
+    title: "Alphanumeric Palindrome Validator",
+    slug: "palindrome-validator",
+    difficulty: "easy",
+    language: "javascript",
+    tradeId: "all",
+    level: "all",
+    points: 40,
+    weekNumber: 2,
+    active: true,
+    createdByName: "Platform Instructor",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    descriptionMarkdown: `### Palindrome Validator
+A phrase is a **palindrome** if, after converting all uppercase letters into lowercase letters and removing all non-alphanumeric characters, it reads the same forward and backward.
+
+Alphanumeric characters include letters and numbers.
+
+**Examples:**
+\`\`\`javascript
+isPalindrome("A man, a plan, a canal: Panama") // true
+isPalindrome("race a car")                     // false
+isPalindrome(" ")                              // true
+\`\`\``,
+    functionName: "isPalindrome",
+    starterCode: `function isPalindrome(str) {
+  // Clean alphanumeric characters and lowercase
+  const clean = str.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return clean === clean.split('').reverse().join('');
+}`,
+    testCases: [
+      {
+        id: "tc-p1",
+        input: '"A man, a plan, a canal: Panama"',
+        expectedOutput: "true",
+        description: "Famous Panama palindrome phrase"
+      },
+      {
+        id: "tc-p2",
+        input: '"race a car"',
+        expectedOutput: "false",
+        description: "Standard non-palindrome string"
+      },
+      {
+        id: "tc-p3",
+        input: '"Was it a car or a cat I saw?"',
+        expectedOutput: "true",
+        description: "Punctuation and question mark phrase"
+      },
+      {
+        id: "tc-p4",
+        input: '"12321"',
+        expectedOutput: "true",
+        description: "Numeric palindrome",
+        isHidden: true
+      }
+    ]
+  },
+  {
+    id: "ch-flatten-obj",
+    title: "Deep Nested Object Flattener",
+    slug: "flatten-object",
+    difficulty: "medium",
+    language: "javascript",
+    tradeId: "all",
+    level: "all",
+    points: 80,
+    weekNumber: 3,
+    active: true,
+    createdByName: "Platform Instructor",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    descriptionMarkdown: `### Deep Object Flattener
+Write a function \`flattenObject(obj)\` that takes a deeply nested object and returns a flat single-level object with dot-separated key paths.
+
+**Example:**
+\`\`\`javascript
+const input = {
+  user: {
+    name: "John",
+    address: { city: "Nairobi" }
+  }
+};
+flattenObject(input);
+// Returns: { "user.name": "John", "user.address.city": "Nairobi" }
+\`\`\``,
+    functionName: "flattenObject",
+    starterCode: `function flattenObject(obj, prefix = '', res = {}) {
+  for (const key of Object.keys(obj)) {
+    const val = obj[key];
+    const newKey = prefix ? prefix + '.' + key : key;
+    if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
+      flattenObject(val, newKey, res);
+    } else {
+      res[newKey] = val;
+    }
+  }
+  return res;
+}`,
+    testCases: [
+      {
+        id: "tc-f1",
+        input: '{"user":{"name":"John","address":{"city":"Nairobi"}}}',
+        expectedOutput: '{"user.name":"John","user.address.city":"Nairobi"}',
+        description: "Two-level nested object"
+      },
+      {
+        id: "tc-f2",
+        input: '{"a":1,"b":{"c":2}}',
+        expectedOutput: '{"a":1,"b.c":2}',
+        description: "Mixed primitive and nested"
+      },
+      {
+        id: "tc-f3",
+        input: '{"theme":{"colors":{"primary":"#06B6D4"}}}',
+        expectedOutput: '{"theme.colors.primary":"#06B6D4"}',
+        description: "Three-level UI theme config",
+        isHidden: true
+      }
+    ]
+  }
+];
+
+export async function saveChallenge(challenge: CodingChallenge): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "coding_challenges", challenge.id), challenge, { merge: true });
+    } catch (e) {
+      console.warn("Firestore saveChallenge error:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(CHALLENGES_STORAGE_KEY);
+      const list: CodingChallenge[] = raw ? JSON.parse(raw) : [...INITIAL_CODING_CHALLENGES];
+      const idx = list.findIndex(c => c.id === challenge.id);
+      if (idx >= 0) {
+        list[idx] = challenge;
+      } else {
+        list.push(challenge);
+      }
+      localStorage.setItem(CHALLENGES_STORAGE_KEY, JSON.stringify(list));
+    } catch (e) {}
+  }
+}
+
+export async function getChallenges(includeInactive = false): Promise<CodingChallenge[]> {
+  let list: CodingChallenge[] = [];
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDocs(collection(db, "coding_challenges"));
+      if (!snap.empty) {
+        list = snap.docs.map(d => ({ ...d.data(), id: d.id } as CodingChallenge));
+      }
+    } catch (e) {
+      console.warn("Firestore getChallenges error:", e);
+    }
+  }
+
+  if (list.length === 0 && typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(CHALLENGES_STORAGE_KEY);
+      if (raw) {
+        list = JSON.parse(raw);
+      } else {
+        list = [...INITIAL_CODING_CHALLENGES];
+        localStorage.setItem(CHALLENGES_STORAGE_KEY, JSON.stringify(list));
+      }
+    } catch (e) {
+      list = [...INITIAL_CODING_CHALLENGES];
+    }
+  }
+
+  if (list.length === 0) {
+    list = [...INITIAL_CODING_CHALLENGES];
+  }
+
+  return includeInactive ? list : list.filter(c => c.active !== false);
+}
+
+export function subscribeToChallenges(callback: (challenges: CodingChallenge[]) => void): () => void {
+  let localFired = false;
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(CHALLENGES_STORAGE_KEY);
+      if (raw) {
+        callback(JSON.parse(raw));
+        localFired = true;
+      } else {
+        callback(INITIAL_CODING_CHALLENGES);
+        localFired = true;
+      }
+    } catch (e) {}
+  }
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const unsub = onSnapshot(collection(db, "coding_challenges"), (snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as CodingChallenge));
+          callback(list);
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem(CHALLENGES_STORAGE_KEY, JSON.stringify(list));
+            } catch (e) {}
+          }
+        } else if (!localFired) {
+          getChallenges(true).then(callback);
+        }
+      }, (err) => {
+        console.warn("subscribeToChallenges error:", err);
+        if (!localFired) getChallenges(true).then(callback);
+      });
+      return unsub;
+    } catch (e) {
+      if (!localFired) getChallenges(true).then(callback);
+    }
+  }
+
+  return () => {};
+}
+
+export async function toggleChallengeActive(challengeId: string, active: boolean): Promise<void> {
+  const list = await getChallenges(true);
+  const target = list.find(c => c.id === challengeId);
+  if (!target) return;
+  const updated: CodingChallenge = {
+    ...target,
+    active,
+    updatedAt: new Date().toISOString()
+  };
+  await saveChallenge(updated);
+}
+
+export async function deleteChallenge(challengeId: string): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, "coding_challenges", challengeId));
+    } catch (e) {
+      console.warn("Firestore deleteChallenge error:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(CHALLENGES_STORAGE_KEY);
+      if (raw) {
+        const list: CodingChallenge[] = JSON.parse(raw);
+        const filtered = list.filter(c => c.id !== challengeId);
+        localStorage.setItem(CHALLENGES_STORAGE_KEY, JSON.stringify(filtered));
+      }
+    } catch (e) {}
+  }
+}
+
+export async function saveChallengeSubmission(submission: ChallengeSubmission): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "challenge_submissions", submission.id), submission, { merge: true });
+    } catch (e) {
+      console.warn("Firestore saveChallengeSubmission error:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(CHALLENGE_SUBS_STORAGE_KEY);
+      const list: ChallengeSubmission[] = raw ? JSON.parse(raw) : [];
+      const idx = list.findIndex(s => s.id === submission.id);
+      if (idx >= 0) {
+        list[idx] = submission;
+      } else {
+        list.push(submission);
+      }
+      localStorage.setItem(CHALLENGE_SUBS_STORAGE_KEY, JSON.stringify(list));
+    } catch (e) {}
+  }
+}
+
+export async function getChallengeSubmissions(challengeId?: string): Promise<ChallengeSubmission[]> {
+  let list: ChallengeSubmission[] = [];
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDocs(collection(db, "challenge_submissions"));
+      if (!snap.empty) {
+        list = snap.docs.map(d => ({ ...d.data(), id: d.id } as ChallengeSubmission));
+      }
+    } catch (e) {
+      console.warn("Firestore getChallengeSubmissions error:", e);
+    }
+  }
+
+  if (list.length === 0 && typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(CHALLENGE_SUBS_STORAGE_KEY);
+      if (raw) list = JSON.parse(raw);
+    } catch (e) {}
+  }
+
+  if (challengeId) {
+    return list.filter(s => s.challengeId === challengeId);
+  }
+  return list;
+}
+
+export async function getStudentChallengeSubmissions(studentUid: string): Promise<ChallengeSubmission[]> {
+  const all = await getChallengeSubmissions();
+  return all.filter(s => s.studentUid === studentUid);
+}
+
+export function subscribeToChallengeSubmissions(callback: (subs: ChallengeSubmission[]) => void): () => void {
+  let localFired = false;
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(CHALLENGE_SUBS_STORAGE_KEY);
+      if (raw) {
+        callback(JSON.parse(raw));
+        localFired = true;
+      }
+    } catch (e) {}
+  }
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const unsub = onSnapshot(collection(db, "challenge_submissions"), (snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as ChallengeSubmission));
+          callback(list);
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem(CHALLENGE_SUBS_STORAGE_KEY, JSON.stringify(list));
+            } catch (e) {}
+          }
+        } else if (!localFired) {
+          getChallengeSubmissions().then(callback);
+        }
+      }, (err) => {
+        console.warn("subscribeToChallengeSubmissions error:", err);
+        if (!localFired) getChallengeSubmissions().then(callback);
+      });
+      return unsub;
+    } catch (e) {
+      if (!localFired) getChallengeSubmissions().then(callback);
+    }
+  }
+
+  return () => {};
+}
+
 
