@@ -29,7 +29,8 @@ import {
   Lock,
   Award,
   Users,
-  FileQuestion
+  FileQuestion,
+  MessageSquare
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -41,6 +42,7 @@ import StudentAssignmentsView from "@/components/student/StudentAssignmentsView"
 import StudentGroupsView from "@/components/student/StudentGroupsView";
 import StudentExamsView from "@/components/student/StudentExamsView";
 import StudentAcademicStanding from "@/components/student/StudentAcademicStanding";
+import StudentFeedbackView from "@/components/student/StudentFeedbackView";
 import SuggestionBoxModal from "@/components/common/SuggestionBoxModal";
 
 export default function CatalogPage() {
@@ -53,7 +55,8 @@ export default function CatalogPage() {
     return map;
   });
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => getStoredSession());
-  const [studentPortalTab, setStudentPortalTab] = useState<"courses" | "assignments" | "groups" | "exams">("courses");
+  const [studentPortalTab, setStudentPortalTab] = useState<"courses" | "assignments" | "groups" | "exams" | "feedback">("courses");
+  const [isSuggestionModalOpen, setIsSuggestionModalOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(() => getLocalSyllabi().length === 0);
   const [navigatingSyllabusId, setNavigatingSyllabusId] = useState<string | null>(null);
@@ -76,7 +79,7 @@ export default function CatalogPage() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get("tab");
-      if (tab === "courses" || tab === "assignments" || tab === "groups" || tab === "exams") {
+      if (tab === "courses" || tab === "assignments" || tab === "groups" || tab === "exams" || tab === "feedback") {
         setStudentPortalTab(tab);
       }
     }
@@ -710,6 +713,18 @@ export default function CatalogPage() {
               <span>Exams & Quizzes</span>
             </button>
 
+            <button
+              onClick={() => setStudentPortalTab("feedback")}
+              className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
+                studentPortalTab === "feedback"
+                  ? "bg-[#06B6D4] text-slate-950 shadow-md"
+                  : "bg-[#1E293B]/75 backdrop-blur-sm text-[#94A3B8] hover:text-white border border-[#334155]/70 hover:bg-[#1E293B]/95"
+              }`}
+            >
+              <MessageSquare className="h-4 w-4" />
+              <span>Feedback & Ideas 💡</span>
+            </button>
+
             <Link
               href="/tips"
               className="inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all whitespace-nowrap bg-gradient-to-r from-cyan-500/15 via-purple-500/15 to-indigo-500/15 text-cyan-300 border border-cyan-500/40 hover:border-cyan-400 hover:text-white shadow-sm"
@@ -720,7 +735,7 @@ export default function CatalogPage() {
           </div>
         )}
 
-        {/* ASSIGNMENTS VIEW, GROUPS VIEW, OR EXAMS VIEW FOR LOGGED IN STUDENT */}
+        {/* ASSIGNMENTS VIEW, GROUPS VIEW, EXAMS VIEW, OR FEEDBACK VIEW FOR LOGGED IN STUDENT */}
         {currentUser && studentPortalTab === "assignments" ? (
           <StudentAssignmentsView currentUser={currentUser} syllabi={syllabi} />
         ) : currentUser && studentPortalTab === "groups" ? (
@@ -731,6 +746,11 @@ export default function CatalogPage() {
           />
         ) : currentUser && studentPortalTab === "exams" ? (
           <StudentExamsView currentUser={currentUser} syllabi={syllabi} />
+        ) : currentUser && studentPortalTab === "feedback" ? (
+          <StudentFeedbackView 
+            currentUser={currentUser} 
+            onOpenNewSuggestion={() => setIsSuggestionModalOpen(true)} 
+          />
         ) : (
           <>
             {/* Syllabi Grid */}
@@ -895,7 +915,11 @@ export default function CatalogPage() {
       )}
 
       {/* FLOATING SUGGESTION & FEEDBACK BOX */}
-      <SuggestionBoxModal currentUser={currentUser} />
+      <SuggestionBoxModal 
+        currentUser={currentUser} 
+        isOpenControlled={isSuggestionModalOpen}
+        onOpenChange={setIsSuggestionModalOpen}
+      />
     </div>
   );
 }

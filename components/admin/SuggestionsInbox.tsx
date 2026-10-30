@@ -7,7 +7,8 @@ import {
   getSuggestions, 
   updateSuggestionStatus, 
   deleteSuggestion, 
-  subscribeToSuggestions 
+  subscribeToSuggestions,
+  replyToSuggestion
 } from "@/lib/db";
 import { SUGGESTION_CATEGORIES } from "@/components/common/SuggestionBoxModal";
 import { 
@@ -24,7 +25,12 @@ import {
   RotateCcw,
   Sparkles,
   Save,
-  Check
+  Check,
+  Send,
+  ThumbsUp,
+  Globe,
+  Lock,
+  CalendarCheck
 } from "lucide-react";
 
 interface SuggestionsInboxProps {
@@ -34,7 +40,9 @@ interface SuggestionsInboxProps {
 export const STATUS_METADATA: Record<SuggestionStatus, { label: string; badge: string; dot: string }> = {
   new: { label: "New", badge: "bg-amber-500/15 text-amber-300 border-amber-500/30", dot: "bg-amber-400" },
   in_review: { label: "Under Review", badge: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30", dot: "bg-cyan-400" },
-  resolved: { label: "Resolved / Implemented", badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", dot: "bg-emerald-400" },
+  planned: { label: "Planned", badge: "bg-purple-500/15 text-purple-300 border-purple-500/30", dot: "bg-purple-400" },
+  implemented: { label: "Implemented", badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", dot: "bg-emerald-400" },
+  resolved: { label: "Resolved", badge: "bg-teal-500/15 text-teal-400 border-teal-500/30", dot: "bg-teal-400" },
   archived: { label: "Archived", badge: "bg-slate-500/15 text-slate-400 border-slate-500/30", dot: "bg-slate-400" }
 };
 
@@ -47,6 +55,8 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
+  const [editingReplies, setEditingReplies] = useState<Record<string, string>>({});
+  const [sendingReplyId, setSendingReplyId] = useState<string | null>(null);
 
   useEffect(() => {
     const unsub = subscribeToSuggestions((data) => {
@@ -62,6 +72,32 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
       await updateSuggestionStatus(id, newStatus);
     } catch (e) {
       console.error("Failed to update suggestion status:", e);
+    }
+  };
+
+  const handleTogglePublic = async (id: string, currentPublic?: boolean) => {
+    try {
+      const target = suggestions.find(s => s.id === id);
+      if (!target) return;
+      await updateSuggestionStatus(id, target.status, undefined, !currentPublic);
+    } catch (e) {
+      console.error("Failed to toggle public state:", e);
+    }
+  };
+
+  const handleSendReply = async (id: string) => {
+    const text = editingReplies[id];
+    if (!text || !text.trim()) return;
+
+    setSendingReplyId(id);
+    try {
+      const adminName = adminUser?.fullName || "Faculty Instructor";
+      await replyToSuggestion(id, text.trim(), adminName);
+      setEditingReplies(prev => ({ ...prev, [id]: "" }));
+      setTimeout(() => setSendingReplyId(null), 1000);
+    } catch (e) {
+      console.error("Failed to send reply:", e);
+      setSendingReplyId(null);
     }
   };
 
@@ -234,9 +270,34 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
                     >
                       <option value="new">🟡 New</option>
                       <option value="in_review">🔵 Under Review</option>
-                      <option value="resolved">🟢 Resolved / Done</option>
+                      <option value="planned">🟣 Planned</option>
+                      <option value="implemented">🟢 Implemented</option>
+                      <option value="resolved">✅ Resolved</option>
                       <option value="archived">⚪ Archived</option>
                     </select>
+
+                    {/* Community Public Toggle */}
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePublic(item.id, item.isPublic)}
+                      className={`inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold border transition-all ${
+                        item.isPublic
+                          ? "bg-purple-500/20 text-purple-300 border-purple-500/40 hover:bg-purple-500/30"
+                          : "bg-slate-800 text-slate-400 border-slate-700 hover:text-slate-200"
+                      }`}
+                      title={item.isPublic ? "Visible to students on campus board" : "Private - only visible to faculty"}
+                    >
+                      {item.isPublic ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
+                      <span>{item.isPublic ? "Campus Public" : "Private"}</span>
+                    </button>
+
+                    {/* Upvotes Counter */}
+                    {(item.upvotes ?? 0) > 0 && (
+                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                        <ThumbsUp className="h-3 w-3" />
+                        <span>{item.upvotes}</span>
+                      </span>
+                    )}
 
                     {/* Date */}
                     <span className="text-[11px] font-mono text-[#64748B]">
@@ -276,11 +337,61 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
                   </p>
                 </div>
 
+                {/* Official Faculty Reply (Student-Facing) */}
+                <div className="pt-2 border-t border-[#334155]/60 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-mono font-bold text-cyan-400 uppercase tracking-wider flex items-center space-x-1.5">
+                      <MessageSquare className="h-3 w-3" />
+                      <span>Official Reply to Student (Visible in Student Dashboard)</span>
+                    </span>
+                    {item.adminRepliedAt && (
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        Replied by {item.adminRepliedBy || "Faculty"} on {new Date(item.adminRepliedAt).toLocaleDateString()}
+                      </span>
+                    )}
+                  </div>
+
+                  {item.adminReply && (
+                    <div className="rounded-xl bg-[#0B0F19] border border-cyan-500/30 p-2.5 text-xs text-cyan-200">
+                      <div className="font-mono text-[10px] text-cyan-400 mb-1">Current Reply:</div>
+                      <p className="italic">{item.adminReply}</p>
+                    </div>
+                  )}
+
+                  <div className="flex items-start space-x-2">
+                    <textarea
+                      rows={2}
+                      placeholder={item.adminReply ? "Edit or update your reply to the student..." : "Write a response to the student (e.g., 'Thank you! We have added this to the syllabus.')..."}
+                      value={editingReplies[item.id] !== undefined ? editingReplies[item.id] : ""}
+                      onChange={(e) => setEditingReplies(prev => ({ ...prev, [item.id]: e.target.value }))}
+                      className="flex-1 rounded-xl bg-[#0B0F19] border border-[#334155] p-2 text-xs text-white placeholder-[#64748B] focus:border-cyan-400 focus:outline-none resize-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleSendReply(item.id)}
+                      disabled={sendingReplyId === item.id || !editingReplies[item.id]?.trim()}
+                      className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-mono font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0 active:scale-95 self-end"
+                    >
+                      {sendingReplyId === item.id ? (
+                        <>
+                          <Check className="h-3.5 w-3.5" />
+                          <span>Sent!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-3.5 w-3.5" />
+                          <span>{item.adminReply ? "Update Reply" : "Send Reply"}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
                 {/* Internal Teacher Notes Accordion */}
                 <div className="pt-2 border-t border-[#334155]/60">
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-[11px] font-mono font-bold text-[#94A3B8] uppercase tracking-wider">
-                      Teacher Internal Notes &amp; Action Plan
+                      Teacher Private Notes &amp; Action Plan (Faculty Eyes Only)
                     </span>
                     {item.adminNotes && (
                       <span className="text-[10px] text-emerald-400 font-mono">Saved</span>
@@ -298,7 +409,7 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
                     <button
                       onClick={() => handleSaveNotes(item.id)}
                       disabled={savingNoteId === item.id}
-                      className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-500 transition-all shrink-0 active:scale-95"
+                      className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-slate-950 bg-slate-300 hover:bg-white transition-all shrink-0 active:scale-95"
                     >
                       {savingNoteId === item.id ? (
                         <>

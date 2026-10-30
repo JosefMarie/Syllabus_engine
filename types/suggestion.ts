@@ -5,7 +5,7 @@ export type SuggestionCategory =
   | "bug_report" 
   | "general_feedback";
 
-export type SuggestionStatus = "new" | "in_review" | "resolved" | "archived";
+export type SuggestionStatus = "new" | "in_review" | "planned" | "implemented" | "resolved" | "archived";
 
 export interface StudentSuggestion {
   id: string;
@@ -20,6 +20,12 @@ export interface StudentSuggestion {
   studentTradeId?: string;
   status: SuggestionStatus;
   adminNotes?: string;
+  adminReply?: string;
+  adminRepliedAt?: string;
+  adminRepliedBy?: string;
+  isPublic?: boolean;
+  upvotes?: number;
+  upvotedBy?: string[];
   createdAt: string;
   updatedAt: string;
 }

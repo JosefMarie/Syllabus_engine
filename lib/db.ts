@@ -3686,7 +3686,12 @@ export async function saveSuggestion(suggestion: StudentSuggestion): Promise<voi
   }
 }
 
-export async function updateSuggestionStatus(id: string, status: SuggestionStatus, adminNotes?: string): Promise<void> {
+export async function updateSuggestionStatus(
+  id: string, 
+  status: SuggestionStatus, 
+  adminNotes?: string,
+  isPublic?: boolean
+): Promise<void> {
   const existing = await getSuggestions();
   const target = existing.find(s => s.id === id);
   if (!target) return;
@@ -3695,10 +3700,64 @@ export async function updateSuggestionStatus(id: string, status: SuggestionStatu
     ...target,
     status,
     adminNotes: adminNotes !== undefined ? adminNotes : target.adminNotes,
+    isPublic: isPublic !== undefined ? isPublic : target.isPublic,
     updatedAt: new Date().toISOString()
   };
 
   await saveSuggestion(updated);
+}
+
+export async function replyToSuggestion(
+  id: string,
+  reply: string,
+  adminName: string,
+  newStatus?: SuggestionStatus,
+  isPublic?: boolean
+): Promise<void> {
+  const existing = await getSuggestions();
+  const target = existing.find(s => s.id === id);
+  if (!target) return;
+
+  const updated: StudentSuggestion = {
+    ...target,
+    adminReply: reply.trim(),
+    adminRepliedAt: new Date().toISOString(),
+    adminRepliedBy: adminName,
+    status: newStatus || (target.status === "new" ? "in_review" : target.status),
+    isPublic: isPublic !== undefined ? isPublic : target.isPublic,
+    updatedAt: new Date().toISOString()
+  };
+
+  await saveSuggestion(updated);
+}
+
+export async function toggleSuggestionUpvote(
+  id: string, 
+  studentUid: string
+): Promise<{ upvoted: boolean; count: number }> {
+  const existing = await getSuggestions();
+  const target = existing.find(s => s.id === id);
+  if (!target) return { upvoted: false, count: 0 };
+
+  const currentUpvoters = target.upvotedBy || [];
+  const alreadyUpvoted = currentUpvoters.includes(studentUid);
+
+  let newUpvoters: string[];
+  if (alreadyUpvoted) {
+    newUpvoters = currentUpvoters.filter(uid => uid !== studentUid);
+  } else {
+    newUpvoters = [...currentUpvoters, studentUid];
+  }
+
+  const updated: StudentSuggestion = {
+    ...target,
+    upvotes: newUpvoters.length,
+    upvotedBy: newUpvoters,
+    updatedAt: new Date().toISOString()
+  };
+
+  await saveSuggestion(updated);
+  return { upvoted: !alreadyUpvoted, count: newUpvoters.length };
 }
 
 export async function deleteSuggestion(id: string): Promise<void> {

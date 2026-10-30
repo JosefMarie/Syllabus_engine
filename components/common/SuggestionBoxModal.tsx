@@ -20,6 +20,8 @@ import {
 
 interface SuggestionBoxModalProps {
   currentUser?: UserProfile | null;
+  isOpenControlled?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export const SUGGESTION_CATEGORIES: Record<SuggestionCategory, { label: string; icon: string; description: string; color: string; border: string; bg: string }> = {
@@ -65,8 +67,17 @@ export const SUGGESTION_CATEGORIES: Record<SuggestionCategory, { label: string; 
   }
 };
 
-export default function SuggestionBoxModal({ currentUser }: SuggestionBoxModalProps) {
-  const [isOpen, setIsOpen] = useState(false);
+export default function SuggestionBoxModal({ 
+  currentUser,
+  isOpenControlled,
+  onOpenChange
+}: SuggestionBoxModalProps) {
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isOpen = isOpenControlled !== undefined ? isOpenControlled : internalOpen;
+  const setIsOpen = (val: boolean) => {
+    setInternalOpen(val);
+    if (onOpenChange) onOpenChange(val);
+  };
   const [category, setCategory] = useState<SuggestionCategory>("feature_request");
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
