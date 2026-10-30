@@ -7,6 +7,7 @@ import { StudentGroup, GroupMember, GroupEvaluation, MemberEvaluation } from "@/
 import { Exam, ExamQuestion, ExamAttempt, QuestionGrade, LiveProctoringSession } from "@/types/exam";
 import { DeveloperTip } from "@/types/tip";
 import { StudentSuggestion, SuggestionStatus } from "@/types/suggestion";
+import { BroadcastBulletin } from "@/types/bulletin";
 import { INITIAL_DEVELOPER_TIPS } from "./tipsSeed";
 import { db, isFirebaseConfigured } from "./firebase";
 import { 
@@ -4027,3 +4028,175 @@ export function subscribeToSuggestions(callback: (suggestions: StudentSuggestion
     return () => {};
   }
 }
+
+// ============================================================================
+// BROADCAST BULLETIN & TARGETED SCHOOL ANNOUNCEMENTS
+// ============================================================================
+const BULLETINS_STORAGE_KEY = "syllabus_platform_broadcast_bulletins_v1";
+
+export async function saveBulletin(bulletin: BroadcastBulletin): Promise<void> {
+  const sanitized = sanitizeForFirestore(bulletin);
+
+  // 1. LocalStorage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(BULLETINS_STORAGE_KEY);
+      const list: BroadcastBulletin[] = raw ? JSON.parse(raw) : [];
+      const idx = list.findIndex(b => b.id === bulletin.id);
+      if (idx >= 0) {
+        list[idx] = bulletin;
+      } else {
+        list.unshift(bulletin);
+      }
+      localStorage.setItem(BULLETINS_STORAGE_KEY, JSON.stringify(list));
+    } catch (e) {
+      console.warn("Local save bulletin error:", e);
+    }
+  }
+
+  // 2. Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "broadcast_bulletins", bulletin.id), sanitized, { merge: true });
+    } catch (e) {
+      console.warn("Firestore save bulletin error:", e);
+    }
+  }
+}
+
+export async function getBulletins(includeInactive = false): Promise<BroadcastBulletin[]> {
+  let list: BroadcastBulletin[] = [];
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDocs(collection(db, "broadcast_bulletins"));
+      list = snap.docs.map(d => ({ ...d.data(), id: d.id } as BroadcastBulletin));
+      if (typeof window !== "undefined" && list.length > 0) {
+        localStorage.setItem(BULLETINS_STORAGE_KEY, JSON.stringify(list));
+      }
+    } catch (e) {
+      console.warn("Firestore getBulletins error:", e);
+    }
+  }
+
+  if (list.length === 0 && typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(BULLETINS_STORAGE_KEY);
+      if (raw) list = JSON.parse(raw);
+    } catch (e) {}
+  }
+
+  list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  if (!includeInactive) {
+    const now = Date.now();
+    return list.filter(b => {
+      if (!b.active) return false;
+      if (b.expiresAt && new Date(b.expiresAt).getTime() < now) return false;
+      return true;
+    });
+  }
+
+  return list;
+}
+
+export function subscribeToBulletins(callback: (bulletins: BroadcastBulletin[]) => void): () => void {
+  let localFired = false;
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(BULLETINS_STORAGE_KEY);
+      if (raw) {
+        const list: BroadcastBulletin[] = JSON.parse(raw);
+        callback(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        localFired = true;
+      }
+    } catch (e) {}
+  }
+
+  if (!isFirebaseConfigured || !db) {
+    return () => {};
+  }
+
+  try {
+    const unsub = onSnapshot(collection(db, "broadcast_bulletins"), (snap) => {
+      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as BroadcastBulletin));
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(BULLETINS_STORAGE_KEY, JSON.stringify(list));
+        } catch (e) {}
+      }
+      callback(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    }, (err) => {
+      console.warn("subscribeToBulletins error:", err);
+      if (!localFired) getBulletins(true).then(callback);
+    });
+    return unsub;
+  } catch (e) {
+    if (!localFired) getBulletins(true).then(callback);
+    return () => {};
+  }
+}
+
+export async function acknowledgeBulletin(
+  bulletinId: string, 
+  studentUid: string, 
+  studentName: string
+): Promise<void> {
+  const list = await getBulletins(true);
+  const target = list.find(b => b.id === bulletinId);
+  if (!target) return;
+
+  const existingReceipts = target.readReceipts || [];
+  if (existingReceipts.some(r => r.studentUid === studentUid)) return; // Already acknowledged
+
+  const updated: BroadcastBulletin = {
+    ...target,
+    readReceipts: [
+      ...existingReceipts,
+      {
+        studentUid,
+        studentName,
+        readAt: new Date().toISOString()
+      }
+    ],
+    updatedAt: new Date().toISOString()
+  };
+
+  await saveBulletin(updated);
+}
+
+export async function toggleBulletinActive(bulletinId: string, active: boolean): Promise<void> {
+  const list = await getBulletins(true);
+  const target = list.find(b => b.id === bulletinId);
+  if (!target) return;
+
+  const updated: BroadcastBulletin = {
+    ...target,
+    active,
+    updatedAt: new Date().toISOString()
+  };
+
+  await saveBulletin(updated);
+}
+
+export async function deleteBulletin(bulletinId: string): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, "broadcast_bulletins", bulletinId));
+    } catch (e) {
+      console.warn("Firestore deleteBulletin error:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(BULLETINS_STORAGE_KEY);
+      if (raw) {
+        const list: BroadcastBulletin[] = JSON.parse(raw);
+        const filtered = list.filter(b => b.id !== bulletinId);
+        localStorage.setItem(BULLETINS_STORAGE_KEY, JSON.stringify(filtered));
+      }
+    } catch (e) {}
+  }
+}
+

@@ -43,6 +43,7 @@ import StudentGroupsView from "@/components/student/StudentGroupsView";
 import StudentExamsView from "@/components/student/StudentExamsView";
 import StudentAcademicStanding from "@/components/student/StudentAcademicStanding";
 import StudentFeedbackView from "@/components/student/StudentFeedbackView";
+import StudentBulletinBanner from "@/components/student/StudentBulletinBanner";
 import SuggestionBoxModal from "@/components/common/SuggestionBoxModal";
 
 export default function CatalogPage() {
@@ -586,6 +587,9 @@ export default function CatalogPage() {
 
       {/* Main Content Area */}
       <main className="mx-auto max-w-7xl px-6 py-8">
+        {/* Real-time Campus & Class Broadcast Bulletins */}
+        <StudentBulletinBanner currentUser={currentUser} />
+
         {/* Student Level Tabs (if logged in as student) */}
         {currentUser && currentUser.role === "student" && (
           <div className="mb-8 rounded-2xl border border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-xl p-4 shadow-xl">

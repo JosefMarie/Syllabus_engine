@@ -26,6 +26,7 @@ const ActivityLogger = dynamic(() => import("@/components/admin/ActivityLogger")
 const TipsManager = dynamic(() => import("@/components/admin/TipsManager"), { ssr: false, loading: TabLoadingPlaceholder });
 const SuggestionsInbox = dynamic(() => import("@/components/admin/SuggestionsInbox"), { ssr: false, loading: TabLoadingPlaceholder });
 const LiveExamProctoring = dynamic(() => import("@/components/admin/LiveExamProctoring"), { ssr: false, loading: TabLoadingPlaceholder });
+const BroadcastManager = dynamic(() => import("@/components/admin/BroadcastManager"), { ssr: false, loading: TabLoadingPlaceholder });
 import AdminPresenceAlert from "@/components/admin/AdminPresenceAlert";
 import RestrictionsControl from "@/components/admin/RestrictionsControl";
 import { downloadSyllabusAsJSON, downloadSyllabusAsText, downloadAllSyllabiAsJSON } from "@/lib/exportSyllabus";
@@ -52,7 +53,8 @@ import {
   FileQuestion,
   Sparkles,
   Inbox,
-  Radio
+  Radio,
+  Megaphone
 } from "lucide-react";
 import Link from "next/link";
 
@@ -60,7 +62,7 @@ export default function AdminDashboardPage() {
   const router = useRouter();
 
   const [adminUser, setAdminUser] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<'syllabi' | 'trades' | 'students' | 'progress' | 'assignments' | 'groups' | 'activity' | 'exams' | 'tips' | 'suggestions' | 'proctoring'>('syllabi');
+  const [activeTab, setActiveTab] = useState<'syllabi' | 'trades' | 'students' | 'progress' | 'assignments' | 'groups' | 'activity' | 'exams' | 'tips' | 'suggestions' | 'proctoring' | 'broadcasts' | 'gradebook' | 'challenges'>('syllabi');
   const [syllabi, setSyllabi] = useState<Syllabus[]>(() => getLocalSyllabi());
   const [trades, setTrades] = useState<Trade[]>(() => getLocalTrades());
   const [pendingCount, setPendingCount] = useState(() => {
@@ -461,6 +463,18 @@ export default function AdminDashboardPage() {
               </span>
             )}
           </button>
+
+          <button
+            onClick={() => setActiveTab('broadcasts')}
+            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
+              activeTab === 'broadcasts'
+                ? 'border-cyan-400 text-cyan-300'
+                : 'border-transparent text-[#94A3B8] hover:text-white'
+            }`}
+          >
+            <Megaphone className="h-4 w-4 shrink-0 text-cyan-400" />
+            <span>Broadcasts 📢</span>
+          </button>
         </div>
 
         {/* TAB 1: SYLLABI MANAGEMENT */}
@@ -660,6 +674,11 @@ export default function AdminDashboardPage() {
         {/* TAB 10: LIVE EXAM PROCTORING HALL */}
         <div className={activeTab === 'proctoring' ? 'block' : 'hidden'}>
           <LiveExamProctoring adminUser={adminUser} />
+        </div>
+
+        {/* TAB 11: CAMPUS BROADCAST BULLETIN STUDIO */}
+        <div className={activeTab === 'broadcasts' ? 'block' : 'hidden'}>
+          <BroadcastManager adminUser={adminUser} trades={trades} />
         </div>
       </main>
     </div>
