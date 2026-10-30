@@ -16,6 +16,8 @@ import {
   gradeGroupSubmission
 } from "@/lib/db";
 import { parseAssignmentWithGemini } from "@/lib/gemini";
+import { gradeSubmissionWithGemini, AiGradingResult } from "@/lib/aiGrading";
+import { SubmissionFileViewerModal } from "./SubmissionFileViewerModal";
 import { 
   FileText, 
   Plus, 
@@ -121,6 +123,19 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
   const [gradeScore, setGradeScore] = useState<number>(0);
   const [gradeFeedback, setGradeFeedback] = useState<string>("");
   const [savingGrade, setSavingGrade] = useState(false);
+  const [isAiGrading, setIsAiGrading] = useState(false);
+  const [aiGradingResult, setAiGradingResult] = useState<AiGradingResult | null>(null);
+  const [previewSubmission, setPreviewSubmission] = useState<AssignmentSubmission | null>(null);
+
+  // Batch AI Auto-Grading states
+  const [isBatchAiModalOpen, setIsBatchAiModalOpen] = useState(false);
+  const [batchAiList, setBatchAiList] = useState<Array<{
+    submission: AssignmentSubmission;
+    result?: AiGradingResult;
+    selected: boolean;
+    isGrading: boolean;
+  }>>([]);
+  const [batchAiInProgress, setBatchAiInProgress] = useState(false);
 
   // Form states for creating / editing assignment
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -353,6 +368,145 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
     setGradingSubmission(sub);
     setGradeScore(sub.score ?? (sub.maxScore || 100));
     setGradeFeedback(sub.feedback || "");
+    setAiGradingResult(null);
+  };
+
+  const handleTriggerAiGrade = async (sub: AssignmentSubmission) => {
+    setIsAiGrading(true);
+    try {
+      const parentAssignment = assignments.find(a => a.id === sub.assignmentId) || {
+        id: sub.assignmentId,
+        title: sub.submissionTitle || "Course Assignment",
+        courseCode: sub.courseCode,
+        courseTitle: sub.courseTitle,
+        description: "Evaluate submission against core competency outcomes.",
+        instructionsMarkdown: "Review submission for technical accuracy, code quality, and completeness.",
+        totalPoints: sub.maxScore || 100,
+        tradeId: sub.tradeId,
+        level: sub.level,
+        allowFileUpload: true,
+        allowTextSubmission: true,
+        status: "published",
+        createdAt: sub.submittedAt,
+        updatedAt: sub.submittedAt
+      } as Assignment;
+
+      const result = await gradeSubmissionWithGemini({
+        assignment: parentAssignment,
+        submission: sub
+      });
+
+      setAiGradingResult(result);
+      setGradeScore(result.suggestedScore);
+      setGradeFeedback(result.feedbackDraft);
+    } catch (err) {
+      console.error("AI Auto-correction error:", err);
+      alert("Failed to auto-grade with AI. Please check connectivity.");
+    } finally {
+      setIsAiGrading(false);
+    }
+  };
+
+  const handleStartBatchAi = (pendingSubs: AssignmentSubmission[]) => {
+    setBatchAiList(
+      pendingSubs.map(s => ({
+        submission: s,
+        selected: true,
+        isGrading: false
+      }))
+    );
+    setIsBatchAiModalOpen(true);
+  };
+
+  const handleRunBatchAi = async () => {
+    setBatchAiInProgress(true);
+    try {
+      const updatedList = [...batchAiList];
+      for (let i = 0; i < updatedList.length; i++) {
+        const item = updatedList[i];
+        if (!item.selected || item.result) continue;
+
+        item.isGrading = true;
+        setBatchAiList([...updatedList]);
+
+        const parentAssignment = assignments.find(a => a.id === item.submission.assignmentId) || {
+          id: item.submission.assignmentId,
+          title: item.submission.submissionTitle || "Course Assignment",
+          courseCode: item.submission.courseCode,
+          courseTitle: item.submission.courseTitle,
+          description: "Evaluate student submission against rubric.",
+          instructionsMarkdown: "Evaluate student work for technical competence and deliverables.",
+          totalPoints: item.submission.maxScore || 100,
+          tradeId: item.submission.tradeId,
+          level: item.submission.level,
+          allowFileUpload: true,
+          allowTextSubmission: true,
+          status: "published",
+          createdAt: item.submission.submittedAt,
+          updatedAt: item.submission.submittedAt
+        } as Assignment;
+
+        try {
+          const res = await gradeSubmissionWithGemini({
+            assignment: parentAssignment,
+            submission: item.submission
+          });
+          item.result = res;
+        } catch (e) {
+          console.warn("Batch item error:", e);
+        } finally {
+          item.isGrading = false;
+          setBatchAiList([...updatedList]);
+        }
+      }
+    } finally {
+      setBatchAiInProgress(false);
+    }
+  };
+
+  const handleApplyBatchGrades = async () => {
+    const toApply = batchAiList.filter(item => item.selected && item.result);
+    if (toApply.length === 0) {
+      alert("No graded submissions selected to apply.");
+      return;
+    }
+
+    setSavingGrade(true);
+    try {
+      for (const item of toApply) {
+        if (!item.result) continue;
+        const sub = item.submission;
+        const isGroup = sub.submissionType === "group" || !!sub.groupId;
+
+        if (isGroup) {
+          await gradeGroupSubmission(
+            sub,
+            item.result.suggestedScore,
+            item.result.feedbackDraft,
+            adminEmail || "Josef Marie (AI Evaluated)"
+          );
+        } else {
+          const updated: AssignmentSubmission = {
+            ...sub,
+            score: item.result.suggestedScore,
+            feedback: item.result.feedbackDraft,
+            status: "graded",
+            gradedAt: new Date().toISOString(),
+            gradedBy: adminEmail || "Josef Marie (AI Evaluated)"
+          };
+          await saveAssignmentSubmission(updated);
+        }
+      }
+
+      await loadAllData();
+      setIsBatchAiModalOpen(false);
+      alert(`Successfully saved and released grades for ${toApply.length} submissions!`);
+    } catch (err: any) {
+      console.error("Batch apply error:", err);
+      alert("Error applying batch grades: " + (err.message || "Unknown error"));
+    } finally {
+      setSavingGrade(false);
+    }
   };
 
   const handleSaveGrade = async () => {
@@ -645,6 +799,18 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                   <option value="graded">Graded</option>
                 </select>
               </div>
+
+              {filteredCourseSubmissions.filter(s => s.status !== "graded").length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleStartBatchAi(filteredCourseSubmissions.filter(s => s.status !== "graded"))}
+                  className="inline-flex items-center space-x-1.5 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-3.5 py-1.5 text-xs font-bold text-amber-300 hover:from-amber-500/30 hover:to-orange-500/30 transition-all shadow-sm"
+                  title="Auto-grade all pending submissions matching current filters using Gemini AI"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                  <span>Batch Auto-Grade ({filteredCourseSubmissions.filter(s => s.status !== "graded").length})</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -726,13 +892,26 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                             )}
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => openGradingModal(sub)}
-                              className="inline-flex items-center space-x-1 rounded-lg bg-[#06B6D4]/15 px-2.5 py-1 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4] hover:text-slate-950 transition-all border border-[#06B6D4]/30"
-                            >
-                              <Award className="h-3.5 w-3.5" />
-                              <span>{isGraded ? "Edit Grade" : "Grade & Review"}</span>
-                            </button>
+                            <div className="flex items-center justify-end space-x-1.5">
+                              {sub.fileData && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewSubmission(sub)}
+                                  className="inline-flex items-center space-x-1 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-xs font-semibold text-slate-300 hover:text-white hover:border-cyan-500/50 transition-all shadow-sm"
+                                  title="Open In-App Preview (no download needed)"
+                                >
+                                  <Eye className="h-3 w-3 text-cyan-400" />
+                                  <span className="hidden sm:inline">Preview</span>
+                                </button>
+                              )}
+                              <button
+                                onClick={() => openGradingModal(sub)}
+                                className="inline-flex items-center space-x-1 rounded-lg bg-[#06B6D4]/15 px-2.5 py-1 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4] hover:text-slate-950 transition-all border border-[#06B6D4]/30"
+                              >
+                                <Award className="h-3.5 w-3.5" />
+                                <span>{isGraded ? "Edit Grade" : "Grade & Review"}</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1221,13 +1400,26 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                             )}
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <button
-                              onClick={() => openGradingModal(sub)}
-                              className="inline-flex items-center space-x-1 rounded-lg bg-[#06B6D4]/15 px-2.5 py-1 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4] hover:text-slate-950 transition-all border border-[#06B6D4]/30"
-                            >
-                              <Award className="h-3.5 w-3.5" />
-                              <span>{isGraded ? "Edit Grade" : "Grade & Review"}</span>
-                            </button>
+                            <div className="flex items-center justify-end space-x-1.5">
+                              {sub.fileData && (
+                                <button
+                                  type="button"
+                                  onClick={() => setPreviewSubmission(sub)}
+                                  className="inline-flex items-center space-x-1 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-xs font-semibold text-slate-300 hover:text-white hover:border-cyan-500/50 transition-all shadow-sm"
+                                  title="Open In-App Preview (no download needed)"
+                                >
+                                  <Eye className="h-3 w-3 text-cyan-400" />
+                                  <span className="hidden sm:inline">Preview</span>
+                                </button>
+                              )}
+                              <button
+                                onClick={() => openGradingModal(sub)}
+                                className="inline-flex items-center space-x-1 rounded-lg bg-[#06B6D4]/15 px-2.5 py-1 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4] hover:text-slate-950 transition-all border border-[#06B6D4]/30"
+                              >
+                                <Award className="h-3.5 w-3.5" />
+                                <span>{isGraded ? "Edit Grade" : "Grade & Review"}</span>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1276,7 +1468,19 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
 
             {/* Student's answer content */}
             <div className="rounded-xl border border-[#334155] bg-[#0B0F19] p-4 space-y-3">
-              <span className="text-[10px] font-mono text-[#06B6D4] uppercase tracking-wider block">Submitted Solution:</span>
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-mono text-[#06B6D4] uppercase tracking-wider block">Submitted Solution:</span>
+                {gradingSubmission.fileData && (
+                  <button
+                    type="button"
+                    onClick={() => setPreviewSubmission(gradingSubmission)}
+                    className="inline-flex items-center space-x-1.5 rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-2.5 py-1 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20 transition-all shadow-sm"
+                  >
+                    <Eye className="h-3.5 w-3.5 text-cyan-400" />
+                    <span>In-App Preview (No Download)</span>
+                  </button>
+                )}
+              </div>
               
               {gradingSubmission.contentMarkdown ? (
                 <div className="prose prose-invert prose-xs max-w-none leading-relaxed text-[#CBD5E1]">
@@ -1295,18 +1499,105 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                       <span className="block text-[10px] font-mono text-[#94A3B8]">{(gradingSubmission.fileData.size / 1024).toFixed(1)} KB</span>
                     </div>
                   </div>
-                  {gradingSubmission.fileData.base64Url && (
-                    <a
-                      href={gradingSubmission.fileData.base64Url}
-                      download={gradingSubmission.fileData.name}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center space-x-1 rounded-lg bg-[#06B6D4] px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+                  <div className="flex items-center space-x-2">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewSubmission(gradingSubmission)}
+                      className="inline-flex items-center space-x-1 rounded-lg border border-cyan-500/40 bg-cyan-500/15 px-3 py-1.5 text-xs font-bold text-cyan-300 hover:bg-cyan-500 hover:text-slate-950 transition-all shadow-sm"
                     >
-                      <Upload className="h-3 w-3" />
-                      <span>Download File</span>
-                    </a>
-                  )}
+                      <Eye className="h-3 w-3" />
+                      <span>Preview File</span>
+                    </button>
+                    {gradingSubmission.fileData.base64Url && (
+                      <a
+                        href={gradingSubmission.fileData.base64Url}
+                        download={gradingSubmission.fileData.name}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center space-x-1 rounded-lg border border-slate-700 bg-slate-800/80 px-2.5 py-1.5 text-xs font-semibold text-slate-300 hover:text-white transition-all"
+                        title="Download file copy (optional)"
+                      >
+                        <Upload className="h-3 w-3 rotate-180" />
+                        <span className="hidden sm:inline">Download</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* AI AUTO-CORRECTION ENGINE PANEL */}
+            <div className="rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/10 via-orange-500/10 to-amber-500/5 p-4 shadow-lg">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center space-x-2.5">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 border border-amber-500/40 text-amber-400">
+                    <Sparkles className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-white flex items-center space-x-1.5">
+                      <span>Gemini AI Auto-Correction</span>
+                      <span className="rounded-full bg-amber-500/20 px-2 py-0.2 text-[9px] font-mono text-amber-300 border border-amber-500/40">
+                        Multimodal
+                      </span>
+                    </h4>
+                    <p className="text-[11px] text-slate-400">
+                      Evaluates student's files &amp; answers against assignment rubric in 2–3 seconds.
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={isAiGrading}
+                  onClick={() => handleTriggerAiGrade(gradingSubmission)}
+                  className="inline-flex items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:from-amber-400 hover:to-orange-400 transition-all shadow-lg disabled:opacity-50"
+                >
+                  <Sparkles className={`h-4 w-4 ${isAiGrading ? "animate-spin" : ""}`} />
+                  <span>{isAiGrading ? "Analyzing Submission..." : "Auto-Correct with AI"}</span>
+                </button>
+              </div>
+
+              {/* Live AI Grading Results Breakdown */}
+              {aiGradingResult && (
+                <div className="mt-3.5 pt-3.5 border-t border-amber-500/20 space-y-2.5 text-xs animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-bold text-white">Suggested Score:</span>
+                      <span className="font-mono font-bold text-amber-300 text-sm">
+                        {aiGradingResult.suggestedScore} / {aiGradingResult.maxScore}
+                      </span>
+                      <span className="rounded bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-300 border border-emerald-500/30">
+                        Grade {aiGradingResult.letterGrade}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-emerald-400 font-mono flex items-center space-x-1">
+                      <Check className="h-3 w-3" />
+                      <span>Applied to inputs below</span>
+                    </span>
+                  </div>
+
+                  <p className="text-slate-300 text-[11px] leading-relaxed italic bg-black/30 p-2.5 rounded-lg border border-white/5">
+                    "{aiGradingResult.summary}"
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                    <div className="rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-2.5">
+                      <span className="font-bold text-emerald-400 block mb-1">Key Strengths:</span>
+                      <ul className="list-disc list-inside space-y-0.5 text-slate-300">
+                        {aiGradingResult.strengths.slice(0, 3).map((st, i) => (
+                          <li key={i}>{st}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="rounded-lg bg-rose-500/10 border border-rose-500/20 p-2.5">
+                      <span className="font-bold text-rose-400 block mb-1">Areas for Improvement:</span>
+                      <ul className="list-disc list-inside space-y-0.5 text-slate-300">
+                        {aiGradingResult.weaknesses.slice(0, 3).map((wk, i) => (
+                          <li key={i}>{wk}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -1355,6 +1646,182 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
               >
                 {savingGrade ? "Saving Grade..." : "Submit Grade & Feedback"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* IN-APP SUBMISSION FILE VIEWER MODAL */}
+      <SubmissionFileViewerModal
+        isOpen={!!previewSubmission}
+        onClose={() => setPreviewSubmission(null)}
+        submission={previewSubmission}
+        assignment={assignments.find(a => a.id === previewSubmission?.assignmentId)}
+        onTriggerAiGrade={(sub) => {
+          setPreviewSubmission(null);
+          openGradingModal(sub);
+          handleTriggerAiGrade(sub);
+        }}
+        isAiGrading={isAiGrading}
+      />
+
+      {/* BATCH AI AUTO-GRADING MODAL */}
+      {isBatchAiModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in">
+          <div className="flex flex-col w-full max-w-4xl max-h-[90vh] rounded-2xl border border-amber-500/40 bg-[#0F172A] shadow-2xl overflow-hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 bg-[#1E293B]/90 px-6 py-4">
+              <div className="flex items-center space-x-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400 border border-amber-500/40">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                    <span>Batch AI Auto-Grading</span>
+                    <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-mono text-amber-300 border border-amber-500/40">
+                      {batchAiList.length} Submissions Queued
+                    </span>
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    Gemini AI evaluates each submission and prepares scores &amp; feedback for bulk approval.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => !batchAiInProgress && setIsBatchAiModalOpen(false)}
+                disabled={batchAiInProgress}
+                className="rounded-xl p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white transition-colors disabled:opacity-40"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* List */}
+            <div className="flex-1 overflow-auto p-6 space-y-3">
+              <div className="rounded-xl border border-slate-800 bg-[#0B0F19] overflow-hidden">
+                <table className="w-full text-left text-xs">
+                  <thead className="border-b border-slate-800 bg-slate-900/60 font-mono text-slate-400">
+                    <tr>
+                      <th className="px-4 py-2.5 w-10 text-center">
+                        <input
+                          type="checkbox"
+                          checked={batchAiList.length > 0 && batchAiList.every(b => b.selected)}
+                          onChange={(e) => {
+                            const val = e.target.checked;
+                            setBatchAiList(prev => prev.map(p => ({ ...p, selected: val })));
+                          }}
+                          className="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0"
+                        />
+                      </th>
+                      <th className="px-4 py-2.5">Student</th>
+                      <th className="px-4 py-2.5">Submission Artifact</th>
+                      <th className="px-4 py-2.5">AI Proposed Score</th>
+                      <th className="px-4 py-2.5">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/60 text-slate-300">
+                    {batchAiList.map((item, idx) => {
+                      const sub = item.submission;
+                      return (
+                        <tr key={sub.id} className="hover:bg-slate-900/40 transition-colors">
+                          <td className="px-4 py-3 text-center">
+                            <input
+                              type="checkbox"
+                              checked={item.selected}
+                              onChange={(e) => {
+                                const val = e.target.checked;
+                                setBatchAiList(prev => prev.map((p, i) => i === idx ? { ...p, selected: val } : p));
+                              }}
+                              className="rounded border-slate-700 bg-slate-800 text-cyan-500 focus:ring-0"
+                            />
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="block font-bold text-white">{sub.studentName}</span>
+                            <span className="block text-[10px] font-mono text-slate-500">
+                              @{sub.studentUsername} • {sub.courseCode}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="font-mono text-xs text-cyan-400">
+                              {sub.fileData ? sub.fileData.name : "Text Response"}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 font-mono font-bold">
+                            {item.result ? (
+                              <div className="flex items-center space-x-2">
+                                <span className="text-amber-300">
+                                  {item.result.suggestedScore} / {item.result.maxScore}
+                                </span>
+                                <span className="rounded bg-emerald-500/20 px-1.5 py-0.2 text-[10px] text-emerald-300 border border-emerald-500/30">
+                                  Grade {item.result.letterGrade}
+                                </span>
+                              </div>
+                            ) : item.isGrading ? (
+                              <span className="text-cyan-400 animate-pulse text-[11px]">Evaluating...</span>
+                            ) : (
+                              <span className="text-slate-500 text-[11px]">Pending AI</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3">
+                            {item.result ? (
+                              <span className="inline-flex items-center space-x-1 text-emerald-400 text-xs font-semibold">
+                                <Check className="h-3.5 w-3.5" />
+                                <span>Ready to Apply</span>
+                              </span>
+                            ) : item.isGrading ? (
+                              <span className="text-amber-400 animate-spin inline-block">⚡</span>
+                            ) : (
+                              <span className="text-slate-500 text-xs">Waiting</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="flex items-center justify-between border-t border-slate-800 bg-[#1E293B] px-6 py-4">
+              <span className="text-xs text-slate-400 font-mono">
+                {batchAiList.filter(b => b.result).length} of {batchAiList.length} graded
+              </span>
+
+              <div className="flex items-center space-x-3">
+                <button
+                  type="button"
+                  onClick={() => setIsBatchAiModalOpen(false)}
+                  disabled={batchAiInProgress || savingGrade}
+                  className="rounded-xl border border-slate-700 bg-slate-800 px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white"
+                >
+                  Cancel
+                </button>
+
+                {batchAiList.some(b => !b.result) && (
+                  <button
+                    type="button"
+                    disabled={batchAiInProgress}
+                    onClick={handleRunBatchAi}
+                    className="inline-flex items-center space-x-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2 text-xs font-extrabold text-slate-950 hover:from-amber-400 hover:to-orange-400 shadow-lg disabled:opacity-50"
+                  >
+                    <Sparkles className={`h-3.5 w-3.5 ${batchAiInProgress ? "animate-spin" : ""}`} />
+                    <span>{batchAiInProgress ? "AI is Grading..." : "Run AI Auto-Grade"}</span>
+                  </button>
+                )}
+
+                {batchAiList.some(b => b.result) && (
+                  <button
+                    type="button"
+                    disabled={savingGrade || batchAiInProgress}
+                    onClick={handleApplyBatchGrades}
+                    className="inline-flex items-center space-x-1.5 rounded-xl bg-emerald-500 px-5 py-2 text-xs font-extrabold text-slate-950 hover:bg-emerald-400 shadow-lg disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    <span>{savingGrade ? "Saving Grades..." : "Approve & Release All Grades"}</span>
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
