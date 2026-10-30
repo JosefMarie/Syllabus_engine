@@ -6,6 +6,7 @@ import { StudentTopicTimeRecord } from "@/types/timeTracking";
 import { StudentGroup, GroupMember, GroupEvaluation, MemberEvaluation } from "@/types/group";
 import { Exam, ExamQuestion, ExamAttempt, QuestionGrade } from "@/types/exam";
 import { DeveloperTip } from "@/types/tip";
+import { StudentSuggestion, SuggestionStatus } from "@/types/suggestion";
 import { INITIAL_DEVELOPER_TIPS } from "./tipsSeed";
 import { db, isFirebaseConfigured } from "./firebase";
 import { 
@@ -3624,6 +3625,137 @@ export function subscribeToDeveloperTips(callback: (tips: DeveloperTip[]) => voi
   } catch (e) {
     if (!localFired) {
       getDeveloperTips(includeDrafts).then(callback);
+    }
+    return () => {};
+  }
+}
+
+// ============================================================================
+// STUDENT SUGGESTIONS & FEEDBACK ENGINE
+// ============================================================================
+const SUGGESTIONS_STORAGE_KEY = "syllabus_platform_suggestions_v1";
+
+export async function getSuggestions(): Promise<StudentSuggestion[]> {
+  let suggestions: StudentSuggestion[] = [];
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDocs(collection(db, "suggestions"));
+      suggestions = snap.docs.map(d => ({ ...d.data(), id: d.id } as StudentSuggestion));
+      if (typeof window !== "undefined" && suggestions.length > 0) {
+        localStorage.setItem(SUGGESTIONS_STORAGE_KEY, JSON.stringify(suggestions));
+      }
+    } catch (e) {
+      console.warn("Firestore getSuggestions error, using local fallback:", e);
+    }
+  }
+
+  if (suggestions.length === 0 && typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(SUGGESTIONS_STORAGE_KEY);
+      if (raw) {
+        suggestions = JSON.parse(raw);
+      }
+    } catch (e) {}
+  }
+
+  return suggestions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+export async function saveSuggestion(suggestion: StudentSuggestion): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "suggestions", suggestion.id), suggestion, { merge: true });
+    } catch (e) {
+      console.warn("Firestore saveSuggestion error, saving locally:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const existing = await getSuggestions();
+      const idx = existing.findIndex(s => s.id === suggestion.id);
+      let updated: StudentSuggestion[];
+      if (idx >= 0) {
+        updated = existing.map(s => s.id === suggestion.id ? suggestion : s);
+      } else {
+        updated = [suggestion, ...existing];
+      }
+      localStorage.setItem(SUGGESTIONS_STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {}
+  }
+}
+
+export async function updateSuggestionStatus(id: string, status: SuggestionStatus, adminNotes?: string): Promise<void> {
+  const existing = await getSuggestions();
+  const target = existing.find(s => s.id === id);
+  if (!target) return;
+
+  const updated: StudentSuggestion = {
+    ...target,
+    status,
+    adminNotes: adminNotes !== undefined ? adminNotes : target.adminNotes,
+    updatedAt: new Date().toISOString()
+  };
+
+  await saveSuggestion(updated);
+}
+
+export async function deleteSuggestion(id: string): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, "suggestions", id));
+    } catch (e) {
+      console.warn("Firestore deleteSuggestion error:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const existing = await getSuggestions();
+      const filtered = existing.filter(s => s.id !== id);
+      localStorage.setItem(SUGGESTIONS_STORAGE_KEY, JSON.stringify(filtered));
+    } catch (e) {}
+  }
+}
+
+export function subscribeToSuggestions(callback: (suggestions: StudentSuggestion[]) => void): () => void {
+  let localFired = false;
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(SUGGESTIONS_STORAGE_KEY);
+      if (raw) {
+        const list: StudentSuggestion[] = JSON.parse(raw);
+        callback(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        localFired = true;
+      }
+    } catch (e) {}
+  }
+
+  if (!isFirebaseConfigured || !db) {
+    if (!localFired) {
+      getSuggestions().then(callback);
+    }
+    return () => {};
+  }
+
+  try {
+    const unsub = onSnapshot(collection(db, "suggestions"), (snap) => {
+      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as StudentSuggestion));
+      if (typeof window !== "undefined") {
+        localStorage.setItem(SUGGESTIONS_STORAGE_KEY, JSON.stringify(list));
+      }
+      callback(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    }, (err) => {
+      console.warn("subscribeToSuggestions error:", err);
+      if (!localFired) {
+        getSuggestions().then(callback);
+      }
+    });
+    return unsub;
+  } catch (e) {
+    if (!localFired) {
+      getSuggestions().then(callback);
     }
     return () => {};
   }

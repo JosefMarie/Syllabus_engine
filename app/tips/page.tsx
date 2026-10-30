@@ -5,6 +5,7 @@ import { DeveloperTip, TipLanguage, TipDifficulty, TipCategory } from "@/types/t
 import { getDeveloperTips, subscribeToDeveloperTips } from "@/lib/db";
 import DeveloperTipCard, { LANGUAGE_METADATA } from "@/components/tips/DeveloperTipCard";
 import DeveloperTipModal from "@/components/tips/DeveloperTipModal";
+import SuggestionBoxModal from "@/components/common/SuggestionBoxModal";
 import { 
   Sparkles, 
   Search, 
@@ -356,6 +357,9 @@ function TipsContent() {
         isBookmarked={activeModalTip ? bookmarkedIds.includes(activeModalTip.id) : false}
         onToggleBookmark={handleToggleBookmark}
       />
+
+      {/* Floating Suggestion Box */}
+      <SuggestionBoxModal />
     </div>
   );
 }

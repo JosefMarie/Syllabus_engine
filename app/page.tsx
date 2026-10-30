@@ -41,6 +41,7 @@ import StudentAssignmentsView from "@/components/student/StudentAssignmentsView"
 import StudentGroupsView from "@/components/student/StudentGroupsView";
 import StudentExamsView from "@/components/student/StudentExamsView";
 import StudentAcademicStanding from "@/components/student/StudentAcademicStanding";
+import SuggestionBoxModal from "@/components/common/SuggestionBoxModal";
 
 export default function CatalogPage() {
   const router = useRouter();
@@ -892,6 +893,9 @@ export default function CatalogPage() {
           </div>
         </div>
       )}
+
+      {/* FLOATING SUGGESTION & FEEDBACK BOX */}
+      <SuggestionBoxModal currentUser={currentUser} />
     </div>
   );
 }

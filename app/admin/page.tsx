@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { Syllabus } from "@/types/syllabus";
 import { UserProfile } from "@/types/auth";
-import { getAllSyllabi, deleteSyllabus, getAllUserProfiles, getLocalSyllabi, getLocalTrades, getAllTrades, subscribeToAllUserProfiles, getLocalUserProfiles } from "@/lib/db";
+import { getAllSyllabi, deleteSyllabus, getAllUserProfiles, getLocalSyllabi, getLocalTrades, getAllTrades, subscribeToAllUserProfiles, getLocalUserProfiles, subscribeToSuggestions } from "@/lib/db";
 import { getAdminSession, logoutAdmin, getStoredSession, subscribeToAdminSessionRevocation, revokeAllAdminSessions } from "@/lib/auth";
 import dynamic from "next/dynamic";
 import { Trade } from "@/types/auth";
@@ -24,6 +24,7 @@ const ExamManager = dynamic(() => import("@/components/admin/ExamManager"), { ss
 const GroupManager = dynamic(() => import("@/components/admin/GroupManager"), { ssr: false, loading: TabLoadingPlaceholder });
 const ActivityLogger = dynamic(() => import("@/components/admin/ActivityLogger"), { ssr: false, loading: TabLoadingPlaceholder });
 const TipsManager = dynamic(() => import("@/components/admin/TipsManager"), { ssr: false, loading: TabLoadingPlaceholder });
+const SuggestionsInbox = dynamic(() => import("@/components/admin/SuggestionsInbox"), { ssr: false, loading: TabLoadingPlaceholder });
 import AdminPresenceAlert from "@/components/admin/AdminPresenceAlert";
 import RestrictionsControl from "@/components/admin/RestrictionsControl";
 import { downloadSyllabusAsJSON, downloadSyllabusAsText, downloadAllSyllabiAsJSON } from "@/lib/exportSyllabus";
@@ -48,7 +49,8 @@ import {
   AlertTriangle,
   Smartphone,
   FileQuestion,
-  Sparkles
+  Sparkles,
+  Inbox
 } from "lucide-react";
 import Link from "next/link";
 
@@ -56,7 +58,7 @@ export default function AdminDashboardPage() {
   const router = useRouter();
 
   const [adminUser, setAdminUser] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<'syllabi' | 'trades' | 'students' | 'progress' | 'assignments' | 'groups' | 'activity' | 'exams' | 'tips'>('syllabi');
+  const [activeTab, setActiveTab] = useState<'syllabi' | 'trades' | 'students' | 'progress' | 'assignments' | 'groups' | 'activity' | 'exams' | 'tips' | 'suggestions'>('syllabi');
   const [syllabi, setSyllabi] = useState<Syllabus[]>(() => getLocalSyllabi());
   const [trades, setTrades] = useState<Trade[]>(() => getLocalTrades());
   const [pendingCount, setPendingCount] = useState(() => {
@@ -65,6 +67,7 @@ export default function AdminDashboardPage() {
     }
     return 0;
   });
+  const [newSuggestionsCount, setNewSuggestionsCount] = useState<number>(0);
   const [loading, setLoading] = useState(false);
 
   const [studentSession, setStudentSession] = useState<UserProfile | null>(null);
@@ -85,6 +88,14 @@ export default function AdminDashboardPage() {
       if (isMounted) {
         const pending = userProfiles.filter(u => u.status === 'pending_approval').length;
         setPendingCount(pending);
+      }
+    });
+
+    // Real-time listener: keep suggestions count live
+    const unsubSuggestions = subscribeToSuggestions((allSuggestions) => {
+      if (isMounted) {
+        const unread = allSuggestions.filter(s => s.status === 'new').length;
+        setNewSuggestionsCount(unread);
       }
     });
 
@@ -136,6 +147,7 @@ export default function AdminDashboardPage() {
       isMounted = false;
       unsubRevocation();
       unsubProfiles();
+      unsubSuggestions();
       clearTimeout(safetyTimer);
     };
   }, [router]);
@@ -404,6 +416,23 @@ export default function AdminDashboardPage() {
             <Sparkles className="h-4 w-4 shrink-0 text-cyan-400" />
             <span>Dev Tips Studio 💡</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('suggestions')}
+            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
+              activeTab === 'suggestions'
+                ? 'border-[#06B6D4] text-[#06B6D4]'
+                : 'border-transparent text-[#94A3B8] hover:text-white'
+            }`}
+          >
+            <Inbox className="h-4 w-4 shrink-0 text-amber-400" />
+            <span>Suggestions 📬</span>
+            {newSuggestionsCount > 0 && (
+              <span className="ml-1 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-mono font-extrabold text-slate-950 shadow-md animate-pulse">
+                {newSuggestionsCount} New
+              </span>
+            )}
+          </button>
         </div>
 
         {/* TAB 1: SYLLABI MANAGEMENT */}
@@ -593,6 +622,11 @@ export default function AdminDashboardPage() {
         {/* TAB 8: DEVELOPER TIPS & INSIGHTS STUDIO */}
         <div className={activeTab === 'tips' ? 'block' : 'hidden'}>
           <TipsManager adminUser={adminUser} />
+        </div>
+
+        {/* TAB 9: SUGGESTIONS & FEEDBACK INBOX */}
+        <div className={activeTab === 'suggestions' ? 'block' : 'hidden'}>
+          <SuggestionsInbox adminUser={adminUser} />
         </div>
       </main>
     </div>
