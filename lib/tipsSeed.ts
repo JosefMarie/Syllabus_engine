@@ -319,5 +319,32 @@ The compiler physically refuses to compile your code unless you handle both the 
     authorName: "Systems Programmer",
     likesCount: 39,
     viewsCount: 240
+  },
+  {
+    id: "tip-solid-single-responsibility",
+    title: "Clean Code: The Single Responsibility Principle (SRP) Explained",
+    summary: "A class or function should have one, and only one, reason to change. Never mix business calculation, database persistence, and UI formatting in one module.",
+    language: "cleancode",
+    category: "architecture",
+    difficulty: "intermediate",
+    tags: ["solid", "clean-code", "architecture", "design-patterns"],
+    explanation: `### The Golden Rule of Architecture
+When one class calculates grades, sends an email notification, and queries SQL:
+- If the email provider changes, you risk breaking grade calculations!
+- If the database schema changes, you risk breaking email delivery!
+
+### Separation of Concerns:
+1. **Domain Layer:** Pure calculation functions with zero side effects.
+2. **Repository Layer:** Database queries & persistent storage.
+3. **Service Layer:** Orchestration and notification delivery.`,
+    whyItMatters: "The #1 core design question asked in every Senior Software Engineer interview.",
+    documentationUrl: "https://en.wikipedia.org/wiki/Single-responsibility_principle",
+    status: "published",
+    isFeatured: false,
+    createdAt: "2026-10-30T09:45:00Z",
+    updatedAt: "2026-10-30T09:45:00Z",
+    authorName: "Architecture Review Board",
+    likesCount: 58,
+    viewsCount: 420
   }
 ];

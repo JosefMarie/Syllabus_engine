@@ -15,7 +15,10 @@ import {
   Lightbulb, 
   BookOpen, 
   Code2, 
-  Sparkles 
+  Sparkles,
+  ChevronLeft,
+  ChevronRight,
+  ImageIcon
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -36,11 +39,13 @@ export default function DeveloperTipModal({
   const [copiedGood, setCopiedGood] = useState(false);
   const [copiedBad, setCopiedBad] = useState(false);
   const [shared, setShared] = useState(false);
+  const [currentImgIndex, setCurrentImgIndex] = useState(0);
 
   if (!tip) return null;
 
   const langMeta = LANGUAGE_METADATA[tip.language] || LANGUAGE_METADATA.general;
   const diffBadge = DIFFICULTY_BADGES[tip.difficulty] || DIFFICULTY_BADGES.beginner;
+  const images = tip.images || [];
 
   const handleCopy = async (code: string, isGood: boolean) => {
     try {
@@ -149,58 +154,139 @@ export default function DeveloperTipModal({
             </div>
           )}
 
-          {/* Code Comparison Grid (Bad vs Good) */}
-          <div className="space-y-4">
-            <span className="text-xs font-mono font-bold text-[#94A3B8] uppercase tracking-wider block">
-              Code Comparison
-            </span>
+          {/* Media / Slideshow Gallery (If tip has images) */}
+          {images.length > 0 && (
+            <div className="space-y-3">
+              <span className="text-xs font-mono font-bold text-[#94A3B8] uppercase tracking-wider block flex items-center space-x-1.5">
+                <ImageIcon className="h-4 w-4 text-cyan-400" />
+                <span>Visual Walkthrough / Infographic ({images.length} {images.length === 1 ? "Slide" : "Slides"})</span>
+              </span>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Naive / Common Way */}
-              {tip.badCode && (
-                <div className="rounded-2xl border border-rose-500/30 bg-[#0B0F19] overflow-hidden flex flex-col">
-                  <div className="flex items-center justify-between border-b border-rose-500/20 px-4 py-2.5 bg-rose-950/30">
-                    <span className="text-xs font-mono font-bold text-rose-400 flex items-center space-x-1.5">
-                      <XCircle className="h-4 w-4" />
-                      <span>{tip.badCodeTitle || "Common Naive Way"}</span>
-                    </span>
+              <div className="rounded-2xl border border-[#334155] bg-[#0B0F19] overflow-hidden relative group/modalCarousel shadow-xl">
+                <div className="relative aspect-video max-h-[460px] w-full bg-slate-950 flex items-center justify-center overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={images[currentImgIndex]}
+                    alt={`${tip.title} - Slide ${currentImgIndex + 1}`}
+                    className="w-full h-full object-contain"
+                  />
+
+                  {/* Navigation Arrows */}
+                  {images.length > 1 && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setCurrentImgIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1))}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/75 hover:bg-cyan-500 text-white hover:text-slate-950 border border-white/20 transition-all opacity-85 hover:opacity-100 shadow-xl"
+                        title="Previous Slide"
+                      >
+                        <ChevronLeft className="h-5 w-5" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setCurrentImgIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0))}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-full bg-black/75 hover:bg-cyan-500 text-white hover:text-slate-950 border border-white/20 transition-all opacity-85 hover:opacity-100 shadow-xl"
+                        title="Next Slide"
+                      >
+                        <ChevronRight className="h-5 w-5" />
+                      </button>
+
+                      {/* Slide Badge */}
+                      <div className="absolute bottom-3 right-3 px-3 py-1 rounded-full bg-black/80 border border-white/20 text-xs font-mono text-cyan-300 backdrop-blur-md">
+                        {currentImgIndex + 1} / {images.length}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Caption Bar */}
+                {tip.imageCaptions && tip.imageCaptions[currentImgIndex] && (
+                  <div className="p-3 text-xs font-mono text-cyan-300 border-t border-[#334155]/60 bg-[#121826]">
+                    {tip.imageCaptions[currentImgIndex]}
+                  </div>
+                )}
+              </div>
+
+              {/* Thumbnail Strip if multiple images */}
+              {images.length > 1 && (
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 pt-1">
+                  {images.map((img, idx) => (
                     <button
-                      onClick={() => handleCopy(tip.badCode!, false)}
-                      className="p-1 rounded text-slate-400 hover:text-white"
-                      title="Copy code"
+                      key={idx}
+                      type="button"
+                      onClick={() => setCurrentImgIndex(idx)}
+                      className={`relative h-14 w-20 shrink-0 rounded-xl overflow-hidden border-2 transition-all ${
+                        idx === currentImgIndex
+                          ? "border-cyan-400 scale-105 shadow-md"
+                          : "border-[#334155] opacity-60 hover:opacity-100"
+                      }`}
                     >
-                      {copiedBad ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" />
                     </button>
-                  </div>
-                  <div className="p-4 font-mono text-xs overflow-x-auto text-[#CBD5E1] leading-relaxed flex-1">
-                    <pre><code>{tip.badCode}</code></pre>
-                  </div>
+                  ))}
                 </div>
               )}
+            </div>
+          )}
 
-              {/* Idiomatic / Recommended Pro Way */}
-              <div className={`rounded-2xl border border-emerald-500/30 bg-[#0B0F19] overflow-hidden flex flex-col ${
-                !tip.badCode ? "md:col-span-2" : ""
-              }`}>
-                <div className="flex items-center justify-between border-b border-emerald-500/20 px-4 py-2.5 bg-emerald-950/30">
-                  <span className="text-xs font-mono font-bold text-emerald-400 flex items-center space-x-1.5">
-                    <CheckCircle2 className="h-4 w-4" />
-                    <span>{tip.goodCodeTitle || "Recommended Pro Way"}</span>
-                  </span>
-                  <button
-                    onClick={() => handleCopy(tip.goodCode, true)}
-                    className="p-1 rounded text-slate-400 hover:text-white"
-                    title="Copy code"
-                  >
-                    {copiedGood ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
-                  </button>
-                </div>
-                <div className="p-4 font-mono text-xs overflow-x-auto text-[#E2E8F0] leading-relaxed flex-1">
-                  <pre><code>{tip.goodCode}</code></pre>
-                </div>
+          {/* Code Comparison Grid (Bad vs Good - If tip has code) */}
+          {(tip.goodCode || tip.badCode) && (
+            <div className="space-y-4">
+              <span className="text-xs font-mono font-bold text-[#94A3B8] uppercase tracking-wider block">
+                Code Comparison
+              </span>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Naive / Common Way */}
+                {tip.badCode && (
+                  <div className="rounded-2xl border border-rose-500/30 bg-[#0B0F19] overflow-hidden flex flex-col">
+                    <div className="flex items-center justify-between border-b border-rose-500/20 px-4 py-2.5 bg-rose-950/30">
+                      <span className="text-xs font-mono font-bold text-rose-400 flex items-center space-x-1.5">
+                        <XCircle className="h-4 w-4" />
+                        <span>{tip.badCodeTitle || "Common Naive Way"}</span>
+                      </span>
+                      <button
+                        onClick={() => handleCopy(tip.badCode!, false)}
+                        className="p-1 rounded text-slate-400 hover:text-white"
+                        title="Copy code"
+                      >
+                        {copiedBad ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
+                    <div className="p-4 font-mono text-xs overflow-x-auto text-[#CBD5E1] leading-relaxed flex-1">
+                      <pre><code>{tip.badCode}</code></pre>
+                    </div>
+                  </div>
+                )}
+
+                {/* Idiomatic / Recommended Pro Way */}
+                {tip.goodCode && (
+                  <div className={`rounded-2xl border border-emerald-500/30 bg-[#0B0F19] overflow-hidden flex flex-col ${
+                    !tip.badCode ? "md:col-span-2" : ""
+                  }`}>
+                    <div className="flex items-center justify-between border-b border-emerald-500/20 px-4 py-2.5 bg-emerald-950/30">
+                      <span className="text-xs font-mono font-bold text-emerald-400 flex items-center space-x-1.5">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>{tip.goodCodeTitle || "Recommended Pro Way"}</span>
+                      </span>
+                      <button
+                        onClick={() => handleCopy(tip.goodCode!, true)}
+                        className="p-1 rounded text-slate-400 hover:text-white"
+                        title="Copy code"
+                      >
+                        {copiedGood ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Copy className="h-3.5 w-3.5" />}
+                      </button>
+                    </div>
+                    <div className="p-4 font-mono text-xs overflow-x-auto text-[#E2E8F0] leading-relaxed flex-1">
+                      <pre><code>{tip.goodCode}</code></pre>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
+          )}
 
           {/* Deep Dive Explanation */}
           <div className="rounded-2xl border border-[#334155] bg-[#1E293B]/60 p-6 space-y-3">

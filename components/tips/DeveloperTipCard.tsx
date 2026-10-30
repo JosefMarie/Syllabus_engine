@@ -14,7 +14,10 @@ import {
   Flame, 
   CheckCircle2, 
   XCircle,
-  ExternalLink
+  ExternalLink,
+  ChevronLeft,
+  ChevronRight,
+  ImageIcon
 } from "lucide-react";
 
 interface DeveloperTipCardProps {
@@ -50,13 +53,18 @@ export default function DeveloperTipCard({
   onOpenDeepDive
 }: DeveloperTipCardProps) {
   const [activeCodeTab, setActiveCodeTab] = useState<"good" | "bad">("good");
+  const [currentImgIndex, setCurrentImgIndex] = useState(0);
   const [copied, setCopied] = useState(false);
   const [shared, setShared] = useState(false);
 
   const langMeta = LANGUAGE_METADATA[tip.language] || LANGUAGE_METADATA.general;
   const diffBadge = DIFFICULTY_BADGES[tip.difficulty] || DIFFICULTY_BADGES.beginner;
 
-  const currentCode = activeCodeTab === "good" ? tip.goodCode : (tip.badCode || tip.goodCode);
+  const hasCode = Boolean(tip.goodCode || tip.badCode);
+  const hasImages = Boolean(tip.images && tip.images.length > 0);
+  const images = tip.images || [];
+
+  const currentCode = activeCodeTab === "good" ? (tip.goodCode || "") : (tip.badCode || tip.goodCode || "");
   const currentTitle = activeCodeTab === "good" 
     ? (tip.goodCodeTitle || "Recommended Idiomatic Way") 
     : (tip.badCodeTitle || "Common Pitfall / Anti-Pattern");
@@ -152,74 +160,161 @@ export default function DeveloperTipCard({
           {tip.summary}
         </p>
 
-        {/* Interactive Code Box */}
-        <div className="mt-4 rounded-2xl border border-[#334155] bg-[#0B0F19] overflow-hidden shadow-inner">
-          {/* Code Header with Toggle Tabs & Copy Button */}
-          <div className="flex items-center justify-between border-b border-[#334155] px-3 py-2 bg-[#121826]">
-            <div className="flex items-center space-x-1.5">
-              <button
-                type="button"
-                onClick={() => setActiveCodeTab("good")}
-                className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
-                  activeCodeTab === "good"
-                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm"
-                    : "text-[#94A3B8] hover:text-white"
-                }`}
-              >
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
-                <span>Pro Way</span>
-              </button>
+        {/* Media / Slideshow Carousel (If tip has images) */}
+        {hasImages && (
+          <div className="mt-4 rounded-2xl border border-[#334155] bg-[#0B0F19] overflow-hidden shadow-inner relative group/carousel">
+            <div className="relative aspect-video w-full bg-slate-950 flex items-center justify-center overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={images[currentImgIndex]}
+                alt={tip.title}
+                className="w-full h-full object-contain cursor-pointer transition-transform duration-300 hover:scale-[1.02]"
+                onClick={() => onOpenDeepDive(tip)}
+              />
 
-              {tip.badCode && (
-                <button
-                  type="button"
-                  onClick={() => setActiveCodeTab("bad")}
-                  className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
-                    activeCodeTab === "bad"
-                      ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm"
-                      : "text-[#94A3B8] hover:text-white"
-                  }`}
-                >
-                  <XCircle className="h-3.5 w-3.5 text-rose-400" />
-                  <span>Naive Way</span>
-                </button>
+              {/* Prev / Next Arrows if multiple slides */}
+              {images.length > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentImgIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
+                    }}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/70 hover:bg-cyan-500 text-white hover:text-slate-950 border border-white/20 transition-all opacity-80 hover:opacity-100 shadow-lg"
+                    title="Previous Slide"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setCurrentImgIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
+                    }}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/70 hover:bg-cyan-500 text-white hover:text-slate-950 border border-white/20 transition-all opacity-80 hover:opacity-100 shadow-lg"
+                    title="Next Slide"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+
+                  {/* Slide Counter Badge */}
+                  <div className="absolute bottom-2 right-2 px-2.5 py-0.5 rounded-full bg-black/75 border border-white/20 text-[10px] font-mono text-cyan-300 backdrop-blur-md">
+                    {currentImgIndex + 1} / {images.length} slides
+                  </div>
+
+                  {/* Indicator Dots */}
+                  <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center space-x-1">
+                    {images.map((_, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCurrentImgIndex(idx);
+                        }}
+                        className={`h-1.5 rounded-full transition-all ${
+                          idx === currentImgIndex ? "w-4 bg-cyan-400" : "w-1.5 bg-white/40 hover:bg-white/80"
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </>
               )}
             </div>
 
-            <button
-              onClick={handleCopyCode}
-              type="button"
-              className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[11px] font-mono text-[#94A3B8] hover:text-white bg-[#1E293B] border border-[#334155] hover:border-cyan-400/50 transition-all"
-            >
-              {copied ? (
-                <>
-                  <Check className="h-3.5 w-3.5 text-emerald-400" />
-                  <span className="text-emerald-400 font-bold">Copied!</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="h-3.5 w-3.5" />
-                  <span>Copy</span>
-                </>
-              )}
-            </button>
+            {/* Optional Slide Caption */}
+            {tip.imageCaptions && tip.imageCaptions[currentImgIndex] && (
+              <div className="px-3 py-1.5 text-[11px] font-mono text-[#94A3B8] border-t border-[#334155]/60 bg-[#121826] truncate">
+                {tip.imageCaptions[currentImgIndex]}
+              </div>
+            )}
           </div>
+        )}
 
-          {/* Code Body */}
-          <div className="p-3.5 font-mono text-xs overflow-x-auto text-[#E2E8F0] leading-relaxed max-h-48 selection:bg-cyan-500/30">
-            <pre>
-              <code>{currentCode}</code>
-            </pre>
-          </div>
+        {/* Interactive Code Box (If tip has code) */}
+        {hasCode && (
+          <div className="mt-4 rounded-2xl border border-[#334155] bg-[#0B0F19] overflow-hidden shadow-inner">
+            {/* Code Header with Toggle Tabs & Copy Button */}
+            <div className="flex items-center justify-between border-b border-[#334155] px-3 py-2 bg-[#121826]">
+              <div className="flex items-center space-x-1.5">
+                <button
+                  type="button"
+                  onClick={() => setActiveCodeTab("good")}
+                  className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
+                    activeCodeTab === "good"
+                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm"
+                      : "text-[#94A3B8] hover:text-white"
+                  }`}
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                  <span>Pro Way</span>
+                </button>
 
-          {/* Sub-label under code */}
-          <div className={`px-3 py-1.5 text-[11px] font-mono border-t border-[#334155]/60 flex items-center justify-between ${
-            activeCodeTab === "good" ? "text-emerald-400/80 bg-emerald-950/20" : "text-rose-400/80 bg-rose-950/20"
-          }`}>
-            <span className="truncate">{currentTitle}</span>
-            <span className="text-[10px] text-slate-500 uppercase">{tip.language}</span>
+                {tip.badCode && (
+                  <button
+                    type="button"
+                    onClick={() => setActiveCodeTab("bad")}
+                    className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
+                      activeCodeTab === "bad"
+                        ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm"
+                        : "text-[#94A3B8] hover:text-white"
+                    }`}
+                  >
+                    <XCircle className="h-3.5 w-3.5 text-rose-400" />
+                    <span>Naive Way</span>
+                  </button>
+                )}
+              </div>
+
+              <button
+                onClick={handleCopyCode}
+                type="button"
+                className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[11px] font-mono text-[#94A3B8] hover:text-white bg-[#1E293B] border border-[#334155] hover:border-cyan-400/50 transition-all"
+              >
+                {copied ? (
+                  <>
+                    <Check className="h-3.5 w-3.5 text-emerald-400" />
+                    <span className="text-emerald-400 font-bold">Copied!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="h-3.5 w-3.5" />
+                    <span>Copy</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Code Body */}
+            <div className="p-3.5 font-mono text-xs overflow-x-auto text-[#E2E8F0] leading-relaxed max-h-48 selection:bg-cyan-500/30">
+              <pre>
+                <code>{currentCode}</code>
+              </pre>
+            </div>
+
+            {/* Sub-label under code */}
+            <div className={`px-3 py-1.5 text-[11px] font-mono border-t border-[#334155]/60 flex items-center justify-between ${
+              activeCodeTab === "good" ? "text-emerald-400/80 bg-emerald-950/20" : "text-rose-400/80 bg-rose-950/20"
+            }`}>
+              <span className="truncate">{currentTitle}</span>
+              <span className="text-[10px] text-slate-500 uppercase">{tip.language}</span>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Pure Concept Card (If neither code nor images) */}
+        {!hasCode && !hasImages && (
+          <div className="mt-4 rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-cyan-950/20 via-[#0B0F19] to-[#0F172A] p-4 text-xs text-[#CBD5E1] leading-relaxed shadow-inner">
+            <span className="text-[11px] font-mono font-bold text-cyan-400 uppercase tracking-wider block mb-1.5 flex items-center space-x-1.5">
+              <span>💡 Core Insight</span>
+            </span>
+            <p className="line-clamp-4 text-[#94A3B8]">
+              {tip.whyItMatters || tip.explanation || tip.summary}
+            </p>
+          </div>
+        )}
 
         {/* Tags */}
         {tip.tags && tip.tags.length > 0 && (

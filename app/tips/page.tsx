@@ -112,8 +112,9 @@ function TipsContent() {
         const matchesTitle = t.title.toLowerCase().includes(q);
         const matchesSummary = t.summary.toLowerCase().includes(q);
         const matchesTags = t.tags?.some(tag => tag.toLowerCase().includes(q));
-        const matchesCode = t.goodCode.toLowerCase().includes(q) || (t.badCode && t.badCode.toLowerCase().includes(q));
-        if (!matchesTitle && !matchesSummary && !matchesTags && !matchesCode) return false;
+        const matchesCode = (t.goodCode && t.goodCode.toLowerCase().includes(q)) || (t.badCode && t.badCode.toLowerCase().includes(q));
+        const matchesExplanation = t.explanation?.toLowerCase().includes(q);
+        if (!matchesTitle && !matchesSummary && !matchesTags && !matchesCode && !matchesExplanation) return false;
       }
 
       return true;

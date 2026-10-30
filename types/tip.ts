@@ -30,11 +30,15 @@ export interface DeveloperTip {
   difficulty: TipDifficulty;
   tags: string[];
   
-  // Code snippets
-  goodCode: string;
+  // Code snippets (Optional)
+  goodCode?: string;
   goodCodeTitle?: string;
   badCode?: string;
   badCodeTitle?: string;
+  
+  // Media & Nested Slideshow images (Optional)
+  images?: string[]; // Array of base64 data URLs or image URLs
+  imageCaptions?: string[]; // Optional captions corresponding to images
   
   // Deep dive explanation
   explanation: string;
