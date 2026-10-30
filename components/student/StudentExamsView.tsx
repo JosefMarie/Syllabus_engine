@@ -128,6 +128,23 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
   const examStartedAtRef = useRef<string | null>(null);
   const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Live refs to guarantee stable 5-second proctoring heartbeats without interval thrashing
+  const timeRemainingSecondsRef = useRef(timeRemainingSeconds);
+  timeRemainingSecondsRef.current = timeRemainingSeconds;
+
+  const studentAnswersRef = useRef(studentAnswers);
+  studentAnswersRef.current = studentAnswers;
+
+  const tabSwitchViolationsRef = useRef(tabSwitchViolations);
+  tabSwitchViolationsRef.current = tabSwitchViolations;
+
+  const currentQuestionIdxRef = useRef(currentQuestionIdx);
+  currentQuestionIdxRef.current = currentQuestionIdx;
+
+  const extraTimeGrantedMinutesRef = useRef(0);
+  const currentProctorStatusRef = useRef<"active" | "flagged" | "submitted" | "force_submitted">("active");
+  const currentFlagReasonRef = useRef<string | undefined>(undefined);
+
   const isQuestionAnswered = (val: any): boolean => {
     if (val === undefined || val === null || val === "") return false;
     if (Array.isArray(val)) return val.length > 0;
@@ -284,12 +301,46 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
   };
 
   const loadData = async () => {
-    setLoading(true);
+    // 1. Instant Cache Load: Display local cached exams and attempts in 0ms so slow internet never blocks student
+    if (typeof window !== "undefined") {
+      try {
+        const rawExams = localStorage.getItem("syllabus_platform_exams_v1");
+        const studentAttemptsKey = `syllabus_platform_exam_attempts_v1_${currentUser.uid}`;
+        const rawAttempts = localStorage.getItem(studentAttemptsKey) || localStorage.getItem("syllabus_platform_exam_attempts_v1");
+        if (rawExams) {
+          const cachedAll: Exam[] = JSON.parse(rawExams);
+          const cachedVisible = cachedAll.filter(e => {
+            if (e.status !== "published") return false;
+            const matchesLevel = e.level === "all" || !currentUser.level || e.level === currentUser.level;
+            const matchesTrade = e.tradeId === "all" || !currentUser.tradeId || e.tradeId === currentUser.tradeId;
+            return matchesLevel && matchesTrade;
+          });
+          setExams(cachedVisible);
+          if (rawAttempts) {
+            const cachedAttempts: ExamAttempt[] = JSON.parse(rawAttempts);
+            setMyAttempts(cachedAttempts.filter(a => a.studentUid === currentUser.uid));
+          }
+          setLoading(false);
+        }
+      } catch (e) {}
+    }
+
     try {
-      const [allExams, attemptsList] = await Promise.all([
+      // 2. Fetch network data with 5s timeout safeguard
+      const timeoutPromise = new Promise<{ timeout: true }>(resolve => setTimeout(() => resolve({ timeout: true }), 5000));
+      const fetchPromise = Promise.all([
         getExams(),
         getExamAttemptsForStudent(currentUser.uid)
       ]);
+
+      const result = await Promise.race([fetchPromise, timeoutPromise]);
+      if ("timeout" in result) {
+        console.warn("Exams network fetch timed out; continuing with cached data");
+        setLoading(false);
+        return;
+      }
+
+      const [allExams, attemptsList] = result;
 
       // Only published exams matching student's level and trade
       const visible = allExams.filter(e => {
@@ -447,20 +498,114 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
     };
   }, [examStarted, activeExam]);
 
-  // Real-Time Proctoring Listener & Heartbeat Sync
+  // Anti-Cheating: Block Copying, Right-Click Context Menu, Page Saving & Printing
   useEffect(() => {
-    if (!examStarted || !activeExam) return;
+    if (!examStarted) return;
 
-    let prevExtraTime = 0;
+    // 1. Block right click / context menu
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      setViolationToast("⚠️ Right-click context menu is disabled during exams.");
+      setTimeout(() => setViolationToast(null), 3500);
+      return false;
+    };
 
-    // 1. Reactive listener: receive instructor actions (extra time, force-submit)
+    // 2. Block copy and cut outside answer input fields
+    const handleCopyCut = (e: ClipboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === "input" || tag === "textarea") return;
+
+      e.preventDefault();
+      setViolationToast("⚠️ Copying exam questions is strictly prohibited.");
+      setTimeout(() => setViolationToast(null), 3500);
+      return false;
+    };
+
+    // 3. Block selection outside input fields
+    const handleSelectStart = (e: Event) => {
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag !== "input" && tag !== "textarea") {
+        e.preventDefault();
+        return false;
+      }
+    };
+
+    // 4. Block keyboard shortcuts: Ctrl+C (outside inputs), Ctrl+S (save page), Ctrl+P (print), Ctrl+U (source), F12 (devtools)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+      const key = e.key.toLowerCase();
+
+      // Block Save (Ctrl+S / Cmd+S), Print (Ctrl+P / Cmd+P), View Source (Ctrl+U / Cmd+U)
+      if (isCtrlOrMeta && (key === "s" || key === "p" || key === "u")) {
+        e.preventDefault();
+        setViolationToast("⚠️ Saving, printing, or downloading exam pages is prohibited.");
+        setTimeout(() => setViolationToast(null), 3500);
+        return false;
+      }
+
+      // Block DevTools shortcuts: F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
+      if (
+        e.key === "F12" ||
+        (isCtrlOrMeta && e.shiftKey && (key === "i" || key === "j" || key === "c"))
+      ) {
+        e.preventDefault();
+        setViolationToast("⚠️ Developer tools inspection is blocked during exams.");
+        setTimeout(() => setViolationToast(null), 3500);
+        return false;
+      }
+
+      // Block Copy (Ctrl+C / Cmd+C) outside answer inputs
+      if (isCtrlOrMeta && key === "c") {
+        const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+        if (tag !== "input" && tag !== "textarea") {
+          e.preventDefault();
+          setViolationToast("⚠️ Copying exam content is strictly prohibited.");
+          setTimeout(() => setViolationToast(null), 3500);
+          return false;
+        }
+      }
+    };
+
+    document.addEventListener("contextmenu", handleContextMenu);
+    document.addEventListener("copy", handleCopyCut);
+    document.addEventListener("cut", handleCopyCut);
+    document.addEventListener("selectstart", handleSelectStart);
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("contextmenu", handleContextMenu);
+      document.removeEventListener("copy", handleCopyCut);
+      document.removeEventListener("cut", handleCopyCut);
+      document.removeEventListener("selectstart", handleSelectStart);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [examStarted]);
+
+  // Real-Time Proctoring Listener & Heartbeat Sync (Stable: does not thrash timer every second)
+  useEffect(() => {
+    if (!examStarted || !activeExam || !currentUser?.uid) return;
+
+    extraTimeGrantedMinutesRef.current = 0;
+    currentProctorStatusRef.current = "active";
+    currentFlagReasonRef.current = undefined;
+
+    // 1. Reactive listener: receive instructor actions (extra time, force-submit, flag)
     const unsub = subscribeToStudentLiveSession(currentUser.uid, activeExam.id, (live) => {
       if (!live) return;
 
+      // Update flag status locally so heartbeats preserve it
+      if (live.status === "flagged") {
+        currentProctorStatusRef.current = "flagged";
+        currentFlagReasonRef.current = live.flagReason;
+      } else if (live.status === "active") {
+        currentProctorStatusRef.current = "active";
+        currentFlagReasonRef.current = undefined;
+      }
+
       // Handle extra time grant from teacher
-      if (live.extraTimeGrantedMinutes > prevExtraTime) {
-        const addedMins = live.extraTimeGrantedMinutes - prevExtraTime;
-        prevExtraTime = live.extraTimeGrantedMinutes;
+      if (live.extraTimeGrantedMinutes > extraTimeGrantedMinutesRef.current) {
+        const addedMins = live.extraTimeGrantedMinutes - extraTimeGrantedMinutesRef.current;
+        extraTimeGrantedMinutesRef.current = live.extraTimeGrantedMinutes;
         setTimeRemainingSeconds(prev => prev + (addedMins * 60));
         setViolationToast(`⏱️ Proctor Notice: Instructor granted you +${addedMins} minute(s) extra time!`);
         setTimeout(() => setViolationToast(null), 6000);
@@ -473,9 +618,9 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
       }
     });
 
-    // 2. Periodic Heartbeat sync (every 5 seconds)
-    const heartbeatTimer = setInterval(() => {
-      const answeredCount = Object.keys(studentAnswers).filter(k => isQuestionAnswered(studentAnswers[k])).length;
+    const sendHeartbeat = () => {
+      const answers = studentAnswersRef.current;
+      const answeredCount = Object.keys(answers).filter(k => isQuestionAnswered(answers[k])).length;
       const livePayload: LiveProctoringSession = {
         id: `${activeExam.id}_${currentUser.uid}`,
         examId: activeExam.id,
@@ -486,26 +631,33 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
         studentUsername: currentUser.username,
         studentLevel: currentUser.level,
         studentTradeId: currentUser.tradeId,
-        status: "active",
+        status: currentProctorStatusRef.current,
+        flagReason: currentFlagReasonRef.current,
         startedAt: examStartedAtRef.current || new Date().toISOString(),
         lastHeartbeat: new Date().toISOString(),
         timeLimitMinutes: activeExam.timeLimitMinutes,
-        timeRemainingSeconds,
-        extraTimeGrantedMinutes: prevExtraTime,
-        tabSwitchViolations,
+        timeRemainingSeconds: timeRemainingSecondsRef.current,
+        extraTimeGrantedMinutes: extraTimeGrantedMinutesRef.current,
+        tabSwitchViolations: tabSwitchViolationsRef.current,
         answeredQuestionsCount: answeredCount,
         totalQuestions: activeExam.questions.length,
-        currentQuestionIndex: currentQuestionIdx
+        currentQuestionIndex: currentQuestionIdxRef.current
       };
 
       saveLiveProctoringSession(livePayload);
-    }, 5000);
+    };
+
+    // Send immediate initial ping
+    sendHeartbeat();
+
+    // 2. Periodic Heartbeat sync (every 5 seconds)
+    const heartbeatTimer = setInterval(sendHeartbeat, 5000);
 
     return () => {
       unsub();
       clearInterval(heartbeatTimer);
     };
-  }, [examStarted, activeExam, timeRemainingSeconds, studentAnswers, tabSwitchViolations, currentQuestionIdx]);
+  }, [examStarted, activeExam?.id, currentUser?.uid]);
 
   // Resume or Discard Interrupted Session
   const handleResumeRecoveredSession = () => {
@@ -999,10 +1151,33 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
         } backdrop-blur-md animate-in fade-in`}>
           <div className={`h-full w-full ${
             examStarted
-              ? "h-[100dvh] max-h-screen w-screen max-w-none rounded-none border-0"
+              ? "h-[100dvh] max-h-screen w-screen max-w-none rounded-none border-0 select-none"
               : "max-h-[96vh] max-w-4xl rounded-3xl border border-[#334155]"
           } overflow-hidden bg-[#0F172A] shadow-2xl flex flex-col relative transition-all duration-300`}>
             
+            {/* Anti-Cheat: Suppress Printing, Downloading & Force Non-Selectable Questions */}
+            {examStarted && (
+              <style dangerouslySetInnerHTML={{
+                __html: `
+                  @media print {
+                    body { display: none !important; }
+                  }
+                  .select-none, .select-none * {
+                    -webkit-user-select: none !important;
+                    -moz-user-select: none !important;
+                    -ms-user-select: none !important;
+                    user-select: none !important;
+                  }
+                  input, textarea {
+                    -webkit-user-select: text !important;
+                    -moz-user-select: text !important;
+                    -ms-user-select: text !important;
+                    user-select: text !important;
+                  }
+                `
+              }} />
+            )}
+
             {/* Proctoring Violation Floating Alert Toast */}
             {violationToast && (
               <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[9999] bg-rose-600 text-white font-bold text-xs px-4 py-2.5 rounded-2xl shadow-2xl animate-bounce flex items-center space-x-2">

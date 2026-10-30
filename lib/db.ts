@@ -23,7 +23,8 @@ import {
   where,
   orderBy,
   limit,
-  onSnapshot
+  onSnapshot,
+  deleteField
 } from "firebase/firestore";
 import { 
   queueOfflineSyllabus, 
@@ -3253,6 +3254,18 @@ export async function saveExamAttempt(attempt: ExamAttempt): Promise<void> {
         list.unshift(attempt);
       }
       localStorage.setItem(EXAM_ATTEMPTS_KEY, JSON.stringify(list));
+
+      // Also maintain student-specific cache for instant low-latency loading
+      const studentKey = `${EXAM_ATTEMPTS_KEY}_${attempt.studentUid}`;
+      const studentRaw = localStorage.getItem(studentKey);
+      const studentList: ExamAttempt[] = studentRaw ? JSON.parse(studentRaw) : [];
+      const sIdx = studentList.findIndex(a => a.id === attempt.id);
+      if (sIdx >= 0) {
+        studentList[sIdx] = attempt;
+      } else {
+        studentList.unshift(attempt);
+      }
+      localStorage.setItem(studentKey, JSON.stringify(studentList));
     } catch (e) {
       console.error("Local save attempt error:", e);
     }
@@ -3294,8 +3307,44 @@ export async function getAllExamAttempts(): Promise<ExamAttempt[]> {
 }
 
 export async function getExamAttemptsForStudent(studentUid: string): Promise<ExamAttempt[]> {
-  const all = await getAllExamAttempts();
-  return all.filter(a => a.studentUid === studentUid);
+  let list: ExamAttempt[] = [];
+  const studentKey = `${EXAM_ATTEMPTS_KEY}_${studentUid}`;
+
+  // 1. Instant Cache (for low internet / offline speed)
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(studentKey);
+      if (raw) list = JSON.parse(raw);
+    } catch (e) {}
+  }
+
+  // 2. Targeted query for this student only
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(collection(db, "exam_attempts"), where("studentUid", "==", studentUid));
+      const snap = await getDocs(q);
+      const fetched = snap.docs.map(d => ({ ...d.data(), id: d.id } as ExamAttempt));
+      if (typeof window !== "undefined" && fetched.length > 0) {
+        localStorage.setItem(studentKey, JSON.stringify(fetched));
+      }
+      return fetched;
+    } catch (e) {
+      console.warn("Firestore getExamAttemptsForStudent error:", e);
+    }
+  }
+
+  // 3. Fallback to generic local cache if student cache was empty
+  if (list.length === 0 && typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(EXAM_ATTEMPTS_KEY);
+      if (raw) {
+        const all: ExamAttempt[] = JSON.parse(raw);
+        list = all.filter(a => a.studentUid === studentUid);
+      }
+    } catch (e) {}
+  }
+
+  return list;
 }
 
 export const getStudentExamAttempts = getExamAttemptsForStudent;
@@ -3612,52 +3661,124 @@ export function subscribeToStudentLiveSession(
 }
 
 export async function grantExtraExamTime(sessionId: string, additionalMinutes: number): Promise<void> {
-  const sessions = await getLiveProctoringSessions();
-  const target = sessions.find(s => s.id === sessionId);
-  if (!target) return;
+  const nowIso = new Date().toISOString();
 
-  const currentExtra = target.extraTimeGrantedMinutes || 0;
-  const newExtra = currentExtra + additionalMinutes;
-  const newRemaining = (target.timeRemainingSeconds || 0) + (additionalMinutes * 60);
+  // 1. Update in local storage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(LIVE_PROCTORING_STORAGE_KEY);
+      if (raw) {
+        const list: LiveProctoringSession[] = JSON.parse(raw);
+        const target = list.find(s => s.id === sessionId);
+        if (target) {
+          target.extraTimeGrantedMinutes = (target.extraTimeGrantedMinutes || 0) + additionalMinutes;
+          target.timeRemainingSeconds = (target.timeRemainingSeconds || 0) + (additionalMinutes * 60);
+          target.lastHeartbeat = nowIso;
+          localStorage.setItem(LIVE_PROCTORING_STORAGE_KEY, JSON.stringify(list));
+        }
+      }
+    } catch (e) {}
+  }
 
-  const updated: LiveProctoringSession = {
-    ...target,
-    extraTimeGrantedMinutes: newExtra,
-    timeRemainingSeconds: newRemaining,
-    lastHeartbeat: new Date().toISOString()
-  };
-
-  await saveLiveProctoringSession(updated);
+  // 2. Direct Firestore update
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDoc(doc(db, "live_exam_sessions", sessionId));
+      if (snap.exists()) {
+        const data = snap.data() as LiveProctoringSession;
+        const newExtra = (data.extraTimeGrantedMinutes || 0) + additionalMinutes;
+        const newRemaining = (data.timeRemainingSeconds || 0) + (additionalMinutes * 60);
+        await setDoc(doc(db, "live_exam_sessions", sessionId), {
+          extraTimeGrantedMinutes: newExtra,
+          timeRemainingSeconds: newRemaining,
+          lastHeartbeat: nowIso
+        }, { merge: true });
+      }
+    } catch (e) {
+      console.warn("grantExtraExamTime error:", e);
+    }
+  }
 }
 
 export async function flagExamSession(sessionId: string, flagged: boolean, reason?: string): Promise<void> {
-  const sessions = await getLiveProctoringSessions();
-  const target = sessions.find(s => s.id === sessionId);
-  if (!target) return;
+  const nowIso = new Date().toISOString();
 
-  const updated: LiveProctoringSession = {
-    ...target,
-    status: flagged ? 'flagged' : 'active',
-    flagReason: flagged ? (reason || 'Flagged for suspicious window activity') : undefined,
-    lastHeartbeat: new Date().toISOString()
-  };
+  // 1. Update in local storage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(LIVE_PROCTORING_STORAGE_KEY);
+      if (raw) {
+        const list: LiveProctoringSession[] = JSON.parse(raw);
+        const target = list.find(s => s.id === sessionId);
+        if (target) {
+          target.status = flagged ? 'flagged' : 'active';
+          target.flagReason = flagged ? (reason || 'Flagged by instructor for review') : undefined;
+          target.lastHeartbeat = nowIso;
+          localStorage.setItem(LIVE_PROCTORING_STORAGE_KEY, JSON.stringify(list));
+        }
+      }
+    } catch (e) {}
+  }
 
-  await saveLiveProctoringSession(updated);
+  // 2. Direct Firestore update
+  if (isFirebaseConfigured && db) {
+    try {
+      const patch: any = {
+        status: flagged ? 'flagged' : 'active',
+        lastHeartbeat: nowIso
+      };
+      if (flagged) {
+        patch.flagReason = reason || 'Flagged by instructor for review';
+      } else {
+        patch.flagReason = deleteField();
+      }
+      await updateDoc(doc(db, "live_exam_sessions", sessionId), patch);
+    } catch (e) {
+      try {
+        await setDoc(doc(db, "live_exam_sessions", sessionId), {
+          status: flagged ? 'flagged' : 'active',
+          flagReason: flagged ? (reason || 'Flagged by instructor for review') : "",
+          lastHeartbeat: nowIso
+        }, { merge: true });
+      } catch (err2) {
+        console.warn("flagExamSession error:", err2);
+      }
+    }
+  }
 }
 
 export async function forceSubmitExamSession(sessionId: string): Promise<void> {
-  const sessions = await getLiveProctoringSessions();
-  const target = sessions.find(s => s.id === sessionId);
-  if (!target) return;
+  const nowIso = new Date().toISOString();
 
-  const updated: LiveProctoringSession = {
-    ...target,
-    status: 'force_submitted',
-    forceSubmitRequested: true,
-    lastHeartbeat: new Date().toISOString()
-  };
+  // 1. Update in local storage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(LIVE_PROCTORING_STORAGE_KEY);
+      if (raw) {
+        const list: LiveProctoringSession[] = JSON.parse(raw);
+        const target = list.find(s => s.id === sessionId);
+        if (target) {
+          target.status = 'force_submitted';
+          target.forceSubmitRequested = true;
+          target.lastHeartbeat = nowIso;
+          localStorage.setItem(LIVE_PROCTORING_STORAGE_KEY, JSON.stringify(list));
+        }
+      }
+    } catch (e) {}
+  }
 
-  await saveLiveProctoringSession(updated);
+  // 2. Direct Firestore update
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "live_exam_sessions", sessionId), {
+        status: 'force_submitted',
+        forceSubmitRequested: true,
+        lastHeartbeat: nowIso
+      }, { merge: true });
+    } catch (e) {
+      console.warn("forceSubmitExamSession error:", e);
+    }
+  }
 }
 
 export async function deleteLiveExamSession(sessionId: string): Promise<void> {

@@ -65,6 +65,11 @@ export default function LiveExamProctoring({ adminUser }: LiveExamProctoringProp
 
   const handleGrantTime = async (sessionId: string, studentName: string, mins: number) => {
     setActionLoadingId(sessionId);
+    setSessions(prev => prev.map(s => s.id === sessionId ? {
+      ...s,
+      extraTimeGrantedMinutes: (s.extraTimeGrantedMinutes || 0) + mins,
+      timeRemainingSeconds: (s.timeRemainingSeconds || 0) + (mins * 60)
+    } : s));
     try {
       await grantExtraExamTime(sessionId, mins);
     } catch (err) {
@@ -76,9 +81,18 @@ export default function LiveExamProctoring({ adminUser }: LiveExamProctoringProp
 
   const handleToggleFlag = async (sessionId: string, currentStatus: ProctoringSessionStatus) => {
     setActionLoadingId(sessionId);
+    const isCurrentlyFlagged = currentStatus === "flagged";
+    const nextStatus: ProctoringSessionStatus = isCurrentlyFlagged ? "active" : "flagged";
+    const nextReason = isCurrentlyFlagged ? undefined : "Flagged by instructor for review";
+
+    setSessions(prev => prev.map(s => s.id === sessionId ? {
+      ...s,
+      status: nextStatus,
+      flagReason: nextReason
+    } : s));
+
     try {
-      const isCurrentlyFlagged = currentStatus === "flagged";
-      await flagExamSession(sessionId, !isCurrentlyFlagged, isCurrentlyFlagged ? undefined : "Flagged by instructor for review");
+      await flagExamSession(sessionId, !isCurrentlyFlagged, nextReason);
     } catch (err) {
       console.error("Failed to flag session:", err);
     } finally {
@@ -89,6 +103,12 @@ export default function LiveExamProctoring({ adminUser }: LiveExamProctoringProp
   const handleForceSubmit = async (sessionId: string, studentName: string) => {
     if (confirm(`⚠️ Force-submit exam for ${studentName}? This will immediately end their active test session.`)) {
       setActionLoadingId(sessionId);
+      setSessions(prev => prev.map(s => s.id === sessionId ? {
+        ...s,
+        status: "force_submitted",
+        forceSubmitRequested: true
+      } : s));
+
       try {
         await forceSubmitExamSession(sessionId);
       } catch (err) {
@@ -347,6 +367,13 @@ export default function LiveExamProctoring({ adminUser }: LiveExamProctoringProp
 
                   {/* Connection & Status Badges */}
                   <div className="flex items-center space-x-2">
+                    {session.status === "flagged" && (
+                      <span className="inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/60 shadow-lg shadow-rose-950/40 animate-pulse">
+                        <Flag className="h-3 w-3 fill-rose-400 text-rose-300" />
+                        <span>FLAGGED</span>
+                      </span>
+                    )}
+
                     <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold border ${conn.bg} ${conn.color}`}>
                       <ConnIcon className="h-3 w-3" />
                       <span>{conn.label}</span>
@@ -475,24 +502,32 @@ export default function LiveExamProctoring({ adminUser }: LiveExamProctoringProp
                         type="button"
                         onClick={() => handleToggleFlag(session.id, session.status)}
                         disabled={actionLoadingId === session.id}
-                        className={`inline-flex items-center space-x-1 px-3 py-1 rounded-lg font-mono text-xs font-bold transition-all ${
+                        className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-mono text-xs font-bold transition-all shadow-sm ${
                           session.status === "flagged"
-                            ? "bg-rose-500 text-white"
+                            ? "bg-rose-600 text-white hover:bg-rose-700 ring-2 ring-rose-400/50"
                             : "bg-[#0B0F19] border border-amber-500/40 text-amber-300 hover:bg-amber-500/20"
                         }`}
+                        title={session.status === "flagged" ? "Click to remove flag" : "Flag student for review"}
                       >
-                        <Flag className="h-3 w-3" />
-                        <span>{session.status === "flagged" ? "Clear Flag" : "Flag"}</span>
+                        <Flag className={`h-3.5 w-3.5 ${session.status === "flagged" ? "fill-white text-white" : ""}`} />
+                        <span>{session.status === "flagged" ? "Flagged (Clear)" : "Flag"}</span>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => handleForceSubmit(session.id, session.studentName)}
-                        disabled={actionLoadingId === session.id}
-                        className="inline-flex items-center space-x-1 px-3 py-1 rounded-lg bg-rose-950/60 border border-rose-500/50 text-rose-300 hover:bg-rose-600 hover:text-white font-mono text-xs font-bold transition-all"
+                        disabled={actionLoadingId === session.id || session.status === "force_submitted"}
+                        className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg font-mono text-xs font-bold transition-all ${
+                          session.status === "force_submitted"
+                            ? "bg-slate-800 text-slate-400 border border-slate-700 cursor-not-allowed"
+                            : "bg-rose-950/70 border border-rose-500/60 text-rose-300 hover:bg-rose-600 hover:text-white"
+                        }`}
                         title="Force student to turn in their test right now"
                       >
-                        <span>Force Submit</span>
+                        {actionLoadingId === session.id ? (
+                          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                        ) : null}
+                        <span>{session.status === "force_submitted" ? "Force-Submitted" : "Force Submit"}</span>
                       </button>
                     </div>
                   </div>
