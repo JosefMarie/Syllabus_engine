@@ -219,19 +219,54 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
   }, []);
 
   const getReviewUnlockStatus = (attempt?: ExamAttempt | null, exam?: Exam | null) => {
-    if (!attempt) return { isLocked: false, remainingMs: 0, unlockTime: null };
-    if (!exam || !exam.timeLimitMinutes || exam.timeLimitMinutes <= 0) {
-      return { isLocked: false, remainingMs: 0, unlockTime: null };
+    if (!attempt || !exam) {
+      return { isLocked: true, reason: "No assessment data available", remainingMs: 0, unlockTime: null, isManualLock: true };
     }
-    const startMs = new Date(attempt.startedAt).getTime();
-    const durationMs = exam.timeLimitMinutes * 60 * 1000;
-    const unlockMs = startMs + durationMs;
-    const remainingMs = Math.max(0, unlockMs - currentTime);
 
+    // 1. If instructor explicitly toggled "Release Answers" for this exam, unlock for all students
+    if (exam.resultsReleased) {
+      return { isLocked: false, reason: "Results released by instructor.", remainingMs: 0, unlockTime: null, isManualLock: false };
+    }
+
+    // 2. If instructor set mode to manual_release or turned off showResultsImmediately
+    if (exam.showResultsImmediately === false || exam.resultsReleaseMode === "manual_release") {
+      return {
+        isLocked: true,
+        reason: "Detailed answers, resources, and question explanations are held by the instructor to protect test integrity.",
+        remainingMs: 0,
+        unlockTime: null,
+        isManualLock: true
+      };
+    }
+
+    // 3. If mode is after_due_date: lock until the common class deadline passes
+    if (exam.resultsReleaseMode === "after_due_date" && exam.dueDate) {
+      const dueMs = new Date(exam.dueDate).getTime();
+      const remainingMs = Math.max(0, dueMs - currentTime);
+      if (remainingMs > 0) {
+        return {
+          isLocked: true,
+          reason: "Answers will unlock for all students simultaneously after the class submission deadline.",
+          remainingMs,
+          unlockTime: new Date(dueMs),
+          isManualLock: false
+        };
+      }
+      return { isLocked: false, reason: "Class submission deadline has passed.", remainingMs: 0, unlockTime: null, isManualLock: false };
+    }
+
+    // 4. If mode is immediate:
+    if (exam.resultsReleaseMode === "immediate" || exam.showResultsImmediately === true) {
+      return { isLocked: false, reason: "Practice quiz solutions available.", remainingMs: 0, unlockTime: null, isManualLock: false };
+    }
+
+    // Default fallback: protect integrity by keeping locked until teacher releases
     return {
-      isLocked: remainingMs > 0,
-      remainingMs,
-      unlockTime: new Date(unlockMs)
+      isLocked: true,
+      reason: "Answers and resources are held until released by your instructor.",
+      remainingMs: 0,
+      unlockTime: null,
+      isManualLock: true
     };
   };
 
@@ -1096,14 +1131,17 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                     const unlockInfo = getReviewUnlockStatus(latestAttempt, exam);
                     if (unlockInfo.isLocked) {
                       return (
-                        <button
-                          onClick={() => handleOpenReview(latestAttempt)}
-                          className="inline-flex items-center space-x-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-mono text-amber-300 hover:bg-amber-500/20 transition-colors"
-                          title={`Review unlocks at ${unlockInfo.unlockTime?.toLocaleTimeString()} when the exam time is over`}
+                        <span
+                          className="inline-flex items-center space-x-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-mono text-amber-300"
+                          title={unlockInfo.reason}
                         >
                           <Lock className="h-3 w-3 text-amber-400 shrink-0" />
-                          <span>Review in {formatRemainingTime(unlockInfo.remainingMs)}</span>
-                        </button>
+                          <span>
+                            {unlockInfo.isManualLock
+                              ? "Answers Held by Teacher"
+                              : `Unlocks in ${formatRemainingTime(unlockInfo.remainingMs)}`}
+                          </span>
+                        </span>
                       );
                     }
                     return (
@@ -1360,18 +1398,25 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                         <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4 text-left space-y-2">
                           <div className="flex items-center space-x-2 text-amber-300 font-bold text-xs font-mono">
                             <Lock className="h-4 w-4 text-amber-400 shrink-0" />
-                            <span>Exam Review &amp; Explanations Locked</span>
+                            <span>Exam Review &amp; Answers Locked</span>
                           </div>
                           <p className="text-xs text-[#CBD5E1] leading-relaxed">
-                            In accordance with academic testing protocols, full question explanations and official solutions will be unlocked once the {activeExam.timeLimitMinutes}-minute exam session is over.
+                            {unlockInfo.reason}
                           </p>
-                          <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-amber-500/20 text-[11px] font-mono text-amber-300">
-                            <span>Unlocks at: {unlockInfo.unlockTime?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-                            <span className="font-bold flex items-center space-x-1.5 text-amber-400">
-                              <Clock className="h-3.5 w-3.5 animate-pulse" />
-                              <span>Unlocks in {formatRemainingTime(unlockInfo.remainingMs)}</span>
-                            </span>
-                          </div>
+                          {!unlockInfo.isManualLock && unlockInfo.unlockTime && unlockInfo.remainingMs > 0 && (
+                            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-amber-500/20 text-[11px] font-mono text-amber-300">
+                              <span>Class Deadline: {unlockInfo.unlockTime.toLocaleDateString()} {unlockInfo.unlockTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                              <span className="font-bold flex items-center space-x-1.5 text-amber-400">
+                                <Clock className="h-3.5 w-3.5 animate-pulse" />
+                                <span>Unlocks in {formatRemainingTime(unlockInfo.remainingMs)}</span>
+                              </span>
+                            </div>
+                          )}
+                          {unlockInfo.isManualLock && (
+                            <p className="text-[11px] font-mono text-amber-400/90 pt-1 border-t border-amber-500/20">
+                              Your teacher will release the answers and explanations after all students finish.
+                            </p>
+                          )}
                         </div>
                       );
                     }
@@ -1382,7 +1427,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                           <span>Exam Review &amp; Explanations Available</span>
                         </div>
                         <p className="text-xs text-[#CBD5E1] leading-relaxed">
-                          The designated exam duration has concluded. You may now review question-by-question explanations and correct answers.
+                          Official solutions and question explanations are released. You may now review question-by-question rationales.
                         </p>
                       </div>
                     );
@@ -1397,17 +1442,34 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                     Return to Exam Portal
                   </button>
 
-                  <button
-                    onClick={() => {
-                      const att = completedAttempt;
-                      handleCloseExamHall();
-                      handleOpenReview(att);
-                    }}
-                    className="inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4] px-6 py-2.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
-                  >
-                    <Eye className="h-4 w-4" />
-                    <span>View Exam Review</span>
-                  </button>
+                  {(() => {
+                    const unlockInfo = getReviewUnlockStatus(completedAttempt, activeExam);
+                    if (unlockInfo.isLocked) {
+                      return (
+                        <button
+                          disabled
+                          className="inline-flex items-center space-x-1.5 rounded-xl bg-slate-800/80 border border-slate-700 px-6 py-2.5 text-xs font-bold text-slate-500 cursor-not-allowed shadow-none"
+                          title={unlockInfo.reason}
+                        >
+                          <Lock className="h-4 w-4" />
+                          <span>Answers Held by Teacher</span>
+                        </button>
+                      );
+                    }
+                    return (
+                      <button
+                        onClick={() => {
+                          const att = completedAttempt;
+                          handleCloseExamHall();
+                          handleOpenReview(att);
+                        }}
+                        className="inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4] px-6 py-2.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+                      >
+                        <Eye className="h-4 w-4" />
+                        <span>View Exam Review</span>
+                      </button>
+                    );
+                  })()}
                 </div>
               </div>
             ) : (
@@ -1727,37 +1789,37 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
                       <div className="space-y-2 max-w-md">
                         <span className="inline-flex items-center space-x-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 px-3 py-1 text-[11px] font-mono font-bold text-amber-300">
-                          <Clock className="h-3 w-3" />
-                          <span>Timed Assessment Protocol</span>
+                          <Lock className="h-3 w-3" />
+                          <span>Academic Integrity Protocol</span>
                         </span>
                         <h4 className="text-xl font-extrabold text-white">Review &amp; Explanations Locked</h4>
                         <p className="text-xs text-[#94A3B8] leading-relaxed">
-                          This assessment has a time limit of <strong className="text-white">{reviewExam?.timeLimitMinutes} minutes</strong>. Detailed question explanations, correct answers, and solution breakdowns will automatically unlock once the time set for the exam is over.
+                          {unlockInfo.reason}
                         </p>
                       </div>
 
-                      {/* Live countdown card */}
-                      <div className="rounded-2xl border border-amber-500/30 bg-[#0B0F19] p-5 w-full max-w-sm space-y-2.5 shadow-inner text-left">
-                        <div className="flex items-center justify-between text-xs font-mono text-[#94A3B8]">
-                          <span>Unlocks In:</span>
-                          <span className="text-amber-400 font-bold flex items-center space-x-1.5">
-                            <Clock className="h-3.5 w-3.5 animate-pulse" />
-                            <span>{formatRemainingTime(unlockInfo.remainingMs)}</span>
-                          </span>
+                      {/* If deadline countdown exists */}
+                      {!unlockInfo.isManualLock && unlockInfo.unlockTime && unlockInfo.remainingMs > 0 && (
+                        <div className="rounded-2xl border border-amber-500/30 bg-[#0B0F19] p-5 w-full max-w-sm space-y-2.5 shadow-inner text-left">
+                          <div className="flex items-center justify-between text-xs font-mono text-[#94A3B8]">
+                            <span>Unlocks For All In:</span>
+                            <span className="text-amber-400 font-bold flex items-center space-x-1.5">
+                              <Clock className="h-3.5 w-3.5 animate-pulse" />
+                              <span>{formatRemainingTime(unlockInfo.remainingMs)}</span>
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between text-[10px] font-mono text-[#64748B] pt-1 border-t border-[#1E293B]">
+                            <span>Class Deadline: {unlockInfo.unlockTime.toLocaleDateString()} {unlockInfo.unlockTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
                         </div>
-                        <div className="w-full bg-[#1E293B] h-2 rounded-full overflow-hidden">
-                          <div 
-                            className="bg-amber-400 h-full rounded-full transition-all duration-1000"
-                            style={{ 
-                              width: `${Math.max(5, Math.min(100, 100 - (unlockInfo.remainingMs / ((reviewExam?.timeLimitMinutes || 1) * 60000)) * 100))}%` 
-                            }}
-                          />
+                      )}
+
+                      {/* If teacher manual release */}
+                      {unlockInfo.isManualLock && (
+                        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 w-full max-w-sm text-center text-xs font-mono text-amber-300/80">
+                          To ensure fair testing across students starting at different times, full answers will be unlocked by the instructor after testing concludes.
                         </div>
-                        <div className="flex items-center justify-between text-[10px] font-mono text-[#64748B] pt-1 border-t border-[#1E293B]">
-                          <span>Started: {new Date(reviewAttempt.startedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                          <span>Unlocks: {unlockInfo.unlockTime?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
-                        </div>
-                      </div>
+                      )}
 
                       <div className="text-xs text-[#94A3B8]">
                         Evaluation score: <strong className={reviewAttempt.passed ? "text-emerald-400" : "text-rose-400"}>{reviewAttempt.score} / {reviewAttempt.maxScore} ({reviewAttempt.percentage}%)</strong>

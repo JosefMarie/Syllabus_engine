@@ -58,7 +58,9 @@ import {
   Bot,
   Server,
   WifiOff,
-  ExternalLink
+  ExternalLink,
+  EyeOff,
+  Lock
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -111,7 +113,8 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
   const [formMaxAttempts, setFormMaxAttempts] = useState(1);
   const [formShuffleQuestions, setFormShuffleQuestions] = useState(true);
   const [formAntiCheating, setFormAntiCheating] = useState(true);
-  const [formShowResultsImmediately, setFormShowResultsImmediately] = useState(true);
+  const [formShowResultsImmediately, setFormShowResultsImmediately] = useState(false);
+  const [formResultsReleaseMode, setFormResultsReleaseMode] = useState<'manual_release' | 'after_due_date' | 'immediate'>('manual_release');
   const [formQuestions, setFormQuestions] = useState<ExamQuestion[]>([]);
   const [builderTab, setBuilderTab] = useState<"settings" | "questions">("settings");
   const [savingExam, setSavingExam] = useState(false);
@@ -343,8 +346,9 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
     setFormPassPercentage(70);
     setFormMaxAttempts(0); // 0 = unlimited for practice quiz
     setFormShuffleQuestions(true);
-    setFormAntiCheating(false);
-    setFormShowResultsImmediately(true);
+    setFormAntiCheating(true);
+    setFormShowResultsImmediately(false);
+    setFormResultsReleaseMode("manual_release");
     setFormQuestions([]);
     setBuilderTab("settings");
     resetQuestionSubForm();
@@ -365,7 +369,9 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
     setFormMaxAttempts(exam.maxAttempts);
     setFormShuffleQuestions(exam.shuffleQuestions ?? true);
     setFormAntiCheating(exam.enableAntiCheating ?? false);
-    setFormShowResultsImmediately(exam.showResultsImmediately ?? true);
+    const releaseMode = exam.resultsReleaseMode || (exam.showResultsImmediately ? "immediate" : "manual_release");
+    setFormResultsReleaseMode(releaseMode);
+    setFormShowResultsImmediately(exam.showResultsImmediately ?? (releaseMode === "immediate"));
     setFormQuestions(exam.questions || []);
     setBuilderTab("settings");
     resetQuestionSubForm();
@@ -582,7 +588,9 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
         shuffleQuestions: formShuffleQuestions,
         shuffleOptions: formShuffleQuestions,
         enableAntiCheating: formAntiCheating,
-        showResultsImmediately: formShowResultsImmediately,
+        showResultsImmediately: formResultsReleaseMode === "immediate" && formShowResultsImmediately,
+        resultsReleaseMode: formResultsReleaseMode,
+        resultsReleased: editingExamId ? (exams.find(e => e.id === editingExamId)?.resultsReleased ?? false) : false,
         questions: formQuestions,
         totalPoints,
         createdAt: editingExamId ? (exams.find(e => e.id === editingExamId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
@@ -598,6 +606,23 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
       alert("Failed to save assessment. Please try again.");
     } finally {
       setSavingExam(false);
+    }
+  };
+
+  // Toggle Results & Answers Release for students
+  const handleToggleReleaseResults = async (exam: Exam) => {
+    const nextReleased = !exam.resultsReleased;
+    try {
+      const updatedExam: Exam = {
+        ...exam,
+        resultsReleased: nextReleased,
+        updatedAt: new Date().toISOString()
+      };
+      await saveExam(updatedExam);
+      setExams(prev => prev.map(e => e.id === exam.id ? updatedExam : e));
+    } catch (err) {
+      console.error("Failed to toggle results release:", err);
+      alert("Could not update results release status. Please try again.");
     }
   };
 
@@ -1085,18 +1110,38 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
                 {/* Footer Actions */}
                 <div className="pt-3 border-t border-[#334155] flex items-center justify-between gap-2">
-                  <button
-                    onClick={() => handleOpenSubmissions(exam)}
-                    className="inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4]/15 border border-[#06B6D4]/30 px-3 py-1.5 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4] hover:text-slate-950 transition-all shadow-sm"
-                  >
-                    <Users className="h-3.5 w-3.5" />
-                    <span>Attempts ({examAttemptsCount})</span>
-                    {needsReviewCount > 0 && (
-                      <span className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.2 text-[9px] font-extrabold text-slate-950">
-                        {needsReviewCount}
-                      </span>
-                    )}
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => handleOpenSubmissions(exam)}
+                      className="inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4]/15 border border-[#06B6D4]/30 px-3 py-1.5 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4] hover:text-slate-950 transition-all shadow-sm"
+                    >
+                      <Users className="h-3.5 w-3.5" />
+                      <span>Attempts ({examAttemptsCount})</span>
+                      {needsReviewCount > 0 && (
+                        <span className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.2 text-[9px] font-extrabold text-slate-950">
+                          {needsReviewCount}
+                        </span>
+                      )}
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleToggleReleaseResults(exam)}
+                      className={`inline-flex items-center space-x-1 rounded-xl px-2.5 py-1.5 text-xs font-bold transition-all shadow-sm ${
+                        exam.resultsReleased
+                          ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500 hover:text-slate-950"
+                          : "bg-[#0B0F19] border border-[#334155] text-[#94A3B8] hover:text-white hover:border-slate-500"
+                      }`}
+                      title={
+                        exam.resultsReleased
+                          ? "Answers and explanations are visible to students. Click to hide."
+                          : "Answers and explanations are hidden from students. Click to release."
+                      }
+                    >
+                      {exam.resultsReleased ? <Eye className="h-3 w-3 text-emerald-400" /> : <EyeOff className="h-3 w-3 text-slate-400" />}
+                      <span className="hidden sm:inline">{exam.resultsReleased ? "Answers Released" : "Release Answers"}</span>
+                    </button>
+                  </div>
 
                   <div className="flex items-center space-x-1">
                     <button
@@ -1387,15 +1432,87 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                         <span>Shuffle Question Order for Each Student</span>
                       </label>
 
-                      <label className="flex items-center space-x-2.5 text-xs text-[#CBD5E1] cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formShowResultsImmediately}
-                          onChange={(e) => setFormShowResultsImmediately(e.target.checked)}
-                          className="rounded border-[#334155] text-[#06B6D4] focus:ring-0"
-                        />
-                        <span>Reveal Score &amp; Explanations Upon Submission</span>
-                      </label>
+                    </div>
+
+                    {/* Results & Answer Explanations Release Strategy */}
+                    <div className="pt-3 border-t border-[#334155] space-y-2.5">
+                      <div className="flex items-center space-x-2">
+                        <Lock className="h-4 w-4 text-[#06B6D4]" />
+                        <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                          Release of Answers, Solutions &amp; Explanations
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-[#94A3B8]">
+                        Prevent students who finish or start earlier from accessing correct answers and leaking them to classmates.
+                      </p>
+
+                      <div className="space-y-2 bg-[#0B0F19] p-3.5 rounded-2xl border border-[#334155]">
+                        <label className="flex items-start space-x-2.5 text-xs text-[#CBD5E1] cursor-pointer">
+                          <input
+                            type="radio"
+                            name="resultsReleaseMode"
+                            value="manual_release"
+                            checked={formResultsReleaseMode === "manual_release"}
+                            onChange={() => {
+                              setFormResultsReleaseMode("manual_release");
+                              setFormShowResultsImmediately(false);
+                            }}
+                            className="mt-0.5 text-[#06B6D4] focus:ring-0"
+                          />
+                          <div>
+                            <span className="font-semibold text-white block">
+                              🔒 Manual Instructor Release (Recommended for Assessments)
+                            </span>
+                            <span className="text-[11px] text-[#94A3B8] block mt-0.5">
+                              Answers and explanations remain strictly locked. When all students finish, click &quot;Release Answers&quot; on the exam card to publish results.
+                            </span>
+                          </div>
+                        </label>
+
+                        <label className="flex items-start space-x-2.5 text-xs text-[#CBD5E1] cursor-pointer pt-2 border-t border-[#1E293B]">
+                          <input
+                            type="radio"
+                            name="resultsReleaseMode"
+                            value="after_due_date"
+                            checked={formResultsReleaseMode === "after_due_date"}
+                            onChange={() => {
+                              setFormResultsReleaseMode("after_due_date");
+                              setFormShowResultsImmediately(false);
+                            }}
+                            className="mt-0.5 text-[#06B6D4] focus:ring-0"
+                          />
+                          <div>
+                            <span className="font-semibold text-white block">
+                              ⏰ After Global Exam Due Date / Deadline
+                            </span>
+                            <span className="text-[11px] text-[#94A3B8] block mt-0.5">
+                              Unlocks automatically only after the entire class deadline passes, never based on individual student start times.
+                            </span>
+                          </div>
+                        </label>
+
+                        <label className="flex items-start space-x-2.5 text-xs text-[#CBD5E1] cursor-pointer pt-2 border-t border-[#1E293B]">
+                          <input
+                            type="radio"
+                            name="resultsReleaseMode"
+                            value="immediate"
+                            checked={formResultsReleaseMode === "immediate"}
+                            onChange={() => {
+                              setFormResultsReleaseMode("immediate");
+                              setFormShowResultsImmediately(true);
+                            }}
+                            className="mt-0.5 text-[#06B6D4] focus:ring-0"
+                          />
+                          <div>
+                            <span className="font-semibold text-white block">
+                              ⚡ Immediately Upon Submission
+                            </span>
+                            <span className="text-[11px] text-[#94A3B8] block mt-0.5">
+                              Reveals answers immediately to each student as soon as they submit (only recommended for ungraded self-practice checks).
+                            </span>
+                          </div>
+                        </label>
+                      </div>
                     </div>
                   </div>
                 </div>

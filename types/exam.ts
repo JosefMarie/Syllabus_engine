@@ -53,6 +53,8 @@ export interface Exam {
   shuffleOptions?: boolean;
   enableAntiCheating?: boolean; // Detects window blur, tab switching, and fullscreen exit
   showResultsImmediately?: boolean; // If true, reveals score and answers upon submit
+  resultsReleaseMode?: 'manual_release' | 'after_due_date' | 'immediate'; // Control when answers & explanations unlock
+  resultsReleased?: boolean; // Set by instructor to release answers & explanations to all students
   questions: ExamQuestion[];
   totalPoints: number;
   dueDate?: string; // Optional deadline ISO string
