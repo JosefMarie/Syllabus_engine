@@ -37,11 +37,60 @@ import {
   Lock,
   Sparkles,
   Maximize2,
-  Minimize2
+  Minimize2,
+  Play
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import CodeQuestionRenderer from "@/components/common/CodeQuestionRenderer";
+
+interface ActiveExamSessionBackup {
+  examId: string;
+  studentUid: string;
+  answers: Record<string, any>;
+  flaggedQuestions: Record<string, boolean>;
+  currentQuestionIdx: number;
+  timeRemainingSeconds: number;
+  startedAt: string;
+  lastSavedAt: string;
+  tabSwitchViolations: number;
+}
+
+const getExamSessionKey = (studentUid: string) => `active_exam_session_${studentUid}`;
+
+const saveActiveSession = (session: ActiveExamSessionBackup) => {
+  try {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(getExamSessionKey(session.studentUid), JSON.stringify(session));
+    }
+  } catch (e) {
+    console.warn("Failed to backup active exam session to localStorage:", e);
+  }
+};
+
+const getActiveSession = (studentUid: string): ActiveExamSessionBackup | null => {
+  try {
+    if (typeof window !== "undefined") {
+      const data = localStorage.getItem(getExamSessionKey(studentUid));
+      if (data) {
+        return JSON.parse(data);
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to read active exam session from localStorage:", e);
+  }
+  return null;
+};
+
+const clearActiveSession = (studentUid: string) => {
+  try {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(getExamSessionKey(studentUid));
+    }
+  } catch (e) {
+    console.warn("Failed to clear active exam session from localStorage:", e);
+  }
+};
 
 interface StudentExamsViewProps {
   currentUser: UserProfile;
@@ -68,6 +117,12 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
   const [submittingAttempt, setSubmittingAttempt] = useState(false);
   const [completedAttempt, setCompletedAttempt] = useState<ExamAttempt | null>(null);
   const [violationToast, setViolationToast] = useState<string | null>(null);
+
+  // Interrupted Session Recovery State
+  const [recoveredSession, setRecoveredSession] = useState<ActiveExamSessionBackup | null>(null);
+  const [recoveredExam, setRecoveredExam] = useState<Exam | null>(null);
+  const examStartedAtRef = useRef<string | null>(null);
+  const blurTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const isQuestionAnswered = (val: any): boolean => {
     if (val === undefined || val === null || val === "") return false;
@@ -177,6 +232,53 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
     loadData();
   }, [currentUser?.uid]);
 
+  const submitInterruptedExpiredAttempt = async (
+    saved: ActiveExamSessionBackup,
+    exam: Exam,
+    pastAttempts: ExamAttempt[]
+  ) => {
+    try {
+      const pastForExam = pastAttempts.filter(a => a.examId === exam.id);
+      const attemptNum = pastForExam.length + 1;
+      const attemptId = `${exam.id}_${saved.studentUid}_${attemptNum}`;
+      const autoRes = calculateAutoGrade(exam, saved.answers || {});
+      const timeSpentSeconds = exam.timeLimitMinutes > 0 ? exam.timeLimitMinutes * 60 : 60;
+
+      const attemptPayload: ExamAttempt = {
+        id: attemptId,
+        examId: exam.id,
+        examTitle: exam.title,
+        courseCode: exam.courseCode,
+        studentUid: currentUser.uid,
+        studentName: currentUser.fullName,
+        studentUsername: currentUser.username,
+        studentTradeId: currentUser.tradeId,
+        studentLevel: currentUser.level,
+        attemptNumber: attemptNum,
+        answers: saved.answers || {},
+        score: autoRes.score,
+        maxScore: autoRes.maxScore,
+        percentage: autoRes.percentage,
+        passed: autoRes.passed,
+        status: autoRes.hasSubjectiveQuestions ? "submitted" : "graded",
+        startedAt: saved.startedAt,
+        submittedAt: new Date().toISOString(),
+        timeSpentSeconds,
+        tabSwitchCount: saved.tabSwitchViolations || 0,
+        questionGrades: autoRes.questionGrades,
+        gradedAt: autoRes.hasSubjectiveQuestions ? undefined : new Date().toISOString(),
+        gradedBy: autoRes.hasSubjectiveQuestions ? undefined : "Automated Engine"
+      };
+
+      await saveExamAttempt(attemptPayload);
+      setMyAttempts(prev => [attemptPayload, ...prev]);
+      clearActiveSession(currentUser.uid);
+      alert(`⏰ Interrupted Exam: Time for "${exam.title}" elapsed while offline/power off. Your saved progress has been automatically graded and submitted.`);
+    } catch (err) {
+      console.error("Failed to auto-submit expired interrupted exam:", err);
+    }
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -195,6 +297,35 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
       setExams(visible);
       setMyAttempts(attemptsList);
+
+      // Check for an interrupted session saved in localStorage
+      const savedSession = getActiveSession(currentUser.uid);
+      if (savedSession) {
+        const targetExam = visible.find(e => e.id === savedSession.examId) || allExams.find(e => e.id === savedSession.examId);
+        if (targetExam) {
+          const now = Date.now();
+          const lastSavedMs = new Date(savedSession.lastSavedAt).getTime();
+          const elapsedSec = Math.max(0, Math.floor((now - lastSavedMs) / 1000));
+          let remainingSec = savedSession.timeRemainingSeconds;
+          if (targetExam.timeLimitMinutes > 0) {
+            remainingSec = Math.max(0, savedSession.timeRemainingSeconds - elapsedSec);
+          }
+
+          if (targetExam.timeLimitMinutes > 0 && remainingSec <= 0) {
+            // Time expired while power was off or browser closed
+            await submitInterruptedExpiredAttempt(savedSession, targetExam, attemptsList);
+          } else {
+            // Can be resumed
+            setRecoveredSession({
+              ...savedSession,
+              timeRemainingSeconds: remainingSec
+            });
+            setRecoveredExam(targetExam);
+          }
+        } else {
+          clearActiveSession(currentUser.uid);
+        }
+      }
     } catch (e) {
       console.error("Error loading student exams:", e);
     } finally {
@@ -202,34 +333,92 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
     }
   };
 
-  // Anti-Cheating: Detect Window Blur / Tab Switching
+  // Continuous Auto-Save to localStorage to survive power cuts, battery loss, or accidental closes
+  useEffect(() => {
+    if (!examStarted || !activeExam || !currentUser?.uid) return;
+
+    const backup: ActiveExamSessionBackup = {
+      examId: activeExam.id,
+      studentUid: currentUser.uid,
+      answers: studentAnswers,
+      flaggedQuestions,
+      currentQuestionIdx,
+      timeRemainingSeconds,
+      startedAt: examStartedAtRef.current || new Date().toISOString(),
+      lastSavedAt: new Date().toISOString(),
+      tabSwitchViolations
+    };
+    saveActiveSession(backup);
+  }, [
+    examStarted,
+    activeExam,
+    studentAnswers,
+    flaggedQuestions,
+    currentQuestionIdx,
+    timeRemainingSeconds,
+    tabSwitchViolations,
+    currentUser?.uid
+  ]);
+
+  // Prevent accidental window / tab close or browser navigation during active exams
+  useEffect(() => {
+    if (!examStarted) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "You have an active examination in progress. Exiting or reloading may affect your score.";
+      return e.returnValue;
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [examStarted]);
+
+  // Anti-Cheating: Detect Window Blur / Tab Switching with 5-second Grace Period
   useEffect(() => {
     if (!examStarted || !activeExam || !activeExam.enableAntiCheating) return;
 
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "hidden") {
-        recordViolation();
-      }
-    };
-
-    const handleBlur = () => {
-      recordViolation();
-    };
-
-    const recordViolation = () => {
+    const recordViolation = (reason: string) => {
       setTabSwitchViolations(prev => {
         const next = prev + 1;
-        setViolationToast(`🚨 Proctoring Alert: Side window switch detected! (Strike #${next})`);
-        setTimeout(() => setViolationToast(null), 4000);
+        setViolationToast(`🚨 Proctoring Alert: ${reason}! (Strike #${next})`);
+        setTimeout(() => setViolationToast(null), 5000);
         return next;
       });
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        recordViolation("Tab switched or browser minimized");
+      }
+    };
+
+    const handleBlur = () => {
+      // 5-second grace period: prevents strikes from brief OS popups (antivirus alert, battery low, system prompt)
+      if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+      blurTimeoutRef.current = setTimeout(() => {
+        recordViolation("Window focus lost for more than 5 seconds");
+      }, 5000);
+    };
+
+    const handleFocus = () => {
+      // Regained focus within 5 seconds -> cancel strike
+      if (blurTimeoutRef.current) {
+        clearTimeout(blurTimeoutRef.current);
+        blurTimeoutRef.current = null;
+      }
+    };
+
     window.addEventListener("blur", handleBlur);
+    window.addEventListener("focus", handleFocus);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
+      if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
       window.removeEventListener("blur", handleBlur);
+      window.removeEventListener("focus", handleFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [examStarted, activeExam]);
@@ -254,6 +443,30 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
     };
   }, [examStarted, activeExam]);
 
+  // Resume or Discard Interrupted Session
+  const handleResumeRecoveredSession = () => {
+    if (!recoveredSession || !recoveredExam) return;
+    setActiveExam(recoveredExam);
+    setStudentAnswers(recoveredSession.answers || {});
+    setFlaggedQuestions(recoveredSession.flaggedQuestions || {});
+    setCurrentQuestionIdx(recoveredSession.currentQuestionIdx || 0);
+    setTimeRemainingSeconds(recoveredSession.timeRemainingSeconds);
+    setTabSwitchViolations(recoveredSession.tabSwitchViolations || 0);
+    examStartedAtRef.current = recoveredSession.startedAt;
+    setExamStarted(true);
+    setRecoveredSession(null);
+    setRecoveredExam(null);
+    enterFullscreen();
+  };
+
+  const handleDiscardRecoveredSession = () => {
+    if (confirm("Are you sure you want to discard this interrupted exam session? Your saved answers will be deleted.")) {
+      if (currentUser?.uid) clearActiveSession(currentUser.uid);
+      setRecoveredSession(null);
+      setRecoveredExam(null);
+    }
+  };
+
   // Start Exam Flow
   const handleOpenExamPreScreen = (exam: Exam) => {
     setActiveExam(exam);
@@ -264,9 +477,11 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
     setTabSwitchViolations(0);
     setCompletedAttempt(null);
     setTimeRemainingSeconds(exam.timeLimitMinutes * 60);
+    examStartedAtRef.current = null;
   };
 
   const handleStartExamConfirmed = () => {
+    examStartedAtRef.current = new Date().toISOString();
     setExamStarted(true);
     enterFullscreen();
   };
@@ -343,7 +558,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
         percentage: autoRes.percentage,
         passed: autoRes.passed,
         status: autoRes.hasSubjectiveQuestions ? "submitted" : "graded",
-        startedAt: new Date(Date.now() - (timeSpentSeconds * 1000)).toISOString(),
+        startedAt: examStartedAtRef.current || new Date(Date.now() - (timeSpentSeconds * 1000)).toISOString(),
         submittedAt: new Date().toISOString(),
         timeSpentSeconds,
         tabSwitchCount: tabSwitchViolations,
@@ -353,6 +568,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
       };
 
       await saveExamAttempt(attemptPayload);
+      clearActiveSession(currentUser.uid);
       setMyAttempts(prev => [attemptPayload, ...prev]);
       setCompletedAttempt(attemptPayload);
       setExamStarted(false);
@@ -366,10 +582,12 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
   };
 
   const handleCloseExamHall = () => {
+    clearActiveSession(currentUser.uid);
     exitFullscreen();
     setActiveExam(null);
     setExamStarted(false);
     setCompletedAttempt(null);
+    examStartedAtRef.current = null;
   };
 
   // Open Review of Past Attempt
@@ -450,6 +668,54 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
           </select>
         </div>
       </div>
+
+      {/* Interrupted Session Recovery Alert Banner */}
+      {recoveredSession && recoveredExam && !activeExam && (
+        <div className="rounded-3xl border-2 border-cyan-500/50 bg-gradient-to-r from-cyan-950/70 via-[#0F172A] to-slate-900/90 p-5 sm:p-6 shadow-2xl backdrop-blur-md animate-in slide-in-from-top-4 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-start space-x-3.5">
+              <div className="p-3 rounded-2xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shrink-0 shadow-lg">
+                <RotateCcw className="h-6 w-6 animate-spin" style={{ animationDuration: '6s' }} />
+              </div>
+              <div className="space-y-1">
+                <div className="flex items-center space-x-2">
+                  <span className="inline-flex items-center rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 text-[10px] font-mono font-bold uppercase">
+                    Interrupted Session Detected
+                  </span>
+                  <span className="text-xs font-mono text-cyan-400 font-bold">{recoveredExam.courseCode}</span>
+                </div>
+                <h3 className="text-sm sm:text-base font-extrabold text-white">
+                  Unfinished Assessment: {recoveredExam.title}
+                </h3>
+                <p className="text-xs text-[#94A3B8] leading-relaxed">
+                  We automatically preserved your test session, answers, and remaining time from an unexpected interruption (power cut, battery loss, or restart).
+                  {recoveredExam.timeLimitMinutes > 0 && (
+                    <span className="ml-1 text-cyan-300 font-mono font-semibold">
+                      Time Remaining: {Math.floor(recoveredSession.timeRemainingSeconds / 60)}m {recoveredSession.timeRemainingSeconds % 60}s.
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2.5 shrink-0 self-end sm:self-center">
+              <button
+                onClick={handleDiscardRecoveredSession}
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-[#94A3B8] hover:text-rose-400 bg-[#0B0F19] border border-[#334155] hover:border-rose-500/40 transition-all"
+              >
+                Discard
+              </button>
+              <button
+                onClick={handleResumeRecoveredSession}
+                className="inline-flex items-center space-x-2 px-6 py-2.5 rounded-xl text-xs font-black text-slate-950 bg-cyan-400 hover:bg-cyan-500 transition-all shadow-xl active:scale-95"
+              >
+                <Play className="h-4 w-4 fill-current" />
+                <span>Resume in Fullscreen</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Tests Grid */}
       {filteredExams.length === 0 ? (
@@ -629,6 +895,44 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
               </div>
             )}
 
+            {/* Strict Fullscreen Required Security Curtain (Blocks exam viewing if fullscreen lost) */}
+            {examStarted && !completedAttempt && !isFullscreen && (
+              <div className="fixed inset-0 z-[99999] bg-[#070B14]/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
+                <div className="max-w-md w-full rounded-3xl border border-cyan-500/40 bg-[#0F172A] p-8 shadow-2xl space-y-5 text-center">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 shadow-lg">
+                    <Maximize2 className="h-8 w-8 animate-pulse text-cyan-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-extrabold text-white tracking-tight">
+                      Fullscreen Required
+                    </h3>
+                    <p className="text-xs text-[#94A3B8] mt-2 leading-relaxed">
+                      To preserve academic integrity and prevent distractions, this assessment requires uninterrupted full-screen display.
+                    </p>
+                  </div>
+
+                  <div className="rounded-2xl bg-[#1E293B] border border-[#334155] p-3.5 text-[11px] text-[#CBD5E1] text-left space-y-2">
+                    <div className="flex items-center space-x-1.5 text-cyan-400 font-semibold font-mono">
+                      <Lock className="h-3.5 w-3.5" />
+                      <span>Security &amp; Progress Guard Active</span>
+                    </div>
+                    <p className="text-slate-400 leading-normal">
+                      Your answers and timer are continuously saved. If an antivirus prompt, low battery notification, or accidental keypress closed full-screen, click below to return immediately without penalty.
+                    </p>
+                  </div>
+
+                  <button
+                    onClick={enterFullscreen}
+                    type="button"
+                    className="w-full inline-flex items-center justify-center space-x-2 rounded-xl bg-cyan-400 hover:bg-cyan-500 px-6 py-3 text-xs font-black text-slate-950 transition-all shadow-xl active:scale-95"
+                  >
+                    <Maximize2 className="h-4 w-4" />
+                    <span>Return to Fullscreen &amp; Continue</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* PRE-EXAM BRIEFING / CONFIRMATION SCREEN */}
             {!examStarted && !completedAttempt ? (
               <div className="flex-1 overflow-y-auto p-6 sm:p-10 flex flex-col justify-between max-w-2xl mx-auto space-y-6">
@@ -657,6 +961,13 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                         <Clock className="h-4 w-4 text-cyan-400 shrink-0 mt-0.5" />
                         <div>
                           <strong>Time Limit:</strong> {activeExam.timeLimitMinutes > 0 ? `${activeExam.timeLimitMinutes} minutes` : "Untimed"}. The countdown starts immediately when you click Begin.
+                        </div>
+                      </div>
+
+                      <div className="flex items-start space-x-2.5 text-cyan-300">
+                        <Lock className="h-4 w-4 text-cyan-400 shrink-0 mt-0.5" />
+                        <div>
+                          <strong>Mandatory Fullscreen &amp; Power-Loss Guard:</strong> Once started, fullscreen is locked until you submit. All your answers and remaining time are continuously backed up in real time, so your work is safe even if your computer restarts or power dies.
                         </div>
                       </div>
 
@@ -843,25 +1154,11 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                       </div>
                     )}
 
-                    {/* Fullscreen Toggle Button */}
-                    <button
-                      onClick={toggleFullscreen}
-                      type="button"
-                      title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen Mode"}
-                      className="p-2 rounded-xl text-[#94A3B8] hover:text-white bg-[#0B0F19] border border-[#334155] hover:border-cyan-400/50 transition-all flex items-center space-x-1.5 text-xs font-mono"
-                    >
-                      {isFullscreen ? (
-                        <>
-                          <Minimize2 className="h-4 w-4 text-cyan-400" />
-                          <span className="hidden lg:inline text-[11px]">Exit Fullscreen</span>
-                        </>
-                      ) : (
-                        <>
-                          <Maximize2 className="h-4 w-4 text-cyan-400" />
-                          <span className="hidden lg:inline text-[11px]">Fit Full Screen</span>
-                        </>
-                      )}
-                    </button>
+                    {/* Fullscreen Mode Locked Indicator */}
+                    <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#0B0F19] border border-[#334155] text-cyan-400 text-xs font-mono shadow-inner">
+                      <Lock className="h-3.5 w-3.5 text-cyan-400" />
+                      <span className="hidden sm:inline text-[11px] font-bold">Fullscreen Locked</span>
+                    </div>
 
                     <button
                       onClick={handleManualSubmit}
