@@ -27,6 +27,7 @@ const TipsManager = dynamic(() => import("@/components/admin/TipsManager"), { ss
 const SuggestionsInbox = dynamic(() => import("@/components/admin/SuggestionsInbox"), { ssr: false, loading: TabLoadingPlaceholder });
 const LiveExamProctoring = dynamic(() => import("@/components/admin/LiveExamProctoring"), { ssr: false, loading: TabLoadingPlaceholder });
 const BroadcastManager = dynamic(() => import("@/components/admin/BroadcastManager"), { ssr: false, loading: TabLoadingPlaceholder });
+const MasterGradebook = dynamic(() => import("@/components/admin/MasterGradebook"), { ssr: false, loading: TabLoadingPlaceholder });
 import AdminPresenceAlert from "@/components/admin/AdminPresenceAlert";
 import RestrictionsControl from "@/components/admin/RestrictionsControl";
 import { downloadSyllabusAsJSON, downloadSyllabusAsText, downloadAllSyllabiAsJSON } from "@/lib/exportSyllabus";
@@ -54,7 +55,8 @@ import {
   Sparkles,
   Inbox,
   Radio,
-  Megaphone
+  Megaphone,
+  GraduationCap
 } from "lucide-react";
 import Link from "next/link";
 
@@ -475,6 +477,18 @@ export default function AdminDashboardPage() {
             <Megaphone className="h-4 w-4 shrink-0 text-cyan-400" />
             <span>Broadcasts 📢</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('gradebook')}
+            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
+              activeTab === 'gradebook'
+                ? 'border-emerald-400 text-emerald-300'
+                : 'border-transparent text-[#94A3B8] hover:text-white'
+            }`}
+          >
+            <GraduationCap className="h-4 w-4 shrink-0 text-emerald-400" />
+            <span>Master Gradebook 📊</span>
+          </button>
         </div>
 
         {/* TAB 1: SYLLABI MANAGEMENT */}
@@ -679,6 +693,11 @@ export default function AdminDashboardPage() {
         {/* TAB 11: CAMPUS BROADCAST BULLETIN STUDIO */}
         <div className={activeTab === 'broadcasts' ? 'block' : 'hidden'}>
           <BroadcastManager adminUser={adminUser} trades={trades} />
+        </div>
+
+        {/* TAB 12: ACADEMIC MASTER GRADEBOOK & EXPORTER */}
+        <div className={activeTab === 'gradebook' ? 'block' : 'hidden'}>
+          <MasterGradebook adminUser={adminUser} trades={trades} />
         </div>
       </main>
     </div>
