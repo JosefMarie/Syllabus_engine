@@ -412,6 +412,16 @@ export default function CatalogPage() {
               </div>
             )}
 
+            {/* Dev Tips Link */}
+            <Link
+              href="/tips"
+              className="inline-flex items-center space-x-1.5 rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20 hover:text-white transition-all shadow-sm"
+              title="Explore Developer Tips &amp; Insights"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+              <span>Dev Tips 💡</span>
+            </Link>
+
             {(!currentUser || adminUser) && (
               <Link
                 href={adminUser ? "/admin" : "/admin/login"}
@@ -698,6 +708,14 @@ export default function CatalogPage() {
               <FileQuestion className="h-4 w-4" />
               <span>Exams & Quizzes</span>
             </button>
+
+            <Link
+              href="/tips"
+              className="inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all whitespace-nowrap bg-gradient-to-r from-cyan-500/15 via-purple-500/15 to-indigo-500/15 text-cyan-300 border border-cyan-500/40 hover:border-cyan-400 hover:text-white shadow-sm"
+            >
+              <Sparkles className="h-4 w-4 text-cyan-400" />
+              <span>Dev Tips Hub 💡</span>
+            </Link>
           </div>
         )}
 

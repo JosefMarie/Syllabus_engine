@@ -23,6 +23,7 @@ const AssignmentManager = dynamic(() => import("@/components/admin/AssignmentMan
 const ExamManager = dynamic(() => import("@/components/admin/ExamManager"), { ssr: false, loading: TabLoadingPlaceholder });
 const GroupManager = dynamic(() => import("@/components/admin/GroupManager"), { ssr: false, loading: TabLoadingPlaceholder });
 const ActivityLogger = dynamic(() => import("@/components/admin/ActivityLogger"), { ssr: false, loading: TabLoadingPlaceholder });
+const TipsManager = dynamic(() => import("@/components/admin/TipsManager"), { ssr: false, loading: TabLoadingPlaceholder });
 import AdminPresenceAlert from "@/components/admin/AdminPresenceAlert";
 import RestrictionsControl from "@/components/admin/RestrictionsControl";
 import { downloadSyllabusAsJSON, downloadSyllabusAsText, downloadAllSyllabiAsJSON } from "@/lib/exportSyllabus";
@@ -46,7 +47,8 @@ import {
   Lock,
   AlertTriangle,
   Smartphone,
-  FileQuestion
+  FileQuestion,
+  Sparkles
 } from "lucide-react";
 import Link from "next/link";
 
@@ -54,7 +56,7 @@ export default function AdminDashboardPage() {
   const router = useRouter();
 
   const [adminUser, setAdminUser] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<'syllabi' | 'trades' | 'students' | 'progress' | 'assignments' | 'groups' | 'activity' | 'exams'>('syllabi');
+  const [activeTab, setActiveTab] = useState<'syllabi' | 'trades' | 'students' | 'progress' | 'assignments' | 'groups' | 'activity' | 'exams' | 'tips'>('syllabi');
   const [syllabi, setSyllabi] = useState<Syllabus[]>(() => getLocalSyllabi());
   const [trades, setTrades] = useState<Trade[]>(() => getLocalTrades());
   const [pendingCount, setPendingCount] = useState(() => {
@@ -390,6 +392,18 @@ export default function AdminDashboardPage() {
             <Activity className="h-4 w-4 shrink-0" />
             <span>Activity Logs & Audit</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab('tips')}
+            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
+              activeTab === 'tips'
+                ? 'border-[#06B6D4] text-[#06B6D4]'
+                : 'border-transparent text-[#94A3B8] hover:text-white'
+            }`}
+          >
+            <Sparkles className="h-4 w-4 shrink-0 text-cyan-400" />
+            <span>Dev Tips Studio 💡</span>
+          </button>
         </div>
 
         {/* TAB 1: SYLLABI MANAGEMENT */}
@@ -574,6 +588,11 @@ export default function AdminDashboardPage() {
         {/* TAB 7: ACTIVITY LOGS & AUDIT */}
         <div className={activeTab === 'activity' ? 'block' : 'hidden'}>
           <ActivityLogger />
+        </div>
+
+        {/* TAB 8: DEVELOPER TIPS & INSIGHTS STUDIO */}
+        <div className={activeTab === 'tips' ? 'block' : 'hidden'}>
+          <TipsManager adminUser={adminUser} />
         </div>
       </main>
     </div>

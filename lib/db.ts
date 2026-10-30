@@ -5,6 +5,8 @@ import { ActivityLog } from "@/types/activity";
 import { StudentTopicTimeRecord } from "@/types/timeTracking";
 import { StudentGroup, GroupMember, GroupEvaluation, MemberEvaluation } from "@/types/group";
 import { Exam, ExamQuestion, ExamAttempt, QuestionGrade } from "@/types/exam";
+import { DeveloperTip } from "@/types/tip";
+import { INITIAL_DEVELOPER_TIPS } from "./tipsSeed";
 import { db, isFirebaseConfigured } from "./firebase";
 import { 
   collection, 
@@ -3476,6 +3478,153 @@ export {
   getLocalRestrictions 
 } from "./restrictions";
 
+// ============================================================================
+// DEVELOPER TIPS & PROGRAMMER INSIGHTS ENGINE
+// ============================================================================
+const TIPS_STORAGE_KEY = "syllabus_platform_developer_tips_v1";
 
+export async function getDeveloperTips(includeDrafts = false): Promise<DeveloperTip[]> {
+  let tips: DeveloperTip[] = [];
 
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDocs(collection(db, "developer_tips"));
+      tips = snap.docs.map(d => ({ ...d.data(), id: d.id } as DeveloperTip));
+      if (typeof window !== "undefined" && tips.length > 0) {
+        localStorage.setItem(TIPS_STORAGE_KEY, JSON.stringify(tips));
+      }
+    } catch (e) {
+      console.warn("Firestore getDeveloperTips error, using local fallback:", e);
+    }
+  }
 
+  if (tips.length === 0 && typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(TIPS_STORAGE_KEY);
+      if (raw) {
+        tips = JSON.parse(raw);
+      }
+    } catch (e) {}
+  }
+
+  // If still empty, seed with initial tips and save to localStorage
+  if (tips.length === 0) {
+    tips = [...INITIAL_DEVELOPER_TIPS];
+    if (typeof window !== "undefined") {
+      try {
+        localStorage.setItem(TIPS_STORAGE_KEY, JSON.stringify(tips));
+      } catch (e) {}
+    }
+  }
+
+  if (!includeDrafts) {
+    tips = tips.filter(t => t.status === "published");
+  }
+
+  // Sort: Featured first, then newest
+  return tips.sort((a, b) => {
+    if (a.isFeatured && !b.isFeatured) return -1;
+    if (!a.isFeatured && b.isFeatured) return 1;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+}
+
+export async function getDeveloperTipById(id: string): Promise<DeveloperTip | null> {
+  const all = await getDeveloperTips(true);
+  return all.find(t => t.id === id) || null;
+}
+
+export async function saveDeveloperTip(tip: DeveloperTip): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "developer_tips", tip.id), tip, { merge: true });
+    } catch (e) {
+      console.warn("Firestore saveDeveloperTip error, saving locally:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const existing = await getDeveloperTips(true);
+      const idx = existing.findIndex(t => t.id === tip.id);
+      let updated: DeveloperTip[];
+      if (idx >= 0) {
+        updated = existing.map(t => t.id === tip.id ? tip : t);
+      } else {
+        updated = [tip, ...existing];
+      }
+      localStorage.setItem(TIPS_STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) {}
+  }
+}
+
+export async function deleteDeveloperTip(id: string): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, "developer_tips", id));
+    } catch (e) {
+      console.warn("Firestore deleteDeveloperTip error:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const existing = await getDeveloperTips(true);
+      const filtered = existing.filter(t => t.id !== id);
+      localStorage.setItem(TIPS_STORAGE_KEY, JSON.stringify(filtered));
+    } catch (e) {}
+  }
+}
+
+export function subscribeToDeveloperTips(callback: (tips: DeveloperTip[]) => void, includeDrafts = false): () => void {
+  let localFired = false;
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(TIPS_STORAGE_KEY);
+      if (raw) {
+        let list: DeveloperTip[] = JSON.parse(raw);
+        if (!includeDrafts) list = list.filter(t => t.status === "published");
+        callback(list.sort((a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0)));
+        localFired = true;
+      }
+    } catch (e) {}
+  }
+
+  if (!isFirebaseConfigured || !db) {
+    if (!localFired) {
+      getDeveloperTips(includeDrafts).then(callback);
+    }
+    return () => {};
+  }
+
+  try {
+    const unsub = onSnapshot(collection(db, "developer_tips"), (snap) => {
+      let list = snap.docs.map(d => ({ ...d.data(), id: d.id } as DeveloperTip));
+      if (list.length === 0) {
+        list = [...INITIAL_DEVELOPER_TIPS];
+      }
+      if (typeof window !== "undefined") {
+        localStorage.setItem(TIPS_STORAGE_KEY, JSON.stringify(list));
+      }
+      if (!includeDrafts) {
+        list = list.filter(t => t.status === "published");
+      }
+      callback(list.sort((a, b) => {
+        if (a.isFeatured && !b.isFeatured) return -1;
+        if (!a.isFeatured && b.isFeatured) return 1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      }));
+    }, (err) => {
+      console.warn("subscribeToDeveloperTips error:", err);
+      if (!localFired) {
+        getDeveloperTips(includeDrafts).then(callback);
+      }
+    });
+    return unsub;
+  } catch (e) {
+    if (!localFired) {
+      getDeveloperTips(includeDrafts).then(callback);
+    }
+    return () => {};
+  }
+}
