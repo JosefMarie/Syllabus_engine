@@ -1093,10 +1093,14 @@ export function parsePlainTextToQuestions(text: string): { questions: ExamQuesti
         continue;
       }
 
-      // Check for Option line:
+      // Check for Option line (only after prompt has been captured):
       // A) Option text, A. Option text, (A) Option text, a) Option text, [ ] text, [x] text
-      const optionMatch = trimmed.match(/^(?:\(?([A-Z0-9])\)|\(?([A-Z0-9])\.)\s+(.+)$/i) ||
-                          trimmed.match(/^\[([ xX])\]\s+(.+)$/i);
+      // Options should only match letters A-Z (or a-z) or checkboxes.
+      // Crucially, options can only be recognized if rawPrompt has already been established,
+      // preventing question numbers 1. through 9. from being mistakenly treated as option "1."!
+      const optionMatch = rawPrompt
+        ? (trimmed.match(/^(?:\(?([A-Za-z])\)|\(?([A-Za-z])[\.\:\-])\s+(.+)$/) || trimmed.match(/^\[([ xX])\]\s+(.+)$/))
+        : null;
 
       if (optionMatch) {
         parsingState = "options";
