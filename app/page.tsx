@@ -31,7 +31,8 @@ import {
   Users,
   FileQuestion,
   MessageSquare,
-  Code2
+  Code2,
+  Trophy
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -47,6 +48,12 @@ import StudentFeedbackView from "@/components/student/StudentFeedbackView";
 import StudentBulletinBanner from "@/components/student/StudentBulletinBanner";
 import StudentChallengeArena from "@/components/student/StudentChallengeArena";
 import SuggestionBoxModal from "@/components/common/SuggestionBoxModal";
+import AchievementBadgesModal from "@/components/student/AchievementBadgesModal";
+import CertificateVaultModal from "@/components/student/CertificateVaultModal";
+import { CourseCertificate } from "@/types/certificate";
+import { getStudentCertificates } from "@/lib/certificates";
+import { evaluateStudentAchievements } from "@/lib/achievements";
+import { getAllExamAttempts, getAllSubmissions, getChallengeSubmissions, getStudentSuggestions } from "@/lib/db";
 
 export default function CatalogPage() {
   const router = useRouter();
@@ -77,6 +84,37 @@ export default function CatalogPage() {
   const [activeLevelFilter, setActiveLevelFilter] = useState<string>("all");
   const [studentProgressMap, setStudentProgressMap] = useState<Record<string, boolean>>({});
   const [adminUser, setAdminUser] = useState<UserProfile | null>(null);
+  const [isBadgesModalOpen, setIsBadgesModalOpen] = useState(false);
+  const [isCertsModalOpen, setIsCertsModalOpen] = useState(false);
+  const [studentCertificates, setStudentCertificates] = useState<CourseCertificate[]>([]);
+
+  useEffect(() => {
+    if (!currentUser || currentUser.role !== "student") return;
+
+    getStudentCertificates(currentUser.uid).then(setStudentCertificates);
+
+    Promise.all([
+      getAllExamAttempts(),
+      getAllSubmissions(),
+      getChallengeSubmissions(),
+      getStudentSuggestions(currentUser.uid)
+    ]).then(([exams, subs, challenges, suggestions]) => {
+      const studentExams = exams.filter(e => e.studentUid === currentUser.uid);
+      const studentSubs = subs.filter(s => s.studentUid === currentUser.uid || s.submittedByUid === currentUser.uid);
+      const solvedChallenges = challenges.filter(c => c.studentUid === currentUser.uid && c.passed).length;
+      const progress = getSubtopicProgress(currentUser.uid);
+      const completedSubtopics = Object.values(progress).filter(Boolean).length;
+
+      evaluateStudentAchievements(currentUser, {
+        subtopicsCompleted: completedSubtopics,
+        hasFinishedAnySyllabus: studentCertificates.length > 0,
+        examAttempts: studentExams,
+        submissions: studentSubs,
+        challengesSolvedCount: solvedChallenges,
+        suggestionsCount: suggestions.length
+      });
+    }).catch(console.warn);
+  }, [currentUser]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -388,6 +426,32 @@ export default function CatalogPage() {
                     {currentUser.role === 'teacher' ? 'Course Instructor' : `${currentUser.level} • ${tradesMap[currentUser.tradeId] || 'General'}`}
                   </span>
                 </div>
+
+                {currentUser.role === 'student' && (
+                  <div className="flex items-center space-x-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setIsBadgesModalOpen(true)}
+                      className="inline-flex items-center space-x-1 rounded-xl border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-500/20 hover:text-white transition-all shadow-sm"
+                      title="View Student Achievements & Badges"
+                    >
+                      <span>🏆 Badges</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsCertsModalOpen(true)}
+                      className="inline-flex items-center space-x-1 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1.5 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20 hover:text-white transition-all shadow-sm"
+                      title="View Official Accredited Certificates"
+                    >
+                      <span>📜 Certs</span>
+                      {studentCertificates.length > 0 && (
+                        <span className="ml-1 rounded-full bg-cyan-500 px-1.5 py-0.2 text-[10px] font-extrabold text-slate-950">
+                          {studentCertificates.length}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+                )}
 
                 <button
                   onClick={handleLogout}
@@ -939,6 +1003,20 @@ export default function CatalogPage() {
         currentUser={currentUser} 
         isOpenControlled={isSuggestionModalOpen}
         onOpenChange={setIsSuggestionModalOpen}
+      />
+
+      {/* STUDENT ACHIEVEMENTS & BADGES MODAL */}
+      <AchievementBadgesModal
+        currentUser={currentUser}
+        isOpen={isBadgesModalOpen}
+        onClose={() => setIsBadgesModalOpen(false)}
+      />
+
+      {/* ACCREDITED CERTIFICATES VAULT MODAL */}
+      <CertificateVaultModal
+        certificates={studentCertificates}
+        isOpen={isCertsModalOpen}
+        onClose={() => setIsCertsModalOpen(false)}
       />
     </div>
   );

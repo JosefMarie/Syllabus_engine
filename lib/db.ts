@@ -4030,6 +4030,11 @@ export function subscribeToSuggestions(callback: (suggestions: StudentSuggestion
   }
 }
 
+export async function getStudentSuggestions(studentUid: string): Promise<StudentSuggestion[]> {
+  const all = await getSuggestions();
+  return all.filter(s => s.studentUid === studentUid);
+}
+
 // ============================================================================
 // BROADCAST BULLETIN & TARGETED SCHOOL ANNOUNCEMENTS
 // ============================================================================
