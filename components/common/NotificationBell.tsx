@@ -2,8 +2,13 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { StudentNotification } from "@/types/notification";
-import { subscribeToStudentNotifications, markNotificationAsRead } from "@/lib/db";
-import { Bell, Check, CheckCheck, X, Clock, MessageSquare, ExternalLink } from "lucide-react";
+import { 
+  subscribeToStudentNotifications, 
+  markNotificationAsRead, 
+  deleteStudentNotification, 
+  clearAllReadStudentNotifications 
+} from "@/lib/db";
+import { Bell, Check, CheckCheck, Trash2 } from "lucide-react";
 
 interface NotificationBellProps {
   userId: string;
@@ -41,6 +46,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
   const handleMarkAsRead = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true, isRead: true } : n));
       await markNotificationAsRead(id);
     } catch (err) {
       console.error("Error marking notification read:", err);
@@ -49,9 +55,29 @@ export default function NotificationBell({ userId }: { userId: string }) {
 
   const handleMarkAllRead = async () => {
     try {
+      setNotifications(prev => prev.map(n => ({ ...n, read: true, isRead: true })));
       await Promise.all(unreadList.map((n) => markNotificationAsRead(n.id)));
     } catch (err) {
       console.error("Error marking all read:", err);
+    }
+  };
+
+  const handleDeleteNotification = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+      await deleteStudentNotification(id);
+    } catch (err) {
+      console.error("Error deleting notification:", err);
+    }
+  };
+
+  const handleClearRead = async () => {
+    try {
+      setNotifications(prev => prev.filter(n => !n.read && !(n as any).isRead));
+      await clearAllReadStudentNotifications(userId);
+    } catch (err) {
+      console.error("Error clearing read notifications:", err);
     }
   };
 
@@ -87,16 +113,29 @@ export default function NotificationBell({ userId }: { userId: string }) {
               )}
             </div>
 
-            {unreadCount > 0 && (
-              <button
-                type="button"
-                onClick={handleMarkAllRead}
-                className="text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 flex items-center space-x-1"
-              >
-                <CheckCheck className="h-3.5 w-3.5" />
-                <span>Mark all read</span>
-              </button>
-            )}
+            <div className="flex items-center space-x-2.5">
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleMarkAllRead}
+                  className="text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 flex items-center space-x-1"
+                >
+                  <CheckCheck className="h-3.5 w-3.5" />
+                  <span>Mark all read</span>
+                </button>
+              )}
+              {notifications.some(n => n.read || (n as any).isRead) && (
+                <button
+                  type="button"
+                  onClick={handleClearRead}
+                  className="text-[11px] font-semibold text-[#94A3B8] hover:text-rose-400 flex items-center space-x-1 transition-colors"
+                  title="Remove all read notifications"
+                >
+                  <Trash2 className="h-3 w-3" />
+                  <span>Clear read</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* List */}
@@ -104,11 +143,12 @@ export default function NotificationBell({ userId }: { userId: string }) {
             {notifications.length === 0 ? (
               <div className="py-8 text-center text-xs text-[#94A3B8]">
                 <Bell className="h-8 w-8 text-[#64748B] mx-auto mb-2 opacity-50" />
-                No notifications yet.
+                No notifications.
               </div>
             ) : (
               notifications.slice(0, 15).map((n) => {
                 const isUnread = !n.read && !(n as any).isRead;
+                const sender = (!n.senderName || n.senderName === "Teacher Admin") ? "Josef Marie" : n.senderName;
 
                 return (
                   <div
@@ -120,10 +160,10 @@ export default function NotificationBell({ userId }: { userId: string }) {
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
-                      <div className="space-y-1">
+                      <div className="space-y-1 flex-1 pr-1">
                         <div className="flex items-center space-x-2">
                           <span className="text-xs font-bold text-white">
-                            {n.senderName || "Instructor"}
+                            {sender}
                           </span>
                           <span className="text-[10px] text-[#64748B]">
                             {new Date(n.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}
@@ -134,16 +174,26 @@ export default function NotificationBell({ userId }: { userId: string }) {
                         </p>
                       </div>
 
-                      {isUnread && (
+                      <div className="flex items-center space-x-1 shrink-0 pt-0.5">
+                        {isUnread && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleMarkAsRead(n.id, e)}
+                            title="Mark as read"
+                            className="rounded-lg p-1 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 transition-colors"
+                          >
+                            <Check className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                         <button
                           type="button"
-                          onClick={(e) => handleMarkAsRead(n.id, e)}
-                          title="Mark read"
-                          className="rounded-lg p-1 text-[#64748B] hover:text-cyan-300 transition-colors"
+                          onClick={(e) => handleDeleteNotification(n.id, e)}
+                          title="Delete notification"
+                          className="rounded-lg p-1 text-[#64748B] hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                         >
-                          <Check className="h-3.5 w-3.5" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </button>
-                      )}
+                      </div>
                     </div>
                   </div>
                 );

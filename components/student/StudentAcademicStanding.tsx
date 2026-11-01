@@ -36,41 +36,90 @@ export default function StudentAcademicStanding({
   syllabi,
   onTabChange
 }: StudentAcademicStandingProps) {
-  const [loading, setLoading] = useState(true);
-  const [presentationAvg, setPresentationAvg] = useState<number | null>(null);
-  const [examAvg, setExamAvg] = useState<number | null>(null);
-  const [completedSubtopicsCount, setCompletedSubtopicsCount] = useState(0);
-  const [totalSubtopicsCount, setTotalSubtopicsCount] = useState(0);
-  const [submissionCount, setSubmissionCount] = useState(0);
+  // Helper to read initial values synchronously from local cache so the dashboard renders instantly
+  const [presentationAvg, setPresentationAvg] = useState<number | null>(() => {
+    if (typeof window === "undefined" || !currentUser?.uid) return null;
+    try {
+      const raw = localStorage.getItem("syllabus_group_evaluations_v1");
+      if (raw) {
+        const evals = JSON.parse(raw);
+        const myScores = evals
+          .map((e: any) => e.members?.[currentUser.uid]?.finalScore)
+          .filter((s: any): s is number => typeof s === "number");
+        if (myScores.length > 0) {
+          const sum = myScores.reduce((a: number, b: number) => a + b, 0);
+          return Math.round((sum / myScores.length) * 10) / 10;
+        }
+      }
+    } catch (e) {}
+    return null;
+  });
+
+  const [examAvg, setExamAvg] = useState<number | null>(() => {
+    if (typeof window === "undefined" || !currentUser?.uid) return null;
+    try {
+      const raw = localStorage.getItem("syllabus_exam_attempts_v1");
+      if (raw) {
+        const attempts = JSON.parse(raw);
+        const userAttempts = attempts.filter((a: any) => a.studentUid === currentUser.uid && (a.status === "graded" || a.status === "submitted"));
+        if (userAttempts.length > 0) {
+          const sum = userAttempts.reduce((acc: number, b: any) => acc + (b.percentage || 0), 0);
+          return Math.round((sum / userAttempts.length) * 10) / 10;
+        }
+      }
+    } catch (e) {}
+    return null;
+  });
+
+  const [completedSubtopicsCount, setCompletedSubtopicsCount] = useState<number>(() => {
+    if (typeof window === "undefined" || !currentUser?.uid) return 0;
+    try {
+      const raw = localStorage.getItem(`syllabus_progress_${currentUser.uid}`);
+      if (raw) {
+        const map = JSON.parse(raw);
+        return Object.values(map).filter(Boolean).length;
+      }
+    } catch (e) {}
+    return 0;
+  });
+
+  const [totalSubtopicsCount, setTotalSubtopicsCount] = useState<number>(() => {
+    const relevant = syllabi.filter(s => !s.level || s.level === currentUser.level);
+    let total = 0;
+    relevant.forEach(s => {
+      s.learningOutcomes?.forEach(lo => {
+        lo.indicativeContents?.forEach(ic => {
+          ic.topics?.forEach(top => {
+            total += top.subtopics?.length || 0;
+          });
+        });
+      });
+    });
+    return total;
+  });
+
+  const [submissionCount, setSubmissionCount] = useState<number>(() => {
+    if (typeof window === "undefined" || !currentUser?.uid) return 0;
+    try {
+      const raw = localStorage.getItem("syllabus_submissions_v1");
+      if (raw) {
+        const subs = JSON.parse(raw);
+        return subs.filter((s: any) => s.studentUid === currentUser.uid || s.submittedByUid === currentUser.uid).length;
+      }
+    } catch (e) {}
+    return 0;
+  });
+
   const [showReportCard, setShowReportCard] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+
     async function loadStats() {
       if (!currentUser?.uid) return;
       try {
-        // 1. Evaluations & presentations
-        const evals = await getStudentGroupEvaluations(currentUser.uid);
-        if (evals.length > 0) {
-          const myScores = evals
-            .map((e) => e.members?.[currentUser.uid]?.finalScore)
-            .filter((s): s is number => typeof s === "number");
-          if (myScores.length > 0) {
-            const sum = myScores.reduce((a, b) => a + b, 0);
-            setPresentationAvg(Math.round((sum / myScores.length) * 10) / 10);
-          }
-        }
-
-        // 2. Exam attempts
-        const attempts = await getStudentExamAttempts(currentUser.uid);
-        if (attempts.length > 0) {
-          const completedAttempts = attempts.filter((a: ExamAttempt) => a.status === "graded" || a.status === "submitted");
-          if (completedAttempts.length > 0) {
-            const sum = completedAttempts.reduce((acc: number, b: ExamAttempt) => acc + (b.percentage || 0), 0);
-            setExamAvg(Math.round((sum / completedAttempts.length) * 10) / 10);
-          }
-        }
-
-        // 3. Subtopic progress
+        // Compute total subtopics for level
         const relevantSyllabi = syllabi.filter(
           (s) => !s.level || s.level === currentUser.level
         );
@@ -84,22 +133,60 @@ export default function StudentAcademicStanding({
             });
           });
         });
-        setTotalSubtopicsCount(totalSub);
+        if (isMounted) setTotalSubtopicsCount(totalSub);
 
-        const progMap = await getSubtopicProgressAsync(currentUser.uid);
-        const completed = Object.values(progMap).filter(Boolean).length;
-        setCompletedSubtopicsCount(completed);
+        // Fetch live stats in parallel without blocking one another
+        const [evalsRes, attemptsRes, progRes, subsRes] = await Promise.allSettled([
+          getStudentGroupEvaluations(currentUser.uid),
+          getStudentExamAttempts(currentUser.uid),
+          getSubtopicProgressAsync(currentUser.uid),
+          getStudentSubmissions(currentUser.uid)
+        ]);
 
-        // 4. Assignments
-        const subs = await getStudentSubmissions(currentUser.uid);
-        setSubmissionCount(subs.length);
+        if (!isMounted) return;
+
+        // 1. Evaluations
+        if (evalsRes.status === "fulfilled" && evalsRes.value.length > 0) {
+          const myScores = evalsRes.value
+            .map((e) => e.members?.[currentUser.uid]?.finalScore)
+            .filter((s): s is number => typeof s === "number");
+          if (myScores.length > 0) {
+            const sum = myScores.reduce((a, b) => a + b, 0);
+            setPresentationAvg(Math.round((sum / myScores.length) * 10) / 10);
+          }
+        }
+
+        // 2. Exam attempts
+        if (attemptsRes.status === "fulfilled" && attemptsRes.value.length > 0) {
+          const completedAttempts = attemptsRes.value.filter((a: ExamAttempt) => a.status === "graded" || a.status === "submitted");
+          if (completedAttempts.length > 0) {
+            const sum = completedAttempts.reduce((acc: number, b: ExamAttempt) => acc + (b.percentage || 0), 0);
+            setExamAvg(Math.round((sum / completedAttempts.length) * 10) / 10);
+          }
+        }
+
+        // 3. Subtopics progress
+        if (progRes.status === "fulfilled") {
+          const completed = Object.values(progRes.value).filter(Boolean).length;
+          setCompletedSubtopicsCount(completed);
+        }
+
+        // 4. Submissions
+        if (subsRes.status === "fulfilled") {
+          setSubmissionCount(subsRes.value.length);
+        }
       } catch (err) {
         console.error("Error loading academic standing:", err);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     }
+
     loadStats();
+
+    return () => {
+      isMounted = false;
+    };
   }, [currentUser?.uid, syllabi]);
 
   // Weighted Academic Grade
@@ -131,8 +218,6 @@ export default function StudentAcademicStanding({
   };
 
   const standing = getStandingBadge(cumulativeGrade);
-
-  if (loading) return null;
 
   return (
     <>

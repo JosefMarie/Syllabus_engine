@@ -1739,13 +1739,14 @@ export async function sendNotificationToStudent(
   if (typeof studentUidOrNotification === 'string') {
     notificationData = {
       userId: studentUidOrNotification,
-      senderName: senderNameArg || "Josef Marie",
+      senderName: (!senderNameArg || senderNameArg === "Teacher Admin") ? "Josef Marie" : senderNameArg,
       message: messageArg || "",
       read: false,
     };
   } else {
     notificationData = {
       ...studentUidOrNotification,
+      senderName: (!studentUidOrNotification.senderName || studentUidOrNotification.senderName === "Teacher Admin") ? "Josef Marie" : studentUidOrNotification.senderName,
       read: false,
     };
   }
@@ -1792,7 +1793,11 @@ export async function getStudentNotifications(studentUid: string): Promise<Stude
       const snapshot = await getDocs(q);
       const items: StudentNotification[] = [];
       snapshot.forEach((docSnap) => {
-        items.push({ id: docSnap.id, ...docSnap.data() } as StudentNotification);
+        const item = { id: docSnap.id, ...docSnap.data() } as StudentNotification;
+        if (!item.senderName || item.senderName === "Teacher Admin") {
+          item.senderName = "Josef Marie";
+        }
+        items.push(item);
       });
       if (items.length > 0) {
         return items.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
@@ -1808,6 +1813,10 @@ export async function getStudentNotifications(studentUid: string): Promise<Stude
     const list: StudentNotification[] = saved ? JSON.parse(saved) : [];
     return list
       .filter(n => n.userId === studentUid || (n as any).studentUid === studentUid)
+      .map(n => ({
+        ...n,
+        senderName: (!n.senderName || n.senderName === "Teacher Admin") ? "Josef Marie" : n.senderName
+      }))
       .sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
   } catch (e) {
     return [];
@@ -1848,7 +1857,11 @@ export function subscribeToStudentNotifications(
         (snapshot) => {
           const items: StudentNotification[] = [];
           snapshot.forEach((docSnap) => {
-            items.push({ id: docSnap.id, ...docSnap.data() } as StudentNotification);
+            const item = { id: docSnap.id, ...docSnap.data() } as StudentNotification;
+            if (!item.senderName || item.senderName === "Teacher Admin") {
+              item.senderName = "Josef Marie";
+            }
+            items.push(item);
           });
           items.sort((a, b) => (b.createdAt || "").localeCompare(a.createdAt || ""));
           callback(items);
@@ -1924,6 +1937,61 @@ export async function markNotificationAsRead(id: string): Promise<void> {
     } catch (e) {
       console.error("Local update notification error:", e);
     }
+  }
+}
+
+export async function deleteStudentNotification(id: string): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, "studentNotifications", id));
+    } catch (err) {
+      console.warn("Firestore delete notification error:", err);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem(NOTIFICATIONS_KEY);
+      if (saved) {
+        const list: StudentNotification[] = JSON.parse(saved);
+        const filtered = list.filter(n => n.id !== id);
+        localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(filtered));
+        window.dispatchEvent(new CustomEvent("syllabus_notification_received", { detail: { id, deleted: true } }));
+      }
+    } catch (e) {
+      console.error("Local delete notification error:", e);
+    }
+  }
+}
+
+export async function clearAllReadStudentNotifications(studentUid: string): Promise<void> {
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(collection(db, "studentNotifications"), where("userId", "==", studentUid));
+      const snapshot = await getDocs(q);
+      const deletePromises: Promise<any>[] = [];
+      snapshot.forEach(docSnap => {
+        const d = docSnap.data();
+        if (d.read || d.isRead) {
+          deletePromises.push(deleteDoc(docSnap.ref));
+        }
+      });
+      await Promise.all(deletePromises);
+    } catch (err) {
+      console.warn("Firestore clear read notifications error:", err);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem(NOTIFICATIONS_KEY);
+      if (saved) {
+        const list: StudentNotification[] = JSON.parse(saved);
+        const filtered = list.filter(n => !(n.userId === studentUid && (n.read || (n as any).isRead)));
+        localStorage.setItem(NOTIFICATIONS_KEY, JSON.stringify(filtered));
+        window.dispatchEvent(new CustomEvent("syllabus_notification_received", { detail: { cleared: true } }));
+      }
+    } catch (e) {}
   }
 }
 

@@ -8,7 +8,7 @@ import { Bell, Check, X, MessageSquare, ChevronLeft, ChevronRight, Volume2 } fro
 export default function NotificationAlert({ userId }: { userId: string }) {
   const [notifications, setNotifications] = useState<StudentNotification[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
   const seenIdsRef = useRef<Set<string>>(new Set());
   const initialMountRef = useRef(true);
 
@@ -43,29 +43,45 @@ export default function NotificationAlert({ userId }: { userId: string }) {
   useEffect(() => {
     if (!userId) return;
 
-    const unsubscribe = subscribeToStudentNotifications(userId, (list) => {
-      const unread = list.filter((n) => !n.read && !(n as any).isRead);
+    const getDismissed = (): Set<string> => {
+      try {
+        const raw = sessionStorage.getItem(`dismissed_notifs_${userId}`);
+        return raw ? new Set(JSON.parse(raw)) : new Set();
+      } catch (e) {
+        return new Set();
+      }
+    };
+    const dismissed = getDismissed();
 
-      // Detect if new unread message arrived that wasn't previously loaded
+    const unsubscribe = subscribeToStudentNotifications(userId, (list) => {
+      const unread = list.filter((n) => !n.read && !(n as any).isRead && !dismissed.has(n.id));
+
+      // On initial mount / refresh: do NOT pop up existing older notifications. Register them as seen.
+      if (initialMountRef.current) {
+        unread.forEach((n) => seenIdsRef.current.add(n.id));
+        initialMountRef.current = false;
+        setNotifications(unread);
+        return;
+      }
+
+      // On subsequent real-time updates while student is on the page:
       let hasNewMessage = false;
       unread.forEach((n) => {
         if (!seenIdsRef.current.has(n.id)) {
           seenIdsRef.current.add(n.id);
-          if (!initialMountRef.current) {
-            hasNewMessage = true;
-          }
+          hasNewMessage = true;
         }
       });
 
-      if (hasNewMessage) {
+      if (hasNewMessage && unread.length > 0) {
         playChime();
         setIsOpen(true);
       }
 
-      initialMountRef.current = false;
       setNotifications(unread);
       if (unread.length === 0) {
         setCurrentIndex(0);
+        setIsOpen(false);
       }
     });
 
@@ -83,6 +99,15 @@ export default function NotificationAlert({ userId }: { userId: string }) {
     const targetId = activeNotif.id;
     await markNotificationAsRead(targetId);
 
+    try {
+      const raw = sessionStorage.getItem(`dismissed_notifs_${userId}`);
+      const set: string[] = raw ? JSON.parse(raw) : [];
+      if (!set.includes(targetId)) {
+        set.push(targetId);
+        sessionStorage.setItem(`dismissed_notifs_${userId}`, JSON.stringify(set));
+      }
+    } catch (e) {}
+
     const remaining = notifications.filter((n) => n.id !== targetId);
     setNotifications(remaining);
     if (currentIndex >= remaining.length) {
@@ -94,6 +119,16 @@ export default function NotificationAlert({ userId }: { userId: string }) {
   };
 
   const handleClose = () => {
+    if (activeNotif) {
+      try {
+        const raw = sessionStorage.getItem(`dismissed_notifs_${userId}`);
+        const set: string[] = raw ? JSON.parse(raw) : [];
+        if (!set.includes(activeNotif.id)) {
+          set.push(activeNotif.id);
+          sessionStorage.setItem(`dismissed_notifs_${userId}`, JSON.stringify(set));
+        }
+      } catch (e) {}
+    }
     setIsOpen(false);
   };
 
@@ -125,7 +160,7 @@ export default function NotificationAlert({ userId }: { userId: string }) {
                 </span>
               </div>
               <span className="text-xs text-slate-300 font-semibold block mt-0.5">
-                From: <strong className="text-white font-bold">{activeNotif.senderName}</strong>
+                From: <strong className="text-white font-bold">{(!activeNotif.senderName || activeNotif.senderName === "Teacher Admin") ? "Josef Marie" : activeNotif.senderName}</strong>
               </span>
             </div>
           </div>
