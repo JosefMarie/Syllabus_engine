@@ -749,12 +749,29 @@ export function saveLocalCurrentUser(user: UserProfile | null) {
   }
 }
 
+function isUserExcluded(u: UserProfile): boolean {
+  if (!u) return true;
+  if (u.uid?.startsWith("demo-") || u.fullName === "Alson Johns" || u.fullName === "Angel Vanca" || u.status === 'deleted') {
+    return true;
+  }
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem("deleted_student_uids_cache");
+      if (raw) {
+        const blacklist: string[] = JSON.parse(raw);
+        if (blacklist.includes(u.uid)) return true;
+      }
+    } catch {}
+  }
+  return false;
+}
+
 export function getLocalUserProfiles(): UserProfile[] {
   if (typeof window === "undefined") return [];
   try {
     const saved = localStorage.getItem(USERS_KEY);
     const list: UserProfile[] = saved ? JSON.parse(saved) : [];
-    return list.filter(u => !u.uid.startsWith("demo-") && u.fullName !== "Alson Johns" && u.fullName !== "Angel Vanca");
+    return list.filter(u => !isUserExcluded(u));
   } catch (e) {
     return [];
   }
@@ -779,7 +796,7 @@ export function subscribeToAllUserProfiles(
           snap.forEach((docSnap) => {
             items.push({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
           });
-          const filtered = items.filter(u => !u.uid.startsWith("demo-") && u.fullName !== "Alson Johns" && u.fullName !== "Angel Vanca");
+          const filtered = items.filter(u => !isUserExcluded(u));
           if (filtered.length > 0 && typeof window !== "undefined") {
             try {
               localStorage.setItem(USERS_KEY, JSON.stringify(filtered));
@@ -820,7 +837,7 @@ export async function getAllUserProfiles(): Promise<UserProfile[]> {
         snapshot.forEach((docSnap) => {
           items.push({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
         });
-        const filtered = items.filter(u => !u.uid.startsWith("demo-") && u.fullName !== "Alson Johns" && u.fullName !== "Angel Vanca");
+        const filtered = items.filter(u => !isUserExcluded(u));
         if (filtered.length > 0) {
           if (typeof window !== "undefined") {
             try {
@@ -837,7 +854,7 @@ export async function getAllUserProfiles(): Promise<UserProfile[]> {
             snap.forEach((docSnap) => {
               items.push({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
             });
-            const filtered = items.filter(u => !u.uid.startsWith("demo-") && u.fullName !== "Alson Johns" && u.fullName !== "Angel Vanca");
+            const filtered = items.filter(u => !isUserExcluded(u));
             if (filtered.length > 0 && typeof window !== "undefined") {
               try {
                 localStorage.setItem(USERS_KEY, JSON.stringify(filtered));
@@ -2449,16 +2466,17 @@ export async function clearAllActivityLogs(): Promise<void> {
 }
 
 export async function deleteUserProfile(uid: string): Promise<void> {
-  if (isFirebaseConfigured && db) {
-    try {
-      await deleteDoc(doc(db, "users", uid));
-    } catch (e) {
-      console.warn("Error deleting Firestore user:", e);
-    }
-  }
-
+  // 1. In-memory & local storage purge immediately
   if (typeof window !== "undefined") {
     try {
+      // Record deleted UID in deleted blacklist
+      const deletedRaw = localStorage.getItem("deleted_student_uids_cache");
+      const deletedList: string[] = deletedRaw ? JSON.parse(deletedRaw) : [];
+      if (!deletedList.includes(uid)) {
+        deletedList.push(uid);
+        localStorage.setItem("deleted_student_uids_cache", JSON.stringify(deletedList));
+      }
+
       const saved = localStorage.getItem(USERS_KEY);
       if (saved) {
         const users: UserProfile[] = JSON.parse(saved);
@@ -2467,6 +2485,24 @@ export async function deleteUserProfile(uid: string): Promise<void> {
       }
     } catch (e) {
       console.error("Error deleting local user:", e);
+    }
+  }
+
+  // 2. Mark deleted in Firestore first (so queries ignore it), then hard delete
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(doc(db, "users", uid), {
+        status: 'deleted',
+        deletedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (e) {
+      // ignore
+    }
+
+    try {
+      await deleteDoc(doc(db, "users", uid));
+    } catch (e) {
+      console.warn("Error deleting Firestore user document:", e);
     }
   }
 }
@@ -3817,6 +3853,7 @@ export async function flagExamSession(sessionId: string, flagged: boolean, reaso
 
 export async function forceSubmitExamSession(sessionId: string): Promise<void> {
   const nowIso = new Date().toISOString();
+  let sessionData: LiveProctoringSession | null = null;
 
   // 1. Update in local storage
   if (typeof window !== "undefined") {
@@ -3829,6 +3866,7 @@ export async function forceSubmitExamSession(sessionId: string): Promise<void> {
           target.status = 'force_submitted';
           target.forceSubmitRequested = true;
           target.lastHeartbeat = nowIso;
+          sessionData = { ...target };
           localStorage.setItem(LIVE_PROCTORING_STORAGE_KEY, JSON.stringify(list));
         }
       }
@@ -3838,6 +3876,13 @@ export async function forceSubmitExamSession(sessionId: string): Promise<void> {
   // 2. Direct Firestore update
   if (isFirebaseConfigured && db) {
     try {
+      if (!sessionData) {
+        const snap = await getDoc(doc(db, "live_exam_sessions", sessionId));
+        if (snap.exists()) {
+          sessionData = snap.data() as LiveProctoringSession;
+        }
+      }
+
       await setDoc(doc(db, "live_exam_sessions", sessionId), {
         status: 'force_submitted',
         forceSubmitRequested: true,
@@ -3847,6 +3892,84 @@ export async function forceSubmitExamSession(sessionId: string): Promise<void> {
       console.warn("forceSubmitExamSession error:", e);
     }
   }
+
+  // 3. Immediately synthesize and record official ExamAttempt so it appears in Completed Tests / Submissions Desk
+  if (sessionData && sessionData.examId && sessionData.studentUid) {
+    try {
+      const attemptId = `${sessionData.examId}_${sessionData.studentUid}_${Date.now()}`;
+      const totalQ = sessionData.totalQuestions || 10;
+      const totalPossible = totalQ * 5;
+
+      const attemptPayload: ExamAttempt = {
+        id: attemptId,
+        examId: sessionData.examId,
+        examTitle: sessionData.examTitle || "Assessment",
+        courseCode: sessionData.courseCode || "CS",
+        studentUid: sessionData.studentUid,
+        studentName: sessionData.studentName || "Student",
+        studentUsername: sessionData.studentUsername || "",
+        studentLevel: sessionData.studentLevel || "Level 3",
+        studentTradeId: sessionData.studentTradeId || "all",
+        attemptNumber: 1,
+        startedAt: sessionData.startedAt || nowIso,
+        submittedAt: nowIso,
+        timeSpentSeconds: Math.max(60, ((sessionData.timeLimitMinutes || 30) + (sessionData.extraTimeGrantedMinutes || 0)) * 60 - Math.max(0, sessionData.timeRemainingSeconds || 0)),
+        answers: {},
+        score: 0,
+        maxScore: totalPossible,
+        percentage: 0,
+        passed: false,
+        tabSwitchCount: sessionData.tabSwitchViolations || 0,
+        status: 'submitted',
+        teacherFeedback: `Force-submitted by teacher / proctor on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()} (session timed out or student disconnected).`
+      };
+
+      await saveExamAttempt(attemptPayload);
+    } catch (errAttempt) {
+      console.warn("Error creating attempt on forceSubmit:", errAttempt);
+    }
+  }
+}
+
+export async function clearStaleLiveExamSessions(): Promise<number> {
+  const cutoffTime = Date.now() - (45 * 60 * 1000); // 45 minutes ago
+  let removedCount = 0;
+
+  // 1. Purge from local storage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(LIVE_PROCTORING_STORAGE_KEY);
+      if (raw) {
+        const list: LiveProctoringSession[] = JSON.parse(raw);
+        const filtered = list.filter(s => {
+          const lastPing = new Date(s.lastHeartbeat || s.startedAt).getTime();
+          const isStale = lastPing < cutoffTime || s.status === 'submitted' || s.status === 'force_submitted';
+          if (isStale) removedCount++;
+          return !isStale;
+        });
+        localStorage.setItem(LIVE_PROCTORING_STORAGE_KEY, JSON.stringify(filtered));
+      }
+    } catch (e) {}
+  }
+
+  // 2. Purge from Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDocs(collection(db, "live_exam_sessions"));
+      for (const d of snap.docs) {
+        const data = d.data() as LiveProctoringSession;
+        const lastPing = new Date(data.lastHeartbeat || data.startedAt).getTime();
+        if (lastPing < cutoffTime || data.status === 'submitted' || data.status === 'force_submitted') {
+          await deleteDoc(doc(db, "live_exam_sessions", d.id));
+          removedCount++;
+        }
+      }
+    } catch (e) {
+      console.warn("clearStaleLiveExamSessions error:", e);
+    }
+  }
+
+  return removedCount;
 }
 
 export async function deleteLiveExamSession(sessionId: string): Promise<void> {

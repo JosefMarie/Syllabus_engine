@@ -37,7 +37,7 @@ service cloud.firestore {
           (resource.data.status != 'pending_approval' || request.resource.data.status != 'approved')
         );
 
-      allow delete: if isTeacher();
+      allow delete: if isTeacher() || resource.data.status == 'pending_approval' || resource.data.status == 'rejected' || resource.data.status == 'deleted';
     }
 
     // Group Evaluations & Presentation Defense Marks

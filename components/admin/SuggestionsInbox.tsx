@@ -8,7 +8,8 @@ import {
   updateSuggestionStatus, 
   deleteSuggestion, 
   subscribeToSuggestions,
-  replyToSuggestion
+  replyToSuggestion,
+  sendNotificationToStudent
 } from "@/lib/db";
 import { SUGGESTION_CATEGORIES } from "@/components/common/SuggestionBoxModal";
 import { 
@@ -68,6 +69,7 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
   }, []);
 
   const handleStatusChange = async (id: string, newStatus: SuggestionStatus) => {
+    setSuggestions(prev => prev.map(s => s.id === id ? { ...s, status: newStatus, updatedAt: new Date().toISOString() } : s));
     try {
       await updateSuggestionStatus(id, newStatus);
     } catch (e) {
@@ -76,10 +78,12 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
   };
 
   const handleTogglePublic = async (id: string, currentPublic?: boolean) => {
+    const nextPublic = !currentPublic;
+    setSuggestions(prev => prev.map(s => s.id === id ? { ...s, isPublic: nextPublic, updatedAt: new Date().toISOString() } : s));
     try {
       const target = suggestions.find(s => s.id === id);
       if (!target) return;
-      await updateSuggestionStatus(id, target.status, undefined, !currentPublic);
+      await updateSuggestionStatus(id, target.status, undefined, nextPublic);
     } catch (e) {
       console.error("Failed to toggle public state:", e);
     }
@@ -89,10 +93,39 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
     const text = editingReplies[id];
     if (!text || !text.trim()) return;
 
+    const cleanText = text.trim();
+    const nowIso = new Date().toISOString();
+    const adminName = adminUser?.fullName || "Josef Marie (Instructor)";
+    const target = suggestions.find(s => s.id === id);
+
+    // Optimistically update suggestion state immediately
+    setSuggestions(prev => prev.map(s => {
+      if (s.id !== id) return s;
+      return {
+        ...s,
+        adminReply: cleanText,
+        adminRepliedAt: nowIso,
+        adminRepliedBy: adminName,
+        status: s.status === "new" ? "in_review" : s.status,
+        updatedAt: nowIso
+      };
+    }));
+
     setSendingReplyId(id);
     try {
-      const adminName = adminUser?.fullName || "Faculty Instructor";
-      await replyToSuggestion(id, text.trim(), adminName);
+      await replyToSuggestion(id, cleanText, adminName);
+
+      // Also deliver student in-app notification
+      if (target?.studentUid) {
+        try {
+          await sendNotificationToStudent(
+            target.studentUid,
+            adminName,
+            `Faculty responded to your suggestion "${target.title}": "${cleanText.slice(0, 100)}${cleanText.length > 100 ? '...' : ''}"`
+          );
+        } catch {}
+      }
+
       setEditingReplies(prev => ({ ...prev, [id]: "" }));
       setTimeout(() => setSendingReplyId(null), 1000);
     } catch (e) {
@@ -102,9 +135,10 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
   };
 
   const handleSaveNotes = async (id: string) => {
+    const note = editingNotes[id] ?? "";
+    setSuggestions(prev => prev.map(s => s.id === id ? { ...s, adminNotes: note } : s));
     setSavingNoteId(id);
     try {
-      const note = editingNotes[id] ?? "";
       await updateSuggestionStatus(id, suggestions.find(s => s.id === id)?.status || "new", note);
       setTimeout(() => setSavingNoteId(null), 1000);
     } catch (e) {
@@ -115,6 +149,7 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
 
   const handleDelete = async (id: string, title: string) => {
     if (confirm(`Are you sure you want to delete suggestion: "${title}"?`)) {
+      setSuggestions(prev => prev.filter(s => s.id !== id));
       try {
         await deleteSuggestion(id);
       } catch (e) {
@@ -296,6 +331,14 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
                       <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
                         <ThumbsUp className="h-3 w-3" />
                         <span>{item.upvotes}</span>
+                      </span>
+                    )}
+
+                    {/* Official Replied Badge */}
+                    {item.adminReply && (
+                      <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm animate-in fade-in">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-400" />
+                        <span>Replied</span>
                       </span>
                     )}
 

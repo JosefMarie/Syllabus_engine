@@ -8,7 +8,8 @@ import {
   grantExtraExamTime, 
   flagExamSession, 
   forceSubmitExamSession,
-  deleteLiveExamSession 
+  deleteLiveExamSession,
+  clearStaleLiveExamSessions
 } from "@/lib/db";
 import { 
   ShieldAlert, 
@@ -119,12 +120,34 @@ export default function LiveExamProctoring({ adminUser }: LiveExamProctoringProp
     }
   };
 
+  const [cleaningStale, setCleaningStale] = useState(false);
+
   const handleClearSession = async (sessionId: string) => {
     if (confirm("Remove this session from the live proctoring board?")) {
       try {
         await deleteLiveExamSession(sessionId);
+        setSessions(prev => prev.filter(s => s.id !== sessionId));
       } catch (err) {
         console.error("Failed to clear session:", err);
+      }
+    }
+  };
+
+  const handleCleanStale = async () => {
+    if (confirm("Archive & remove all stale sessions disconnected or completed for more than 45 minutes?")) {
+      setCleaningStale(true);
+      try {
+        const removed = await clearStaleLiveExamSessions();
+        setSessions(prev => prev.filter(s => {
+          const lastPing = new Date(s.lastHeartbeat || s.startedAt).getTime();
+          const diffMins = (Date.now() - lastPing) / (1000 * 60);
+          return diffMins < 45 && s.status !== 'submitted' && s.status !== 'force_submitted';
+        }));
+        alert(`Successfully cleared ${removed} stale session(s) from the live board.`);
+      } catch (err) {
+        console.error("Failed to clear stale sessions:", err);
+      } finally {
+        setCleaningStale(false);
       }
     }
   };
@@ -154,12 +177,18 @@ export default function LiveExamProctoring({ adminUser }: LiveExamProctoringProp
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   };
 
-  const activeSessions = sessions.filter(s => s.status === "active" || s.status === "flagged");
+  // Truly active test-takers right now (not days-old abandoned offline tabs)
+  const activeSessions = sessions.filter(s => {
+    if (s.status !== "active" && s.status !== "flagged") return false;
+    const lastPing = new Date(s.lastHeartbeat || s.startedAt).getTime();
+    const diffMins = (currentTime - lastPing) / (1000 * 60);
+    return diffMins < 45;
+  });
   const flaggedSessions = sessions.filter(s => s.status === "flagged" || s.tabSwitchViolations > 0);
   const submittedSessions = sessions.filter(s => s.status === "submitted" || s.status === "force_submitted");
 
   const filteredSessions = sessions.filter(s => {
-    if (filterStatus === "active" && s.status !== "active" && s.status !== "flagged") return false;
+    if (filterStatus === "active" && (s.status !== "active" && s.status !== "flagged")) return false;
     if (filterStatus === "flagged" && s.status !== "flagged" && s.tabSwitchViolations === 0) return false;
     if (filterStatus === "submitted" && s.status !== "submitted" && s.status !== "force_submitted") return false;
 
@@ -204,6 +233,15 @@ export default function LiveExamProctoring({ adminUser }: LiveExamProctoringProp
           </div>
 
           <div className="flex items-center space-x-3 self-start md:self-auto">
+            <button
+              onClick={handleCleanStale}
+              disabled={cleaningStale}
+              className="px-3.5 py-2 rounded-xl text-xs font-mono font-bold bg-rose-500/20 text-rose-300 border border-rose-500/40 hover:bg-rose-500/30 transition-all flex items-center space-x-1.5 shadow-sm active:scale-95 disabled:opacity-50"
+              title="Archive stale sessions disconnected for more than 45 minutes"
+            >
+              <Trash2 className="h-3.5 w-3.5 text-rose-400" />
+              <span>{cleaningStale ? "Cleaning..." : "Clear Stale Offline"}</span>
+            </button>
             <span className="text-xs font-mono text-[#94A3B8] flex items-center space-x-1.5 bg-[#0B0F19] px-3 py-1.5 rounded-xl border border-[#334155]">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-ping" />
               <span>Synced with Firebase</span>

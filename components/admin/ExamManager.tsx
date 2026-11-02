@@ -304,24 +304,50 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
   };
 
   useEffect(() => {
-    loadAll();
+    // 1. Immediate local cache retrieval to prevent UI block
+    try {
+      const cached = localStorage.getItem("syllabus_platform_exams_v1");
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setExams(parsed);
+          setLoading(false);
+        }
+      }
+    } catch {}
+
+    // 2. Real-time live Firestore subscription (sets loading to false immediately)
     const unsub = subscribeToExams((freshExams) => {
       setExams(freshExams);
+      setLoading(false);
     });
+
+    // 3. Complete sync with attempts
+    loadAll();
+
     return () => unsub();
   }, []);
 
   const loadAll = async () => {
-    setLoading(true);
     try {
-      const [exList, attList] = await Promise.all([
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("Timeout loading exams and attempts")), 3500)
+      );
+
+      const fetchPromise = Promise.all([
         getExams(),
         getAllExamAttempts()
       ]);
-      setExams(exList);
-      setAttempts(attList);
+
+      const [exList, attList] = await Promise.race([fetchPromise, timeout]);
+      if (exList && exList.length > 0) setExams(exList);
+      if (attList) setAttempts(attList);
     } catch (e) {
-      console.error("Error loading exams:", e);
+      console.warn("Exams/Attempts load fallback:", e);
+      try {
+        const fallbackExams = await getExams();
+        if (fallbackExams && fallbackExams.length > 0) setExams(fallbackExams);
+      } catch {}
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -989,7 +1015,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
       </div>
 
       {/* Assessments Grid */}
-      {loading ? (
+      {loading && exams.length === 0 ? (
         <div className="py-20 text-center text-[#94A3B8]">
           <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-3" />
           Loading assessments and proctored exam rooms...

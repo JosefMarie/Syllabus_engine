@@ -1,6 +1,6 @@
 export type StudentLevel = 'Level 3' | 'Level 4' | 'Level 5';
 export type UserRole = 'student' | 'teacher';
-export type AccountStatus = 'pending_approval' | 'approved' | 'rejected';
+export type AccountStatus = 'pending_approval' | 'approved' | 'rejected' | 'deleted';
 
 export interface Trade {
   id: string;

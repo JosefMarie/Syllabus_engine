@@ -63,9 +63,9 @@ export default function StudentApprovals() {
       setLoading(false);
     }
 
-    // 2. Real-time live listener for all 97+ students in Firestore
+    // 2. Real-time live listener for all students in Firestore
     const unsubscribe = subscribeToAllUserProfiles((allProfiles) => {
-      if (allProfiles && allProfiles.length > 0) {
+      if (allProfiles) {
         setUsers(allProfiles);
       }
       setLoading(false);
@@ -175,8 +175,12 @@ export default function StudentApprovals() {
     const ok = window.confirm(`Are you sure you want to delete student account "${name}"?`);
     if (!ok) return;
 
-    await deleteUserProfile(uid);
-    setUsers(users.filter(u => u.uid !== uid));
+    setUsers(prev => prev.filter(u => u.uid !== uid));
+    try {
+      await deleteUserProfile(uid);
+    } catch (e) {
+      console.error("Error deleting user:", e);
+    }
   };
 
   // Combined Multi-Dimensional Filtering: Status Tab + Level + Search Query (name, username, email)
