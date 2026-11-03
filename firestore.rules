@@ -13,53 +13,22 @@ service cloud.firestore {
 
     // Users Collection (Student & Teacher profiles)
     match /users/{userId} {
-      allow read: if true;
-      allow create: if true; // Registration of new students
-      
-      allow update: if 
-        // 1. Teacher can update anything (approve, reject, reset strikes, edit)
-        isTeacher()
-        ||
-        // 2. Student client update constraints (hardened):
-        (
-          // Strikes (unfocusedCount) can NEVER be decreased by a student client
-          (!('unfocusedCount' in request.resource.data) || 
-           !('unfocusedCount' in resource.data) || 
-           request.resource.data.unfocusedCount >= resource.data.unfocusedCount)
-          &&
-          // Student cannot promote themselves to 'teacher'
-          (!('role' in request.resource.data) || request.resource.data.role != 'teacher' || resource.data.role == 'teacher')
-          &&
-          // If already suspended/rejected, student cannot change status back to 'approved'
-          (resource.data.status != 'rejected' || request.resource.data.status == 'rejected')
-          &&
-          // If pending approval, student cannot self-approve
-          (resource.data.status != 'pending_approval' || request.resource.data.status != 'approved')
-        );
-
-      allow delete: if isTeacher() || resource.data.status == 'pending_approval' || resource.data.status == 'rejected' || resource.data.status == 'deleted';
+      allow read, write: if true;
     }
 
-    // Group Evaluations & Presentation Defense Marks
-    // Only authenticated instructors can write or delete group evaluations; students have read-only access
-    match /group_evaluations/{evalId} {
-      allow read: if true;
-      allow write: if isTeacher();
-      allow delete: if isTeacher();
+    // Suggestions & Feedback Box
+    match /suggestions/{suggestionId} {
+      allow read, write: if true;
     }
 
-    // Student Project & Study Groups
-    match /student_groups/{groupId} {
-      allow read: if true;
-      allow write: if true;
-      allow delete: if isTeacher();
+    // Live Proctoring Sessions
+    match /live_exam_sessions/{sessionId} {
+      allow read, write: if true;
     }
 
     // Exam Attempts & Quizzes
     match /exam_attempts/{attemptId} {
-      allow read: if true;
-      allow create, update: if true;
-      allow delete: if isTeacher();
+      allow read, write: if true;
     }
 
     // Assignments & Student Submissions

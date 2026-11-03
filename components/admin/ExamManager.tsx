@@ -18,7 +18,9 @@ import {
   subscribeToExams, 
   getAllExamAttempts,
   saveExamAttempt,
-  getExamAttemptsForExam
+  getExamAttemptsForExam,
+  subscribeToAllExamAttempts,
+  subscribeToExamAttempts
 } from "@/lib/db";
 import { 
   FileQuestion, 
@@ -316,38 +318,44 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
       }
     } catch {}
 
-    // 2. Real-time live Firestore subscription (sets loading to false immediately)
-    const unsub = subscribeToExams((freshExams) => {
+    // 2. Real-time live Firestore subscription for exams
+    const unsubExams = subscribeToExams((freshExams) => {
       setExams(freshExams);
       setLoading(false);
     });
 
-    // 3. Complete sync with attempts
+    // 3. Real-time live Firestore subscription for attempts
+    const unsubAttempts = subscribeToAllExamAttempts((freshAttempts) => {
+      setAttempts(freshAttempts);
+    });
+
+    // 4. Async initial fetch
     loadAll();
 
-    return () => unsub();
+    return () => {
+      unsubExams();
+      unsubAttempts();
+    };
   }, []);
+
+  // Sync selected exam attempts whenever attempts update
+  useEffect(() => {
+    if (selectedExamForSubmissions) {
+      const matching = attempts.filter(a => a.examId === selectedExamForSubmissions.id);
+      setExamAttempts(matching);
+    }
+  }, [attempts, selectedExamForSubmissions?.id]);
 
   const loadAll = async () => {
     try {
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("Timeout loading exams and attempts")), 3500)
-      );
-
-      const fetchPromise = Promise.all([
-        getExams(),
-        getAllExamAttempts()
+      const [exList, attList] = await Promise.all([
+        getExams().catch(() => []),
+        getAllExamAttempts().catch(() => [])
       ]);
-
-      const [exList, attList] = await Promise.race([fetchPromise, timeout]);
       if (exList && exList.length > 0) setExams(exList);
-      if (attList) setAttempts(attList);
+      if (attList && attList.length > 0) setAttempts(attList);
     } catch (e) {
       console.warn("Exams/Attempts load fallback:", e);
-      try {
-        const fallbackExams = await getExams();
-        if (fallbackExams && fallbackExams.length > 0) setExams(fallbackExams);
-      } catch {}
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -663,10 +671,15 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
   // Open Submissions Desk
   const handleOpenSubmissions = async (exam: Exam) => {
     setSelectedExamForSubmissions(exam);
-    setLoadingAttempts(true);
+    const existingMatching = attempts.filter(a => a.examId === exam.id);
+    setExamAttempts(existingMatching);
+    setLoadingAttempts(existingMatching.length === 0);
+
     try {
       const atts = await getExamAttemptsForExam(exam.id);
-      setExamAttempts(atts);
+      if (atts && atts.length > 0) {
+        setExamAttempts(atts);
+      }
     } catch (e) {
       console.error("Error loading exam attempts:", e);
     } finally {

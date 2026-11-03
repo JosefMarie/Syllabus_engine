@@ -40,7 +40,7 @@ interface LiveExamProctoringProps {
 export default function LiveExamProctoring({ adminUser }: LiveExamProctoringProps) {
   const [sessions, setSessions] = useState<LiveProctoringSession[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "flagged" | "submitted">("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "flagged" | "submitted">("active");
   const [search, setSearch] = useState("");
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
@@ -102,8 +102,9 @@ export default function LiveExamProctoring({ adminUser }: LiveExamProctoringProp
   };
 
   const handleForceSubmit = async (sessionId: string, studentName: string) => {
-    if (confirm(`⚠️ Force-submit exam for ${studentName}? This will immediately end their active test session.`)) {
+    if (confirm(`⚠️ Force-submit exam for ${studentName}? This will immediately end their active test session and log their attempt in the Exam Dashboard.`)) {
       setActionLoadingId(sessionId);
+      const target = sessions.find(s => s.id === sessionId);
       setSessions(prev => prev.map(s => s.id === sessionId ? {
         ...s,
         status: "force_submitted",
@@ -111,7 +112,7 @@ export default function LiveExamProctoring({ adminUser }: LiveExamProctoringProp
       } : s));
 
       try {
-        await forceSubmitExamSession(sessionId);
+        await forceSubmitExamSession(sessionId, target);
       } catch (err) {
         console.error("Failed to force submit session:", err);
       } finally {
@@ -568,6 +569,23 @@ export default function LiveExamProctoring({ adminUser }: LiveExamProctoringProp
                         <span>{session.status === "force_submitted" ? "Force-Submitted" : "Force Submit"}</span>
                       </button>
                     </div>
+                  </div>
+                )}
+
+                {/* Finished / Force-Submitted Session Actions */}
+                {isFinished && (
+                  <div className="pt-3 border-t border-[#334155]/60 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-mono text-emerald-400 font-bold flex items-center space-x-1.5">
+                      <CheckCircle2 className="h-4 w-4 shrink-0" />
+                      <span>{session.status === "force_submitted" ? "Force-Submitted (Attempt logged in Exam Dashboard)" : "Exam Submitted"}</span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleClearSession(session.id)}
+                      className="px-3 py-1.5 rounded-lg bg-[#0B0F19] border border-[#334155] text-slate-300 hover:text-white hover:border-slate-500 font-mono text-xs font-bold transition-all shadow-sm"
+                    >
+                      Dismiss from Board
+                    </button>
                   </div>
                 )}
               </div>

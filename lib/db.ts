@@ -906,7 +906,7 @@ export async function updateUserStatus(uid: string, status: AccountStatus): Prom
 
   if (isFirebaseConfigured && db) {
     try {
-      await updateDoc(doc(db, "users", uid), updatePayload);
+      await setDoc(doc(db, "users", uid), updatePayload, { merge: true });
       if (status === 'approved') {
         await setDoc(doc(db, "presence", uid), { unfocusedCount: 0 }, { merge: true });
       }
@@ -2483,27 +2483,25 @@ export async function deleteUserProfile(uid: string): Promise<void> {
         const filtered = users.filter(u => u.uid !== uid);
         localStorage.setItem(USERS_KEY, JSON.stringify(filtered));
       }
+      window.dispatchEvent(new CustomEvent("syllabus_user_profile_updated", { detail: { uid, status: 'deleted' } }));
     } catch (e) {
       console.error("Error deleting local user:", e);
     }
   }
 
-  // 2. Mark deleted in Firestore first (so queries ignore it), then hard delete
+  // 2. Direct hard delete in Firestore and associated presence/progress
   if (isFirebaseConfigured && db) {
-    try {
-      await setDoc(doc(db, "users", uid), {
-        status: 'deleted',
-        deletedAt: new Date().toISOString()
-      }, { merge: true });
-    } catch (e) {
-      // ignore
-    }
-
     try {
       await deleteDoc(doc(db, "users", uid));
     } catch (e) {
       console.warn("Error deleting Firestore user document:", e);
     }
+    try {
+      await deleteDoc(doc(db, "presence", uid));
+    } catch (e) {}
+    try {
+      await deleteDoc(doc(db, "userProgress", uid));
+    } catch (e) {}
   }
 }
 
@@ -3480,6 +3478,43 @@ export function subscribeToExamAttempts(examId: string, callback: (attempts: Exa
   }
 }
 
+export function subscribeToAllExamAttempts(callback: (attempts: ExamAttempt[]) => void): () => void {
+  // 1. Instant local cache emission (0ms)
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(EXAM_ATTEMPTS_KEY);
+      if (raw) {
+        const cached: ExamAttempt[] = JSON.parse(raw);
+        callback(cached);
+      }
+    } catch {}
+  }
+
+  if (!isFirebaseConfigured || !db) {
+    getAllExamAttempts().then(callback);
+    return () => {};
+  }
+
+  try {
+    const unsub = onSnapshot(collection(db, "exam_attempts"), (snap) => {
+      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as ExamAttempt));
+      if (typeof window !== "undefined" && list.length > 0) {
+        try {
+          localStorage.setItem(EXAM_ATTEMPTS_KEY, JSON.stringify(list));
+        } catch {}
+      }
+      callback(list);
+    }, (err) => {
+      console.warn("subscribeToAllExamAttempts error:", err);
+      getAllExamAttempts().then(callback);
+    });
+    return unsub;
+  } catch (e) {
+    getAllExamAttempts().then(callback);
+    return () => {};
+  }
+}
+
 // AUTO-GRADING ENGINE
 export function calculateAutoGrade(exam: Exam, answers: Record<string, any>): {
   score: number;
@@ -3851,9 +3886,9 @@ export async function flagExamSession(sessionId: string, flagged: boolean, reaso
   }
 }
 
-export async function forceSubmitExamSession(sessionId: string): Promise<void> {
+export async function forceSubmitExamSession(sessionId: string, fallbackSession?: LiveProctoringSession): Promise<void> {
   const nowIso = new Date().toISOString();
-  let sessionData: LiveProctoringSession | null = null;
+  let sessionData: LiveProctoringSession | null = fallbackSession || null;
 
   // 1. Update in local storage
   if (typeof window !== "undefined") {
@@ -3879,7 +3914,7 @@ export async function forceSubmitExamSession(sessionId: string): Promise<void> {
       if (!sessionData) {
         const snap = await getDoc(doc(db, "live_exam_sessions", sessionId));
         if (snap.exists()) {
-          sessionData = snap.data() as LiveProctoringSession;
+          sessionData = { ...snap.data(), id: snap.id } as LiveProctoringSession;
         }
       }
 
@@ -3921,7 +3956,7 @@ export async function forceSubmitExamSession(sessionId: string): Promise<void> {
         passed: false,
         tabSwitchCount: sessionData.tabSwitchViolations || 0,
         status: 'submitted',
-        teacherFeedback: `Force-submitted by teacher / proctor on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()} (session timed out or student disconnected).`
+        teacherFeedback: `Force-submitted by instructor on ${new Date().toLocaleDateString()} at ${new Date().toLocaleTimeString()} (session completed).`
       };
 
       await saveExamAttempt(attemptPayload);
@@ -4185,9 +4220,11 @@ export async function getSuggestions(): Promise<StudentSuggestion[]> {
 }
 
 export async function saveSuggestion(suggestion: StudentSuggestion): Promise<void> {
+  const sanitized = sanitizeForFirestore(suggestion);
+
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, "suggestions", suggestion.id), suggestion, { merge: true });
+      await setDoc(doc(db, "suggestions", suggestion.id), sanitized, { merge: true });
     } catch (e) {
       console.warn("Firestore saveSuggestion error, saving locally:", e);
     }
@@ -4195,7 +4232,8 @@ export async function saveSuggestion(suggestion: StudentSuggestion): Promise<voi
 
   if (typeof window !== "undefined") {
     try {
-      const existing = await getSuggestions();
+      const raw = localStorage.getItem(SUGGESTIONS_STORAGE_KEY);
+      const existing: StudentSuggestion[] = raw ? JSON.parse(raw) : [];
       const idx = existing.findIndex(s => s.id === suggestion.id);
       let updated: StudentSuggestion[];
       if (idx >= 0) {
@@ -4221,8 +4259,8 @@ export async function updateSuggestionStatus(
   const updated: StudentSuggestion = {
     ...target,
     status,
-    adminNotes: adminNotes !== undefined ? adminNotes : target.adminNotes,
-    isPublic: isPublic !== undefined ? isPublic : target.isPublic,
+    adminNotes: adminNotes !== undefined ? adminNotes : (target.adminNotes || ""),
+    isPublic: isPublic !== undefined ? isPublic : !!target.isPublic,
     updatedAt: new Date().toISOString()
   };
 
@@ -4236,17 +4274,41 @@ export async function replyToSuggestion(
   newStatus?: SuggestionStatus,
   isPublic?: boolean
 ): Promise<void> {
-  const existing = await getSuggestions();
-  const target = existing.find(s => s.id === id);
+  let target: StudentSuggestion | null = null;
+
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(SUGGESTIONS_STORAGE_KEY);
+      if (raw) {
+        const list: StudentSuggestion[] = JSON.parse(raw);
+        target = list.find(s => s.id === id) || null;
+      }
+    } catch (e) {}
+  }
+
+  if (!target && isFirebaseConfigured && db) {
+    try {
+      const snap = await getDoc(doc(db, "suggestions", id));
+      if (snap.exists()) {
+        target = { ...snap.data(), id: snap.id } as StudentSuggestion;
+      }
+    } catch (e) {}
+  }
+
+  if (!target) {
+    const existing = await getSuggestions();
+    target = existing.find(s => s.id === id) || null;
+  }
+
   if (!target) return;
 
   const updated: StudentSuggestion = {
     ...target,
     adminReply: reply.trim(),
     adminRepliedAt: new Date().toISOString(),
-    adminRepliedBy: adminName,
+    adminRepliedBy: adminName || "Josef Marie (Instructor)",
     status: newStatus || (target.status === "new" ? "in_review" : target.status),
-    isPublic: isPublic !== undefined ? isPublic : target.isPublic,
+    isPublic: isPublic !== undefined ? isPublic : !!target.isPublic,
     updatedAt: new Date().toISOString()
   };
 
