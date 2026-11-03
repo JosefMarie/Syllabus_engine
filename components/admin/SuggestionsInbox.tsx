@@ -48,8 +48,19 @@ export const STATUS_METADATA: Record<SuggestionStatus, { label: string; badge: s
 };
 
 export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
-  const [suggestions, setSuggestions] = useState<StudentSuggestion[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [suggestions, setSuggestions] = useState<StudentSuggestion[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("syllabus_platform_suggestions_v1");
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      return !localStorage.getItem("syllabus_platform_suggestions_v1");
+    } catch { return true; }
+  });
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");

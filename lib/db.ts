@@ -2049,41 +2049,57 @@ export async function logActivity(entry: Omit<ActivityLog, 'id' | 'timestamp'>):
 }
 
 export async function getAllActivityLogs(limitCount?: number): Promise<ActivityLog[]> {
+  // 1. Fast local cache retrieval
+  let localItems: ActivityLog[] = [];
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem(ACTIVITIES_KEY);
+      if (saved) {
+        const rawList: ActivityLog[] = JSON.parse(saved);
+        localItems = rawList.map(l => ({
+          ...l,
+          userName: l.userName === "Teacher Admin" ? "Josef Marie" : l.userName,
+          details: (l.details || "").replace(/Teacher Admin/g, "Josef Marie")
+        }));
+      }
+    } catch (e) {}
+  }
+
+  // 2. Fetch from Firestore with timeout
   if (isFirebaseConfigured && db) {
     try {
-      const q = limitCount
-        ? query(collection(db, "activityLogs"), orderBy("timestamp", "desc"), limit(limitCount))
-        : query(collection(db, "activityLogs"), orderBy("timestamp", "desc"));
-      const snapshot = await getDocs(q);
-      const items: ActivityLog[] = [];
-      snapshot.forEach((docSnap) => {
-        const d = docSnap.data() as ActivityLog;
-        items.push({
-          ...d,
-          id: docSnap.id,
-          userName: d.userName === "Teacher Admin" ? "Josef Marie" : d.userName,
-          details: (d.details || "").replace(/Teacher Admin/g, "Josef Marie")
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500));
+      const fetchPromise = getDocs(collection(db, "activityLogs"));
+      const snapshot: any = await Promise.race([fetchPromise, timeoutPromise]);
+
+      if (snapshot && !snapshot.empty) {
+        const items: ActivityLog[] = [];
+        snapshot.forEach((docSnap: any) => {
+          const d = docSnap.data() as ActivityLog;
+          items.push({
+            ...d,
+            id: docSnap.id,
+            userName: d.userName === "Teacher Admin" ? "Josef Marie" : d.userName,
+            details: (d.details || "").replace(/Teacher Admin/g, "Josef Marie")
+          });
         });
-      });
-      if (items.length > 0) return items;
+
+        // Sort descending by timestamp in JS
+        items.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(ACTIVITIES_KEY, JSON.stringify(items));
+          } catch (e) {}
+        }
+        return limitCount ? items.slice(0, limitCount) : items;
+      }
     } catch (err) {
       console.warn("Firestore fetch activities error:", err);
     }
   }
 
-  if (typeof window === "undefined") return [];
-  try {
-    const saved = localStorage.getItem(ACTIVITIES_KEY);
-    const list: ActivityLog[] = saved ? JSON.parse(saved) : [];
-    const mapped = list.map(l => ({
-      ...l,
-      userName: l.userName === "Teacher Admin" ? "Josef Marie" : l.userName,
-      details: (l.details || "").replace(/Teacher Admin/g, "Josef Marie")
-    }));
-    return limitCount ? mapped.slice(0, limitCount) : mapped;
-  } catch (e) {
-    return [];
-  }
+  return limitCount ? localItems.slice(0, limitCount) : localItems;
 }
 
 // Progress and user management aliases
@@ -2519,13 +2535,25 @@ const ASSIGNMENTS_KEY = "syllabus_platform_assignments_v1";
 const SUBMISSIONS_KEY = "syllabus_platform_submissions_v1";
 
 export async function getAllAssignments(): Promise<Assignment[]> {
-  // 1. Try Firestore if configured
+  // 1. Check local cache first
+  let localList: Assignment[] = [];
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(ASSIGNMENTS_KEY);
+      if (raw) localList = JSON.parse(raw);
+    } catch (e) {}
+  }
+
+  // 2. Try Firestore if configured
   if (isFirebaseConfigured && db) {
     try {
-      const q = query(collection(db, "assignments"), orderBy("createdAt", "desc"));
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as Assignment));
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500));
+      const fetchPromise = getDocs(collection(db, "assignments"));
+      const snap: any = await Promise.race([fetchPromise, timeoutPromise]);
+
+      if (snap && !snap.empty) {
+        const list = snap.docs.map((d: any) => ({ ...d.data(), id: d.id } as Assignment));
+        list.sort((a: Assignment, b: Assignment) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
         if (typeof window !== "undefined") {
           try {
             localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(list));
@@ -2538,14 +2566,7 @@ export async function getAllAssignments(): Promise<Assignment[]> {
     }
   }
 
-  // 2. Fallback to localStorage
-  if (typeof window !== "undefined") {
-    try {
-      const raw = localStorage.getItem(ASSIGNMENTS_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch (e) {}
-  }
-  return [];
+  return localList;
 }
 
 export async function saveAssignment(assignment: Assignment): Promise<void> {
@@ -2677,29 +2698,38 @@ export async function saveAssignmentSubmission(submission: AssignmentSubmission)
 }
 
 export async function getAllSubmissions(): Promise<AssignmentSubmission[]> {
+  // 1. Fast local cache
+  let localList: AssignmentSubmission[] = [];
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(SUBMISSIONS_KEY);
+      if (raw) localList = JSON.parse(raw);
+    } catch (e) {}
+  }
+
+  // 2. Fetch from Firestore
   if (isFirebaseConfigured && db) {
     try {
-      const q = query(collection(db, "submissions"), orderBy("submittedAt", "desc"));
-      const snap = await getDocs(q);
-      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as AssignmentSubmission));
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(list));
-        } catch (e) {}
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500));
+      const fetchPromise = getDocs(collection(db, "submissions"));
+      const snap: any = await Promise.race([fetchPromise, timeoutPromise]);
+
+      if (snap && !snap.empty) {
+        const list = snap.docs.map((d: any) => ({ ...d.data(), id: d.id } as AssignmentSubmission));
+        list.sort((a: AssignmentSubmission, b: AssignmentSubmission) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(list));
+          } catch (e) {}
+        }
+        return list;
       }
-      return list;
     } catch (e) {
       console.warn("Firestore getAllSubmissions error:", e);
     }
   }
 
-  if (typeof window !== "undefined") {
-    try {
-      const raw = localStorage.getItem(SUBMISSIONS_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch (e) {}
-  }
-  return [];
+  return localList;
 }
 
 export async function getSubmissionsForCourse(courseCode: string): Promise<AssignmentSubmission[]> {
@@ -2724,29 +2754,38 @@ export function generateGroupJoinCode(): string {
 }
 
 export async function getAllGroups(): Promise<StudentGroup[]> {
+  // 1. Fast local cache
+  let localList: StudentGroup[] = [];
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(GROUPS_KEY);
+      if (raw) localList = JSON.parse(raw);
+    } catch (e) {}
+  }
+
+  // 2. Fetch from Firestore
   if (isFirebaseConfigured && db) {
     try {
-      const q = query(collection(db, "groups"), orderBy("createdAt", "desc"));
-      const snap = await getDocs(q);
-      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as StudentGroup));
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(GROUPS_KEY, JSON.stringify(list));
-        } catch (e) {}
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500));
+      const fetchPromise = getDocs(collection(db, "groups"));
+      const snap: any = await Promise.race([fetchPromise, timeoutPromise]);
+
+      if (snap && !snap.empty) {
+        const list = snap.docs.map((d: any) => ({ ...d.data(), id: d.id } as StudentGroup));
+        list.sort((a: StudentGroup, b: StudentGroup) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(GROUPS_KEY, JSON.stringify(list));
+          } catch (e) {}
+        }
+        return list;
       }
-      return list;
     } catch (e) {
       console.warn("Firestore getAllGroups error, using local fallback:", e);
     }
   }
 
-  if (typeof window !== "undefined") {
-    try {
-      const raw = localStorage.getItem(GROUPS_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch (e) {}
-  }
-  return [];
+  return localList;
 }
 
 export async function getGroupsForCourse(courseCode: string): Promise<StudentGroup[]> {
@@ -3132,29 +3171,38 @@ export async function saveGroupEvaluation(evaluation: GroupEvaluation): Promise<
 }
 
 export async function getAllGroupEvaluations(): Promise<GroupEvaluation[]> {
+  // 1. Fast local cache
+  let localList: GroupEvaluation[] = [];
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(GROUP_EVALUATIONS_KEY);
+      if (raw) localList = JSON.parse(raw);
+    } catch (e) {}
+  }
+
+  // 2. Fetch from Firestore
   if (isFirebaseConfigured && db) {
     try {
-      const q = query(collection(db, "group_evaluations"), orderBy("evaluatedAt", "desc"));
-      const snap = await getDocs(q);
-      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as GroupEvaluation));
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(GROUP_EVALUATIONS_KEY, JSON.stringify(list));
-        } catch (e) {}
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500));
+      const fetchPromise = getDocs(collection(db, "group_evaluations"));
+      const snap: any = await Promise.race([fetchPromise, timeoutPromise]);
+
+      if (snap && !snap.empty) {
+        const list = snap.docs.map((d: any) => ({ ...d.data(), id: d.id } as GroupEvaluation));
+        list.sort((a: GroupEvaluation, b: GroupEvaluation) => new Date(b.evaluatedAt || 0).getTime() - new Date(a.evaluatedAt || 0).getTime());
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(GROUP_EVALUATIONS_KEY, JSON.stringify(list));
+          } catch (e) {}
+        }
+        return list;
       }
-      return list;
     } catch (e) {
       console.warn("Firestore getAllGroupEvaluations error, using local fallback:", e);
     }
   }
 
-  if (typeof window !== "undefined") {
-    try {
-      const raw = localStorage.getItem(GROUP_EVALUATIONS_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch (e) {}
-  }
-  return [];
+  return localList;
 }
 
 export async function getGroupEvaluations(groupId: string): Promise<GroupEvaluation[]> {
@@ -4193,30 +4241,44 @@ export function subscribeToDeveloperTips(callback: (tips: DeveloperTip[]) => voi
 const SUGGESTIONS_STORAGE_KEY = "syllabus_platform_suggestions_v1";
 
 export async function getSuggestions(): Promise<StudentSuggestion[]> {
-  let suggestions: StudentSuggestion[] = [];
+  let localList: StudentSuggestion[] = [];
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(SUGGESTIONS_STORAGE_KEY);
+      if (raw) localList = JSON.parse(raw);
+    } catch (e) {}
+  }
+
+  const map = new Map<string, StudentSuggestion>();
+  localList.forEach(s => map.set(s.id, s));
 
   if (isFirebaseConfigured && db) {
     try {
-      const snap = await getDocs(collection(db, "suggestions"));
-      suggestions = snap.docs.map(d => ({ ...d.data(), id: d.id } as StudentSuggestion));
-      if (typeof window !== "undefined" && suggestions.length > 0) {
-        localStorage.setItem(SUGGESTIONS_STORAGE_KEY, JSON.stringify(suggestions));
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500));
+      const fetchPromise = getDocs(collection(db, "suggestions"));
+      const snap: any = await Promise.race([fetchPromise, timeoutPromise]);
+
+      if (snap && !snap.empty) {
+        const remoteList = snap.docs.map((d: any) => ({ ...d.data(), id: d.id } as StudentSuggestion));
+        remoteList.forEach((s: StudentSuggestion) => {
+          const existing = map.get(s.id);
+          if (!existing || new Date(s.updatedAt || s.createdAt || 0).getTime() >= new Date(existing.updatedAt || existing.createdAt || 0).getTime()) {
+            map.set(s.id, s);
+          }
+        });
       }
     } catch (e) {
       console.warn("Firestore getSuggestions error, using local fallback:", e);
     }
   }
 
-  if (suggestions.length === 0 && typeof window !== "undefined") {
+  const result = Array.from(map.values()).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  if (typeof window !== "undefined" && result.length > 0) {
     try {
-      const raw = localStorage.getItem(SUGGESTIONS_STORAGE_KEY);
-      if (raw) {
-        suggestions = JSON.parse(raw);
-      }
+      localStorage.setItem(SUGGESTIONS_STORAGE_KEY, JSON.stringify(result));
     } catch (e) {}
   }
-
-  return suggestions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return result;
 }
 
 export async function saveSuggestion(suggestion: StudentSuggestion): Promise<void> {
@@ -4369,7 +4431,7 @@ export function subscribeToSuggestions(callback: (suggestions: StudentSuggestion
       const raw = localStorage.getItem(SUGGESTIONS_STORAGE_KEY);
       if (raw) {
         const list: StudentSuggestion[] = JSON.parse(raw);
-        callback(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        callback(list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()));
         localFired = true;
       }
     } catch (e) {}
@@ -4384,11 +4446,39 @@ export function subscribeToSuggestions(callback: (suggestions: StudentSuggestion
 
   try {
     const unsub = onSnapshot(collection(db, "suggestions"), (snap) => {
-      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as StudentSuggestion));
+      const remoteList = snap.docs.map(d => ({ ...d.data(), id: d.id } as StudentSuggestion));
+      let localList: StudentSuggestion[] = [];
       if (typeof window !== "undefined") {
-        localStorage.setItem(SUGGESTIONS_STORAGE_KEY, JSON.stringify(list));
+        try {
+          const raw = localStorage.getItem(SUGGESTIONS_STORAGE_KEY);
+          if (raw) localList = JSON.parse(raw);
+        } catch (e) {}
       }
-      callback(list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+
+      // Merge remote & local by ID so local modifications, replies, or offline suggestions are never lost
+      const map = new Map<string, StudentSuggestion>();
+      localList.forEach(s => map.set(s.id, s));
+      remoteList.forEach(s => {
+        const existing = map.get(s.id);
+        if (!existing || new Date(s.updatedAt || s.createdAt || 0).getTime() >= new Date(existing.updatedAt || existing.createdAt || 0).getTime()) {
+          map.set(s.id, s);
+        }
+      });
+
+      // If any local suggestion was missing remotely, push it to Firestore
+      localList.forEach(s => {
+        if (!remoteList.some(r => r.id === s.id)) {
+          saveSuggestion(s).catch(() => {});
+        }
+      });
+
+      const merged = Array.from(map.values()).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(SUGGESTIONS_STORAGE_KEY, JSON.stringify(merged));
+        } catch (e) {}
+      }
+      callback(merged);
     }, (err) => {
       console.warn("subscribeToSuggestions error:", err);
       if (!localFired) {

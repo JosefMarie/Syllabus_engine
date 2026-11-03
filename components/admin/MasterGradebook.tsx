@@ -52,10 +52,37 @@ type SortField = "name" | "trade" | "level" | "strikes" | "progress" | "examAvg"
 type SortDirection = "asc" | "desc";
 
 export default function MasterGradebook({ adminUser, trades = [] }: MasterGradebookProps) {
-  const [loading, setLoading] = useState(true);
-  const [students, setStudents] = useState<UserProfile[]>([]);
-  const [examAttempts, setExamAttempts] = useState<ExamAttempt[]>([]);
-  const [submissions, setSubmissions] = useState<AssignmentSubmission[]>([]);
+  const [students, setStudents] = useState<UserProfile[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("syllabus_users");
+      if (raw) {
+        const uList: UserProfile[] = JSON.parse(raw);
+        return uList.filter(u => u.role === "student" && !u.uid.startsWith("demo-") && u.fullName !== "Alson Johns");
+      }
+      return [];
+    } catch { return []; }
+  });
+  const [examAttempts, setExamAttempts] = useState<ExamAttempt[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("syllabus_platform_exam_attempts_v1");
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+  const [submissions, setSubmissions] = useState<AssignmentSubmission[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("syllabus_platform_submissions_v1");
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      return !localStorage.getItem("syllabus_users");
+    } catch { return true; }
+  });
   const [progressSummaries, setProgressSummaries] = useState<Record<string, { pct: number; completed: number; total: number; lastActive?: string }>>({});
   const [tradesMap, setTradesMap] = useState<Record<string, string>>({});
 
@@ -75,41 +102,44 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
 
   // Load Data
   const loadData = async () => {
-    setLoading(true);
     try {
       const [allUsers, allExams, allSubs, allProgress, allTrd] = await Promise.all([
-        getAllUserProfiles(),
-        getAllExamAttempts(),
-        getAllSubmissions(),
-        getAllStudentProgressSummaries(),
-        trades.length > 0 ? Promise.resolve(trades) : getAllTrades()
+        getAllUserProfiles().catch(() => []),
+        getAllExamAttempts().catch(() => []),
+        getAllSubmissions().catch(() => []),
+        getAllStudentProgressSummaries().catch(() => []),
+        (trades.length > 0 ? Promise.resolve(trades) : getAllTrades()).catch(() => [])
       ]);
 
       const tMap: Record<string, string> = {};
-      allTrd.forEach((t) => {
+      (allTrd || []).forEach((t) => {
         tMap[t.id] = t.name;
       });
       setTradesMap(tMap);
 
       // Filter only real students
-      const studentProfiles = allUsers.filter(
-        (u) => u.role === "student" && !u.uid.startsWith("demo-") && u.fullName !== "Alson Johns"
-      );
-      setStudents(studentProfiles);
-      setExamAttempts(allExams || []);
-      setSubmissions(allSubs || []);
+      if (allUsers && allUsers.length > 0) {
+        const studentProfiles = allUsers.filter(
+          (u) => u.role === "student" && !u.uid.startsWith("demo-") && u.fullName !== "Alson Johns"
+        );
+        setStudents(studentProfiles);
+      }
+      if (allExams) setExamAttempts(allExams);
+      if (allSubs) setSubmissions(allSubs);
 
       // Build progress map
-      const pMap: Record<string, { pct: number; completed: number; total: number; lastActive?: string }> = {};
-      allProgress.forEach((p) => {
-        pMap[p.userId] = {
-          pct: p.progressPercent || 0,
-          completed: p.completedSubtopicsCount || 0,
-          total: p.totalSubtopicsCount || 0,
-          lastActive: p.lastActive
-        };
-      });
-      setProgressSummaries(pMap);
+      if (allProgress) {
+        const pMap: Record<string, { pct: number; completed: number; total: number; lastActive?: string }> = {};
+        allProgress.forEach((p) => {
+          pMap[p.userId] = {
+            pct: p.progressPercent || 0,
+            completed: p.completedSubtopicsCount || 0,
+            total: p.totalSubtopicsCount || 0,
+            lastActive: p.lastActive
+          };
+        });
+        setProgressSummaries(pMap);
+      }
     } catch (e) {
       console.error("Error loading gradebook data:", e);
     } finally {

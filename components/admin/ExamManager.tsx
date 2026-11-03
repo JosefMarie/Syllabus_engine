@@ -141,6 +141,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
   const [selectedExamForSubmissions, setSelectedExamForSubmissions] = useState<Exam | null>(null);
   const [examAttempts, setExamAttempts] = useState<ExamAttempt[]>([]);
   const [loadingAttempts, setLoadingAttempts] = useState(false);
+  const [attemptsSearchQuery, setAttemptsSearchQuery] = useState("");
 
   // Manual Grading Modal State
   const [gradingAttempt, setGradingAttempt] = useState<ExamAttempt | null>(null);
@@ -2348,30 +2349,77 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                   </p>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-[#334155] bg-[#1E293B] overflow-hidden shadow-xl">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs min-w-[750px]">
-                      <thead className="border-b border-[#334155] bg-[#0B0F19]/60 font-mono text-[#94A3B8] uppercase">
-                        <tr>
-                          <th className="px-5 py-3">Student</th>
-                          <th className="px-5 py-3">Level</th>
-                          <th className="px-5 py-3">Duration / Submitted</th>
-                          <th className="px-5 py-3">Proctoring Flags</th>
-                          <th className="px-5 py-3">Score &amp; Status</th>
-                          <th className="px-5 py-3 text-right">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-[#334155]/60 text-[#CBD5E1]">
-                        {examAttempts.map((att) => {
-                          const isGraded = att.status === "graded";
-                          const hasViolations = att.tabSwitchCount > 0;
+                <div className="space-y-3">
+                  {/* Search and Filter Toolbar */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#1E293B]/70 p-3 rounded-2xl border border-[#334155]">
+                    <div className="relative w-full sm:w-80">
+                      <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#94A3B8]" />
+                      <input
+                        type="text"
+                        placeholder="Search student name, username, or level..."
+                        value={attemptsSearchQuery}
+                        onChange={(e) => setAttemptsSearchQuery(e.target.value)}
+                        className="w-full rounded-xl border border-[#334155] bg-[#0F172A] py-2 pl-9 pr-8 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                      />
+                      {attemptsSearchQuery && (
+                        <button
+                          onClick={() => setAttemptsSearchQuery("")}
+                          className="absolute right-2.5 top-2.5 text-xs text-[#94A3B8] hover:text-white"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
 
+                    <div className="text-xs font-mono text-[#94A3B8] self-end sm:self-center">
+                      Showing <span className="text-[#06B6D4] font-bold">
+                        {examAttempts.filter(att => {
+                          if (!attemptsSearchQuery.trim()) return true;
+                          const q = attemptsSearchQuery.toLowerCase();
                           return (
-                            <tr key={att.id} className="hover:bg-[#0B0F19]/40 transition-colors">
-                              <td className="px-5 py-3.5">
-                                <div className="font-bold text-white">{att.studentName}</div>
-                                <span className="text-[10px] font-mono text-[#64748B]">@{att.studentUsername}</span>
-                              </td>
+                            (att.studentName || "").toLowerCase().includes(q) ||
+                            (att.studentUsername || "").toLowerCase().includes(q) ||
+                            (att.studentLevel || "").toLowerCase().includes(q) ||
+                            (att.status || "").toLowerCase().includes(q)
+                          );
+                        }).length}
+                      </span> of {examAttempts.length} submissions
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-[#334155] bg-[#1E293B] overflow-hidden shadow-xl">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs min-w-[750px]">
+                        <thead className="border-b border-[#334155] bg-[#0B0F19]/60 font-mono text-[#94A3B8] uppercase">
+                          <tr>
+                            <th className="px-5 py-3">Student</th>
+                            <th className="px-5 py-3">Level</th>
+                            <th className="px-5 py-3">Duration / Submitted</th>
+                            <th className="px-5 py-3">Proctoring Flags</th>
+                            <th className="px-5 py-3">Score &amp; Status</th>
+                            <th className="px-5 py-3 text-right">Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#334155]/60 text-[#CBD5E1]">
+                          {examAttempts.filter(att => {
+                            if (!attemptsSearchQuery.trim()) return true;
+                            const q = attemptsSearchQuery.toLowerCase();
+                            return (
+                              (att.studentName || "").toLowerCase().includes(q) ||
+                              (att.studentUsername || "").toLowerCase().includes(q) ||
+                              (att.studentLevel || "").toLowerCase().includes(q) ||
+                              (att.status || "").toLowerCase().includes(q)
+                            );
+                          }).map((att) => {
+                            const isGraded = att.status === "graded";
+                            const hasViolations = att.tabSwitchCount > 0;
+
+                            return (
+                              <tr key={att.id} className="hover:bg-[#0B0F19]/40 transition-colors">
+                                <td className="px-5 py-3.5">
+                                  <div className="font-bold text-white">{att.studentName}</div>
+                                  <span className="text-[10px] font-mono text-[#64748B]">@{att.studentUsername}</span>
+                                </td>
 
                               <td className="px-5 py-3.5 font-mono text-[11px] text-[#94A3B8]">
                                 {att.studentLevel}
@@ -2440,7 +2488,8 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     </table>
                   </div>
                 </div>
-              )}
+              </div>
+            )}
             </div>
           </div>
         </div>

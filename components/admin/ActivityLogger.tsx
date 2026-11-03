@@ -19,8 +19,19 @@ import {
 } from "lucide-react";
 
 export default function ActivityLogger() {
-  const [activities, setActivities] = useState<ActivityLog[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [activities, setActivities] = useState<ActivityLog[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("syllabus_platform_activities_v1");
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      return !localStorage.getItem("syllabus_platform_activities_v1");
+    } catch { return true; }
+  });
   const [loadingMore, setLoadingMore] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [displayLimit, setDisplayLimit] = useState(50);
@@ -28,10 +39,16 @@ export default function ActivityLogger() {
   const [actionFilter, setActionFilter] = useState<string>("ALL");
 
   const loadLogs = async (limitCount = 50) => {
-    setLoading(true);
-    const data = await getAllActivities(limitCount);
-    setActivities(data);
-    setLoading(false);
+    try {
+      const data = await getAllActivities(limitCount);
+      if (data && data.length > 0) {
+        setActivities(data);
+      }
+    } catch (e) {
+      console.warn("Failed to load logs:", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLoadMore = async () => {

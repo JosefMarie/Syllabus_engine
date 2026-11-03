@@ -2,74 +2,10 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper: is caller an authenticated Teacher Admin?
-    function isTeacher() {
-      return request.auth != null && (
-        request.auth.token.email == 'layjoe0001@gmail.com' ||
-        (request.auth.token.role == 'teacher')
-      );
-    }
-
-    // Users Collection (Student & Teacher profiles)
-    match /users/{userId} {
-      allow read, write: if true;
-    }
-
-    // Suggestions & Feedback Box
-    match /suggestions/{suggestionId} {
-      allow read, write: if true;
-    }
-
-    // Live Proctoring Sessions
-    match /live_exam_sessions/{sessionId} {
-      allow read, write: if true;
-    }
-
-    // Exam Attempts & Quizzes
-    match /exam_attempts/{attemptId} {
-      allow read, write: if true;
-    }
-
-    // Assignments & Student Submissions
-    match /assignments/{assignmentId} {
-      allow read: if true;
-      allow write: if isTeacher();
-      allow delete: if isTeacher();
-    }
-    match /submissions/{submissionId} {
-      allow read: if true;
-      allow create, update: if true;
-      allow delete: if isTeacher();
-    }
-
-    // Syllabi, Trades, Notifications, Activities, Presence, TimeTracking
-    match /syllabi/{syllabusId} {
-      allow read: if true;
-      allow write: if true;
-    }
-    match /presence/{userId} {
-      allow read, write: if true;
-    }
-    match /userProgress/{userId} {
-      allow read, write: if true;
-    }
-    match /notifications/{notifId} {
-      allow read, write: if true;
-    }
-    match /activities/{activityId} {
-      allow read, write: if true;
-    }
-    match /trades/{tradeId} {
-      allow read, write: if true;
-    }
-    match /topicTimeRecords/{recordId} {
-      allow read, write: if true;
-    }
-
-    // Default fallback
+    // Open read and write to all collections for client session workflows
     match /{document=**} {
       allow read, write: if true;
     }
   }
 }
+

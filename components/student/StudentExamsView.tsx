@@ -473,8 +473,40 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
     const recordViolation = (reason: string) => {
       setTabSwitchViolations(prev => {
         const next = prev + 1;
+        tabSwitchViolationsRef.current = next;
+        currentProctorStatusRef.current = "flagged";
+        currentFlagReasonRef.current = `Suspicious Activity: ${reason} (Strike #${next})`;
+
         setViolationToast(`🚨 Proctoring Alert: ${reason}! (Strike #${next})`);
         setTimeout(() => setViolationToast(null), 5000);
+
+        // Immediately transmit flagged suspicious strike to instructor in real-time
+        if (activeExam && currentUser) {
+          const livePayload: LiveProctoringSession = {
+            id: `${activeExam.id}_${currentUser.uid}`,
+            examId: activeExam.id,
+            examTitle: activeExam.title,
+            courseCode: activeExam.courseCode,
+            studentUid: currentUser.uid,
+            studentName: currentUser.fullName,
+            studentUsername: currentUser.username,
+            studentLevel: currentUser.level,
+            studentTradeId: currentUser.tradeId,
+            status: "flagged",
+            flagReason: `Suspicious: ${reason} (Strike #${next})`,
+            startedAt: examStartedAtRef.current || new Date().toISOString(),
+            lastHeartbeat: new Date().toISOString(),
+            timeLimitMinutes: activeExam.timeLimitMinutes,
+            timeRemainingSeconds: timeRemainingSecondsRef.current,
+            extraTimeGrantedMinutes: extraTimeGrantedMinutesRef.current,
+            tabSwitchViolations: next,
+            answeredQuestionsCount: Object.keys(studentAnswersRef.current).filter(k => isQuestionAnswered(studentAnswersRef.current[k])).length,
+            totalQuestions: activeExam.questions.length,
+            currentQuestionIndex: currentQuestionIdxRef.current
+          };
+          saveLiveProctoringSession(livePayload).catch(() => {});
+        }
+
         return next;
       });
     };
@@ -781,7 +813,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
   // Auto-Submit When Timer Reaches 0
   const handleAutoSubmitTimeUp = () => {
-    alert("⏰ Time is up! Your answers are being automatically submitted to your instructor.");
+    setViolationToast("⏰ Time limit reached! Your examination has been automatically submitted.");
     finalizeSubmission(true);
   };
 

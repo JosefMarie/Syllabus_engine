@@ -63,10 +63,37 @@ interface GroupManagerProps {
 }
 
 export default function GroupManager({ syllabi, trades, adminEmail, adminUser }: GroupManagerProps) {
-  const [groups, setGroups] = useState<StudentGroup[]>([]);
-  const [students, setStudents] = useState<UserProfile[]>([]);
-  const [evaluations, setEvaluations] = useState<GroupEvaluation[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [groups, setGroups] = useState<StudentGroup[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("syllabus_platform_groups_v1");
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+  const [students, setStudents] = useState<UserProfile[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("syllabus_users");
+      if (raw) {
+        const uList: UserProfile[] = JSON.parse(raw);
+        return uList.filter(u => u.role === "student" && u.status === "approved");
+      }
+      return [];
+    } catch { return []; }
+  });
+  const [evaluations, setEvaluations] = useState<GroupEvaluation[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("syllabus_platform_group_evaluations_v1");
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      return !localStorage.getItem("syllabus_platform_groups_v1");
+    } catch { return true; }
+  });
 
   // Active view tab: "groups" roster or "evaluations" presentation gradebook
   const [activeTab, setActiveTab] = useState<"groups" | "evaluations">("groups");
@@ -124,16 +151,17 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
   }, []);
 
   const loadAllData = async () => {
-    setLoading(true);
     try {
       const [allG, allUsers, allEvals] = await Promise.all([
-        getAllGroups(),
-        getAllUserProfiles(),
-        getAllGroupEvaluations()
+        getAllGroups().catch(() => []),
+        getAllUserProfiles().catch(() => []),
+        getAllGroupEvaluations().catch(() => [])
       ]);
-      setGroups(allG);
-      setStudents(allUsers.filter(u => u.role === "student" && u.status === "approved"));
-      setEvaluations(allEvals);
+      if (allG && allG.length > 0) setGroups(allG);
+      if (allUsers && allUsers.length > 0) {
+        setStudents(allUsers.filter(u => u.role === "student" && u.status === "approved"));
+      }
+      if (allEvals) setEvaluations(allEvals);
     } catch (err) {
       console.error("Error loading groups & students:", err);
     } finally {

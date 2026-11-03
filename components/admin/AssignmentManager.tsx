@@ -103,10 +103,33 @@ interface AssignmentManagerProps {
 }
 
 export default function AssignmentManager({ syllabi, trades, adminEmail }: AssignmentManagerProps) {
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
-  const [allSubmissionsList, setAllSubmissionsList] = useState<AssignmentSubmission[]>([]);
-  const [courseGroups, setCourseGroups] = useState<StudentGroup[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [assignments, setAssignments] = useState<Assignment[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("syllabus_platform_assignments_v1");
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+  const [allSubmissionsList, setAllSubmissionsList] = useState<AssignmentSubmission[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("syllabus_platform_submissions_v1");
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+  const [courseGroups, setCourseGroups] = useState<StudentGroup[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("syllabus_platform_groups_v1");
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+  const [loading, setLoading] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    try {
+      return !localStorage.getItem("syllabus_platform_assignments_v1");
+    } catch { return true; }
+  });
   const [activeTab, setActiveTab] = useState<"list" | "create" | "submissions" | "course_submissions">("list");
   
   // Specific assignment submissions view
@@ -182,16 +205,15 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
   }, []);
 
   const loadAllData = async () => {
-    setLoading(true);
     try {
       const [asgData, allSubs, allG] = await Promise.all([
-        getAllAssignments(),
-        getAllSubmissions(),
-        getAllGroups()
+        getAllAssignments().catch(() => []),
+        getAllSubmissions().catch(() => []),
+        getAllGroups().catch(() => [])
       ]);
-      setAssignments(asgData);
-      setAllSubmissionsList(allSubs);
-      setCourseGroups(allG);
+      if (asgData && asgData.length > 0) setAssignments(asgData);
+      if (allSubs) setAllSubmissionsList(allSubs);
+      if (allG) setCourseGroups(allG);
     } catch (err) {
       console.error("Error loading assignments, submissions & groups:", err);
     } finally {

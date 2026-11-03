@@ -45,10 +45,38 @@ export default function LiveExamProctoring({ adminUser }: LiveExamProctoringProp
   const [currentTime, setCurrentTime] = useState(Date.now());
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [audioEnabled, setAudioEnabled] = useState(true);
+  const prevViolationsRef = React.useRef<number>(0);
+
+  const playAlertSound = () => {
+    if (typeof window === "undefined" || !audioEnabled) return;
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime + 0.15);
+      gain.gain.setValueAtTime(0.25, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.35);
+    } catch (e) {}
+  };
 
   // Subscribe to real-time proctoring updates
   useEffect(() => {
     const unsub = subscribeToLiveProctoringSessions((data) => {
+      // Check if any new suspicious or flagged violation arrived
+      const totalViolations = data.reduce((sum, s) => sum + (s.tabSwitchViolations || 0) + (s.status === "flagged" ? 1 : 0), 0);
+      if (prevViolationsRef.current > 0 && totalViolations > prevViolationsRef.current) {
+        playAlertSound();
+      }
+      prevViolationsRef.current = totalViolations;
+
       setSessions(data);
       setLoading(false);
     });
@@ -62,7 +90,7 @@ export default function LiveExamProctoring({ adminUser }: LiveExamProctoringProp
       unsub();
       clearInterval(timer);
     };
-  }, []);
+  }, [audioEnabled]);
 
   const handleGrantTime = async (sessionId: string, studentName: string, mins: number) => {
     setActionLoadingId(sessionId);
@@ -153,10 +181,22 @@ export default function LiveExamProctoring({ adminUser }: LiveExamProctoringProp
     }
   };
 
+  // Helper to determine if a session has timed out or finished
+  const isSessionFinished = (s: LiveProctoringSession) => {
+    if (s.status === "submitted" || s.status === "force_submitted") return true;
+    if (s.timeRemainingSeconds <= 0 && s.timeLimitMinutes > 0) return true;
+    if (s.timeLimitMinutes > 0 && s.startedAt) {
+      const elapsedSec = (Date.now() - new Date(s.startedAt).getTime()) / 1000;
+      const allowedSec = (s.timeLimitMinutes * 60) + ((s.extraTimeGrantedMinutes || 0) * 60);
+      if (elapsedSec > allowedSec + 15) return true;
+    }
+    return false;
+  };
+
   // Determine connectivity state based on last heartbeat
   const getConnectionStatus = (session: LiveProctoringSession) => {
-    if (session.status === "submitted" || session.status === "force_submitted") {
-      return { status: "completed", label: "Submitted", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/30", icon: CheckCircle2 };
+    if (isSessionFinished(session)) {
+      return { status: "completed", label: "Finished / Turned In", color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/30", icon: CheckCircle2 };
     }
 
     const lastPing = new Date(session.lastHeartbeat).getTime();
@@ -178,20 +218,21 @@ export default function LiveExamProctoring({ adminUser }: LiveExamProctoringProp
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   };
 
-  // Truly active test-takers right now (not days-old abandoned offline tabs)
+  // Truly active test-takers right now (not days-old abandoned offline tabs, and not finished)
   const activeSessions = sessions.filter(s => {
+    if (isSessionFinished(s)) return false;
     if (s.status !== "active" && s.status !== "flagged") return false;
     const lastPing = new Date(s.lastHeartbeat || s.startedAt).getTime();
     const diffMins = (currentTime - lastPing) / (1000 * 60);
     return diffMins < 45;
   });
-  const flaggedSessions = sessions.filter(s => s.status === "flagged" || s.tabSwitchViolations > 0);
-  const submittedSessions = sessions.filter(s => s.status === "submitted" || s.status === "force_submitted");
+  const flaggedSessions = sessions.filter(s => (s.status === "flagged" || s.tabSwitchViolations > 0) && !isSessionFinished(s));
+  const submittedSessions = sessions.filter(s => isSessionFinished(s));
 
   const filteredSessions = sessions.filter(s => {
-    if (filterStatus === "active" && (s.status !== "active" && s.status !== "flagged")) return false;
-    if (filterStatus === "flagged" && s.status !== "flagged" && s.tabSwitchViolations === 0) return false;
-    if (filterStatus === "submitted" && s.status !== "submitted" && s.status !== "force_submitted") return false;
+    if (filterStatus === "active" && !activeSessions.some(a => a.id === s.id)) return false;
+    if (filterStatus === "flagged" && !flaggedSessions.some(f => f.id === s.id)) return false;
+    if (filterStatus === "submitted" && !submittedSessions.some(sub => sub.id === s.id)) return false;
 
     if (search.trim()) {
       const q = search.toLowerCase();
