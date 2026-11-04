@@ -1,11 +1,20 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Assignment, AssignmentSubmission } from "@/types/assignment";
 import { StudentGroup } from "@/types/group";
 import { UserProfile } from "@/types/auth";
 import { Syllabus } from "@/types/syllabus";
-import { getAllAssignments, getStudentSubmissions, saveAssignmentSubmission, getStudentGroups, subscribeToAssignments } from "@/lib/db";
+import {
+  getAllAssignments,
+  getLocalAssignments,
+  mergeAssignmentsLists,
+  getStudentSubmissions,
+  saveAssignmentSubmission,
+  getStudentGroups,
+  subscribeToAssignments,
+  subscribeToGroups
+} from "@/lib/db";
 import { isAllowedSubmissionFile, ACCEPT_FILE_ATTRIBUTE } from "@/lib/aiGrading";
 import { 
   FileText, 
@@ -22,7 +31,8 @@ import {
   ChevronRight, 
   PlusCircle, 
   BookOpen,
-  Users
+  Users,
+  RefreshCw
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -33,12 +43,14 @@ interface StudentAssignmentsViewProps {
 }
 
 export default function StudentAssignmentsView({ currentUser, syllabi = [] }: StudentAssignmentsViewProps) {
-  const [assignments, setAssignments] = useState<Assignment[]>([]);
+  const [rawAssignments, setRawAssignments] = useState<Assignment[]>(() => getLocalAssignments());
   const [submissions, setSubmissions] = useState<Record<string, AssignmentSubmission>>({});
   const [independentSubmissions, setIndependentSubmissions] = useState<AssignmentSubmission[]>([]);
   const [myGroups, setMyGroups] = useState<StudentGroup[]>([]);
-  const [loading, setLoading] = useState(true);
-  
+  const [loading, setLoading] = useState<boolean>(() => getLocalAssignments().length === 0);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [selectedLevelFilter, setSelectedLevelFilter] = useState<string>("my_level");
+
   // Modal for teacher-assigned assignment
   const [activeAssignment, setActiveAssignment] = useState<Assignment | null>(null);
 
@@ -71,7 +83,6 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
   // Group for the currently active assignment if it is a group project
-  // In the class-based group system, checks if assignment is targeted to a specific group or class-wide
   const activeMatchedGroup = activeAssignment?.submissionType === "group"
     ? (activeAssignment.targetGroupId && activeAssignment.targetGroupId !== "all_groups"
         ? (myGroups.find(g => g.id === activeAssignment.targetGroupId) || null)
@@ -103,50 +114,78 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
     return matchesLevel && matchesTrade;
   });
 
-  const filterAssignments = (allList: Assignment[], groupsList: StudentGroup[]) => {
-    return allList.filter(a => {
-      if (a.status !== "published") return false;
-      const matchesLevel = isLevelMatch(a.level, currentUser.level);
+  // Compute assignments matching trade & group membership first
+  const tradeAndGroupMatchedAssignments = useMemo(() => {
+    return rawAssignments.filter(a => {
+      if (a.status && a.status !== "published") return false;
       const matchesTrade = isTradeMatch(a.tradeId, currentUser.tradeId);
-      if (!matchesLevel || !matchesTrade) return false;
+      if (!matchesTrade) return false;
 
       // If targeted to a specific group, only members of that group receive this assignment
       if (a.submissionType === "group" && a.targetGroupId && a.targetGroupId !== "all_groups") {
-        const isMemberOfGroup = groupsList.some(g => g.id === a.targetGroupId);
+        const isMemberOfGroup = myGroups.some(g => g.id === a.targetGroupId);
         if (!isMemberOfGroup) return false;
       }
 
       return true;
     });
-  };
+  }, [rawAssignments, myGroups, currentUser.tradeId]);
+
+  // Assignments strictly matching the student's profile level
+  const myLevelAssignments = useMemo(() => {
+    return tradeAndGroupMatchedAssignments.filter(a => isLevelMatch(a.level, currentUser.level));
+  }, [tradeAndGroupMatchedAssignments, currentUser.level]);
+
+  // If the student's registered level has 0 assignments (e.g. they registered with default "Level 3"),
+  // automatically show all published assignments across levels so they are never stuck seeing 0 tasks.
+  const effectiveLevelFilter =
+    selectedLevelFilter === "my_level" && myLevelAssignments.length === 0 && tradeAndGroupMatchedAssignments.length > 0
+      ? "all"
+      : selectedLevelFilter;
+
+  const assignments = useMemo(() => {
+    if (effectiveLevelFilter === "all") {
+      return tradeAndGroupMatchedAssignments;
+    }
+    if (effectiveLevelFilter === "my_level") {
+      return myLevelAssignments;
+    }
+    return tradeAndGroupMatchedAssignments.filter(a => isLevelMatch(a.level, effectiveLevelFilter));
+  }, [tradeAndGroupMatchedAssignments, myLevelAssignments, effectiveLevelFilter]);
 
   useEffect(() => {
     let isMounted = true;
-    let localGroups: StudentGroup[] = [];
 
-    const unsub = subscribeToAssignments((allAsg) => {
+    const unsubAsg = subscribeToAssignments((allAsg) => {
       if (isMounted) {
-        setAssignments(filterAssignments(allAsg, localGroups));
+        setRawAssignments(prev => mergeAssignmentsLists(prev, allAsg));
         setLoading(false);
       }
     });
 
-    loadData(true).then((grp) => {
-      if (isMounted && grp) {
-        localGroups = grp;
+    const unsubGroups = subscribeToGroups((allGroups) => {
+      if (isMounted) {
+        const studentGroups = allGroups.filter(
+          g => g.members && g.members.some(m => m.uid === currentUser.uid)
+        );
+        setMyGroups(studentGroups);
       }
     });
 
+    loadData(true);
+
     return () => {
       isMounted = false;
-      unsub();
+      unsubAsg();
+      unsubGroups();
     };
   }, [currentUser?.uid, currentUser?.level, currentUser?.tradeId]);
 
   const loadData = async (isInitial: boolean = false) => {
-    // Only set full blocking loading state if this is the very first load and we don't have assignments yet
-    if (isInitial && assignments.length === 0) {
+    if (isInitial && rawAssignments.length === 0) {
       setLoading(true);
+    } else if (!isInitial) {
+      setIsSyncing(true);
     }
     try {
       const [allAsg, studentSubs, groupsData] = await Promise.all([
@@ -155,9 +194,10 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
         getStudentGroups(currentUser.uid)
       ]);
 
-      const relevant = filterAssignments(allAsg, groupsData);
-      setAssignments(relevant);
-      setMyGroups(groupsData);
+      setRawAssignments(prev => mergeAssignmentsLists(prev, allAsg));
+      if (groupsData.length > 0) {
+        setMyGroups(groupsData);
+      }
 
       const subMap: Record<string, AssignmentSubmission> = {};
       const indep: AssignmentSubmission[] = [];
@@ -178,6 +218,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
       return [];
     } finally {
       setLoading(false);
+      setIsSyncing(false);
     }
   };
 
@@ -396,18 +437,31 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            if (studentCourses.length > 0 && !selectedCourseCode) {
-              setSelectedCourseCode(studentCourses[0].courseCode);
-            }
-            setIsSelfSubmitModalOpen(true);
-          }}
-          className="inline-flex items-center space-x-2 rounded-xl bg-gradient-to-r from-[#06B6D4] to-[#3B82F6] px-4 py-2 text-xs font-bold text-slate-950 shadow-lg hover:brightness-110 transition-all shrink-0"
-        >
-          <Upload className="h-4 w-4" />
-          <span>Submit Course Assignment</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => loadData(false)}
+            disabled={isSyncing}
+            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-[#06B6D4] transition-all disabled:opacity-50"
+            title="Sync latest assignments from instructor"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 text-[#06B6D4] ${isSyncing ? "animate-spin" : ""}`} />
+            <span>{isSyncing ? "Syncing..." : "Sync Latest"}</span>
+          </button>
+
+          <button
+            onClick={() => {
+              if (studentCourses.length > 0 && !selectedCourseCode) {
+                setSelectedCourseCode(studentCourses[0].courseCode);
+              }
+              setIsSelfSubmitModalOpen(true);
+            }}
+            className="inline-flex items-center space-x-2 rounded-xl bg-gradient-to-r from-[#06B6D4] to-[#3B82F6] px-4 py-2 text-xs font-bold text-slate-950 shadow-lg hover:brightness-110 transition-all shrink-0"
+          >
+            <Upload className="h-4 w-4" />
+            <span>Submit Course Assignment</span>
+          </button>
+        </div>
       </div>
 
       {/* SECTION 1: SELF-SUBMITTED COURSE ASSIGNMENTS */}
@@ -472,10 +526,58 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
       {/* SECTION 2: OFFICIAL TEACHER ASSIGNMENTS */}
       <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold font-mono text-[#94A3B8] uppercase tracking-wider">
-            Assigned by Instructor ({assignments.length})
-          </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-xs font-bold font-mono text-[#94A3B8] uppercase tracking-wider">
+              Assigned by Instructor ({assignments.length})
+            </h3>
+            <div className="flex items-center rounded-xl bg-[#0B0F19] p-0.5 border border-[#334155]">
+              <button
+                type="button"
+                onClick={() => setSelectedLevelFilter("my_level")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all ${
+                  effectiveLevelFilter === "my_level"
+                    ? "bg-[#06B6D4] text-slate-950"
+                    : "text-[#94A3B8] hover:text-white"
+                }`}
+              >
+                My Class ({currentUser.level || "All"}) ({myLevelAssignments.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedLevelFilter("all")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all ${
+                  effectiveLevelFilter === "all"
+                    ? "bg-[#06B6D4] text-slate-950"
+                    : "text-[#94A3B8] hover:text-white"
+                }`}
+              >
+                All Levels ({tradeAndGroupMatchedAssignments.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedLevelFilter("Level 5")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all ${
+                  effectiveLevelFilter === "Level 5"
+                    ? "bg-[#06B6D4] text-slate-950"
+                    : "text-[#94A3B8] hover:text-white"
+                }`}
+              >
+                Level 5
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedLevelFilter("Level 4")}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all ${
+                  effectiveLevelFilter === "Level 4"
+                    ? "bg-[#06B6D4] text-slate-950"
+                    : "text-[#94A3B8] hover:text-white"
+                }`}
+              >
+                Level 4
+              </button>
+            </div>
+          </div>
           <span className="text-xs font-mono text-[#06B6D4]">
             {Object.keys(submissions).length} / {assignments.length} Completed
           </span>
@@ -484,22 +586,33 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
         {assignments.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#334155] bg-[#1E293B]/40 p-8 text-center">
             <FileText className="mx-auto h-10 w-10 text-[#64748B] mb-2" />
-            <h3 className="text-sm font-bold text-white mb-1">No Instructor Assignments Posted</h3>
+            <h3 className="text-sm font-bold text-white mb-1">No Instructor Assignments Found for This Filter</h3>
             <p className="text-xs text-[#94A3B8] max-w-sm mx-auto mb-4">
-              Your instructor hasn't posted official tasks yet, but you can click the button above to upload and submit assignments directly under your course!
+              Switch to &ldquo;All Levels&rdquo; above to view assignments across all classes, or click the button below to submit course work directly.
             </p>
-            <button
-              onClick={() => {
-                if (studentCourses.length > 0 && !selectedCourseCode) {
-                  setSelectedCourseCode(studentCourses[0].courseCode);
-                }
-                setIsSelfSubmitModalOpen(true);
-              }}
-              className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-3.5 py-1.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
-            >
-              <Upload className="h-3.5 w-3.5" />
-              <span>Submit Course Assignment</span>
-            </button>
+            <div className="flex items-center justify-center gap-2">
+              {effectiveLevelFilter !== "all" && tradeAndGroupMatchedAssignments.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedLevelFilter("all")}
+                  className="inline-flex items-center space-x-1.5 rounded-xl border border-[#06B6D4]/40 bg-[#06B6D4]/10 px-3.5 py-1.5 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4] hover:text-slate-950 transition-all"
+                >
+                  <span>Show All Class Assignments ({tradeAndGroupMatchedAssignments.length})</span>
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  if (studentCourses.length > 0 && !selectedCourseCode) {
+                    setSelectedCourseCode(studentCourses[0].courseCode);
+                  }
+                  setIsSelfSubmitModalOpen(true);
+                }}
+                className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-3.5 py-1.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+              >
+                <Upload className="h-3.5 w-3.5" />
+                <span>Submit Course Assignment</span>
+              </button>
+            </div>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -520,6 +633,11 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                         <span className="rounded-md bg-[#06B6D4]/10 border border-[#06B6D4]/30 px-2 py-0.5 text-[10px] font-mono font-bold text-[#06B6D4]">
                           {asg.courseCode || "General"}
                         </span>
+                        {asg.level && (
+                          <span className="rounded-md bg-slate-800 border border-slate-700 px-2 py-0.5 text-[10px] font-mono text-slate-300">
+                            {asg.level}
+                          </span>
+                        )}
                         {asg.submissionType === "group" && (
                           <span className="inline-flex items-center space-x-1 rounded-md bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-purple-400">
                             <Users className="h-3 w-3" />

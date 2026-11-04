@@ -137,7 +137,7 @@ export default function StudentProgressManager() {
     // 3. Load full data (syllabi, trades, progress summaries)
     loadData();
 
-    // 4. Low-frequency background sync for progress matrices (every 20s) with concurrency guard
+    // 4. Low-frequency background sync for progress matrices (every 120s) with concurrency guard
     let isSyncing = false;
     const interval = setInterval(async () => {
       if (isSyncing) return;
@@ -152,7 +152,7 @@ export default function StudentProgressManager() {
       } finally {
         isSyncing = false;
       }
-    }, 20000);
+    }, 120000);
 
     const handleStorage = (e: StorageEvent) => {
       if (e.key === "syllabus_platform_notifications_v1" || e.key === "syllabus_platform_users_v1") {

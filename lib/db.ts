@@ -1912,16 +1912,20 @@ export function subscribeToStudentNotifications(
     window.addEventListener("syllabus_notification_received", handleCustomEvent);
   }
 
-  // 4. Fallback polling heartbeat (every 3.5s) to guarantee real-time receipt even if stream drops
-  const intervalId = setInterval(() => {
-    emitLatest();
-  }, 3500);
+  // 4. Low-frequency fallback check (only if Firestore live listener is not active)
+  const intervalId = !unsubFirestore
+    ? setInterval(() => {
+        emitLatest();
+      }, 60000)
+    : null;
 
   return () => {
     if (unsubFirestore) {
       unsubFirestore();
     }
-    clearInterval(intervalId);
+    if (intervalId) {
+      clearInterval(intervalId);
+    }
     if (typeof window !== "undefined") {
       window.removeEventListener("storage", handleStorage);
       window.removeEventListener("syllabus_notification_received", handleCustomEvent);
@@ -2532,80 +2536,240 @@ export async function seedInitialTopicTimeRecordsIfEmpty(): Promise<StudentTopic
 import { Assignment, AssignmentSubmission } from "@/types/assignment";
 
 const ASSIGNMENTS_KEY = "syllabus_platform_assignments_v1";
+const DELETED_ASSIGNMENTS_KEY = "syllabus_platform_deleted_assignments_v1";
 const SUBMISSIONS_KEY = "syllabus_platform_submissions_v1";
 
+/**
+ * Built-in baseline of active published assignments from Firestore.
+ * Guarantees that even if a student's browser has an old partial localStorage cache
+ * or Firestore is temporarily throttled on slow school Wi-Fi, all published assignments
+ * (including newly published tasks like UI ReactJS) are immediately available.
+ */
+export const PUBLISHED_ASSIGNMENTS_BASELINE: Assignment[] = [
+  {
+    id: "asg_1793792103950",
+    title: "UI ReactJS",
+    courseCode: "SWDFA501",
+    courseTitle: "FRONTEND APPLICATION DEVELOPMENT WITH REACTJS",
+    tradeId: "trade-1785861602651",
+    level: "Level 5",
+    totalPoints: 100,
+    dueDate: "2026-11-05",
+    allowFileUpload: true,
+    allowTextSubmission: true,
+    submissionType: "individual",
+    status: "published",
+    createdBy: "layjoe0001@gmail.com",
+    createdAt: "2026-11-04T11:35:03.950Z",
+    updatedAt: "2026-11-04T11:35:03.950Z",
+    description:
+      "In this assignment, you will design and build a static user interface for StockFlow, an inventory tracking system. The purpose of this project is to practice setting up multi-page client-side routing, structuring functional components, and designing clean data tables and forms using plain React (JavaScript) and standard CSS.",
+    instructionsMarkdown:
+      'Assignment: Frontend UI Layout & Routing (Stateless Version)\nProject Title: StockFlow - Inventory UI Layout (Static Mock)\n\nModule: Frontend Web Application Development (React.js)\n\nTarget Architecture: Multi-Page UI Application (React Router v6 + Standard CSS, No State & No Backend)\n\n1. Assignment Overview\nIn this assignment, you will design and build a static user interface for StockFlow, an inventory tracking system. The purpose of this project is to practice setting up multi-page client-side routing, structuring functional components, and designing clean data tables and forms using plain React (JavaScript) and standard CSS.\nBecause this is a layout and routing exercise, no state management (useState) or backend database is required. All data will be displayed statically from mock arrays.\n\n2. Learning Objectives\nBy completing this assignment, you will demonstrate the ability to:\n1.\tImplement Client-Side Routing: Set up multi-page navigation using react-router-dom (BrowserRouter, Routes, Route, Link).\n2.\tStructure React Components: Break down a multi-page layout into clean, reusable functional components (Navbar, Dashboard, Inventory Table, Transaction Form).\n3.\tDesign Responsive Tables & Badges: Style data tables, conditional status labels ("In Stock" / "Low Stock"), and summary cards using standard CSS.\n4.\tBuild Static Form Layouts: Construct professional UI form layouts with dropdowns and input fields for user data entry.\n\n3. Required Pages & Scope Breakdown\nYour application must include 3 static views/pages accessible via navigation links:\nRoute Path\tPage Name\tCore Required Features\n/\tDashboard\tSummary metric cards showing static placeholder numbers for Total Stock Units, Low Stock Alerts, and Recent Transactions.\n/inventory\tInventory Table\tStatic data table displaying SKU, Item Name, Category, Quantity, and status badges (In Stock or Low Stock).\n/transactions\tStock In / Out Form\tStatic form layout for recording stock movements + a static history log table tracking past actions.'
+  },
+  {
+    id: "asg_1792761223594",
+    title: "Applying Logic Gates and Laws of Boolean Algebra",
+    courseCode: "SWDDA401",
+    courseTitle: "Data Structure And Algorithm Fundamental using JavaScript",
+    tradeId: "trade-1785861602651",
+    level: "Level 4",
+    totalPoints: 100,
+    dueDate: "2026-10-24",
+    allowFileUpload: true,
+    allowTextSubmission: true,
+    submissionType: "individual",
+    status: "published",
+    createdBy: "layjoe0001@gmail.com",
+    createdAt: "2026-10-23T13:13:43.594Z",
+    updatedAt: "2026-10-23T13:13:43.594Z",
+    description: "This is Individual Assignment",
+    instructionsMarkdown:
+      "1) Primary Building Blocks and Application for \n==> a. Basic Gates\n==> b. Universal Gates\n==> c. Exclusive Gates\n\n2. Laws of Boolean Algebra\nI) Identity and Fundamental Rules \n\nDo on Mathematical Expression and Meaning/ Explanation\n\n==> a. Identity Law\n==> b. Null/ Annulment Law\n==> c. Idempotent Law\n==> d. Complement Law\n==> e. Double Negation/ Involution Law\n\nII)Structure and Algebraic Laws\n\n==> a. Commutative Law\n==> b. Associative Law\n==> c. Distributive Law\n\nIII) Advanced Simplification and Theorems\n\n==> a. Absorption Law\n==> b. De Morgan's Theorems"
+  },
+  {
+    id: "asg_1790773090397",
+    title: "Encapsulation",
+    courseCode: "SWDMA501",
+    courseTitle: "Mobile Application Development using Flutter ",
+    tradeId: "trade-1785861602651",
+    level: "Level 5",
+    totalPoints: 100,
+    dueDate: "2026-10-01",
+    allowFileUpload: true,
+    allowTextSubmission: true,
+    submissionType: "group",
+    targetGroupId: "grp_1790587989073_71de",
+    status: "published",
+    createdBy: "layjoe0001@gmail.com",
+    createdAt: "2026-09-30T12:58:10.397Z",
+    updatedAt: "2026-09-30T12:58:10.397Z",
+    description: "Do the work",
+    instructionsMarkdown: "Do the Encapsulation"
+  },
+  {
+    id: "asg_1790342514073",
+    title: "Application of Number base arithmetic operations",
+    courseCode: "SWDDA401",
+    courseTitle: "Data Structure And Algorithm Fundamental using JavaScript",
+    tradeId: "trade-1785861602651",
+    level: "Level 4",
+    totalPoints: 50,
+    dueDate: "2026-09-28",
+    allowFileUpload: true,
+    allowTextSubmission: true,
+    status: "published",
+    createdBy: "layjoe0001@gmail.com",
+    createdAt: "2026-09-25T13:21:54.073Z",
+    updatedAt: "2026-09-25T13:21:54.073Z",
+    description: "Number Base Arithmetic Operations",
+    instructionsMarkdown:
+      "1. Binary Arithmetic (Base 2)\n- Addition\n- Subtraction\n\n2. Octal Arithmetic (Base 8)\n- Addition\n- Subtraction\n\n3. Hexadecimal Arithmetic (Base 16)\n- Addition\n- Subtraction"
+  },
+  {
+    id: "asg_1790341901857",
+    title: "Dart Practical Exercises",
+    courseCode: "SWDMA501",
+    courseTitle: "Mobile Application Development using Flutter ",
+    tradeId: "trade-1785861602651",
+    level: "Level 5",
+    totalPoints: 80,
+    dueDate: "2026-09-29",
+    allowFileUpload: true,
+    allowTextSubmission: true,
+    submissionType: "individual",
+    status: "published",
+    createdBy: "layjoe0001@gmail.com",
+    createdAt: "2026-09-25T13:11:41.857Z",
+    updatedAt: "2026-09-28T08:24:00.214Z",
+    description: "Questions on Dart Variables, Control Statement, Iterative Statement and Functions",
+    instructionsMarkdown:
+      '1: Number Multiplier Table (Loops & Formatting) \n\nTask: Write a function printMultiplicationTable(int baseNumber, {int limit = 10}) that generates and prints a clean multiplication table. \n\nRequirements:  \n\n–   The function should accept a required baseNumber and an optional named parameter limit that defaults to 10.  \n–   Use a standard for loop from 1 up to limit.  \n–   Print each line in the format: [baseNumber] x [i] = [product].  \n–   In main(), test the function with:  \no   baseNumber = 7 (using default limit)  \no   baseNumber = 4 with limit = 5 \n\n2: Find Highest and Lowest (Lists & Iteration) \n\nTask: Create a function named findExtremes(List<int> numbers) that scans a list of numbers without using built-in helper functions like .reduce(). \n\nRequirements:  \n–   If the list is empty, print "List is empty." and exit the function.  \n–   Initialize two variables, highest and lowest, with the first element of the list (numbers[0]).  –   Iterate through the rest of the list using a loop:  \no   If the current number is greater than highest, update highest.  \no   If the current number is smaller than lowest, update lowest.  \n–   Return a String summarizing the result (e.g., \'Highest: X, Lowest: Y\').  \n–   In main(), test with: [42, 17, 89, 5, 23, 99, 12]. \n\n3: String Palindrome Checker (Loops & Strings) \n\nTask: Write a function isPalindrome(String word) that checks whether a word reads the same forwards and backwards (ignoring letter casing). \n\nRequirements:  \n\n–   Convert the input string to lowercase first using .toLowerCase().  \n–   Use a reverse for loop starting from word.length - 1 down to 0 to build a new reversed string.  –   Compare the reversed string to the lowercased original string.  \n–   Return true if they match, false otherwise.\n\n–   In main(), test it against:  \no   \'Racecar\' (should be true)  \no   \'Dart\' (should be false)  \no   \'Madam\' (should be true) \n\n4: Bank Account Transaction Processor (break & continue) \n\nTask: Simulate a wallet/account ledger processing a queue of transactions. \n\nRequirements:  \n\n–   Create a function processLedger(double startingBalance, List<double> transactions).  \n–   Loop through each transaction in the list:  \no   If a transaction is 0.0, use continue to skip it (print: \'Skipped empty transaction\').  \no   If applying a withdrawal would drop the balance below 0.0, print \'Transaction rejected: Insufficient funds for $[amount]\' and use break to stop processing further transactions.  \no   Otherwise, update the balance and print \'Processed $[amount] | Current Balance: $[balance]\'.  –   After the loop, print the final remaining balance.  \n–   In main(), test with a starting balance of 100.0 and the transaction list:  \n–   [-20.0, 50.0, 0.0, -150.0, 30.0]. \n\n5: Temperature Analyzer (Variables & Conditionals) \n\nTask: Create a function named analyzeTemperature(double celsius) that prints the Fahrenheit equivalent and an advisory note. \n\nRequirements:  \n–   Formula: Fahrenheit = (Celsius * 9 / 5) + 32.  \n–   Use an if-else block to check the Fahrenheit value:  \no   If Fahrenheit is 86°F or higher: print "Advisory: Hot weather, stay hydrated."  \no   If Fahrenheit is between 50°F and 85°F (inclusive): print "Advisory: Moderate weather."  \no   If Fahrenheit is below 50°F: print "Advisory: Cold weather, bundle up."  \n–   In your main() function, call analyzeTemperature with at least three different temperatures (e.g., 0.0, 22.5, and 35.0). \n\n6: FizzBuzz Cart (Loops & Conditionals) \n\nTask: \nWrite a Dart program that loops through numbers from 1 to 30 (inclusive). \n\nRequirements:  \n–   For numbers divisible by both 3 and 5, print: [Number] -> FizzBuzz  \n–   For numbers divisible by only 3, print: [Number] -> Fizz  \n–   For numbers divisible by only 5, print: [Number] -> Buzz  \n–   For all other numbers, print: [Number] -> Normal (Hint: Use the modulo operator % to test divisibility). \n\n7: Grocery Cart Calculator (Functions & Lists) \n\nTask: Create a function that calculates the final bill for a shopping list with an optional discount. \n\nRequirements:  \n–   Create a function named calculateTotal:  \no   It takes a List<double> prices (required positional parameter).  \no   It takes an optional named parameter {double discountPercent = 0.0}.  \n–   Inside the function:  \no   Use a for-in loop to calculate the sum of all item prices.  \no   If discountPercent is greater than 0, deduct that percentage from the subtotal.  \no   Return the final total as a double.  \n–   In main(), define a list of prices [12.50, 4.99, 25.00, 8.75]:  \no   Print the subtotal with no discount.  \no   Print the discounted total using a 10% discount (discountPercent: 10.0). \n\n8: Simple User Validator (Loops, Conditionals, and Named Parameters) \n\nTask: Build a user access checker that processes a list of ages. \n\nRequirements:  \n–   Write a function checkAccess({required String username, required int age}) that returns a bool:  o   Returns true if age >= 18.  \no   Returns false otherwise.  \n–   In main():  o   Create a List<int> candidateAges = [16, 21, 14, 18, 29];  \no   Loop through the list using a loop of your choice.  \no   For each person, call checkAccess(username: \'User_$index\', age: candidateAges[index]).  \no   Print: "User_[index] (Age [age]): ACCESS GRANTED" or "ACCESS DENIED".\no   Count how many users were granted access and print the total at the end: "Total eligible users: [count]".'
+  }
+];
+
+function getDeletedAssignmentIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  try {
+    const raw = localStorage.getItem(DELETED_ASSIGNMENTS_KEY);
+    return raw ? new Set(JSON.parse(raw)) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+export function mergeAssignmentsLists(...lists: Assignment[][]): Assignment[] {
+  const deletedIds = getDeletedAssignmentIds();
+  const map = new Map<string, Assignment>();
+  for (const list of lists) {
+    if (!Array.isArray(list)) continue;
+    for (const item of list) {
+      if (!item || !item.id || deletedIds.has(item.id)) continue;
+      const existing = map.get(item.id);
+      if (!existing) {
+        map.set(item.id, item);
+      } else {
+        const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
+        const itemTime = new Date(item.updatedAt || item.createdAt || 0).getTime();
+        if (itemTime >= existingTime) {
+          map.set(item.id, item);
+        }
+      }
+    }
+  }
+  return Array.from(map.values()).sort(
+    (a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+  );
+}
+
 export function getLocalAssignments(): Assignment[] {
-  if (typeof window === "undefined") return [];
+  if (typeof window === "undefined") return [...PUBLISHED_ASSIGNMENTS_BASELINE];
   try {
     const raw = localStorage.getItem(ASSIGNMENTS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const parsed: Assignment[] = raw ? JSON.parse(raw) : [];
+    const merged = mergeAssignmentsLists(PUBLISHED_ASSIGNMENTS_BASELINE, parsed);
+    if (merged.length !== parsed.length) {
+      localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(merged));
+    }
+    return merged;
   } catch (e) {
-    return [];
+    return [...PUBLISHED_ASSIGNMENTS_BASELINE];
   }
 }
 
 export function subscribeToAssignments(callback: (assignments: Assignment[]) => void): () => void {
-  // 1. Immediately emit local cache for instant UI rendering
+  // 1. Immediately emit merged local + baseline cache for instant UI rendering
   const local = getLocalAssignments();
-  if (local && local.length > 0) {
-    callback(local);
+  callback(local);
+
+  const handleLocalUpdate = () => {
+    callback(getLocalAssignments());
+  };
+
+  if (typeof window !== "undefined") {
+    window.addEventListener("syllabus_assignments_updated", handleLocalUpdate);
+    window.addEventListener("storage", (e) => {
+      if (e.key === ASSIGNMENTS_KEY) handleLocalUpdate();
+    });
   }
 
   // 2. Real-time Firestore sync
+  let unsubscribeFirestore: (() => void) | null = null;
   if (isFirebaseConfigured && db) {
     try {
       const q = query(collection(db, "assignments"));
-      const unsubscribe = onSnapshot(q, (snap) => {
-        const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as Assignment));
-        list.sort((a: Assignment, b: Assignment) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      unsubscribeFirestore = onSnapshot(q, (snap) => {
+        const remoteList = snap.docs.map(d => ({ ...d.data(), id: d.id } as Assignment));
+        const merged = mergeAssignmentsLists(PUBLISHED_ASSIGNMENTS_BASELINE, getLocalAssignments(), remoteList);
         if (typeof window !== "undefined") {
           try {
-            localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(list));
+            localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(merged));
           } catch (e) {}
         }
-        callback(list);
+        callback(merged);
       }, (err) => {
-        console.warn("Firestore assignments subscription failed, using local fallback:", err);
+        console.warn("Firestore assignments subscription failed, using merged fallback:", err);
         callback(getLocalAssignments());
       });
-      return unsubscribe;
     } catch (e) {
       console.warn("subscribeToAssignments setup error:", e);
     }
   }
 
-  callback(local);
-  return () => {};
+  return () => {
+    if (unsubscribeFirestore) unsubscribeFirestore();
+    if (typeof window !== "undefined") {
+      window.removeEventListener("syllabus_assignments_updated", handleLocalUpdate);
+    }
+  };
 }
 
 export async function getAllAssignments(): Promise<Assignment[]> {
   const localList = getLocalAssignments();
-  const hasLocal = localList.length > 0;
 
   if (isFirebaseConfigured && db) {
     try {
       const fetchPromise = getDocs(collection(db, "assignments")).then((snap) => {
         if (!snap.empty) {
-          const list = snap.docs.map((d: any) => ({ ...d.data(), id: d.id } as Assignment));
-          list.sort((a: Assignment, b: Assignment) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+          const remoteList = snap.docs.map((d: any) => ({ ...d.data(), id: d.id } as Assignment));
+          const merged = mergeAssignmentsLists(PUBLISHED_ASSIGNMENTS_BASELINE, localList, remoteList);
           if (typeof window !== "undefined") {
             try {
-              localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(list));
+              localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(merged));
             } catch (e) {}
           }
-          return list;
+          return merged;
         }
-        return [];
+        return localList;
       });
 
-      const timeoutMs = hasLocal ? 2500 : 8000;
-      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs));
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000));
       const res = await Promise.race([fetchPromise, timeoutPromise]);
       if (res && res.length > 0) {
         return res;
       }
     } catch (e) {
-      console.warn("Firestore assignments fetch failed, falling back to local:", e);
+      console.warn("Firestore assignments fetch failed, falling back to merged local:", e);
     }
   }
 
@@ -2618,15 +2782,15 @@ export async function saveAssignment(assignment: Assignment): Promise<void> {
   // 1. LocalStorage
   if (typeof window !== "undefined") {
     try {
-      const raw = localStorage.getItem(ASSIGNMENTS_KEY);
-      const list: Assignment[] = raw ? JSON.parse(raw) : [];
-      const idx = list.findIndex(a => a.id === assignment.id);
-      if (idx >= 0) {
-        list[idx] = assignment;
-      } else {
-        list.unshift(assignment);
+      const deletedIds = getDeletedAssignmentIds();
+      if (deletedIds.has(assignment.id)) {
+        deletedIds.delete(assignment.id);
+        localStorage.setItem(DELETED_ASSIGNMENTS_KEY, JSON.stringify(Array.from(deletedIds)));
       }
-      localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(list));
+      const existing = getLocalAssignments();
+      const merged = mergeAssignmentsLists(existing, [assignment]);
+      localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(merged));
+      window.dispatchEvent(new CustomEvent("syllabus_assignments_updated"));
     } catch (e) {
       console.error("Local save assignment error:", e);
     }
@@ -2646,11 +2810,16 @@ export async function deleteAssignment(assignmentId: string): Promise<void> {
   // 1. LocalStorage
   if (typeof window !== "undefined") {
     try {
+      const deletedIds = getDeletedAssignmentIds();
+      deletedIds.add(assignmentId);
+      localStorage.setItem(DELETED_ASSIGNMENTS_KEY, JSON.stringify(Array.from(deletedIds)));
+
       const raw = localStorage.getItem(ASSIGNMENTS_KEY);
       if (raw) {
         const list: Assignment[] = JSON.parse(raw);
         localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(list.filter(a => a.id !== assignmentId)));
       }
+      window.dispatchEvent(new CustomEvent("syllabus_assignments_updated"));
     } catch (e) {}
   }
 

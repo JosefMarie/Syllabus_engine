@@ -53,7 +53,7 @@ import CertificateVaultModal from "@/components/student/CertificateVaultModal";
 import { CourseCertificate } from "@/types/certificate";
 import { getStudentCertificates } from "@/lib/certificates";
 import { evaluateStudentAchievements } from "@/lib/achievements";
-import { getAllExamAttempts, getAllSubmissions, getChallengeSubmissions, getStudentSuggestions } from "@/lib/db";
+import { getStudentExamAttempts, getStudentSubmissions, getStudentChallengeSubmissions, getStudentSuggestions } from "@/lib/db";
 
 export default function CatalogPage() {
   const router = useRouter();
@@ -94,14 +94,12 @@ export default function CatalogPage() {
     getStudentCertificates(currentUser.uid).then(setStudentCertificates);
 
     Promise.all([
-      getAllExamAttempts(),
-      getAllSubmissions(),
-      getChallengeSubmissions(),
+      getStudentExamAttempts(currentUser.uid),
+      getStudentSubmissions(currentUser.uid),
+      getStudentChallengeSubmissions(currentUser.uid),
       getStudentSuggestions(currentUser.uid)
-    ]).then(([exams, subs, challenges, suggestions]) => {
-      const studentExams = exams.filter(e => e.studentUid === currentUser.uid);
-      const studentSubs = subs.filter(s => s.studentUid === currentUser.uid || s.submittedByUid === currentUser.uid);
-      const solvedChallenges = challenges.filter(c => c.studentUid === currentUser.uid && c.passed).length;
+    ]).then(([studentExams, studentSubs, challenges, suggestions]) => {
+      const solvedChallenges = challenges.filter(c => c.passed).length;
       const progress = getSubtopicProgress(currentUser.uid);
       const completedSubtopics = Object.values(progress).filter(Boolean).length;
 
@@ -114,7 +112,7 @@ export default function CatalogPage() {
         suggestionsCount: suggestions.length
       });
     }).catch(console.warn);
-  }, [currentUser]);
+  }, [currentUser?.uid]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
