@@ -530,6 +530,26 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
 
     setSavingGrade(true);
     try {
+      // 1. Immediately update local state for 0ms visual feedback
+      setAllSubmissionsList(prev => {
+        const resultMap = new Map(toApply.map(item => [item.submission.id, item.result]));
+        return prev.map(s => {
+          const res = resultMap.get(s.id);
+          if (res) {
+            return {
+              ...s,
+              score: res.suggestedScore,
+              feedback: res.feedbackDraft,
+              status: "graded",
+              gradedAt: new Date().toISOString(),
+              gradedBy: adminEmail || "Josef Marie (AI Evaluated)"
+            };
+          }
+          return s;
+        });
+      });
+
+      // 2. Persist each submission to Firestore
       for (const item of toApply) {
         if (!item.result) continue;
         const sub = item.submission;
@@ -556,6 +576,8 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
       }
 
       await loadAllData();
+      // Ensure the filter switches to 'all' so newly graded items remain visible
+      setStatusFilter("all");
       setIsBatchAiModalOpen(false);
       alert(`Successfully saved and released grades for ${toApply.length} submissions!`);
     } catch (err: any) {
@@ -886,10 +908,25 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
           {filteredCourseSubmissions.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[#334155] p-12 text-center bg-[#1E293B]/40">
               <Users className="mx-auto h-10 w-10 text-[#64748B] mb-2" />
-              <h3 className="text-sm font-bold text-white mb-1">No Submissions Found</h3>
+              <h3 className="text-sm font-bold text-white mb-1">
+                {statusFilter === "pending" && allSubmissionsList.some(s => s.status === "graded")
+                  ? "All Caught Up! No Pending Submissions"
+                  : "No Submissions Found"}
+              </h3>
               <p className="text-xs text-[#94A3B8] max-w-sm mx-auto">
-                No assignments have been submitted matching the selected course and status filters.
+                {statusFilter === "pending" && allSubmissionsList.some(s => s.status === "graded")
+                  ? "All student submissions matching this course have been graded. Switch the status filter above to 'All Statuses' or 'Graded' to review them."
+                  : "No assignments have been submitted matching the selected course and status filters."}
               </p>
+              {statusFilter !== "all" && (
+                <button
+                  type="button"
+                  onClick={() => setStatusFilter("all")}
+                  className="mt-4 inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4]/10 border border-[#06B6D4]/30 px-3.5 py-1.5 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4] hover:text-slate-950 transition-all"
+                >
+                  <span>View All Statuses ({allSubmissionsList.length})</span>
+                </button>
+              )}
             </div>
           ) : (
             <div className="rounded-2xl border border-[#334155] bg-[#1E293B] overflow-hidden shadow-xl">
