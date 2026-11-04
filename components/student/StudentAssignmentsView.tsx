@@ -6,6 +6,7 @@ import { StudentGroup } from "@/types/group";
 import { UserProfile } from "@/types/auth";
 import { Syllabus } from "@/types/syllabus";
 import { getAllAssignments, getStudentSubmissions, saveAssignmentSubmission, getStudentGroups, subscribeToAssignments } from "@/lib/db";
+import { isAllowedSubmissionFile, ACCEPT_FILE_ATTRIBUTE } from "@/lib/aiGrading";
 import { 
   FileText, 
   Upload, 
@@ -203,8 +204,16 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const formatCheck = isAllowedSubmissionFile(file.name);
+    if (!formatCheck.allowed) {
+      alert(formatCheck.reason);
+      e.target.value = "";
+      return;
+    }
+
     if (file.size > 5 * 1024 * 1024) {
       alert("File size exceeds 5MB limit. Please attach a smaller file.");
+      e.target.value = "";
       return;
     }
 
@@ -651,7 +660,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
               <div>
                 <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
-                  Attach Document or File (PDF, Code, ZIP, etc. Max 5MB)
+                  Attach Readable Document or Code File (PDF, DOCX, MD, TXT, JSON, CSV, Source Code, Image — Max 5MB, No .zip)
                 </label>
                 <div className="flex items-center space-x-3">
                   <label 
@@ -667,6 +676,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                     <span>{customFile ? "Change File" : "Choose File"}</span>
                     <input
                       type="file"
+                      accept={ACCEPT_FILE_ATTRIBUTE}
                       onClick={() => {
                         if (typeof window !== "undefined") {
                           (window as any).__SYLLABUS_FILE_PICKER_ACTIVE = true;
@@ -919,7 +929,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
               {activeAssignment.allowFileUpload && (
                 <div>
                   <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
-                    File Attachment (Code, PDF, or Document)
+                    File Attachment (PDF, DOCX, MD, TXT, JSON, CSV, Source Code, or Image — No .zip)
                   </label>
                   <div className="flex items-center space-x-3">
                     <label 
@@ -935,6 +945,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                       <span>{selectedFile ? "Replace File" : "Choose File (Max 5MB)"}</span>
                       <input
                         type="file"
+                        accept={ACCEPT_FILE_ATTRIBUTE}
                         onClick={() => {
                           if (typeof window !== "undefined") {
                             (window as any).__SYLLABUS_FILE_PICKER_ACTIVE = true;

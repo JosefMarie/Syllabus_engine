@@ -1,23 +1,31 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Assignment, AssignmentSubmission } from "@/types/assignment";
-import { decodeBase64ToText, isTextOrCodeFile } from "@/lib/aiGrading";
+import {
+  decodeBase64ToText,
+  isTextOrCodeFile,
+  isDocxFile,
+  isZipFile,
+  extractDocxTextFromBase64,
+  extractZipFilesFromBase64,
+  ExtractedArchiveEntry,
+} from "@/lib/aiGrading";
 import { 
   X, 
   FileText, 
   Download, 
   ZoomIn, 
   ZoomOut, 
-  Maximize2, 
-  Minimize2, 
   Copy, 
   Check, 
   Sparkles, 
   FileCode, 
   File, 
   ExternalLink,
-  Code2
+  Code2,
+  FolderArchive,
+  Loader2
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -43,6 +51,13 @@ export function SubmissionFileViewerModal({
   const [isCopied, setIsCopied] = useState(false);
   const [activeTab, setActiveTab] = useState<"file" | "text" | "instructions">("file");
 
+  const [docxText, setDocxText] = useState<string>("");
+  const [isLoadingDocx, setIsLoadingDocx] = useState<boolean>(false);
+
+  const [zipEntries, setZipEntries] = useState<ExtractedArchiveEntry[]>([]);
+  const [selectedZipFileIdx, setSelectedZipFileIdx] = useState<number>(0);
+  const [isLoadingZip, setIsLoadingZip] = useState<boolean>(false);
+
   const fileData = submission?.fileData;
   const fileName = fileData?.name || "Uploaded File";
   const fileType = fileData?.type || "";
@@ -52,6 +67,59 @@ export function SubmissionFileViewerModal({
   const isPdf = fileType.includes("pdf") || fileName.toLowerCase().endsWith(".pdf");
   const isImage = fileType.startsWith("image/") || /\.(png|jpe?g|gif|webp|svg)$/i.test(fileName);
   const isCodeOrText = isTextOrCodeFile(fileName, fileType);
+  const isDocx = isDocxFile(fileName, fileType);
+  const isZip = isZipFile(fileName, fileType);
+
+  // Set default tab when modal opens for a submission
+  useEffect(() => {
+    if (!submission) return;
+    if (submission.fileData) {
+      setActiveTab("file");
+    } else if (submission.contentMarkdown) {
+      setActiveTab("text");
+    }
+  }, [submission]);
+
+  // Extract Word (.docx) text in browser
+  useEffect(() => {
+    let cancelled = false;
+    if (isOpen && isDocx && base64Url) {
+      setIsLoadingDocx(true);
+      extractDocxTextFromBase64(base64Url)
+        .then((txt) => {
+          if (!cancelled) setDocxText(txt);
+        })
+        .finally(() => {
+          if (!cancelled) setIsLoadingDocx(false);
+        });
+    } else {
+      setDocxText("");
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, isDocx, base64Url]);
+
+  // Extract ZIP (.zip) files in browser for legacy submissions
+  useEffect(() => {
+    let cancelled = false;
+    if (isOpen && isZip && base64Url) {
+      setIsLoadingZip(true);
+      setSelectedZipFileIdx(0);
+      extractZipFilesFromBase64(base64Url)
+        .then((entries) => {
+          if (!cancelled) setZipEntries(entries);
+        })
+        .finally(() => {
+          if (!cancelled) setIsLoadingZip(false);
+        });
+    } else {
+      setZipEntries([]);
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, isZip, base64Url]);
 
   // Decoded text content if it's code or text
   const decodedText = useMemo(() => {
@@ -61,9 +129,18 @@ export function SubmissionFileViewerModal({
 
   if (!isOpen || !submission) return null;
 
+  const activeCopyText =
+    isCodeOrText
+      ? decodedText
+      : isDocx
+      ? docxText
+      : isZip && zipEntries[selectedZipFileIdx]
+      ? zipEntries[selectedZipFileIdx].content
+      : "";
+
   const handleCopyCode = () => {
-    if (decodedText) {
-      navigator.clipboard.writeText(decodedText);
+    if (activeCopyText) {
+      navigator.clipboard.writeText(activeCopyText);
       setIsCopied(true);
       setTimeout(() => setIsCopied(false), 2000);
     }
@@ -76,10 +153,12 @@ export function SubmissionFileViewerModal({
         <div className="flex items-center justify-between border-b border-slate-700/60 bg-[#1E293B]/90 px-5 py-3.5 backdrop-blur-md">
           <div className="flex items-center space-x-3 min-w-0">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-              {isPdf ? (
+              {isPdf || isDocx ? (
                 <FileText className="h-5 w-5" />
               ) : isCodeOrText ? (
                 <FileCode className="h-5 w-5" />
+              ) : isZip ? (
+                <FolderArchive className="h-5 w-5" />
               ) : (
                 <File className="h-5 w-5" />
               )}
@@ -138,7 +217,7 @@ export function SubmissionFileViewerModal({
                       : "text-slate-400 hover:text-white"
                   }`}
                 >
-                  Rubric
+                  Rubric / Questions
                 </button>
               )}
             </div>
@@ -204,6 +283,146 @@ export function SubmissionFileViewerModal({
                     className="w-full h-full flex-1 border-0"
                     title={fileName}
                   />
+                </div>
+              )}
+
+              {/* Word Document (.docx) Previewer */}
+              {isDocx && (
+                <div className="w-full h-full flex flex-col rounded-xl border border-slate-800 bg-[#0F172A] overflow-hidden">
+                  <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/70 px-4 py-2.5 text-xs">
+                    <div className="flex items-center space-x-2">
+                      <FileText className="h-4 w-4 text-cyan-400" />
+                      <span className="font-mono font-bold text-slate-200">{fileName}</span>
+                      <span className="rounded bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-400 border border-cyan-500/20">
+                        DOCX Document Reader
+                      </span>
+                    </div>
+                    {docxText && (
+                      <button
+                        onClick={handleCopyCode}
+                        className="inline-flex items-center space-x-1 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white transition-all"
+                      >
+                        {isCopied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                        <span>{isCopied ? "Copied" : "Copy Text"}</span>
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-auto p-6">
+                    {isLoadingDocx ? (
+                      <div className="flex items-center justify-center h-48 space-x-2 text-slate-400 text-xs">
+                        <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+                        <span>Extracting text from Word document...</span>
+                      </div>
+                    ) : docxText ? (
+                      <div className="max-w-4xl mx-auto whitespace-pre-wrap text-sm leading-relaxed text-slate-200 font-sans select-text">
+                        {docxText}
+                      </div>
+                    ) : (
+                      <div className="text-center text-xs text-slate-400 py-12">
+                        Could not extract text from this DOCX file. You can download it above.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* ZIP Archive Inspector (Unpacks legacy .zip submissions directly in-browser) */}
+              {isZip && (
+                <div className="w-full h-full flex flex-col rounded-xl border border-slate-800 bg-[#090D16] overflow-hidden">
+                  <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/70 px-4 py-2.5 text-xs">
+                    <div className="flex items-center space-x-2">
+                      <FolderArchive className="h-4 w-4 text-amber-400" />
+                      <span className="font-mono font-bold text-slate-200">{fileName}</span>
+                      <span className="rounded bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold text-amber-300 border border-amber-500/20">
+                        Unpacked {zipEntries.length} Readable File{zipEntries.length === 1 ? "" : "s"}
+                      </span>
+                    </div>
+                    {zipEntries[selectedZipFileIdx] && (
+                      <button
+                        onClick={handleCopyCode}
+                        className="inline-flex items-center space-x-1 rounded-lg border border-slate-700 bg-slate-800 px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white transition-all"
+                      >
+                        {isCopied ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
+                        <span>{isCopied ? "Copied" : "Copy File"}</span>
+                      </button>
+                    )}
+                  </div>
+
+                  {isLoadingZip ? (
+                    <div className="flex items-center justify-center h-64 space-x-2 text-slate-400 text-xs">
+                      <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+                      <span>Unpacking ZIP archive in browser...</span>
+                    </div>
+                  ) : zipEntries.length > 0 ? (
+                    <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+                      {/* File Explorer Sidebar */}
+                      <div className="w-full md:w-64 border-b md:border-b-0 md:border-r border-slate-800 bg-[#0D1322] overflow-y-auto p-2 space-y-1">
+                        <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                          Files Inside ZIP ({zipEntries.length})
+                        </div>
+                        {zipEntries.map((entry, idx) => (
+                          <button
+                            key={entry.path}
+                            onClick={() => setSelectedZipFileIdx(idx)}
+                            className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-mono transition-all flex items-center justify-between ${
+                              selectedZipFileIdx === idx
+                                ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
+                                : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
+                            }`}
+                          >
+                            <span className="truncate" title={entry.path}>
+                              {entry.path}
+                            </span>
+                            <span className="text-[10px] text-slate-500 ml-2 shrink-0">
+                              {(entry.size / 1024).toFixed(1)}K
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+
+                      {/* Code / Text Content Viewer */}
+                      <div className="flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed text-slate-300 select-text">
+                        {zipEntries[selectedZipFileIdx] && (
+                          <>
+                            <div className="mb-3 pb-2 border-b border-slate-800 flex items-center justify-between text-xs text-cyan-400">
+                              <span className="font-bold">{zipEntries[selectedZipFileIdx].path}</span>
+                              <span className="text-slate-500">
+                                {zipEntries[selectedZipFileIdx].content.split("\n").length} lines
+                              </span>
+                            </div>
+                            <pre className="whitespace-pre">
+                              {zipEntries[selectedZipFileIdx].content.split("\n").map((line, idx) => (
+                                <div key={idx} className="flex hover:bg-slate-800/30 px-1 rounded">
+                                  <span className="w-10 shrink-0 text-right pr-4 text-slate-600 select-none">
+                                    {idx + 1}
+                                  </span>
+                                  <span className="flex-1 text-slate-200">{line || " "}</span>
+                                </div>
+                              ))}
+                            </pre>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-center p-8">
+                      <FolderArchive className="h-14 w-14 text-slate-600 mb-3" />
+                      <h4 className="text-sm font-bold text-white mb-1">{fileName}</h4>
+                      <p className="text-xs text-slate-400 max-w-md mb-4">
+                        No readable source code or text files were found inside this ZIP archive (it may contain only binary files or folders).
+                      </p>
+                      {base64Url && (
+                        <a
+                          href={base64Url}
+                          download={fileName}
+                          className="inline-flex items-center space-x-2 rounded-xl bg-cyan-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-400 transition-all shadow-lg"
+                        >
+                          <Download className="h-4 w-4" />
+                          <span>Download {fileName}</span>
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -278,7 +497,7 @@ export function SubmissionFileViewerModal({
               )}
 
               {/* Other file type fallback */}
-              {!isPdf && !isCodeOrText && !isImage && (
+              {!isPdf && !isCodeOrText && !isImage && !isDocx && !isZip && (
                 <div className="flex flex-col items-center justify-center h-full text-center p-8">
                   <File className="h-16 w-16 text-slate-600 mb-3" />
                   <h4 className="text-base font-bold text-white mb-1">{fileName}</h4>

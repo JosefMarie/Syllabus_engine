@@ -410,16 +410,35 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
   const handleViewSubmissions = async (asg: Assignment) => {
     setSelectedAssignment(asg);
     setActiveTab("submissions");
-    setLoadingSubmissions(true);
+    // Immediately populate from real-time allSubmissionsList if available
+    const cached = allSubmissionsList.filter(s => s.assignmentId === asg.id);
+    if (cached.length > 0) {
+      setSubmissions(cached);
+      setLoadingSubmissions(false);
+    } else {
+      setLoadingSubmissions(true);
+    }
     try {
       const data = await getSubmissionsForAssignment(asg.id);
-      setSubmissions(data);
+      if (data.length > 0 || cached.length === 0) {
+        setSubmissions(data);
+      }
     } catch (err) {
       console.error("Error loading submissions:", err);
     } finally {
       setLoadingSubmissions(false);
     }
   };
+
+  // Keep selectedAssignment's submissions list in sync with real-time allSubmissionsList
+  useEffect(() => {
+    if (selectedAssignment) {
+      const matching = allSubmissionsList.filter(s => s.assignmentId === selectedAssignment.id);
+      if (matching.length > 0) {
+        setSubmissions(matching);
+      }
+    }
+  }, [allSubmissionsList, selectedAssignment]);
 
   const openGradingModal = (sub: AssignmentSubmission) => {
     setGradingSubmission(sub);
@@ -890,17 +909,27 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                 </select>
               </div>
 
-              {filteredCourseSubmissions.filter(s => s.status !== "graded").length > 0 && (
+              {filteredCourseSubmissions.filter(s => s.status !== "graded").length > 0 ? (
                 <button
                   type="button"
                   onClick={() => handleStartBatchAi(filteredCourseSubmissions.filter(s => s.status !== "graded"))}
                   className="inline-flex items-center space-x-1.5 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-3.5 py-1.5 text-xs font-bold text-amber-300 hover:from-amber-500/30 hover:to-orange-500/30 transition-all shadow-sm"
-                  title="Auto-grade all pending submissions matching current filters using Gemini AI"
+                  title="Auto-grade all pending submissions matching current filters using Question-by-Question AI Rubric"
                 >
                   <Sparkles className="h-3.5 w-3.5 text-amber-400" />
                   <span>Batch Auto-Grade ({filteredCourseSubmissions.filter(s => s.status !== "graded").length})</span>
                 </button>
-              )}
+              ) : filteredCourseSubmissions.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => handleStartBatchAi(filteredCourseSubmissions)}
+                  className="inline-flex items-center space-x-1.5 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-3.5 py-1.5 text-xs font-bold text-amber-300 hover:from-amber-500/30 hover:to-orange-500/30 transition-all shadow-sm"
+                  title="Re-evaluate all displayed submissions using Question-by-Question AI Rubric"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                  <span>Re-Grade All with AI ({filteredCourseSubmissions.length})</span>
+                </button>
+              ) : null}
             </div>
           </div>
 
@@ -1430,10 +1459,31 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
               <h2 className="text-base font-extrabold text-white">{selectedAssignment.title}</h2>
             </div>
 
-            <div className="flex items-center space-x-2">
+            <div className="flex flex-wrap items-center gap-3">
               <span className="text-xs font-mono text-[#94A3B8]">
                 {submissions.length} Submissions ({submissions.filter(s => s.status === "graded").length} Graded)
               </span>
+              {submissions.filter(s => s.status !== "graded").length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => handleStartBatchAi(submissions.filter(s => s.status !== "graded"))}
+                  className="inline-flex items-center space-x-1.5 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-3.5 py-1.5 text-xs font-bold text-amber-300 hover:from-amber-500/30 hover:to-orange-500/30 transition-all shadow-sm"
+                  title="Auto-grade all pending submissions for this assignment using Question-by-Question AI Rubric"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                  <span>Batch Auto-Grade ({submissions.filter(s => s.status !== "graded").length})</span>
+                </button>
+              ) : submissions.length > 0 ? (
+                <button
+                  type="button"
+                  onClick={() => handleStartBatchAi(submissions)}
+                  className="inline-flex items-center space-x-1.5 rounded-xl border border-amber-500/40 bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-3.5 py-1.5 text-xs font-bold text-amber-300 hover:from-amber-500/30 hover:to-orange-500/30 transition-all shadow-sm"
+                  title="Re-evaluate all submissions for this assignment using Question-by-Question AI Rubric"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                  <span>Re-Grade All with AI ({submissions.length})</span>
+                </button>
+              ) : null}
             </div>
           </div>
 
