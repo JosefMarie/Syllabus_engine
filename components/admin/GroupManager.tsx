@@ -17,7 +17,8 @@ import {
   getAllUserProfiles,
   saveGroupEvaluation,
   getAllGroupEvaluations,
-  deleteGroupEvaluation
+  deleteGroupEvaluation,
+  subscribeToGroups
 } from "@/lib/db";
 import { generatePresentationFeedback } from "@/lib/gemini";
 import { 
@@ -147,7 +148,20 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
   const [generatingAuto, setGeneratingAuto] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+    const unsub = subscribeToGroups((allG) => {
+      if (isMounted) {
+        setGroups(allG);
+        setLoading(false);
+      }
+    });
+
     loadAllData();
+
+    return () => {
+      isMounted = false;
+      unsub();
+    };
   }, []);
 
   const loadAllData = async () => {

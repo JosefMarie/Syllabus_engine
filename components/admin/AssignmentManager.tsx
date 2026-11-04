@@ -13,7 +13,11 @@ import {
   getAllSubmissions,
   saveAssignmentSubmission,
   getAllGroups,
-  gradeGroupSubmission
+  gradeGroupSubmission,
+  subscribeToAssignments,
+  subscribeToSubmissions,
+  subscribeToGroups,
+  getLocalAssignments
 } from "@/lib/db";
 import { parseAssignmentWithGemini } from "@/lib/gemini";
 import { gradeSubmissionWithGemini, AiGradingResult } from "@/lib/aiGrading";
@@ -39,7 +43,8 @@ import {
   ExternalLink,
   BookOpen,
   Filter,
-  Crown
+  Crown,
+  RefreshCw
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -201,17 +206,47 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
   }, [targetableGroups, formTargetGroupId]);
 
   useEffect(() => {
-    loadAllData();
+    let isMounted = true;
+
+    // Real-time listener for assignments
+    const unsubAssignments = subscribeToAssignments((data) => {
+      if (isMounted) {
+        setAssignments(data);
+        setLoading(false);
+      }
+    });
+
+    // Real-time listener for submissions
+    const unsubSubmissions = subscribeToSubmissions((subs) => {
+      if (isMounted) {
+        setAllSubmissionsList(subs);
+      }
+    });
+
+    // Real-time listener for groups
+    const unsubGroups = subscribeToGroups((groups) => {
+      if (isMounted) {
+        setCourseGroups(groups);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsubAssignments();
+      unsubSubmissions();
+      unsubGroups();
+    };
   }, []);
 
   const loadAllData = async () => {
+    setLoading(true);
     try {
       const [asgData, allSubs, allG] = await Promise.all([
         getAllAssignments().catch(() => []),
         getAllSubmissions().catch(() => []),
         getAllGroups().catch(() => [])
       ]);
-      if (asgData && asgData.length > 0) setAssignments(asgData);
+      if (asgData) setAssignments(asgData);
       if (allSubs) setAllSubmissionsList(allSubs);
       if (allG) setCourseGroups(allG);
     } catch (err) {
@@ -623,16 +658,27 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
           )}
         </div>
 
-        <button
-          onClick={() => {
-            resetForm();
-            setActiveTab("create");
-          }}
-          className="inline-flex items-center space-x-2 rounded-xl bg-gradient-to-r from-[#06B6D4] to-[#3B82F6] px-4 py-2 text-xs font-bold text-slate-950 shadow-lg hover:brightness-110 transition-all shrink-0"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Create New Assignment</span>
-        </button>
+        <div className="flex items-center space-x-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => loadAllData()}
+            className="p-2 rounded-xl bg-[#1E293B] border border-[#334155] text-[#94A3B8] hover:text-white hover:border-[#06B6D4] transition-all shadow-md"
+            title="Refresh Assignments & Submissions from Firestore"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin text-[#06B6D4]" : ""}`} />
+          </button>
+
+          <button
+            onClick={() => {
+              resetForm();
+              setActiveTab("create");
+            }}
+            className="inline-flex items-center space-x-2 rounded-xl bg-gradient-to-r from-[#06B6D4] to-[#3B82F6] px-4 py-2 text-xs font-bold text-slate-950 shadow-lg hover:brightness-110 transition-all shrink-0"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Create New Assignment</span>
+          </button>
+        </div>
       </div>
 
       {/* 1. LIST VIEW (OFFICIAL INSTRUCTOR ASSIGNMENTS) */}

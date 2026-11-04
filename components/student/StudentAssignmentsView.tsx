@@ -5,7 +5,7 @@ import { Assignment, AssignmentSubmission } from "@/types/assignment";
 import { StudentGroup } from "@/types/group";
 import { UserProfile } from "@/types/auth";
 import { Syllabus } from "@/types/syllabus";
-import { getAllAssignments, getStudentSubmissions, saveAssignmentSubmission, getStudentGroups } from "@/lib/db";
+import { getAllAssignments, getStudentSubmissions, saveAssignmentSubmission, getStudentGroups, subscribeToAssignments } from "@/lib/db";
 import { 
   FileText, 
   Upload, 
@@ -77,15 +77,69 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
         : (myGroups.length > 0 ? myGroups[0] : null))
     : null;
 
+  // Helper functions for matching target cohorts and aliases
+  const isTradeMatch = (targetTradeId?: string, studentTradeId?: string) => {
+    if (!targetTradeId || targetTradeId === "all") return true;
+    if (!studentTradeId || studentTradeId === "all") return true;
+    if (targetTradeId === studentTradeId) return true;
+    // Match software engineering & software development aliases
+    const isSoftware1 = targetTradeId === "trade-sw-eng" || targetTradeId === "trade-1785861602651";
+    const isSoftware2 = studentTradeId === "trade-sw-eng" || studentTradeId === "trade-1785861602651";
+    if (isSoftware1 && isSoftware2) return true;
+    return false;
+  };
+
+  const isLevelMatch = (targetLevel?: string, studentLevel?: string) => {
+    if (!targetLevel || targetLevel === "all") return true;
+    if (!studentLevel || studentLevel === "all") return true;
+    return targetLevel.toLowerCase().trim() === studentLevel.toLowerCase().trim();
+  };
+
   // Available courses filtered by student level/trade
   const studentCourses = syllabi.filter(s => {
-    const matchesLevel = !s.level || s.level === currentUser.level;
-    const matchesTrade = !s.tradeId || s.tradeId === "all" || !currentUser.tradeId || s.tradeId === currentUser.tradeId;
+    const matchesLevel = isLevelMatch(s.level, currentUser.level);
+    const matchesTrade = isTradeMatch(s.tradeId, currentUser.tradeId);
     return matchesLevel && matchesTrade;
   });
 
+  const filterAssignments = (allList: Assignment[], groupsList: StudentGroup[]) => {
+    return allList.filter(a => {
+      if (a.status !== "published") return false;
+      const matchesLevel = isLevelMatch(a.level, currentUser.level);
+      const matchesTrade = isTradeMatch(a.tradeId, currentUser.tradeId);
+      if (!matchesLevel || !matchesTrade) return false;
+
+      // If targeted to a specific group, only members of that group receive this assignment
+      if (a.submissionType === "group" && a.targetGroupId && a.targetGroupId !== "all_groups") {
+        const isMemberOfGroup = groupsList.some(g => g.id === a.targetGroupId);
+        if (!isMemberOfGroup) return false;
+      }
+
+      return true;
+    });
+  };
+
   useEffect(() => {
-    loadData(true);
+    let isMounted = true;
+    let localGroups: StudentGroup[] = [];
+
+    const unsub = subscribeToAssignments((allAsg) => {
+      if (isMounted) {
+        setAssignments(filterAssignments(allAsg, localGroups));
+        setLoading(false);
+      }
+    });
+
+    loadData(true).then((grp) => {
+      if (isMounted && grp) {
+        localGroups = grp;
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      unsub();
+    };
   }, [currentUser?.uid, currentUser?.level, currentUser?.tradeId]);
 
   const loadData = async (isInitial: boolean = false) => {
@@ -100,22 +154,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
         getStudentGroups(currentUser.uid)
       ]);
 
-      // Filter teacher assignments relevant for this student
-      const relevant = allAsg.filter(a => {
-        if (a.status !== "published") return false;
-        const matchesLevel = a.level === "all" || a.level === currentUser.level;
-        const matchesTrade = a.tradeId === "all" || !currentUser.tradeId || a.tradeId === currentUser.tradeId;
-        if (!matchesLevel || !matchesTrade) return false;
-
-        // If targeted to a specific group, only members of that group receive this assignment
-        if (a.submissionType === "group" && a.targetGroupId && a.targetGroupId !== "all_groups") {
-          const isMemberOfGroup = groupsData.some(g => g.id === a.targetGroupId);
-          if (!isMemberOfGroup) return false;
-        }
-
-        return true;
-      });
-
+      const relevant = filterAssignments(allAsg, groupsData);
       setAssignments(relevant);
       setMyGroups(groupsData);
 
@@ -132,8 +171,10 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
       setSubmissions(subMap);
       setIndependentSubmissions(indep);
+      return groupsData;
     } catch (err) {
       console.error("Error loading student assignments:", err);
+      return [];
     } finally {
       setLoading(false);
     }

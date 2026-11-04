@@ -2534,32 +2534,75 @@ import { Assignment, AssignmentSubmission } from "@/types/assignment";
 const ASSIGNMENTS_KEY = "syllabus_platform_assignments_v1";
 const SUBMISSIONS_KEY = "syllabus_platform_submissions_v1";
 
-export async function getAllAssignments(): Promise<Assignment[]> {
-  // 1. Check local cache first
-  let localList: Assignment[] = [];
-  if (typeof window !== "undefined") {
-    try {
-      const raw = localStorage.getItem(ASSIGNMENTS_KEY);
-      if (raw) localList = JSON.parse(raw);
-    } catch (e) {}
+export function getLocalAssignments(): Assignment[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(ASSIGNMENTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export function subscribeToAssignments(callback: (assignments: Assignment[]) => void): () => void {
+  // 1. Immediately emit local cache for instant UI rendering
+  const local = getLocalAssignments();
+  if (local && local.length > 0) {
+    callback(local);
   }
 
-  // 2. Try Firestore if configured
+  // 2. Real-time Firestore sync
   if (isFirebaseConfigured && db) {
     try {
-      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500));
-      const fetchPromise = getDocs(collection(db, "assignments"));
-      const snap: any = await Promise.race([fetchPromise, timeoutPromise]);
-
-      if (snap && !snap.empty) {
-        const list = snap.docs.map((d: any) => ({ ...d.data(), id: d.id } as Assignment));
+      const q = query(collection(db, "assignments"));
+      const unsubscribe = onSnapshot(q, (snap) => {
+        const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as Assignment));
         list.sort((a: Assignment, b: Assignment) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
         if (typeof window !== "undefined") {
           try {
             localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(list));
           } catch (e) {}
         }
-        return list;
+        callback(list);
+      }, (err) => {
+        console.warn("Firestore assignments subscription failed, using local fallback:", err);
+        callback(getLocalAssignments());
+      });
+      return unsubscribe;
+    } catch (e) {
+      console.warn("subscribeToAssignments setup error:", e);
+    }
+  }
+
+  callback(local);
+  return () => {};
+}
+
+export async function getAllAssignments(): Promise<Assignment[]> {
+  const localList = getLocalAssignments();
+  const hasLocal = localList.length > 0;
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const fetchPromise = getDocs(collection(db, "assignments")).then((snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map((d: any) => ({ ...d.data(), id: d.id } as Assignment));
+          list.sort((a: Assignment, b: Assignment) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(list));
+            } catch (e) {}
+          }
+          return list;
+        }
+        return [];
+      });
+
+      const timeoutMs = hasLocal ? 2500 : 8000;
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs));
+      const res = await Promise.race([fetchPromise, timeoutPromise]);
+      if (res && res.length > 0) {
+        return res;
       }
     } catch (e) {
       console.warn("Firestore assignments fetch failed, falling back to local:", e);
@@ -2697,33 +2740,72 @@ export async function saveAssignmentSubmission(submission: AssignmentSubmission)
   }
 }
 
-export async function getAllSubmissions(): Promise<AssignmentSubmission[]> {
-  // 1. Fast local cache
-  let localList: AssignmentSubmission[] = [];
-  if (typeof window !== "undefined") {
-    try {
-      const raw = localStorage.getItem(SUBMISSIONS_KEY);
-      if (raw) localList = JSON.parse(raw);
-    } catch (e) {}
+export function getLocalSubmissions(): AssignmentSubmission[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(SUBMISSIONS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
   }
+}
 
-  // 2. Fetch from Firestore
+export function subscribeToSubmissions(callback: (submissions: AssignmentSubmission[]) => void): () => void {
+  const local = getLocalSubmissions();
+  if (local && local.length > 0) callback(local);
+
   if (isFirebaseConfigured && db) {
     try {
-      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500));
-      const fetchPromise = getDocs(collection(db, "submissions"));
-      const snap: any = await Promise.race([fetchPromise, timeoutPromise]);
-
-      if (snap && !snap.empty) {
-        const list = snap.docs.map((d: any) => ({ ...d.data(), id: d.id } as AssignmentSubmission));
-        list.sort((a: AssignmentSubmission, b: AssignmentSubmission) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
+      const q = query(collection(db, "submissions"));
+      const unsubscribe = onSnapshot(q, (snap) => {
+        const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as AssignmentSubmission));
+        list.sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
         if (typeof window !== "undefined") {
           try {
             localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(list));
           } catch (e) {}
         }
-        return list;
-      }
+        callback(list);
+      }, (err) => {
+        console.warn("Firestore submissions subscription failed:", err);
+        callback(getLocalSubmissions());
+      });
+      return unsubscribe;
+    } catch (e) {
+      console.warn("subscribeToSubmissions error:", e);
+    }
+  }
+
+  callback(local);
+  return () => {};
+}
+
+export async function getAllSubmissions(): Promise<AssignmentSubmission[]> {
+  // 1. Fast local cache
+  const localList = getLocalSubmissions();
+  const hasLocal = localList.length > 0;
+
+  // 2. Fetch from Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      const fetchPromise = getDocs(collection(db, "submissions")).then((snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map((d: any) => ({ ...d.data(), id: d.id } as AssignmentSubmission));
+          list.sort((a: AssignmentSubmission, b: AssignmentSubmission) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(list));
+            } catch (e) {}
+          }
+          return list;
+        }
+        return [];
+      });
+
+      const timeoutMs = hasLocal ? 2500 : 8000;
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs));
+      const res = await Promise.race([fetchPromise, timeoutPromise]);
+      if (res && res.length > 0) return res;
     } catch (e) {
       console.warn("Firestore getAllSubmissions error:", e);
     }
@@ -2743,6 +2825,46 @@ export async function getSubmissionsForCourse(courseCode: string): Promise<Assig
 
 const GROUPS_KEY = "syllabus_platform_groups_v1";
 
+export function getLocalGroups(): StudentGroup[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(GROUPS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+export function subscribeToGroups(callback: (groups: StudentGroup[]) => void): () => void {
+  const local = getLocalGroups();
+  if (local && local.length > 0) callback(local);
+
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(collection(db, "groups"));
+      const unsubscribe = onSnapshot(q, (snap) => {
+        const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as StudentGroup));
+        list.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(GROUPS_KEY, JSON.stringify(list));
+          } catch (e) {}
+        }
+        callback(list);
+      }, (err) => {
+        console.warn("Firestore groups subscription failed:", err);
+        callback(getLocalGroups());
+      });
+      return unsubscribe;
+    } catch (e) {
+      console.warn("subscribeToGroups error:", e);
+    }
+  }
+
+  callback(local);
+  return () => {};
+}
+
 // Helper: generate friendly join code (e.g., "GRP-782")
 export function generateGroupJoinCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -2755,31 +2877,30 @@ export function generateGroupJoinCode(): string {
 
 export async function getAllGroups(): Promise<StudentGroup[]> {
   // 1. Fast local cache
-  let localList: StudentGroup[] = [];
-  if (typeof window !== "undefined") {
-    try {
-      const raw = localStorage.getItem(GROUPS_KEY);
-      if (raw) localList = JSON.parse(raw);
-    } catch (e) {}
-  }
+  const localList = getLocalGroups();
+  const hasLocal = localList.length > 0;
 
   // 2. Fetch from Firestore
   if (isFirebaseConfigured && db) {
     try {
-      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500));
-      const fetchPromise = getDocs(collection(db, "groups"));
-      const snap: any = await Promise.race([fetchPromise, timeoutPromise]);
-
-      if (snap && !snap.empty) {
-        const list = snap.docs.map((d: any) => ({ ...d.data(), id: d.id } as StudentGroup));
-        list.sort((a: StudentGroup, b: StudentGroup) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem(GROUPS_KEY, JSON.stringify(list));
-          } catch (e) {}
+      const fetchPromise = getDocs(collection(db, "groups")).then((snap) => {
+        if (!snap.empty) {
+          const list = snap.docs.map((d: any) => ({ ...d.data(), id: d.id } as StudentGroup));
+          list.sort((a: StudentGroup, b: StudentGroup) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+          if (typeof window !== "undefined") {
+            try {
+              localStorage.setItem(GROUPS_KEY, JSON.stringify(list));
+            } catch (e) {}
+          }
+          return list;
         }
-        return list;
-      }
+        return [];
+      });
+
+      const timeoutMs = hasLocal ? 2500 : 8000;
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), timeoutMs));
+      const res = await Promise.race([fetchPromise, timeoutPromise]);
+      if (res && res.length > 0) return res;
     } catch (e) {
       console.warn("Firestore getAllGroups error, using local fallback:", e);
     }

@@ -50,7 +50,10 @@ if (typeof window !== "undefined" || isFirebaseConfigured) {
             "syllabus_platform_trades_init_v1",
             "syllabus_platform_progress_v1",
             "syllabus_platform_exams_v1",
-            "syllabus_platform_exam_attempts_v1"
+            "syllabus_platform_exam_attempts_v1",
+            "syllabus_platform_assignments_v1",
+            "syllabus_platform_submissions_v1",
+            "syllabus_platform_groups_v1"
           ]);
 
           const keysToRemove: string[] = [];
