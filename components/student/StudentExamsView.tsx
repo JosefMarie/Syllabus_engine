@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import { 
   Exam, 
   ExamQuestion, 
@@ -17,7 +17,9 @@ import {
   calculateAutoGrade,
   saveLiveProctoringSession,
   subscribeToStudentLiveSession,
-  deleteLiveExamSession
+  deleteLiveExamSession,
+  subscribeToExams,
+  subscribeToAllExamAttempts
 } from "@/lib/db";
 import { 
   FileQuestion, 
@@ -42,7 +44,8 @@ import {
   Sparkles,
   Maximize2,
   Minimize2,
-  Play
+  Play,
+  RefreshCw
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -102,13 +105,91 @@ interface StudentExamsViewProps {
 }
 
 export default function StudentExamsView({ currentUser, syllabi = [] }: StudentExamsViewProps) {
-  const [exams, setExams] = useState<Exam[]>([]);
+  const [rawExams, setRawExams] = useState<Exam[]>([]);
   const [myAttempts, setMyAttempts] = useState<ExamAttempt[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
 
   // Filters
+  const [selectedLevelFilter, setSelectedLevelFilter] = useState<string>("my_level");
   const [filterType, setFilterType] = useState<"all" | "quiz" | "exam">("all");
   const [filterCourse, setFilterCourse] = useState("all");
+
+  // Helper functions for matching target cohorts and aliases
+  const isTradeMatch = (targetTradeId?: string, studentTradeId?: string) => {
+    if (!targetTradeId || targetTradeId === "all") return true;
+    if (!studentTradeId || studentTradeId === "all") return true;
+    if (targetTradeId === studentTradeId) return true;
+    const isSoftware1 = targetTradeId === "trade-sw-eng" || targetTradeId === "trade-1785861602651" || targetTradeId.toLowerCase().includes("software");
+    const isSoftware2 = studentTradeId === "trade-sw-eng" || studentTradeId === "trade-1785861602651" || studentTradeId.toLowerCase().includes("software");
+    if (isSoftware1 && isSoftware2) return true;
+    return false;
+  };
+
+  const isLevelMatch = (targetLevel?: string, studentLevel?: string) => {
+    if (!targetLevel || targetLevel === "all") return true;
+    if (!studentLevel || studentLevel === "all") return true;
+    return targetLevel.toLowerCase().trim() === studentLevel.toLowerCase().trim();
+  };
+
+  // Trade-matched published exams
+  const tradeMatchedExams: Exam[] = useMemo(() => {
+    return rawExams.filter((e: Exam) => {
+      if (e.status !== "published") return false;
+      return isTradeMatch(e.tradeId, currentUser.tradeId);
+    });
+  }, [rawExams, currentUser?.tradeId]);
+
+  // Exams strictly matching the student's level or enrolled courses
+  const myLevelExams: Exam[] = useMemo(() => {
+    return tradeMatchedExams.filter((e: Exam) => {
+      if (isLevelMatch(e.level, currentUser.level)) return true;
+      if (e.courseCode && syllabi.some(s => s.courseCode === e.courseCode && isLevelMatch(s.level, currentUser.level))) {
+        return true;
+      }
+      return false;
+    });
+  }, [tradeMatchedExams, currentUser?.level, syllabi]);
+
+  // If the student's registered level has 0 exams (e.g. registered with Level 3),
+  // automatically fallback to "all" so they are never stranded on an empty screen.
+  const effectiveLevelFilter =
+    selectedLevelFilter === "my_level" && myLevelExams.length === 0 && tradeMatchedExams.length > 0
+      ? "all"
+      : selectedLevelFilter;
+
+  const levelMatchedExams: Exam[] = useMemo(() => {
+    if (effectiveLevelFilter === "all") {
+      return tradeMatchedExams;
+    }
+    if (effectiveLevelFilter === "my_level") {
+      return myLevelExams;
+    }
+    return tradeMatchedExams.filter((e: Exam) => isLevelMatch(e.level, effectiveLevelFilter));
+  }, [tradeMatchedExams, myLevelExams, effectiveLevelFilter]);
+
+  // Final filtered list by type & course
+  const filteredExams: Exam[] = useMemo(() => {
+    return levelMatchedExams.filter((ex: Exam) => {
+      if (filterType !== "all" && ex.type !== filterType) return false;
+      if (filterCourse !== "all" && ex.courseCode !== filterCourse) return false;
+      return true;
+    });
+  }, [levelMatchedExams, filterType, filterCourse]);
+
+  // Available courses across syllabi and exams
+  const availableCourses: { code: string; label: string }[] = useMemo(() => {
+    const map = new Map<string, string>();
+    syllabi.forEach(s => {
+      if (s.courseCode) map.set(s.courseCode, `${s.courseCode} - ${s.title}`);
+    });
+    tradeMatchedExams.forEach((e: Exam) => {
+      if (e.courseCode && !map.has(e.courseCode)) {
+        map.set(e.courseCode, `${e.courseCode} - ${e.courseTitle || e.title}`);
+      }
+    });
+    return Array.from(map.entries()).map(([code, label]) => ({ code, label }));
+  }, [syllabi, tradeMatchedExams]);
 
   // Active Exam Hall Modal State
   const [activeExam, setActiveExam] = useState<Exam | null>(null);
@@ -285,8 +366,37 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    let isMounted = true;
+
+    // 1. Real-time live Firestore subscription for exams
+    const unsubExams = subscribeToExams((freshExams) => {
+      if (!isMounted) return;
+      setRawExams(freshExams);
+      setLoading(false);
+    });
+
+    // 2. Real-time live Firestore subscription for attempts
+    const unsubAttempts = subscribeToAllExamAttempts((freshAttempts) => {
+      if (!isMounted) return;
+      const mine = freshAttempts.filter(a => a.studentUid === currentUser.uid);
+      setMyAttempts(mine);
+    });
+
+    // 3. Initial load & local cache retrieval
     loadData();
+
+    return () => {
+      isMounted = false;
+      unsubExams();
+      unsubAttempts();
+    };
   }, [currentUser?.uid]);
+
+  const handleManualSync = async () => {
+    setSyncing(true);
+    await loadData();
+    setTimeout(() => setSyncing(false), 500);
+  };
 
   const submitInterruptedExpiredAttempt = async (
     saved: ActiveExamSessionBackup,
@@ -339,18 +449,12 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
     // 1. Instant Cache Load: Display local cached exams and attempts in 0ms so slow internet never blocks student
     if (typeof window !== "undefined") {
       try {
-        const rawExams = localStorage.getItem("syllabus_platform_exams_v1");
+        const cachedRawExams = localStorage.getItem("syllabus_platform_exams_v1");
         const studentAttemptsKey = `syllabus_platform_exam_attempts_v1_${currentUser.uid}`;
         const rawAttempts = localStorage.getItem(studentAttemptsKey) || localStorage.getItem("syllabus_platform_exam_attempts_v1");
-        if (rawExams) {
-          const cachedAll: Exam[] = JSON.parse(rawExams);
-          const cachedVisible = cachedAll.filter(e => {
-            if (e.status !== "published") return false;
-            const matchesLevel = e.level === "all" || !currentUser.level || e.level === currentUser.level;
-            const matchesTrade = e.tradeId === "all" || !currentUser.tradeId || e.tradeId === currentUser.tradeId;
-            return matchesLevel && matchesTrade;
-          });
-          setExams(cachedVisible);
+        if (cachedRawExams) {
+          const cachedAll: Exam[] = JSON.parse(cachedRawExams);
+          setRawExams(cachedAll);
           if (rawAttempts) {
             const cachedAttempts: ExamAttempt[] = JSON.parse(rawAttempts);
             setMyAttempts(cachedAttempts.filter(a => a.studentUid === currentUser.uid));
@@ -376,22 +480,13 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
       }
 
       const [allExams, attemptsList] = result;
-
-      // Only published exams matching student's level and trade
-      const visible = allExams.filter(e => {
-        if (e.status !== "published") return false;
-        const matchesLevel = e.level === "all" || !currentUser.level || e.level === currentUser.level;
-        const matchesTrade = e.tradeId === "all" || !currentUser.tradeId || e.tradeId === currentUser.tradeId;
-        return matchesLevel && matchesTrade;
-      });
-
-      setExams(visible);
+      setRawExams(allExams);
       setMyAttempts(attemptsList);
 
       // Check for an interrupted session saved in localStorage
       const savedSession = getActiveSession(currentUser.uid);
       if (savedSession) {
-        const targetExam = visible.find(e => e.id === savedSession.examId) || allExams.find(e => e.id === savedSession.examId);
+        const targetExam = allExams.find(e => e.id === savedSession.examId);
         if (targetExam) {
           const now = Date.now();
           const lastSavedMs = new Date(savedSession.lastSavedAt).getTime();
@@ -927,17 +1022,10 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
   // Open Review of Past Attempt
   const handleOpenReview = (attempt: ExamAttempt) => {
-    const parentExam = exams.find(e => e.id === attempt.examId) || null;
+    const parentExam = rawExams.find(e => e.id === attempt.examId) || null;
     setReviewAttempt(attempt);
     setReviewExam(parentExam);
   };
-
-  // Filtered Exams
-  const filteredExams = exams.filter(ex => {
-    if (filterType !== "all" && ex.type !== filterType) return false;
-    if (filterCourse !== "all" && ex.courseCode !== filterCourse) return false;
-    return true;
-  });
 
   if (loading) {
     return (
@@ -951,7 +1039,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#334155] pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#334155] pb-5">
         <div>
           <h2 className="text-base font-extrabold text-white flex items-center space-x-2">
             <FileQuestion className="h-5 w-5 text-[#06B6D4]" />
@@ -962,12 +1050,79 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
           </p>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          <div className="flex items-center rounded-xl bg-[#0B0F19]/50 backdrop-blur-md p-1 border border-[#334155]/60">
+        {/* Sync Latest Button */}
+        <div className="flex items-center space-x-2">
+          <button
+            type="button"
+            onClick={handleManualSync}
+            disabled={syncing}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#0B0F19] hover:bg-slate-800 border border-[#334155] text-cyan-400 hover:text-cyan-300 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
+            <span>Sync Latest</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Filters & Cohort Tabs */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-[#1E293B]/50 p-3 rounded-2xl border border-[#334155]">
+        {/* Cohort Level Filter Pills */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-[11px] font-mono text-[#94A3B8] uppercase font-bold mr-1">Class:</span>
+          <div className="flex items-center rounded-xl bg-[#0B0F19] p-0.5 border border-[#334155]">
+            <button
+              type="button"
+              onClick={() => setSelectedLevelFilter("my_level")}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all ${
+                effectiveLevelFilter === "my_level"
+                  ? "bg-[#06B6D4] text-slate-950"
+                  : "text-[#94A3B8] hover:text-white"
+              }`}
+            >
+              My Class ({currentUser.level || "All"}) ({myLevelExams.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedLevelFilter("all")}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all ${
+                effectiveLevelFilter === "all"
+                  ? "bg-[#06B6D4] text-slate-950"
+                  : "text-[#94A3B8] hover:text-white"
+              }`}
+            >
+              All Levels ({tradeMatchedExams.length})
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedLevelFilter("Level 5")}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all ${
+                effectiveLevelFilter === "Level 5"
+                  ? "bg-[#06B6D4] text-slate-950"
+                  : "text-[#94A3B8] hover:text-white"
+              }`}
+            >
+              Level 5
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedLevelFilter("Level 4")}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all ${
+                effectiveLevelFilter === "Level 4"
+                  ? "bg-[#06B6D4] text-slate-950"
+                  : "text-[#94A3B8] hover:text-white"
+              }`}
+            >
+              Level 4
+            </button>
+          </div>
+        </div>
+
+        {/* Assessment Type & Subject Filter */}
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center rounded-xl bg-[#0B0F19] p-0.5 border border-[#334155]">
             <button
               onClick={() => setFilterType("all")}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
                 filterType === "all" ? "bg-[#06B6D4] text-slate-950 font-bold" : "text-[#94A3B8] hover:text-white"
               }`}
             >
@@ -975,7 +1130,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
             </button>
             <button
               onClick={() => setFilterType("quiz")}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
                 filterType === "quiz" ? "bg-[#06B6D4] text-slate-950 font-bold" : "text-[#94A3B8] hover:text-white"
               }`}
             >
@@ -983,7 +1138,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
             </button>
             <button
               onClick={() => setFilterType("exam")}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
                 filterType === "exam" ? "bg-[#06B6D4] text-slate-950 font-bold" : "text-[#94A3B8] hover:text-white"
               }`}
             >
@@ -994,11 +1149,11 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
           <select
             value={filterCourse}
             onChange={(e) => setFilterCourse(e.target.value)}
-            className="rounded-xl bg-[#0B0F19]/60 backdrop-blur-md border border-[#334155]/70 px-3 py-1.5 text-xs font-semibold text-[#CBD5E1] focus:border-[#06B6D4] focus:outline-none"
+            className="rounded-xl bg-[#0B0F19] border border-[#334155] px-3 py-1.5 text-xs font-semibold text-[#CBD5E1] focus:border-[#06B6D4] focus:outline-none"
           >
             <option value="all">All Courses</option>
-            {syllabi.map((s) => (
-              <option key={s.id} value={s.courseCode}>{s.courseCode} - {s.title}</option>
+            {availableCourses.map((c: { code: string; label: string }) => (
+              <option key={c.code} value={c.code}>{c.label}</option>
             ))}
           </select>
         </div>
@@ -1058,12 +1213,14 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
           <FileQuestion className="mx-auto h-12 w-12 text-[#64748B] mb-3" />
           <h3 className="text-base font-bold text-white">No Assessments Posted Yet</h3>
           <p className="text-xs text-[#94A3B8] max-w-md mx-auto mt-1">
-            Your instructor hasn't scheduled any formal exams or quizzes for your level ({currentUser.level}) yet. Please check back later.
+            {effectiveLevelFilter === "my_level" 
+              ? `Your instructor hasn't scheduled any formal exams or quizzes for your level (${currentUser.level || "your class"}) yet. Switch to "All Levels" above to see all published tests.`
+              : `No assessments found matching the selected filter criteria.`}
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {filteredExams.map((exam) => {
+          {filteredExams.map((exam: Exam) => {
             const isExam = exam.type === "exam";
             const examAttempts = myAttempts.filter(a => a.examId === exam.id);
             const latestAttempt = examAttempts[0]; // sorted newest first

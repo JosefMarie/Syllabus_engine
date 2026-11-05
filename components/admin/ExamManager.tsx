@@ -347,6 +347,60 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
     }
   }, [attempts, selectedExamForSubmissions?.id]);
 
+  const handleDownloadExamMarksCSV = () => {
+    if (!selectedExamForSubmissions || examAttempts.length === 0) return;
+    const rows = [
+      [
+        "Student Name",
+        "Username",
+        "Trade",
+        "Class Level",
+        "Attempt Number",
+        "Score Awarded",
+        "Total Points",
+        "Percentage",
+        "Academic Result",
+        "Proctoring Strikes",
+        "Time Spent (Seconds)",
+        "Grading Status",
+        "Submitted At"
+      ]
+    ];
+
+    examAttempts.forEach((att) => {
+      const maxPts = att.maxScore && att.maxScore > 0 ? att.maxScore : (selectedExamForSubmissions.totalPoints || 100);
+      const score = att.score ?? 0;
+      const pct = att.percentage !== undefined ? att.percentage : Math.round((score / maxPts) * 100);
+      const passed = att.passed ? "PASSED" : "FAILED";
+
+      rows.push([
+        `"${(att.studentName || "").replace(/"/g, '""')}"`,
+        `"${(att.studentUsername || "").replace(/"/g, '""')}"`,
+        `"${(att.studentTradeId || "").replace(/"/g, '""')}"`,
+        `"${(att.studentLevel || "").replace(/"/g, '""')}"`,
+        String(att.attemptNumber || 1),
+        String(score),
+        String(maxPts),
+        `${pct}%`,
+        passed,
+        String(att.tabSwitchCount || 0),
+        String(att.timeSpentSeconds || 0),
+        att.status || "submitted",
+        att.submittedAt ? `"${att.submittedAt}"` : '""'
+      ]);
+    });
+
+    const csvContent = "data:text/csv;charset=utf-8," + rows.map((r) => r.join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    const safeTitle = (selectedExamForSubmissions.title || "exam").toLowerCase().replace(/[^a-z0-9]/g, "_");
+    link.setAttribute("download", `${safeTitle}_marks_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const loadAll = async () => {
     try {
       const [exList, attList] = await Promise.all([
@@ -2371,19 +2425,30 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                       )}
                     </div>
 
-                    <div className="text-xs font-mono text-[#94A3B8] self-end sm:self-center">
-                      Showing <span className="text-[#06B6D4] font-bold">
-                        {examAttempts.filter(att => {
-                          if (!attemptsSearchQuery.trim()) return true;
-                          const q = attemptsSearchQuery.toLowerCase();
-                          return (
-                            (att.studentName || "").toLowerCase().includes(q) ||
-                            (att.studentUsername || "").toLowerCase().includes(q) ||
-                            (att.studentLevel || "").toLowerCase().includes(q) ||
-                            (att.status || "").toLowerCase().includes(q)
-                          );
-                        }).length}
-                      </span> of {examAttempts.length} submissions
+                    <div className="flex flex-wrap items-center gap-3 self-end sm:self-center">
+                      <div className="text-xs font-mono text-[#94A3B8]">
+                        Showing <span className="text-[#06B6D4] font-bold">
+                          {examAttempts.filter(att => {
+                            if (!attemptsSearchQuery.trim()) return true;
+                            const q = attemptsSearchQuery.toLowerCase();
+                            return (
+                              (att.studentName || "").toLowerCase().includes(q) ||
+                              (att.studentUsername || "").toLowerCase().includes(q) ||
+                              (att.studentLevel || "").toLowerCase().includes(q) ||
+                              (att.status || "").toLowerCase().includes(q)
+                            );
+                          }).length}
+                        </span> of {examAttempts.length} submissions
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleDownloadExamMarksCSV}
+                        title="Download student marks for this assessment as a CSV spreadsheet"
+                        className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 transition-all shadow active:scale-95"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        <span>Download Marks (CSV)</span>
+                      </button>
                     </div>
                   </div>
 

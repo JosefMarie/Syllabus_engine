@@ -10,7 +10,8 @@ import {
   leaveGroup, 
   joinGroupByCode, 
   generateGroupJoinCode,
-  getStudentGroupEvaluations
+  getStudentGroupEvaluations,
+  subscribeToGroups
 } from "@/lib/db";
 import { 
   Users, 
@@ -77,7 +78,24 @@ export default function StudentGroupsView({
   });
 
   useEffect(() => {
+    let isMounted = true;
+
+    // Real-time live Firestore subscription for groups
+    const unsub = subscribeToGroups((allGroups) => {
+      if (!isMounted) return;
+      const mine = allGroups.filter(
+        g => g.members?.some(m => m.uid === currentUser.uid) || g.createdByUid === currentUser.uid
+      );
+      setMyGroups(mine);
+      setLoading(false);
+    });
+
     loadGroups();
+
+    return () => {
+      isMounted = false;
+      unsub();
+    };
   }, [currentUser?.uid]);
 
   const loadGroups = async () => {

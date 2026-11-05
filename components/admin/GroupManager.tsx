@@ -18,7 +18,8 @@ import {
   saveGroupEvaluation,
   getAllGroupEvaluations,
   deleteGroupEvaluation,
-  subscribeToGroups
+  subscribeToGroups,
+  subscribeToAllUserProfiles
 } from "@/lib/db";
 import { generatePresentationFeedback } from "@/lib/gemini";
 import { 
@@ -74,7 +75,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
   const [students, setStudents] = useState<UserProfile[]>(() => {
     if (typeof window === "undefined") return [];
     try {
-      const raw = localStorage.getItem("syllabus_users");
+      const raw = localStorage.getItem("syllabus_platform_users_v1") || localStorage.getItem("syllabus_users");
       if (raw) {
         const uList: UserProfile[] = JSON.parse(raw);
         return uList.filter(u => u.role === "student" && u.status === "approved");
@@ -149,10 +150,16 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
   useEffect(() => {
     let isMounted = true;
-    const unsub = subscribeToGroups((allG) => {
+    const unsubG = subscribeToGroups((allG) => {
       if (isMounted) {
         setGroups(allG);
         setLoading(false);
+      }
+    });
+
+    const unsubU = subscribeToAllUserProfiles((allUsers) => {
+      if (isMounted) {
+        setStudents(allUsers.filter(u => u.role === "student" && u.status === "approved"));
       }
     });
 
@@ -160,7 +167,8 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
     return () => {
       isMounted = false;
-      unsub();
+      unsubG();
+      unsubU();
     };
   }, []);
 

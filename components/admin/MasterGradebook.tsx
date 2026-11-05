@@ -11,7 +11,10 @@ import {
   getAllSubmissions, 
   getAllTrades,
   getAllStudentProgressSummaries,
-  resetStudentUnfocusedCount
+  resetStudentUnfocusedCount,
+  subscribeToAllUserProfiles,
+  subscribeToAllExamAttempts,
+  subscribeToSubmissions
 } from "@/lib/db";
 import { 
   calculateLetterGrade, 
@@ -55,7 +58,7 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
   const [students, setStudents] = useState<UserProfile[]>(() => {
     if (typeof window === "undefined") return [];
     try {
-      const raw = localStorage.getItem("syllabus_users");
+      const raw = localStorage.getItem("syllabus_platform_users_v1") || localStorage.getItem("syllabus_users");
       if (raw) {
         const uList: UserProfile[] = JSON.parse(raw);
         return uList.filter(u => u.role === "student" && !u.uid.startsWith("demo-") && u.fullName !== "Alson Johns");
@@ -80,7 +83,7 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
   const [loading, setLoading] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     try {
-      return !localStorage.getItem("syllabus_users");
+      return !(localStorage.getItem("syllabus_platform_users_v1") || localStorage.getItem("syllabus_users"));
     } catch { return true; }
   });
   const [progressSummaries, setProgressSummaries] = useState<Record<string, { pct: number; completed: number; total: number; lastActive?: string }>>({});
@@ -148,7 +151,38 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
   };
 
   useEffect(() => {
+    let isMounted = true;
+
+    // 1. Live subscription for user profiles
+    const unsubProfiles = subscribeToAllUserProfiles((allUsers) => {
+      if (!isMounted) return;
+      const studentProfiles = allUsers.filter(
+        (u) => u.role === "student" && !u.uid.startsWith("demo-") && u.fullName !== "Alson Johns"
+      );
+      setStudents(studentProfiles);
+      setLoading(false);
+    });
+
+    // 2. Live subscription for exam attempts
+    const unsubExams = subscribeToAllExamAttempts((allAttempts) => {
+      if (!isMounted) return;
+      setExamAttempts(allAttempts);
+    });
+
+    // 3. Live subscription for assignments & homework submissions
+    const unsubSubs = subscribeToSubmissions((allSubs) => {
+      if (!isMounted) return;
+      setSubmissions(allSubs);
+    });
+
     loadData();
+
+    return () => {
+      isMounted = false;
+      unsubProfiles();
+      unsubExams();
+      unsubSubs();
+    };
   }, []);
 
   // Compute Grade Records
