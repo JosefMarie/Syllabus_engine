@@ -3,6 +3,16 @@ import { StudentLevel } from './auth';
 export type AssignmentStatus = 'draft' | 'published' | 'archived';
 export type SubmissionStatus = 'submitted' | 'graded' | 'returned';
 
+export interface AssignmentStudentReceipt {
+  studentUid: string;
+  studentName: string;
+  studentUsername: string;
+  level?: string;
+  receivedAt?: string; // ISO string when student's portal received/loaded the assignment
+  openedAt?: string;   // ISO string when student clicked "Start" / opened the assignment
+  openCount?: number;
+}
+
 export interface Assignment {
   id: string;
   title: string;
@@ -20,6 +30,8 @@ export interface Assignment {
   status: AssignmentStatus;
   submissionType?: 'individual' | 'group'; // 'individual' (default) or 'group'
   targetGroupId?: string; // 'all_groups' or specific group id
+  forceAssignedStudentUids?: string[]; // Explicit list of student UIDs force-assigned by instructor
+  studentReceipts?: Record<string, AssignmentStudentReceipt>; // Map of studentUid -> delivery & "Start" click receipt
   createdAt: string;
   updatedAt: string;
   createdBy?: string;

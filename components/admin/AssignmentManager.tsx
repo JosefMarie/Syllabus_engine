@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { Assignment, AssignmentSubmission } from "@/types/assignment";
 import { StudentGroup } from "@/types/group";
 import { Syllabus } from "@/types/syllabus";
-import { Trade, StudentLevel } from "@/types/auth";
+import { Trade, StudentLevel, UserProfile } from "@/types/auth";
 import { 
   getAllAssignments, 
   saveAssignment, 
@@ -17,7 +17,10 @@ import {
   subscribeToAssignments,
   subscribeToSubmissions,
   subscribeToGroups,
-  getLocalAssignments
+  getLocalAssignments,
+  getAllUserProfiles,
+  subscribeToAllUserProfiles,
+  forceAssignAssignmentToStudents
 } from "@/lib/db";
 import { parseAssignmentWithGemini } from "@/lib/gemini";
 import { gradeSubmissionWithGemini, AiGradingResult } from "@/lib/aiGrading";
@@ -45,7 +48,13 @@ import {
   Filter,
   Crown,
   RefreshCw,
-  Download
+  Download,
+  Zap,
+  PlayCircle,
+  CheckCheck,
+  Send,
+  UserCheck,
+  RotateCcw
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -126,6 +135,91 @@ const getGroupLeaderName = (g: StudentGroup): string => {
   return g.leaderName || "Unassigned";
 };
 
+// Computes a student's exact receipt, open, and submission status for an assignment
+const getStudentAssignmentStatus = (
+  asg: Assignment,
+  student: UserProfile,
+  allSubs: AssignmentSubmission[],
+  groups: StudentGroup[]
+) => {
+  const studentSub = allSubs.find(s => {
+    if (s.assignmentId !== asg.id) return false;
+    if (s.studentUid === student.uid) return true;
+    if (s.submissionType === "group" && s.groupId) {
+      const grp = groups.find(g => g.id === s.groupId);
+      return grp?.members?.some(m => m.uid === student.uid);
+    }
+    return false;
+  });
+
+  const receipt = asg.studentReceipts?.[student.uid];
+  const isForceAssigned = !!asg.forceAssignedStudentUids?.includes(student.uid);
+
+  const isSubmitted = !!studentSub;
+  const isGraded = studentSub?.status === "graded";
+  const score = studentSub?.score;
+  const maxScore = studentSub?.maxScore || asg.totalPoints || 100;
+  const submittedAt = studentSub?.submittedAt;
+
+  // Clicked "Start" / Opened
+  const hasOpened = !!receipt?.openedAt || isSubmitted;
+  const openedAt = receipt?.openedAt || submittedAt;
+  const openCount = receipt?.openCount || (hasOpened ? 1 : 0);
+
+  // Got It / Received
+  const hasReceived = !!receipt?.receivedAt || hasOpened || isForceAssigned;
+  const receivedAt = receipt?.receivedAt || openedAt;
+
+  let statusCode: "missing" | "received" | "opened" | "submitted" | "graded" = "missing";
+  if (isGraded) statusCode = "graded";
+  else if (isSubmitted) statusCode = "submitted";
+  else if (hasOpened) statusCode = "opened";
+  else if (hasReceived) statusCode = "received";
+
+  return {
+    student,
+    statusCode,
+    hasReceived,
+    receivedAt,
+    isForceAssigned,
+    hasOpened,
+    openedAt,
+    openCount,
+    isSubmitted,
+    isGraded,
+    score,
+    maxScore,
+    submittedAt,
+    studentSub
+  };
+};
+
+const getTargetStudentsForAssignment = (
+  asg: Assignment,
+  students: UserProfile[],
+  groups: StudentGroup[],
+  tradesList: Trade[]
+) => {
+  return students.filter(student => {
+    // 1. If force-assigned, always targeted
+    if (asg.forceAssignedStudentUids?.includes(student.uid)) return true;
+
+    // 2. If assignment is targeted to a specific group
+    if (asg.submissionType === "group" && asg.targetGroupId && asg.targetGroupId !== "all_groups") {
+      const grp = groups.find(g => g.id === asg.targetGroupId);
+      return grp?.members?.some(m => m.uid === student.uid);
+    }
+
+    // 3. Level match
+    if (!isLevelMatch(student.level, asg.level)) return false;
+
+    // 4. Trade match
+    if (!isTradeMatch(student.tradeId, asg.tradeId, tradesList)) return false;
+
+    return true;
+  });
+};
+
 interface AssignmentManagerProps {
   syllabi: Syllabus[];
   trades: Trade[];
@@ -154,6 +248,17 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
       return raw ? JSON.parse(raw) : [];
     } catch { return []; }
   });
+  const [allStudents, setAllStudents] = useState<UserProfile[]>(() => {
+    if (typeof window === "undefined") return [];
+    try {
+      const raw = localStorage.getItem("syllabus_platform_users_v1");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed)
+        ? parsed.filter((u: any) => u.role !== "teacher" && u.status === "approved")
+        : [];
+    } catch { return []; }
+  });
   const [loading, setLoading] = useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     try {
@@ -162,10 +267,16 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
   });
   const [activeTab, setActiveTab] = useState<"list" | "create" | "submissions" | "course_submissions">("list");
   
-  // Specific assignment submissions view
+  // Specific assignment submissions & delivery tracking view
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [submissions, setSubmissions] = useState<AssignmentSubmission[]>([]);
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
+  const [submissionSubTab, setSubmissionSubTab] = useState<"submissions" | "tracker">("submissions");
+  const [trackerFilter, setTrackerFilter] = useState<"all" | "missing" | "opened" | "got_it" | "submitted">("all");
+  const [trackerCohort, setTrackerCohort] = useState<"target" | "all">("target");
+  const [trackerSearch, setTrackerSearch] = useState<string>("");
+  const [forceAssigningUid, setForceAssigningUid] = useState<string | null>(null);
+  const [forceAssigningAll, setForceAssigningAll] = useState<boolean>(false);
 
   // Filter for Course Submissions tab
   const [courseFilter, setCourseFilter] = useState<string>("all");
@@ -255,25 +366,36 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
       }
     });
 
+    // Real-time listener for student profiles
+    const unsubUsers = subscribeToAllUserProfiles((users) => {
+      if (isMounted) {
+        const studentsOnly = users.filter(u => u.role !== "teacher" && u.status === "approved");
+        setAllStudents(studentsOnly);
+      }
+    });
+
     return () => {
       isMounted = false;
       unsubAssignments();
       unsubSubmissions();
       unsubGroups();
+      unsubUsers();
     };
   }, []);
 
   const loadAllData = async () => {
     setLoading(true);
     try {
-      const [asgData, allSubs, allG] = await Promise.all([
+      const [asgData, allSubs, allG, allU] = await Promise.all([
         getAllAssignments().catch(() => []),
         getAllSubmissions().catch(() => []),
-        getAllGroups().catch(() => [])
+        getAllGroups().catch(() => []),
+        getAllUserProfiles().catch(() => [])
       ]);
       if (asgData) setAssignments(asgData);
       if (allSubs) setAllSubmissionsList(allSubs);
       if (allG) setCourseGroups(allG);
+      if (allU) setAllStudents(allU.filter(u => u.role !== "teacher" && u.status === "approved"));
     } catch (err) {
       console.error("Error loading assignments, submissions & groups:", err);
     } finally {
@@ -432,8 +554,9 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
     }
   };
 
-  const handleViewSubmissions = async (asg: Assignment) => {
+  const handleViewSubmissions = async (asg: Assignment, initialSubTab: "submissions" | "tracker" = "submissions") => {
     setSelectedAssignment(asg);
+    setSubmissionSubTab(initialSubTab);
     setActiveTab("submissions");
     // Immediately populate from real-time allSubmissionsList if available
     const cached = allSubmissionsList.filter(s => s.assignmentId === asg.id);
@@ -464,6 +587,58 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
       }
     }
   }, [allSubmissionsList, selectedAssignment]);
+
+  // Keep selectedAssignment in sync with real-time assignments
+  useEffect(() => {
+    if (selectedAssignment) {
+      const fresh = assignments.find(a => a.id === selectedAssignment.id);
+      if (fresh && JSON.stringify(fresh) !== JSON.stringify(selectedAssignment)) {
+        setSelectedAssignment(fresh);
+      }
+    }
+  }, [assignments, selectedAssignment]);
+
+  const handleForceAssignSingle = async (asg: Assignment, student: UserProfile) => {
+    setForceAssigningUid(student.uid);
+    try {
+      const updated = await forceAssignAssignmentToStudents(asg, [student], adminEmail || "Josef Marie");
+      setAssignments(prev => prev.map(a => a.id === updated.id ? updated : a));
+      if (selectedAssignment?.id === updated.id) {
+        setSelectedAssignment(updated);
+      }
+      alert(`Assignment "${asg.title}" successfully force-assigned to ${student.fullName}! It will appear on their dashboard immediately with an instant notification.`);
+    } catch (err: any) {
+      console.error("Force assign error:", err);
+      alert("Failed to force assign: " + (err.message || "Unknown error"));
+    } finally {
+      setForceAssigningUid(null);
+    }
+  };
+
+  const handleForceAssignBulk = async (asg: Assignment, missingStudents: UserProfile[]) => {
+    if (missingStudents.length === 0) {
+      alert("All students in this class cohort have already received the assignment!");
+      return;
+    }
+    if (!confirm(`Force-assign "${asg.title}" to all ${missingStudents.length} students who haven't received it yet? This guarantees it will appear on their dashboard immediately and sends them an instant notification.`)) {
+      return;
+    }
+
+    setForceAssigningAll(true);
+    try {
+      const updated = await forceAssignAssignmentToStudents(asg, missingStudents, adminEmail || "Josef Marie");
+      setAssignments(prev => prev.map(a => a.id === updated.id ? updated : a));
+      if (selectedAssignment?.id === updated.id) {
+        setSelectedAssignment(updated);
+      }
+      alert(`Successfully force-assigned "${asg.title}" to ${missingStudents.length} students!`);
+    } catch (err: any) {
+      console.error("Bulk force assign error:", err);
+      alert("Failed to bulk force assign: " + (err.message || "Unknown error"));
+    } finally {
+      setForceAssigningAll(false);
+    }
+  };
 
   const openGradingModal = (sub: AssignmentSubmission) => {
     setGradingSubmission(sub);
@@ -884,6 +1059,12 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                 const taskSubmissions = allSubmissionsList.filter(s => s.assignmentId === asg.id);
                 const taskSubmissionsCount = taskSubmissions.length;
 
+                const targetCohort = getTargetStudentsForAssignment(asg, allStudents, courseGroups, trades);
+                const cohortStatuses = targetCohort.map(st => getStudentAssignmentStatus(asg, st, allSubmissionsList, courseGroups));
+                const receivedCount = cohortStatuses.filter(s => s.hasReceived).length;
+                const openedCount = cohortStatuses.filter(s => s.hasOpened).length;
+                const missingCount = cohortStatuses.filter(s => s.statusCode === "missing").length;
+
                 return (
                   <div
                     key={asg.id}
@@ -949,17 +1130,59 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                             <span>Due: {formatAssignmentDueDate(asg.dueDate)} {isOverdue && "(Expired)"}</span>
                           </div>
                         )}
+
+                        {/* Live Delivery, "Clicked Start" & Missing Student Stats */}
+                        <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
+                          <span className="inline-flex items-center space-x-1 rounded-md bg-[#06B6D4]/10 border border-[#06B6D4]/30 px-2 py-0.5 text-[10px] font-mono text-[#06B6D4]">
+                            <CheckCheck className="h-2.5 w-2.5" />
+                            <span>Got It: {receivedCount} / {targetCohort.length}</span>
+                          </span>
+                          <span className="inline-flex items-center space-x-1 rounded-md bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 text-[10px] font-mono text-purple-300">
+                            <PlayCircle className="h-2.5 w-2.5" />
+                            <span>Clicked Start: {openedCount}</span>
+                          </span>
+                          {missingCount > 0 ? (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleViewSubmissions(asg, "tracker");
+                                setTrackerFilter("missing");
+                              }}
+                              className="inline-flex items-center space-x-1 rounded-md bg-amber-500/15 border border-amber-500/40 px-2 py-0.5 text-[10px] font-mono font-bold text-amber-300 hover:bg-amber-500 hover:text-slate-950 transition-all cursor-pointer"
+                              title="Click to view students who haven't received it and force-assign"
+                            >
+                              <Zap className="h-2.5 w-2.5" />
+                              <span>{missingCount} Missing • Force Assign</span>
+                            </button>
+                          ) : (
+                            <span className="inline-flex items-center space-x-1 rounded-md bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-mono text-emerald-400">
+                              <Check className="h-2.5 w-2.5" />
+                              <span>100% Delivered</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
                     <div className="pt-3 border-t border-[#334155]/60 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5">
                         <button
-                          onClick={() => handleViewSubmissions(asg)}
+                          onClick={() => handleViewSubmissions(asg, "submissions")}
                           className="inline-flex items-center space-x-1.5 text-xs font-bold text-[#06B6D4] hover:text-white bg-[#06B6D4]/10 hover:bg-[#06B6D4] hover:text-slate-950 px-3 py-1.5 rounded-lg border border-[#06B6D4]/30 transition-all"
                         >
                           <Award className="h-3.5 w-3.5" />
                           <span>Submissions ({taskSubmissionsCount})</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleViewSubmissions(asg, "tracker")}
+                          className="inline-flex items-center space-x-1 text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-700 transition-all"
+                          title="View who got it, who clicked Start, and force-assign missing students"
+                        >
+                          <Users className="h-3.5 w-3.5 text-[#06B6D4]" />
+                          <span>Tracker</span>
                         </button>
 
                         {taskSubmissionsCount > 0 && (
@@ -1668,103 +1891,503 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
             </div>
           </div>
 
-          {loadingSubmissions ? (
-            <div className="py-12 text-center text-[#94A3B8] text-xs font-mono">
-              <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-2" />
-              Loading Submissions...
-            </div>
-          ) : submissions.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-[#334155] p-12 text-center bg-[#1E293B]/40">
-              <Users className="mx-auto h-10 w-10 text-[#64748B] mb-2" />
-              <h3 className="text-sm font-bold text-white mb-1">No Student Submissions Yet</h3>
-              <p className="text-xs text-[#94A3B8] max-w-sm mx-auto">
-                Students enrolled in this class can view this assignment and submit their answers online.
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-[#334155] bg-[#1E293B] overflow-hidden shadow-xl">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead className="border-b border-[#334155] bg-[#0B0F19]/50 text-[#94A3B8] font-mono">
-                    <tr>
-                      <th className="px-4 py-3">Student Name</th>
-                      <th className="px-4 py-3">Class & Trade</th>
-                      <th className="px-4 py-3">Submitted At</th>
-                      <th className="px-4 py-3">Format</th>
-                      <th className="px-4 py-3">Status / Grade</th>
-                      <th className="px-4 py-3 text-right">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-[#334155]/60 text-[#CBD5E1]">
-                    {submissions.map((sub) => {
-                      const isGraded = sub.status === "graded";
-                      return (
-                        <tr key={sub.id} className="hover:bg-[#0B0F19]/40 transition-colors">
-                          <td className="px-4 py-3 font-semibold text-white">
-                            {sub.studentName}
-                            <span className="block text-[10px] font-mono text-[#64748B]">@{sub.studentUsername}</span>
-                            {sub.groupName && (
-                              <span className="inline-flex items-center space-x-1 rounded bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[9px] font-mono text-purple-300 mt-1">
-                                <Users className="h-2.5 w-2.5" />
-                                <span>Team: {sub.groupName}</span>
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 font-mono text-[11px] text-[#94A3B8]">
-                            {sub.level}
-                          </td>
-                          <td className="px-4 py-3 font-mono text-[11px] text-[#94A3B8]">
-                            {new Date(sub.submittedAt).toLocaleString()}
-                          </td>
-                          <td className="px-4 py-3">
-                            <span className="inline-flex items-center space-x-1 font-mono text-[10px] text-[#06B6D4]">
-                              {sub.fileData ? <Upload className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
-                              <span>{sub.fileData ? sub.fileData.name : "Text Answer"}</span>
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">
-                            {isGraded ? (
-                              <span className="inline-flex items-center space-x-1 rounded-md bg-emerald-500/10 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-400 border border-emerald-500/30">
-                                <CheckCircle2 className="h-3 w-3" />
-                                <span>{sub.score} / {sub.maxScore}</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center space-x-1 rounded-md bg-amber-500/10 px-2 py-0.5 font-mono text-[11px] font-bold text-amber-400 border border-amber-500/30">
-                                <Clock className="h-3 w-3" />
-                                <span>Needs Grading</span>
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end space-x-1.5">
-                              {sub.fileData && (
-                                <button
-                                  type="button"
-                                  onClick={() => setPreviewSubmission(sub)}
-                                  className="inline-flex items-center space-x-1 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-xs font-semibold text-slate-300 hover:text-white hover:border-cyan-500/50 transition-all shadow-sm"
-                                  title="Open In-App Preview (no download needed)"
-                                >
-                                  <Eye className="h-3 w-3 text-cyan-400" />
-                                  <span className="hidden sm:inline">Preview</span>
-                                </button>
-                              )}
-                              <button
-                                onClick={() => openGradingModal(sub)}
-                                className="inline-flex items-center space-x-1 rounded-lg bg-[#06B6D4]/15 px-2.5 py-1 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4] hover:text-slate-950 transition-all border border-[#06B6D4]/30"
-                              >
-                                <Award className="h-3.5 w-3.5" />
-                                <span>{isGraded ? "Edit Grade" : "Grade & Review"}</span>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+          {/* Sub-Tab Navigation: Submissions vs Delivery & Start Tracker */}
+          {(() => {
+            const targetCohort = getTargetStudentsForAssignment(selectedAssignment, allStudents, courseGroups, trades);
+            const cohortStatuses = targetCohort.map(st => getStudentAssignmentStatus(selectedAssignment, st, allSubmissionsList, courseGroups));
+            const missingCohortCount = cohortStatuses.filter(s => s.statusCode === "missing").length;
+
+            return (
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#334155] pb-3">
+                <div className="flex items-center space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setSubmissionSubTab("submissions")}
+                    className={`inline-flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                      submissionSubTab === "submissions"
+                        ? "bg-[#06B6D4] text-slate-950 shadow-md"
+                        : "bg-[#1E293B] text-[#94A3B8] hover:text-white border border-[#334155]"
+                    }`}
+                  >
+                    <Award className="h-3.5 w-3.5" />
+                    <span>Submitted Student Work ({submissions.length})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setSubmissionSubTab("tracker")}
+                    className={`inline-flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                      submissionSubTab === "tracker"
+                        ? "bg-[#06B6D4] text-slate-950 shadow-md"
+                        : "bg-[#1E293B] text-[#94A3B8] hover:text-white border border-[#334155]"
+                    }`}
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    <span>Delivery, &quot;Clicked Start&quot; &amp; Force-Assign Tracker</span>
+                    {missingCohortCount > 0 && (
+                      <span className="rounded-full bg-amber-500/20 border border-amber-500/40 px-1.5 py-0.5 text-[10px] font-mono font-bold text-amber-300">
+                        {missingCohortCount} Missing
+                      </span>
+                    )}
+                  </button>
+                </div>
               </div>
-            </div>
+            );
+          })()}
+
+          {/* SUB-TAB 1: SUBMITTED STUDENT WORK */}
+          {submissionSubTab === "submissions" && (
+            <>
+              {loadingSubmissions ? (
+                <div className="py-12 text-center text-[#94A3B8] text-xs font-mono">
+                  <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-2" />
+                  Loading Submissions...
+                </div>
+              ) : submissions.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-[#334155] p-12 text-center bg-[#1E293B]/40">
+                  <Users className="mx-auto h-10 w-10 text-[#64748B] mb-2" />
+                  <h3 className="text-sm font-bold text-white mb-1">No Student Submissions Yet</h3>
+                  <p className="text-xs text-[#94A3B8] max-w-sm mx-auto mb-4">
+                    Students enrolled in this class can view this assignment and submit their answers online.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setSubmissionSubTab("tracker")}
+                    className="inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4]/15 border border-[#06B6D4]/30 px-3.5 py-2 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4] hover:text-slate-950 transition-all"
+                  >
+                    <Users className="h-3.5 w-3.5" />
+                    <span>Open Delivery &amp; Start Tracker</span>
+                  </button>
+                </div>
+              ) : (
+                <div className="rounded-2xl border border-[#334155] bg-[#1E293B] overflow-hidden shadow-xl">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="border-b border-[#334155] bg-[#0B0F19]/50 text-[#94A3B8] font-mono">
+                        <tr>
+                          <th className="px-4 py-3">Student Name</th>
+                          <th className="px-4 py-3">Class &amp; Trade</th>
+                          <th className="px-4 py-3">Submitted At</th>
+                          <th className="px-4 py-3">Format</th>
+                          <th className="px-4 py-3">Status / Grade</th>
+                          <th className="px-4 py-3 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#334155]/60 text-[#CBD5E1]">
+                        {submissions.map((sub) => {
+                          const isGraded = sub.status === "graded";
+                          return (
+                            <tr key={sub.id} className="hover:bg-[#0B0F19]/40 transition-colors">
+                              <td className="px-4 py-3 font-semibold text-white">
+                                {sub.studentName}
+                                <span className="block text-[10px] font-mono text-[#64748B]">@{sub.studentUsername}</span>
+                                {sub.groupName && (
+                                  <span className="inline-flex items-center space-x-1 rounded bg-purple-500/10 border border-purple-500/20 px-1.5 py-0.5 text-[9px] font-mono text-purple-300 mt-1">
+                                    <Users className="h-2.5 w-2.5" />
+                                    <span>Team: {sub.groupName}</span>
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 font-mono text-[11px] text-[#94A3B8]">
+                                {sub.level}
+                              </td>
+                              <td className="px-4 py-3 font-mono text-[11px] text-[#94A3B8]">
+                                {new Date(sub.submittedAt).toLocaleString()}
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className="inline-flex items-center space-x-1 font-mono text-[10px] text-[#06B6D4]">
+                                  {sub.fileData ? <Upload className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+                                  <span>{sub.fileData ? sub.fileData.name : "Text Answer"}</span>
+                                </span>
+                              </td>
+                              <td className="px-4 py-3">
+                                {isGraded ? (
+                                  <span className="inline-flex items-center space-x-1 rounded-md bg-emerald-500/10 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-400 border border-emerald-500/30">
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    <span>{sub.score} / {sub.maxScore}</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center space-x-1 rounded-md bg-amber-500/10 px-2 py-0.5 font-mono text-[11px] font-bold text-amber-400 border border-amber-500/30">
+                                    <Clock className="h-3 w-3" />
+                                    <span>Needs Grading</span>
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <div className="flex items-center justify-end space-x-1.5">
+                                  {sub.fileData && (
+                                    <button
+                                      type="button"
+                                      onClick={() => setPreviewSubmission(sub)}
+                                      className="inline-flex items-center space-x-1 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-xs font-semibold text-slate-300 hover:text-white hover:border-cyan-500/50 transition-all shadow-sm"
+                                      title="Open In-App Preview (no download needed)"
+                                    >
+                                      <Eye className="h-3 w-3 text-cyan-400" />
+                                      <span className="hidden sm:inline">Preview</span>
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => openGradingModal(sub)}
+                                    className="inline-flex items-center space-x-1 rounded-lg bg-[#06B6D4]/15 px-2.5 py-1 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4] hover:text-slate-950 transition-all border border-[#06B6D4]/30"
+                                  >
+                                    <Award className="h-3.5 w-3.5" />
+                                    <span>{isGraded ? "Edit Grade" : "Grade & Review"}</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
           )}
+
+          {/* SUB-TAB 2: DELIVERY, "CLICKED START" & FORCE-ASSIGN TRACKER */}
+          {submissionSubTab === "tracker" && (() => {
+            const targetCohort = getTargetStudentsForAssignment(selectedAssignment, allStudents, courseGroups, trades);
+            const baseStudents = trackerCohort === "target" ? targetCohort : allStudents;
+
+            const studentStatuses = baseStudents.map(st =>
+              getStudentAssignmentStatus(selectedAssignment, st, allSubmissionsList, courseGroups)
+            );
+
+            const totalStudents = studentStatuses.length;
+            const receivedCount = studentStatuses.filter(s => s.hasReceived).length;
+            const openedCount = studentStatuses.filter(s => s.hasOpened).length;
+            const submittedCount = studentStatuses.filter(s => s.isSubmitted).length;
+            const missingStatuses = studentStatuses.filter(s => s.statusCode === "missing");
+            const missingCount = missingStatuses.length;
+            const missingStudents = missingStatuses.map(s => s.student);
+
+            const filteredStatuses = studentStatuses.filter(item => {
+              if (trackerFilter === "missing" && item.statusCode !== "missing") return false;
+              if (trackerFilter === "got_it" && item.statusCode !== "received") return false;
+              if (trackerFilter === "opened" && item.statusCode !== "opened") return false;
+              if (trackerFilter === "submitted" && !item.isSubmitted) return false;
+
+              if (trackerSearch.trim()) {
+                const q = trackerSearch.toLowerCase().trim();
+                const name = (item.student.fullName || "").toLowerCase();
+                const uname = (item.student.username || "").toLowerCase();
+                const email = (item.student.email || "").toLowerCase();
+                if (!name.includes(q) && !uname.includes(q) && !email.includes(q)) return false;
+              }
+
+              return true;
+            });
+
+            return (
+              <div className="space-y-5 animate-in fade-in">
+                {/* 1. Stat Summary Cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4 text-center">
+                    <span className="block text-[10px] font-mono uppercase text-[#94A3B8]">Cohort Students</span>
+                    <span className="text-xl font-extrabold text-white">{totalStudents}</span>
+                    <span className="block text-[10px] text-[#64748B] mt-0.5 truncate">
+                      {selectedAssignment.level || "All"}
+                    </span>
+                  </div>
+
+                  <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/5 p-4 text-center">
+                    <span className="block text-[10px] font-mono uppercase text-cyan-400">Got It (Received)</span>
+                    <span className="text-xl font-extrabold text-cyan-300">{receivedCount}</span>
+                    <span className="block text-[10px] text-cyan-400/70 mt-0.5 font-mono">
+                      {totalStudents > 0 ? Math.round((receivedCount / totalStudents) * 100) : 0}% Delivered
+                    </span>
+                  </div>
+
+                  <div className="rounded-2xl border border-purple-500/30 bg-purple-500/5 p-4 text-center">
+                    <span className="block text-[10px] font-mono uppercase text-purple-400">Clicked &quot;Start&quot;</span>
+                    <span className="text-xl font-extrabold text-purple-300">{openedCount}</span>
+                    <span className="block text-[10px] text-purple-400/70 mt-0.5 font-mono">
+                      {totalStudents > 0 ? Math.round((openedCount / totalStudents) * 100) : 0}% Opened
+                    </span>
+                  </div>
+
+                  <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 text-center">
+                    <span className="block text-[10px] font-mono uppercase text-emerald-400">Submitted</span>
+                    <span className="text-xl font-extrabold text-emerald-300">{submittedCount}</span>
+                    <span className="block text-[10px] text-emerald-400/70 mt-0.5 font-mono">
+                      {totalStudents > 0 ? Math.round((submittedCount / totalStudents) * 100) : 0}% Turn-In
+                    </span>
+                  </div>
+
+                  <div className={`rounded-2xl border p-4 text-center ${missingCount > 0 ? "border-amber-500/40 bg-amber-500/10" : "border-[#334155] bg-[#1E293B]"}`}>
+                    <span className="block text-[10px] font-mono uppercase text-amber-400">Not Received Yet</span>
+                    <span className={`text-xl font-extrabold ${missingCount > 0 ? "text-amber-300" : "text-[#94A3B8]"}`}>{missingCount}</span>
+                    <span className="block text-[10px] text-amber-400/70 mt-0.5 font-mono">
+                      {missingCount > 0 ? "Needs Push" : "All Delivered"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 2. Missing Students Bulk Banner */}
+                {missingCount > 0 && (
+                  <div className="p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/15 to-amber-500/10 border border-amber-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-lg">
+                    <div className="flex items-start sm:items-center space-x-3">
+                      <div className="h-10 w-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center shrink-0 text-amber-300">
+                        <AlertCircle className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-white flex items-center space-x-2">
+                          <span>{missingCount} student{missingCount === 1 ? "" : "s"} in this class haven&apos;t received or opened this assignment yet</span>
+                        </h4>
+                        <p className="text-[11px] text-[#CBD5E1] mt-0.5 leading-relaxed">
+                          Force-assigning pushes the task directly to their screen immediately, overriding cohort filters, and triggers an instant notification.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={forceAssigningAll}
+                      onClick={() => handleForceAssignBulk(selectedAssignment, missingStudents)}
+                      className="inline-flex items-center space-x-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-4 py-2.5 text-xs font-bold text-slate-950 hover:brightness-110 transition-all shadow-md shrink-0 disabled:opacity-50"
+                    >
+                      <Zap className={`h-4 w-4 ${forceAssigningAll ? "animate-spin" : ""}`} />
+                      <span>{forceAssigningAll ? "Pushing Assignment..." : `⚡ Force Assign to All ${missingCount} Missing Students`}</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* 3. Filter & Search Controls */}
+                <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setTrackerFilter("all")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
+                        trackerFilter === "all"
+                          ? "bg-[#06B6D4] text-slate-950"
+                          : "text-[#94A3B8] hover:text-white bg-[#0B0F19] border border-[#334155]"
+                      }`}
+                    >
+                      All ({studentStatuses.length})
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setTrackerFilter("missing")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
+                        trackerFilter === "missing"
+                          ? "bg-amber-400 text-slate-950"
+                          : "text-amber-400 hover:text-amber-300 bg-[#0B0F19] border border-amber-500/30"
+                      }`}
+                    >
+                      ⚠️ Did Not Get It ({missingCount})
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setTrackerFilter("got_it")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
+                        trackerFilter === "got_it"
+                          ? "bg-cyan-400 text-slate-950"
+                          : "text-cyan-400 hover:text-cyan-300 bg-[#0B0F19] border border-cyan-500/30"
+                      }`}
+                    >
+                      ✓ Got It • Not Started ({studentStatuses.filter(s => s.statusCode === "received").length})
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setTrackerFilter("opened")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
+                        trackerFilter === "opened"
+                          ? "bg-purple-400 text-slate-950"
+                          : "text-purple-400 hover:text-purple-300 bg-[#0B0F19] border border-purple-500/30"
+                      }`}
+                    >
+                      ▶ Clicked &quot;Start&quot; / Working ({studentStatuses.filter(s => s.statusCode === "opened").length})
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setTrackerFilter("submitted")}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold transition-all ${
+                        trackerFilter === "submitted"
+                          ? "bg-emerald-400 text-slate-950"
+                          : "text-emerald-400 hover:text-emerald-300 bg-[#0B0F19] border border-emerald-500/30"
+                      }`}
+                    >
+                      ★ Submitted ({submittedCount})
+                    </button>
+                  </div>
+
+                  <div className="flex items-center space-x-2 shrink-0">
+                    <select
+                      value={trackerCohort}
+                      onChange={(e) => setTrackerCohort(e.target.value as any)}
+                      className="rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-1.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                    >
+                      <option value="target">Target Cohort ({targetCohort.length})</option>
+                      <option value="all">All School Students ({allStudents.length})</option>
+                    </select>
+
+                    <div className="relative">
+                      <Search className="h-3.5 w-3.5 text-[#64748B] absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={trackerSearch}
+                        onChange={(e) => setTrackerSearch(e.target.value)}
+                        placeholder="Search student..."
+                        className="rounded-xl border border-[#334155] bg-[#0B0F19] pl-8 pr-3 py-1.5 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none w-36 sm:w-48"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4. Table */}
+                {filteredStatuses.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-[#334155] p-12 text-center bg-[#1E293B]/40">
+                    <Users className="mx-auto h-10 w-10 text-[#64748B] mb-2" />
+                    <h3 className="text-sm font-bold text-white mb-1">No Students Match Current Filter</h3>
+                    <p className="text-xs text-[#94A3B8]">
+                      Try switching to &quot;All Students&quot; or clearing search text.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-2xl border border-[#334155] bg-[#1E293B] overflow-hidden shadow-xl">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="border-b border-[#334155] bg-[#0B0F19]/50 text-[#94A3B8] font-mono">
+                          <tr>
+                            <th className="px-4 py-3">Student Name</th>
+                            <th className="px-4 py-3">Got It (Received)</th>
+                            <th className="px-4 py-3">Clicked &quot;Start&quot; (Opened)</th>
+                            <th className="px-4 py-3">Submission &amp; Grade</th>
+                            <th className="px-4 py-3 text-right">Direct Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#334155]/60 text-[#CBD5E1]">
+                          {filteredStatuses.map((item) => {
+                            const { student, statusCode, hasReceived, receivedAt, isForceAssigned, hasOpened, openedAt, openCount, isSubmitted, isGraded, score, maxScore, submittedAt } = item;
+                            const studentGroup = courseGroups.find(g => g.members?.some(m => m.uid === student.uid));
+                            const isBeingAssigned = forceAssigningUid === student.uid;
+
+                            return (
+                              <tr key={student.uid} className="hover:bg-[#0B0F19]/40 transition-colors">
+                                <td className="px-4 py-3 font-semibold text-white">
+                                  <div className="flex items-center space-x-2">
+                                    <span>{student.fullName}</span>
+                                    {isForceAssigned && (
+                                      <span className="rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 text-[9px] font-mono font-bold">
+                                        ⚡ Force-Assigned
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center space-x-2 text-[10px] font-mono text-[#64748B] mt-0.5">
+                                    <span>@{student.username || "user"}</span>
+                                    <span>•</span>
+                                    <span>{student.level || "No Level"}</span>
+                                    {studentGroup && (
+                                      <>
+                                        <span>•</span>
+                                        <span className="text-purple-300 font-semibold">{studentGroup.name}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
+
+                                <td className="px-4 py-3">
+                                  {hasReceived ? (
+                                    <div className="space-y-0.5">
+                                      <span className="inline-flex items-center space-x-1 rounded-md bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 font-mono text-[10px] font-bold text-cyan-400">
+                                        <CheckCheck className="h-3 w-3" />
+                                        <span>Delivered</span>
+                                      </span>
+                                      {receivedAt && (
+                                        <span className="block text-[10px] font-mono text-[#64748B]">
+                                          {new Date(receivedAt).toLocaleDateString()} {new Date(receivedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="inline-flex items-center space-x-1 rounded-md bg-rose-500/10 border border-rose-500/30 px-2 py-0.5 font-mono text-[10px] font-bold text-rose-400">
+                                      <Clock className="h-3 w-3" />
+                                      <span>Not Received Yet</span>
+                                    </span>
+                                  )}
+                                </td>
+
+                                <td className="px-4 py-3">
+                                  {hasOpened ? (
+                                    <div className="space-y-0.5">
+                                      <span className="inline-flex items-center space-x-1 rounded-md bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 font-mono text-[10px] font-bold text-purple-300">
+                                        <PlayCircle className="h-3 w-3" />
+                                        <span>Clicked &quot;Start&quot;</span>
+                                      </span>
+                                      <div className="text-[10px] font-mono text-[#64748B] flex items-center space-x-1.5">
+                                        {openedAt && (
+                                          <span>{new Date(openedAt).toLocaleDateString()} {new Date(openedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                        )}
+                                        {openCount > 1 && <span>({openCount}x opened)</span>}
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span className="inline-flex items-center space-x-1 rounded-md bg-slate-800 border border-slate-700 px-2 py-0.5 font-mono text-[10px] text-slate-400">
+                                      <span>Not Started</span>
+                                    </span>
+                                  )}
+                                </td>
+
+                                <td className="px-4 py-3">
+                                  {isGraded ? (
+                                    <span className="inline-flex items-center space-x-1 rounded-md bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 font-mono text-[10px] font-bold text-emerald-400">
+                                      <CheckCircle2 className="h-3 w-3" />
+                                      <span>Graded: {score} / {maxScore}</span>
+                                    </span>
+                                  ) : isSubmitted ? (
+                                    <div className="space-y-0.5">
+                                      <span className="inline-flex items-center space-x-1 rounded-md bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 font-mono text-[10px] font-bold text-amber-300">
+                                        <FileCheck className="h-3 w-3" />
+                                        <span>Submitted (Pending)</span>
+                                      </span>
+                                      {submittedAt && (
+                                        <span className="block text-[10px] font-mono text-[#64748B]">
+                                          {new Date(submittedAt).toLocaleDateString()}
+                                        </span>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-[11px] font-mono text-[#64748B]">
+                                      No submission
+                                    </span>
+                                  )}
+                                </td>
+
+                                <td className="px-4 py-3 text-right">
+                                  <button
+                                    type="button"
+                                    disabled={isBeingAssigned}
+                                    onClick={() => handleForceAssignSingle(selectedAssignment, student)}
+                                    className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                                      statusCode === "missing"
+                                        ? "bg-amber-400 text-slate-950 hover:bg-amber-300"
+                                        : "bg-slate-800 border border-slate-700 text-slate-300 hover:text-white hover:border-[#06B6D4]"
+                                    }`}
+                                    title={statusCode === "missing" ? "Force-assign this assignment to student immediately" : "Re-push notification to student"}
+                                  >
+                                    <Zap className={`h-3.5 w-3.5 ${isBeingAssigned ? "animate-spin" : statusCode === "missing" ? "text-slate-950" : "text-amber-400"}`} />
+                                    <span>
+                                      {isBeingAssigned ? "Assigning..." : statusCode === "missing" ? "Force Assign" : "Re-Push"}
+                                    </span>
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 

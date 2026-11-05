@@ -2671,9 +2671,42 @@ export function mergeAssignmentsLists(...lists: Assignment[][]): Assignment[] {
       } else {
         const existingTime = new Date(existing.updatedAt || existing.createdAt || 0).getTime();
         const itemTime = new Date(item.updatedAt || item.createdAt || 0).getTime();
-        if (itemTime >= existingTime) {
-          map.set(item.id, item);
+        const base = itemTime >= existingTime ? item : existing;
+        const other = itemTime >= existingTime ? existing : item;
+
+        // Always preserve and merge studentReceipts & forceAssignedStudentUids across sources
+        const mergedReceipts: Record<string, any> = {
+          ...(other.studentReceipts || {}),
+          ...(base.studentReceipts || {})
+        };
+        if (other.studentReceipts && base.studentReceipts) {
+          for (const uid of Object.keys(other.studentReceipts)) {
+            if (base.studentReceipts[uid]) {
+              const rOther = other.studentReceipts[uid];
+              const rBase = base.studentReceipts[uid];
+              mergedReceipts[uid] = {
+                ...rOther,
+                ...rBase,
+                receivedAt: rOther.receivedAt || rBase.receivedAt,
+                openedAt: rBase.openedAt || rOther.openedAt,
+                openCount: Math.max(rBase.openCount || 0, rOther.openCount || 0)
+              };
+            }
+          }
         }
+
+        const mergedForceUids = Array.from(
+          new Set([
+            ...(other.forceAssignedStudentUids || []),
+            ...(base.forceAssignedStudentUids || [])
+          ])
+        );
+
+        map.set(item.id, {
+          ...base,
+          studentReceipts: Object.keys(mergedReceipts).length > 0 ? mergedReceipts : undefined,
+          forceAssignedStudentUids: mergedForceUids.length > 0 ? mergedForceUids : undefined
+        });
       }
     }
   }
@@ -2804,6 +2837,121 @@ export async function saveAssignment(assignment: Assignment): Promise<void> {
       console.error("Firestore save assignment error:", e);
     }
   }
+}
+
+/**
+ * Records that a student received an assignment on their dashboard ("received")
+ * or clicked Start / opened the assignment modal ("opened").
+ */
+export async function recordAssignmentStudentReceipt(
+  assignmentId: string,
+  student: UserProfile,
+  action: "received" | "opened"
+): Promise<void> {
+  if (!assignmentId || !student?.uid) return;
+  const nowIso = new Date().toISOString();
+
+  const localList = getLocalAssignments();
+  const target = localList.find(a => a.id === assignmentId);
+  const prevReceipt = target?.studentReceipts?.[student.uid];
+
+  // If only recording "received" and already recorded both receivedAt (and openedAt if applicable), skip redundant write
+  if (action === "received" && prevReceipt?.receivedAt) {
+    return;
+  }
+
+  const nextReceipt = {
+    studentUid: student.uid,
+    studentName: student.fullName || "Student",
+    studentUsername: student.username || "",
+    level: student.level || "Level 3",
+    receivedAt: prevReceipt?.receivedAt || nowIso,
+    openedAt: action === "opened" ? (prevReceipt?.openedAt || nowIso) : prevReceipt?.openedAt,
+    openCount: action === "opened" ? ((prevReceipt?.openCount || 0) + 1) : (prevReceipt?.openCount || 0)
+  };
+
+  const sanitizedReceipt = sanitizeForFirestore(nextReceipt);
+
+  // 1. Update LocalStorage
+  if (typeof window !== "undefined" && target) {
+    try {
+      const updatedAssignment: Assignment = {
+        ...target,
+        studentReceipts: {
+          ...(target.studentReceipts || {}),
+          [student.uid]: sanitizedReceipt
+        }
+      };
+      const merged = mergeAssignmentsLists(localList, [updatedAssignment]);
+      localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(merged));
+    } catch (e) {}
+  }
+
+  // 2. Update Firestore ( ensures baseline assignments or remote assignments have the receipt stored )
+  if (isFirebaseConfigured && db) {
+    try {
+      if (target) {
+        const payload = sanitizeForFirestore({
+          ...target,
+          studentReceipts: {
+            ...(target.studentReceipts || {}),
+            [student.uid]: sanitizedReceipt
+          }
+        });
+        await setDoc(doc(db, "assignments", assignmentId), payload, { merge: true });
+      } else {
+        await setDoc(
+          doc(db, "assignments", assignmentId),
+          {
+            studentReceipts: {
+              [student.uid]: sanitizedReceipt
+            }
+          },
+          { merge: true }
+        );
+      }
+    } catch (e) {
+      console.warn("Firestore recordAssignmentStudentReceipt error:", e);
+    }
+  }
+}
+
+/**
+ * Force-assigns an assignment directly to one or more students.
+ * Guarantees the assignment appears on their dashboard regardless of level/trade/group filters,
+ * and sends a real-time notification alert to each student.
+ */
+export async function forceAssignAssignmentToStudents(
+  assignment: Assignment,
+  targetStudents: UserProfile[],
+  instructorName: string = "Josef Marie"
+): Promise<Assignment> {
+  const newUids = targetStudents.map(s => s.uid).filter(Boolean);
+  const mergedUids = Array.from(
+    new Set([...(assignment.forceAssignedStudentUids || []), ...newUids])
+  );
+
+  const updatedAssignment: Assignment = {
+    ...assignment,
+    status: "published",
+    forceAssignedStudentUids: mergedUids,
+    updatedAt: new Date().toISOString()
+  };
+
+  await saveAssignment(updatedAssignment);
+
+  // Also dispatch real-time notifications to each student so they get an instant alert banner
+  await Promise.allSettled(
+    targetStudents.map(st =>
+      sendStudentNotification(
+        st.uid,
+        instructorName,
+        `📋 New Assignment Force-Assigned to You: "${assignment.title}" (${assignment.courseCode || "General"}). Open the "My Class Assignments" tab and click Start to view instructions and submit your work.`
+      )
+    )
+  );
+
+  return updatedAssignment;
 }
 
 export async function deleteAssignment(assignmentId: string): Promise<void> {

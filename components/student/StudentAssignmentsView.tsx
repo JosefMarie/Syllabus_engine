@@ -14,7 +14,8 @@ import {
   getStudentGroups,
   subscribeToAssignments,
   subscribeToSubmissions,
-  subscribeToGroups
+  subscribeToGroups,
+  recordAssignmentStudentReceipt
 } from "@/lib/db";
 import { isAllowedSubmissionFile, ACCEPT_FILE_ATTRIBUTE } from "@/lib/aiGrading";
 import { 
@@ -35,7 +36,8 @@ import {
   Users,
   RefreshCw,
   Lock,
-  BarChart3
+  BarChart3,
+  Zap
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -146,6 +148,12 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
   const tradeAndGroupMatchedAssignments = useMemo(() => {
     return rawAssignments.filter(a => {
       if (a.status && a.status !== "published") return false;
+
+      // Force-Assigned by instructor always bypasses trade and group restrictions
+      if (currentUser?.uid && a.forceAssignedStudentUids?.includes(currentUser.uid)) {
+        return true;
+      }
+
       const matchesTrade = isTradeMatch(a.tradeId, currentUser.tradeId);
       if (!matchesTrade) return false;
 
@@ -157,12 +165,30 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
       return true;
     });
-  }, [rawAssignments, myGroups, currentUser.tradeId]);
+  }, [rawAssignments, myGroups, currentUser?.tradeId, currentUser?.uid]);
 
-  // Assignments strictly matching the student's profile level
+  // Assignments matching the student's class level, enrolled courses, targeted group, or force-assigned
   const myLevelAssignments = useMemo(() => {
-    return tradeAndGroupMatchedAssignments.filter(a => isLevelMatch(a.level, currentUser.level));
-  }, [tradeAndGroupMatchedAssignments, currentUser.level]);
+    return tradeAndGroupMatchedAssignments.filter(a => {
+      // 1. Force-assigned by instructor always belongs in student's immediate tasks
+      if (currentUser?.uid && a.forceAssignedStudentUids?.includes(currentUser.uid)) {
+        return true;
+      }
+      // 2. Strict level match
+      if (isLevelMatch(a.level, currentUser.level)) {
+        return true;
+      }
+      // 3. Course code match against courses taught in the student's cohort
+      if (a.courseCode && studentCourses.some(sc => sc.courseCode === a.courseCode)) {
+        return true;
+      }
+      // 4. Targeted group assignment where student is a group member
+      if (a.submissionType === "group" && a.targetGroupId && myGroups.some(g => g.id === a.targetGroupId)) {
+        return true;
+      }
+      return false;
+    });
+  }, [tradeAndGroupMatchedAssignments, currentUser?.level, currentUser?.uid, studentCourses, myGroups]);
 
   // If the student's registered level has 0 assignments (e.g. they registered with default "Level 3"),
   // automatically show all published assignments across levels so they are never stuck seeing 0 tasks.
@@ -379,8 +405,27 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
     }
   };
 
+  // Automatically record "received" receipt for all assignments delivered to this student's view
+  useEffect(() => {
+    if (!currentUser?.uid || tradeAndGroupMatchedAssignments.length === 0) return;
+
+    tradeAndGroupMatchedAssignments.forEach(asg => {
+      const alreadyReceipted = asg.studentReceipts?.[currentUser.uid]?.receivedAt;
+      if (!alreadyReceipted) {
+        recordAssignmentStudentReceipt(asg.id, currentUser, "received").catch(err => {
+          console.warn("Could not record assignment receipt:", err);
+        });
+      }
+    });
+  }, [tradeAndGroupMatchedAssignments, currentUser]);
+
   const handleOpenAssignment = (asg: Assignment) => {
     setActiveAssignment(asg);
+    if (currentUser?.uid) {
+      recordAssignmentStudentReceipt(asg.id, currentUser, "opened").catch(err => {
+        console.warn("Could not record assignment opened:", err);
+      });
+    }
     const existing = submissions[asg.id];
     if (existing) {
       setTextAnswer(existing.contentMarkdown || "");
@@ -942,6 +987,12 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                                 ? `Team Task (${myGroups.find(g => g.id === asg.targetGroupId)?.name || "Assigned Team"})`
                                 : "Group Project"}
                             </span>
+                          </span>
+                        )}
+                        {currentUser?.uid && asg.forceAssignedStudentUids?.includes(currentUser.uid) && (
+                          <span className="inline-flex items-center space-x-1 rounded-md bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-amber-300">
+                            <Zap className="h-3 w-3 text-amber-400" />
+                            <span>Directly Assigned</span>
                           </span>
                         )}
                       </div>
