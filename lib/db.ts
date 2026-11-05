@@ -3057,6 +3057,31 @@ export async function saveAssignmentSubmission(submission: AssignmentSubmission)
   }
 }
 
+export async function deleteAssignmentSubmission(submissionId: string): Promise<void> {
+  // 1. LocalStorage
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(SUBMISSIONS_KEY);
+      if (raw) {
+        const list: AssignmentSubmission[] = JSON.parse(raw);
+        const filtered = list.filter(s => s.id !== submissionId);
+        localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(filtered));
+      }
+    } catch (e) {
+      console.warn("LocalStorage deleteAssignmentSubmission error:", e);
+    }
+  }
+
+  // 2. Firestore
+  if (isFirebaseConfigured && db) {
+    try {
+      await deleteDoc(doc(db, "submissions", submissionId));
+    } catch (e) {
+      console.error("Firestore deleteAssignmentSubmission error:", e);
+    }
+  }
+}
+
 export function getLocalSubmissions(): AssignmentSubmission[] {
   if (typeof window === "undefined") return [];
   try {

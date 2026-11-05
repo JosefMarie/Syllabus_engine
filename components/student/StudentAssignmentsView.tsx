@@ -15,7 +15,8 @@ import {
   subscribeToAssignments,
   subscribeToSubmissions,
   subscribeToGroups,
-  recordAssignmentStudentReceipt
+  recordAssignmentStudentReceipt,
+  deleteAssignmentSubmission
 } from "@/lib/db";
 import { isAllowedSubmissionFile, ACCEPT_FILE_ATTRIBUTE } from "@/lib/aiGrading";
 import { 
@@ -37,7 +38,8 @@ import {
   RefreshCw,
   Lock,
   BarChart3,
-  Zap
+  Zap,
+  Trash2
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -100,6 +102,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
   // Modal for viewing an independent submission details
   const [viewingSubmission, setViewingSubmission] = useState<AssignmentSubmission | null>(null);
+  const [deletingSubId, setDeletingSubId] = useState<string | null>(null);
 
   // Form State for teacher-assigned modal
   const [textAnswer, setTextAnswer] = useState("");
@@ -628,6 +631,29 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
     }
   };
 
+  // Delete an independent / self-submitted course assignment
+  const handleDeleteSelfSubmission = async (sub: AssignmentSubmission) => {
+    const title = sub.submissionTitle || sub.courseCode || "this submission";
+    if (!confirm(`Are you sure you want to delete your submission for "${title}"? This cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingSubId(sub.id);
+    try {
+      await deleteAssignmentSubmission(sub.id);
+      setIndependentSubmissions(prev => prev.filter(s => s.id !== sub.id));
+      if (viewingSubmission?.id === sub.id) {
+        setViewingSubmission(null);
+      }
+      alert(`Deleted "${title}" successfully.`);
+    } catch (err: any) {
+      console.error("Error deleting self-submission:", err);
+      alert("Failed to delete submission: " + (err.message || "Unknown error"));
+    } finally {
+      setDeletingSubId(null);
+    }
+  };
+
   if (loading) {
     return (
       <div className="rounded-2xl border border-[#334155] bg-[#1E293B]/60 p-8 text-center text-xs font-mono text-[#94A3B8]">
@@ -811,17 +837,31 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                     <span className="rounded-md bg-[#06B6D4]/10 border border-[#06B6D4]/30 px-2 py-0.5 text-[10px] font-mono font-bold text-[#06B6D4]">
                       {sub.courseCode}
                     </span>
-                    {isGraded ? (
-                      <span className="inline-flex items-center space-x-1 rounded-md bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-emerald-400">
-                        <CheckCircle2 className="h-3 w-3" />
-                        <span>{sub.score} / {sub.maxScore} Pts</span>
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center space-x-1 rounded-md bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 text-[10px] font-mono text-amber-300">
-                        <Clock className="h-3 w-3" />
-                        <span>Pending Teacher Review</span>
-                      </span>
-                    )}
+                    <div className="flex items-center space-x-1.5">
+                      {isGraded ? (
+                        <span className="inline-flex items-center space-x-1 rounded-md bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-emerald-400">
+                          <CheckCircle2 className="h-3 w-3" />
+                          <span>{sub.score} / {sub.maxScore} Pts</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center space-x-1 rounded-md bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 text-[10px] font-mono text-amber-300">
+                          <Clock className="h-3 w-3" />
+                          <span>Pending Teacher Review</span>
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        disabled={deletingSubId === sub.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteSelfSubmission(sub);
+                        }}
+                        className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/15 transition-all"
+                        title="Delete this self-submitted assignment"
+                      >
+                        <Trash2 className={`h-3.5 w-3.5 ${deletingSubId === sub.id ? "animate-spin text-rose-400" : ""}`} />
+                      </button>
+                    </div>
                   </div>
 
                   <div>
@@ -1303,7 +1343,17 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
               </div>
             )}
 
-            <div className="flex justify-end pt-2 border-t border-[#334155]">
+            <div className="flex items-center justify-between pt-3 border-t border-[#334155]">
+              <button
+                type="button"
+                disabled={deletingSubId === viewingSubmission.id}
+                onClick={() => handleDeleteSelfSubmission(viewingSubmission)}
+                className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-rose-400 hover:text-white bg-rose-500/10 hover:bg-rose-500 border border-rose-500/30 transition-all disabled:opacity-50"
+              >
+                <Trash2 className={`h-3.5 w-3.5 ${deletingSubId === viewingSubmission.id ? "animate-spin" : ""}`} />
+                <span>{deletingSubId === viewingSubmission.id ? "Deleting..." : "Delete Submission"}</span>
+              </button>
+
               <button
                 onClick={() => setViewingSubmission(null)}
                 className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#0B0F19]/60 backdrop-blur-sm border border-[#334155]/70 hover:bg-[#0B0F19]/90"

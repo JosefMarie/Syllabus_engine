@@ -20,7 +20,8 @@ import {
   getLocalAssignments,
   getAllUserProfiles,
   subscribeToAllUserProfiles,
-  forceAssignAssignmentToStudents
+  forceAssignAssignmentToStudents,
+  deleteAssignmentSubmission
 } from "@/lib/db";
 import { parseAssignmentWithGemini } from "@/lib/gemini";
 import { gradeSubmissionWithGemini, AiGradingResult } from "@/lib/aiGrading";
@@ -637,6 +638,23 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
       alert("Failed to bulk force assign: " + (err.message || "Unknown error"));
     } finally {
       setForceAssigningAll(false);
+    }
+  };
+
+  const handleDeleteSubmission = async (sub: AssignmentSubmission) => {
+    const studentTitle = sub.studentName || "student";
+    const workTitle = sub.submissionTitle || sub.courseCode || "submission";
+    if (!confirm(`Permanently delete ${studentTitle}'s submission for "${workTitle}"? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      await deleteAssignmentSubmission(sub.id);
+      setAllSubmissionsList(prev => prev.filter(s => s.id !== sub.id));
+      setSubmissions(prev => prev.filter(s => s.id !== sub.id));
+      alert("Submission deleted successfully.");
+    } catch (err: any) {
+      console.error("Delete submission error:", err);
+      alert("Failed to delete submission: " + (err.message || "Unknown error"));
     }
   };
 
@@ -1430,6 +1448,14 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                                 <Award className="h-3.5 w-3.5" />
                                 <span>{isGraded ? "Edit Grade" : "Grade & Review"}</span>
                               </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSubmission(sub)}
+                                className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                                title="Delete this submission"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
                             </div>
                           </td>
                         </tr>
@@ -2032,6 +2058,14 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                                   >
                                     <Award className="h-3.5 w-3.5" />
                                     <span>{isGraded ? "Edit Grade" : "Grade & Review"}</span>
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteSubmission(sub)}
+                                    className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                                    title="Delete this submission"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
                                   </button>
                                 </div>
                               </td>
