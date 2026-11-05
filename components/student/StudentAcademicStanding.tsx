@@ -1,14 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { UserProfile } from "@/types/auth";
 import { Syllabus } from "@/types/syllabus";
 import { ExamAttempt } from "@/types/exam";
+import { AssignmentSubmission } from "@/types/assignment";
 import { 
   getStudentGroupEvaluations, 
   getStudentExamAttempts, 
   getStudentSubmissions,
-  getSubtopicProgressAsync 
+  getSubtopicProgressAsync,
+  subscribeToSubmissions
 } from "@/lib/db";
 import { 
   Award, 
@@ -101,7 +103,7 @@ export default function StudentAcademicStanding({
   const [submissionCount, setSubmissionCount] = useState<number>(() => {
     if (typeof window === "undefined" || !currentUser?.uid) return 0;
     try {
-      const raw = localStorage.getItem("syllabus_submissions_v1");
+      const raw = localStorage.getItem("syllabus_platform_submissions_v1") || localStorage.getItem("syllabus_submissions_v1");
       if (raw) {
         const subs = JSON.parse(raw);
         return subs.filter((s: any) => s.studentUid === currentUser.uid || s.submittedByUid === currentUser.uid).length;
@@ -110,11 +112,60 @@ export default function StudentAcademicStanding({
     return 0;
   });
 
+  const [assignmentAvg, setAssignmentAvg] = useState<number | null>(() => {
+    if (typeof window === "undefined" || !currentUser?.uid) return null;
+    try {
+      const raw = localStorage.getItem("syllabus_platform_submissions_v1") || localStorage.getItem("syllabus_submissions_v1");
+      if (raw) {
+        const subs: AssignmentSubmission[] = JSON.parse(raw);
+        const myGraded = subs.filter(
+          (s) => s.studentUid === currentUser.uid && s.status === "graded" && typeof s.score === "number"
+        );
+        if (myGraded.length > 0) {
+          const sumPct = myGraded.reduce((acc, s) => {
+            const max = s.maxScore || 100;
+            return acc + (max > 0 ? (s.score! / max) * 100 : 0);
+          }, 0);
+          return Math.round((sumPct / myGraded.length) * 10) / 10;
+        }
+      }
+    } catch (e) {}
+    return null;
+  });
+
+  const [gradedAssignmentCount, setGradedAssignmentCount] = useState<number>(0);
+  const [myExamAttempts, setMyExamAttempts] = useState<ExamAttempt[]>([]);
+  const [mySubmissions, setMySubmissions] = useState<AssignmentSubmission[]>([]);
+
   const [showReportCard, setShowReportCard] = useState(false);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
+
+    const applyStudentSubs = (subsList: AssignmentSubmission[]) => {
+      if (!isMounted) return;
+      setMySubmissions(subsList);
+      setSubmissionCount(subsList.length);
+      const graded = subsList.filter((s) => s.status === "graded" && typeof s.score === "number");
+      setGradedAssignmentCount(graded.length);
+      if (graded.length > 0) {
+        const sumPct = graded.reduce((acc, s) => {
+          const max = s.maxScore || 100;
+          return acc + (max > 0 ? (s.score! / max) * 100 : 0);
+        }, 0);
+        setAssignmentAvg(Math.round((sumPct / graded.length) * 10) / 10);
+      } else {
+        setAssignmentAvg(null);
+      }
+    };
+
+    const unsubSubs = subscribeToSubmissions((allSubs) => {
+      if (isMounted && currentUser?.uid) {
+        const mine = allSubs.filter((s) => s.studentUid === currentUser.uid);
+        applyStudentSubs(mine);
+      }
+    });
 
     async function loadStats() {
       if (!currentUser?.uid) return;
@@ -159,6 +210,7 @@ export default function StudentAcademicStanding({
         // 2. Exam attempts
         if (attemptsRes.status === "fulfilled" && attemptsRes.value.length > 0) {
           const completedAttempts = attemptsRes.value.filter((a: ExamAttempt) => a.status === "graded" || a.status === "submitted");
+          setMyExamAttempts(completedAttempts);
           if (completedAttempts.length > 0) {
             const sum = completedAttempts.reduce((acc: number, b: ExamAttempt) => acc + (b.percentage || 0), 0);
             setExamAvg(Math.round((sum / completedAttempts.length) * 10) / 10);
@@ -173,7 +225,7 @@ export default function StudentAcademicStanding({
 
         // 4. Submissions
         if (subsRes.status === "fulfilled") {
-          setSubmissionCount(subsRes.value.length);
+          applyStudentSubs(subsRes.value);
         }
       } catch (err) {
         console.error("Error loading academic standing:", err);
@@ -186,8 +238,59 @@ export default function StudentAcademicStanding({
 
     return () => {
       isMounted = false;
+      unsubSubs();
     };
   }, [currentUser?.uid, syllabi]);
+
+  // Subject-by-Subject Marks Breakdown (combining Exams & Assignments by courseCode)
+  const subjectMarksBreakdown = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        courseCode: string;
+        courseTitle: string;
+        examScores: number[];
+        assignmentScores: { title: string; score: number; maxScore: number; pct: number }[];
+      }
+    >();
+
+    const ensureCourse = (codeRaw?: string, titleRaw?: string) => {
+      const code = (codeRaw || "General").trim() || "General";
+      if (!map.has(code)) {
+        const syl = syllabi.find((s) => s.courseCode === code);
+        map.set(code, {
+          courseCode: code,
+          courseTitle: syl?.title || titleRaw || code,
+          examScores: [],
+          assignmentScores: []
+        });
+      }
+      return map.get(code)!;
+    };
+
+    myExamAttempts.forEach((att) => {
+      const entry = ensureCourse(att.courseCode, att.examTitle);
+      if (typeof att.percentage === "number") {
+        entry.examScores.push(att.percentage);
+      }
+    });
+
+    mySubmissions.forEach((sub) => {
+      if (sub.status === "graded" && typeof sub.score === "number") {
+        const entry = ensureCourse(sub.courseCode, sub.courseTitle);
+        const max = sub.maxScore || 100;
+        const pct = max > 0 ? Math.round((sub.score / max) * 100) : 0;
+        entry.assignmentScores.push({
+          title: sub.submissionTitle || "Assignment",
+          score: sub.score,
+          maxScore: max,
+          pct
+        });
+      }
+    });
+
+    return Array.from(map.values());
+  }, [myExamAttempts, mySubmissions, syllabi]);
 
   // Weighted Academic Grade
   const progressPercent = totalSubtopicsCount > 0 
@@ -196,9 +299,10 @@ export default function StudentAcademicStanding({
 
   // Compute composite score
   const validWeights: { score: number; weight: number }[] = [];
-  if (examAvg !== null) validWeights.push({ score: examAvg, weight: 0.4 });
-  if (presentationAvg !== null) validWeights.push({ score: presentationAvg, weight: 0.35 });
-  if (progressPercent > 0) validWeights.push({ score: progressPercent, weight: 0.25 });
+  if (examAvg !== null) validWeights.push({ score: examAvg, weight: 0.35 });
+  if (assignmentAvg !== null) validWeights.push({ score: assignmentAvg, weight: 0.25 });
+  if (presentationAvg !== null) validWeights.push({ score: presentationAvg, weight: 0.25 });
+  if (progressPercent > 0) validWeights.push({ score: progressPercent, weight: 0.15 });
 
   let cumulativeGrade: number | null = null;
   if (validWeights.length > 0) {
@@ -339,26 +443,28 @@ export default function StudentAcademicStanding({
             </span>
           </div>
 
-          {/* Metric 4: Assignments Submitted */}
+          {/* Metric 4: Assignment Marks & Submissions */}
           <div 
             onClick={() => onTabChange?.("assignments")}
             className="rounded-2xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 hover:border-amber-500/40 transition-all cursor-pointer group"
           >
             <div className="flex items-center justify-between text-[#94A3B8] mb-1.5">
-              <span className="text-[11px] font-bold">Assignments</span>
+              <span className="text-[11px] font-bold">Assignment Marks</span>
               <Layers className="h-4 w-4 text-amber-400 group-hover:scale-110 transition-transform" />
             </div>
             <div className="text-xl sm:text-2xl font-black font-mono text-amber-300 mb-1">
-              {submissionCount}
+              {assignmentAvg !== null ? `${assignmentAvg}%` : submissionCount > 0 ? `${submissionCount} Sub.` : "—"}
             </div>
             <div className="w-full bg-[#1E293B] h-1.5 rounded-full overflow-hidden mb-1.5">
               <div 
                 className="bg-amber-500 h-full rounded-full transition-all duration-500" 
-                style={{ width: `${Math.min(100, submissionCount * 25)}%` }} 
+                style={{ width: `${assignmentAvg !== null ? assignmentAvg : Math.min(100, submissionCount * 25)}%` }} 
               />
             </div>
             <span className="text-[10px] text-[#64748B] block truncate">
-              Completed deliverables
+              {gradedAssignmentCount > 0
+                ? `${gradedAssignmentCount} graded • ${submissionCount} submitted`
+                : `${submissionCount} submitted deliverables`}
             </span>
           </div>
         </div>
@@ -405,7 +511,7 @@ export default function StudentAcademicStanding({
               <div className="rounded-2xl border border-cyan-500/40 bg-cyan-500/10 p-5 flex items-center justify-between">
                 <div>
                   <div className="text-xs font-mono uppercase text-cyan-300 font-bold">Cumulative Weighted Score</div>
-                  <div className="text-[11px] text-[#94A3B8] mt-0.5">Based on Exams (40%), Oral Defense (35%), Syllabus (25%)</div>
+                  <div className="text-[11px] text-[#94A3B8] mt-0.5">Based on Exams (35%), Assignments (25%), Oral Defense (25%), Syllabus (15%)</div>
                 </div>
                 <div className="text-3xl font-black font-mono text-cyan-300">
                   {cumulativeGrade !== null ? `${cumulativeGrade}%` : "N/A"}
@@ -434,21 +540,82 @@ export default function StudentAcademicStanding({
 
                   <div className="p-3.5 flex items-center justify-between text-xs">
                     <div className="flex items-center space-x-2">
+                      <Layers className="h-4 w-4 text-amber-400" />
+                      <span className="text-white font-medium">Coursework Assignments Average</span>
+                    </div>
+                    <span className="font-mono font-bold text-amber-300">
+                      {assignmentAvg !== null
+                        ? `${assignmentAvg}% (${gradedAssignmentCount} graded / ${submissionCount} submitted)`
+                        : `${submissionCount} deliverables submitted`}
+                    </span>
+                  </div>
+
+                  <div className="p-3.5 flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-2">
                       <Award className="h-4 w-4 text-emerald-400" />
                       <span className="text-white font-medium">Group Presentation &amp; Defense Score</span>
                     </div>
                     <span className="font-mono font-bold text-emerald-300">{presentationAvg !== null ? `${presentationAvg}%` : "Pending Defense"}</span>
                   </div>
-
-                  <div className="p-3.5 flex items-center justify-between text-xs">
-                    <div className="flex items-center space-x-2">
-                      <Layers className="h-4 w-4 text-amber-400" />
-                      <span className="text-white font-medium">Coursework Assignments Submitted</span>
-                    </div>
-                    <span className="font-mono font-bold text-amber-300">{submissionCount} deliverables</span>
-                  </div>
                 </div>
               </div>
+
+              {/* Subject-by-Subject Marks Breakdown (Exams & Assignments) */}
+              {subjectMarksBreakdown.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-bold font-mono text-[#CBD5E1] uppercase tracking-wider">
+                    Subject-by-Subject Marks (Exams &amp; Assignments)
+                  </h4>
+                  <div className="rounded-2xl border border-[#334155] bg-[#1E293B] overflow-hidden divide-y divide-[#334155]">
+                    {subjectMarksBreakdown.map((subj) => {
+                      const examCourseAvg =
+                        subj.examScores.length > 0
+                          ? Math.round(subj.examScores.reduce((a, b) => a + b, 0) / subj.examScores.length)
+                          : null;
+                      const asgCourseAvg =
+                        subj.assignmentScores.length > 0
+                          ? Math.round(subj.assignmentScores.reduce((a, b) => a + b.pct, 0) / subj.assignmentScores.length)
+                          : null;
+
+                      return (
+                        <div key={subj.courseCode} className="p-3.5 space-y-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <div>
+                              <span className="rounded bg-cyan-500/15 border border-cyan-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-cyan-300 mr-2">
+                                {subj.courseCode}
+                              </span>
+                              <span className="text-xs font-bold text-white">{subj.courseTitle}</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-[11px] font-mono">
+                              <span className="text-purple-300">
+                                Exams: <strong>{examCourseAvg !== null ? `${examCourseAvg}%` : "—"}</strong>
+                              </span>
+                              <span className="text-amber-300">
+                                Assignments: <strong>{asgCourseAvg !== null ? `${asgCourseAvg}%` : "—"}</strong>
+                              </span>
+                            </div>
+                          </div>
+                          {subj.assignmentScores.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 pt-1">
+                              {subj.assignmentScores.map((asg, i) => (
+                                <span
+                                  key={i}
+                                  className="inline-flex items-center space-x-1 rounded-md bg-[#0B0F19] border border-[#334155] px-2 py-0.5 text-[10px] font-mono text-[#CBD5E1]"
+                                >
+                                  <span className="truncate max-w-[140px]">{asg.title}:</span>
+                                  <strong className="text-emerald-400">
+                                    {asg.score}/{asg.maxScore} ({asg.pct}%)
+                                  </strong>
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Footer Note */}
               <p className="text-[10px] text-center text-[#64748B] font-mono">

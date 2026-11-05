@@ -13,6 +13,7 @@ import {
   saveAssignmentSubmission,
   getStudentGroups,
   subscribeToAssignments,
+  subscribeToSubmissions,
   subscribeToGroups
 } from "@/lib/db";
 import { isAllowedSubmissionFile, ACCEPT_FILE_ATTRIBUTE } from "@/lib/aiGrading";
@@ -32,10 +33,36 @@ import {
   PlusCircle, 
   BookOpen,
   Users,
-  RefreshCw
+  RefreshCw,
+  Lock,
+  BarChart3
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+// Parse YYYY-MM-DD due dates as 23:59:59.999 local time on that date so assignments remain open through the entire due date
+export function getAssignmentDeadlineDate(dueDateStr?: string): Date | null {
+  if (!dueDateStr) return null;
+  const trimmed = dueDateStr.trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (match) {
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 23, 59, 59, 999);
+  }
+  const parsed = new Date(trimmed);
+  return isNaN(parsed.getTime()) ? null : parsed;
+}
+
+export function isAssignmentPastDue(dueDateStr?: string): boolean {
+  const deadline = getAssignmentDeadlineDate(dueDateStr);
+  if (!deadline) return false;
+  return Date.now() > deadline.getTime();
+}
+
+export function formatAssignmentDueDate(dueDateStr?: string): string {
+  const deadline = getAssignmentDeadlineDate(dueDateStr);
+  if (!deadline) return "";
+  return deadline.toLocaleDateString();
+}
 
 interface StudentAssignmentsViewProps {
   currentUser: UserProfile;
@@ -50,6 +77,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
   const [loading, setLoading] = useState<boolean>(() => getLocalAssignments().length === 0);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [selectedLevelFilter, setSelectedLevelFilter] = useState<string>("my_level");
+  const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>("all");
 
   // Modal for teacher-assigned assignment
   const [activeAssignment, setActiveAssignment] = useState<Assignment | null>(null);
@@ -143,7 +171,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
       ? "all"
       : selectedLevelFilter;
 
-  const assignments = useMemo(() => {
+  const levelMatchedAssignments = useMemo(() => {
     if (effectiveLevelFilter === "all") {
       return tradeAndGroupMatchedAssignments;
     }
@@ -153,6 +181,117 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
     return tradeAndGroupMatchedAssignments.filter(a => isLevelMatch(a.level, effectiveLevelFilter));
   }, [tradeAndGroupMatchedAssignments, myLevelAssignments, effectiveLevelFilter]);
 
+  const assignments = useMemo(() => {
+    if (selectedSubjectFilter === "all") return levelMatchedAssignments;
+    return levelMatchedAssignments.filter(a => (a.courseCode || "General") === selectedSubjectFilter);
+  }, [levelMatchedAssignments, selectedSubjectFilter]);
+
+  // Compute distinct subjects across assignments & student submissions, plus per-subject marks summary
+  const subjectMarksSummary = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        courseCode: string;
+        courseTitle: string;
+        gradedItems: {
+          id: string;
+          title: string;
+          score: number;
+          maxScore: number;
+          pct: number;
+          feedback?: string;
+          submittedAt?: string;
+          isIndependent?: boolean;
+          assignment?: Assignment;
+          submission: AssignmentSubmission;
+        }[];
+        pendingCount: number;
+        earnedPoints: number;
+        possiblePoints: number;
+      }
+    >();
+
+    const ensureSubject = (codeRaw?: string, titleRaw?: string) => {
+      const code = (codeRaw || "General").trim() || "General";
+      if (!map.has(code)) {
+        const matchedSyl = syllabi.find(s => s.courseCode === code);
+        map.set(code, {
+          courseCode: code,
+          courseTitle: matchedSyl?.title || titleRaw || code,
+          gradedItems: [],
+          pendingCount: 0,
+          earnedPoints: 0,
+          possiblePoints: 0
+        });
+      }
+      return map.get(code)!;
+    };
+
+    // Include official assignments and their submissions
+    Object.values(submissions).forEach(sub => {
+      const matchedAsg = rawAssignments.find(a => a.id === sub.assignmentId);
+      const entry = ensureSubject(sub.courseCode || matchedAsg?.courseCode, sub.courseTitle || matchedAsg?.courseTitle);
+      if (sub.status === "graded" && typeof sub.score === "number") {
+        const max = sub.maxScore || matchedAsg?.totalPoints || 100;
+        const pct = max > 0 ? Math.round((sub.score / max) * 100) : 0;
+        entry.gradedItems.push({
+          id: sub.id,
+          title: sub.submissionTitle || matchedAsg?.title || "Assignment",
+          score: sub.score,
+          maxScore: max,
+          pct,
+          feedback: sub.feedback,
+          submittedAt: sub.submittedAt,
+          isIndependent: false,
+          assignment: matchedAsg,
+          submission: sub
+        });
+        entry.earnedPoints += sub.score;
+        entry.possiblePoints += max;
+      } else {
+        entry.pendingCount += 1;
+      }
+    });
+
+    // Include independent course submissions
+    independentSubmissions.forEach(sub => {
+      const entry = ensureSubject(sub.courseCode, sub.courseTitle);
+      if (sub.status === "graded" && typeof sub.score === "number") {
+        const max = sub.maxScore || 100;
+        const pct = max > 0 ? Math.round((sub.score / max) * 100) : 0;
+        entry.gradedItems.push({
+          id: sub.id,
+          title: sub.submissionTitle || "Course Work",
+          score: sub.score,
+          maxScore: max,
+          pct,
+          feedback: sub.feedback,
+          submittedAt: sub.submittedAt,
+          isIndependent: true,
+          submission: sub
+        });
+        entry.earnedPoints += sub.score;
+        entry.possiblePoints += max;
+      } else {
+        entry.pendingCount += 1;
+      }
+    });
+
+    return Array.from(map.values()).filter(
+      item => item.gradedItems.length > 0 || item.pendingCount > 0
+    );
+  }, [submissions, independentSubmissions, rawAssignments, syllabi]);
+
+  // Subject options for the filter dropdown
+  const availableSubjectCodes = useMemo(() => {
+    const codes = new Set<string>();
+    levelMatchedAssignments.forEach(a => codes.add((a.courseCode || "General").trim() || "General"));
+    Object.values(submissions).forEach(s => {
+      if (s.courseCode) codes.add(s.courseCode.trim());
+    });
+    return Array.from(codes);
+  }, [levelMatchedAssignments, submissions]);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -160,6 +299,23 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
       if (isMounted) {
         setRawAssignments(prev => mergeAssignmentsLists(prev, allAsg));
         setLoading(false);
+      }
+    });
+
+    const unsubSubs = subscribeToSubmissions((allSubs) => {
+      if (isMounted && currentUser?.uid) {
+        const mySubs = allSubs.filter(s => s.studentUid === currentUser.uid);
+        const subMap: Record<string, AssignmentSubmission> = {};
+        const indep: AssignmentSubmission[] = [];
+        mySubs.forEach(s => {
+          if (s.isIndependentSubmission || s.assignmentId.startsWith("indep_") || s.assignmentId === "independent") {
+            indep.push(s);
+          } else {
+            subMap[s.assignmentId] = s;
+          }
+        });
+        setSubmissions(subMap);
+        setIndependentSubmissions(indep);
       }
     });
 
@@ -177,6 +333,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
     return () => {
       isMounted = false;
       unsubAsg();
+      unsubSubs();
       unsubGroups();
     };
   }, [currentUser?.uid, currentUser?.level, currentUser?.tradeId]);
@@ -279,6 +436,18 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeAssignment) return;
+
+    // 1. Block re-submission or editing if already submitted or graded
+    if (submissions[activeAssignment.id]) {
+      alert("You have already submitted this assignment. Once submitted, answers are locked for grading and cannot be modified or re-submitted.");
+      return;
+    }
+
+    // 2. Block submission if the assignment due date has passed
+    if (isAssignmentPastDue(activeAssignment.dueDate)) {
+      alert(`Submission Closed: The due date (${formatAssignmentDueDate(activeAssignment.dueDate)}) has passed. Late submissions are not permitted.`);
+      return;
+    }
 
     if (!textAnswer.trim() && !selectedFile) {
       alert("Please provide a text answer or attach a file.");
@@ -443,7 +612,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
             onClick={() => loadData(false)}
             disabled={isSyncing}
             className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-[#06B6D4] transition-all disabled:opacity-50"
-            title="Sync latest assignments from instructor"
+            title="Sync latest assignments & grades from instructor"
           >
             <RefreshCw className={`h-3.5 w-3.5 text-[#06B6D4] ${isSyncing ? "animate-spin" : ""}`} />
             <span>{isSyncing ? "Syncing..." : "Sync Latest"}</span>
@@ -463,6 +632,115 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
           </button>
         </div>
       </div>
+
+      {/* SECTION 0: MY ASSIGNMENT MARKS & GRADES BY SUBJECT */}
+      {subjectMarksSummary.length > 0 && (
+        <div className="rounded-2xl border border-emerald-500/30 bg-[#1E293B]/85 p-5 shadow-xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#334155]/70 pb-3">
+            <div>
+              <h3 className="text-xs font-extrabold font-mono text-emerald-400 uppercase tracking-wider flex items-center space-x-2">
+                <BarChart3 className="h-4 w-4 text-emerald-400" />
+                <span>My Assignment Marks &amp; Grades by Subject ({subjectMarksSummary.length})</span>
+              </h3>
+              <p className="text-[11px] text-[#94A3B8] mt-0.5">
+                View your graded assignment marks and total scores grouped by subject / course module.
+              </p>
+            </div>
+            <div className="flex items-center space-x-2">
+              {(() => {
+                const totalEarned = subjectMarksSummary.reduce((acc, s) => acc + s.earnedPoints, 0);
+                const totalPoss = subjectMarksSummary.reduce((acc, s) => acc + s.possiblePoints, 0);
+                if (totalPoss <= 0) return null;
+                const overallPct = Math.round((totalEarned / totalPoss) * 100);
+                return (
+                  <span className="inline-flex items-center space-x-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/40 px-3 py-1.5 text-xs font-mono font-bold text-emerald-300">
+                    <Award className="h-3.5 w-3.5 text-emerald-400" />
+                    <span>Overall Assignment Marks: {totalEarned} / {totalPoss} Pts ({overallPct}%)</span>
+                  </span>
+                );
+              })()}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+            {subjectMarksSummary.map((subj) => {
+              const avgPct = subj.possiblePoints > 0 ? Math.round((subj.earnedPoints / subj.possiblePoints) * 100) : null;
+              return (
+                <div
+                  key={subj.courseCode}
+                  className="rounded-xl border border-[#334155] bg-[#0B0F19]/70 p-4 flex flex-col justify-between space-y-3"
+                >
+                  <div>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div>
+                        <span className="inline-block rounded-md bg-[#06B6D4]/15 border border-[#06B6D4]/30 px-2 py-0.5 text-[10px] font-mono font-bold text-[#06B6D4]">
+                          {subj.courseCode}
+                        </span>
+                        <h4 className="text-xs font-bold text-white mt-1 line-clamp-1">
+                          {subj.courseTitle}
+                        </h4>
+                      </div>
+                      {avgPct !== null ? (
+                        <div className="text-right shrink-0">
+                          <span className={`inline-block rounded-lg px-2.5 py-1 text-xs font-mono font-black border ${
+                            avgPct >= 70
+                              ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/40"
+                              : avgPct >= 50
+                              ? "bg-amber-500/15 text-amber-300 border-amber-500/40"
+                              : "bg-rose-500/15 text-rose-300 border-rose-500/40"
+                          }`}>
+                            {avgPct}%
+                          </span>
+                          <span className="block text-[10px] font-mono text-[#94A3B8] mt-0.5">
+                            {subj.earnedPoints} / {subj.possiblePoints} Pts
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="rounded-md bg-amber-500/10 border border-amber-500/30 px-2 py-0.5 text-[10px] font-mono text-amber-300">
+                          Awaiting Grade
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Individual assignment marks in this subject */}
+                    <div className="space-y-1.5 pt-2 border-t border-[#334155]/60">
+                      {subj.gradedItems.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          onClick={() => {
+                            if (item.isIndependent) {
+                              setViewingSubmission(item.submission);
+                            } else if (item.assignment) {
+                              handleOpenAssignment(item.assignment);
+                            } else {
+                              setViewingSubmission(item.submission);
+                            }
+                          }}
+                          className="w-full flex items-center justify-between rounded-lg bg-[#1E293B]/80 hover:bg-[#1E293B] border border-[#334155]/60 hover:border-[#06B6D4]/50 px-2.5 py-1.5 text-left transition-all"
+                        >
+                          <span className="text-[11px] font-medium text-[#CBD5E1] truncate pr-2">
+                            {item.title}
+                          </span>
+                          <span className="text-[11px] font-mono font-bold text-emerald-400 shrink-0">
+                            {item.score}/{item.maxScore} ({item.pct}%)
+                          </span>
+                        </button>
+                      ))}
+                      {subj.pendingCount > 0 && (
+                        <div className="text-[10px] font-mono text-amber-300/90 flex items-center space-x-1 pt-0.5">
+                          <Clock className="h-3 w-3" />
+                          <span>{subj.pendingCount} submitted assignment(s) awaiting teacher grading</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* SECTION 1: SELF-SUBMITTED COURSE ASSIGNMENTS */}
       {independentSubmissions.length > 0 && (
@@ -577,6 +855,24 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                 Level 4
               </button>
             </div>
+
+            {availableSubjectCodes.length > 1 && (
+              <select
+                value={selectedSubjectFilter}
+                onChange={(e) => setSelectedSubjectFilter(e.target.value)}
+                className="rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-1.5 text-[11px] font-mono text-white focus:border-[#06B6D4] focus:outline-none"
+              >
+                <option value="all">All Subjects ({levelMatchedAssignments.length})</option>
+                {availableSubjectCodes.map((code) => {
+                  const syl = syllabi.find(s => s.courseCode === code);
+                  return (
+                    <option key={code} value={code}>
+                      {code}{syl ? ` - ${syl.title.slice(0, 24)}` : ""}
+                    </option>
+                  );
+                })}
+              </select>
+            )}
           </div>
           <span className="text-xs font-mono text-[#06B6D4]">
             {Object.keys(submissions).length} / {assignments.length} Completed
@@ -620,7 +916,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
               const sub = submissions[asg.id];
               const isGraded = sub?.status === "graded";
               const isSubmitted = !!sub;
-              const isOverdue = asg.dueDate && new Date(asg.dueDate) < new Date();
+              const isOverdue = isAssignmentPastDue(asg.dueDate);
 
               return (
                 <div
@@ -663,9 +959,12 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                     </p>
 
                     {asg.dueDate && (
-                      <div className={`flex items-center space-x-1.5 text-[11px] font-mono mb-3 ${isOverdue ? "text-rose-400" : "text-[#94A3B8]"}`}>
+                      <div className={`flex items-center space-x-1.5 text-[11px] font-mono mb-3 ${isOverdue ? "text-rose-400 font-bold" : "text-[#94A3B8]"}`}>
                         <Calendar className="h-3.5 w-3.5" />
-                        <span>Due: {new Date(asg.dueDate).toLocaleDateString()}</span>
+                        <span>
+                          Due: {formatAssignmentDueDate(asg.dueDate)}
+                          {isOverdue ? " (Closed)" : ""}
+                        </span>
                       </div>
                     )}
                   </div>
@@ -675,12 +974,19 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                       {isGraded ? (
                         <span className="inline-flex items-center space-x-1 rounded-md bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-mono font-bold text-emerald-400">
                           <CheckCircle2 className="h-3 w-3" />
-                          <span>Graded: {sub.score} / {sub.maxScore}</span>
+                          <span>
+                            Graded: {sub.score} / {sub.maxScore} ({Math.round(((sub.score || 0) / (sub.maxScore || asg.totalPoints || 100)) * 100)}%)
+                          </span>
                         </span>
                       ) : isSubmitted ? (
                         <span className="inline-flex items-center space-x-1 rounded-md bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[11px] font-mono font-bold text-amber-400">
-                          <Clock className="h-3 w-3" />
-                          <span>Submitted</span>
+                          <Lock className="h-3 w-3" />
+                          <span>Submitted • Awaiting Grade</span>
+                        </span>
+                      ) : isOverdue ? (
+                        <span className="inline-flex items-center space-x-1 rounded-md bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 text-[11px] font-mono font-bold text-rose-400">
+                          <Lock className="h-3 w-3" />
+                          <span>Deadline Passed</span>
                         </span>
                       ) : (
                         <span className="inline-flex items-center space-x-1 text-[11px] font-mono text-[#94A3B8]">
@@ -692,9 +998,25 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
                     <button
                       onClick={() => handleOpenAssignment(asg)}
-                      className="inline-flex items-center space-x-1 rounded-lg bg-[#06B6D4] px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+                      className={`inline-flex items-center space-x-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-all shadow-md ${
+                        isGraded
+                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-slate-950"
+                          : isSubmitted
+                          ? "bg-[#0B0F19] text-[#06B6D4] border border-[#06B6D4]/40 hover:bg-[#06B6D4] hover:text-slate-950"
+                          : isOverdue
+                          ? "bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700"
+                          : "bg-[#06B6D4] text-slate-950 hover:bg-[#0891B2] hover:text-white"
+                      }`}
                     >
-                      <span>{isSubmitted ? "View / Edit" : "Start"}</span>
+                      <span>
+                        {isGraded
+                          ? "View Marks"
+                          : isSubmitted
+                          ? "View Submission"
+                          : isOverdue
+                          ? "Closed"
+                          : "Start"}
+                      </span>
                       <ChevronRight className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -942,193 +1264,314 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
         </div>
       )}
 
-      {/* MODAL 3: OFFICIAL ASSIGNMENT SUBMISSION MODAL */}
-      {activeAssignment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in">
-          <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-[#334155] bg-[#1E293B] p-6 shadow-2xl space-y-6">
-            <div className="flex items-start justify-between border-b border-[#334155] pb-4">
-              <div>
-                <div className="flex items-center space-x-2 text-xs font-mono text-[#06B6D4] mb-1">
-                  <span>{activeAssignment.courseCode || "General"}</span>
-                  <span>•</span>
-                  <span>{activeAssignment.totalPoints} Total Points</span>
-                </div>
-                <h3 className="text-lg font-extrabold text-white">{activeAssignment.title}</h3>
-              </div>
-              <button
-                onClick={() => setActiveAssignment(null)}
-                className="rounded-lg p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155]"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+      {/* MODAL 3: OFFICIAL ASSIGNMENT SUBMISSION / MARKS MODAL */}
+      {activeAssignment && (() => {
+        const existingSubmission = submissions[activeAssignment.id];
+        const isPastDue = isAssignmentPastDue(activeAssignment.dueDate);
 
-            {/* Assignment Instructions in Markdown */}
-            <div className="rounded-xl border border-[#334155] bg-[#0B0F19] p-4 space-y-2">
-              <span className="text-[10px] font-mono text-[#06B6D4] uppercase tracking-wider block">Instructions:</span>
-              <div className="prose prose-invert prose-xs max-w-none leading-relaxed text-[#CBD5E1]">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {activeAssignment.instructionsMarkdown || activeAssignment.description}
-                </ReactMarkdown>
-              </div>
-            </div>
-
-            {/* Teacher Feedback if already graded */}
-            {submissions[activeAssignment.id]?.status === "graded" && (
-              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-emerald-400 flex items-center space-x-1.5">
-                    <Award className="h-4 w-4" />
-                    <span>Teacher Evaluation &amp; Grade</span>
-                  </span>
-                  <span className="text-xs font-mono font-extrabold text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-md border border-emerald-500/40">
-                    {submissions[activeAssignment.id].score} / {activeAssignment.totalPoints} Points
-                  </span>
-                </div>
-                {submissions[activeAssignment.id].feedback && (
-                  <p className="text-xs text-[#CBD5E1] italic">
-                    "{submissions[activeAssignment.id].feedback}"
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Group Project Team Information / Warning */}
-            {activeAssignment.submissionType === "group" && (
-              activeMatchedGroup ? (
-                <div className="rounded-xl border border-purple-500/40 bg-purple-500/10 p-4 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-purple-300 flex items-center space-x-1.5">
-                      <Users className="h-4 w-4 text-purple-400" />
-                      <span>Group Project Submission: {activeMatchedGroup.name}</span>
-                    </span>
-                    <span className="text-[10px] font-mono text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/30">
-                      Code: {activeMatchedGroup.joinCode}
-                    </span>
-                  </div>
-                  <p className="text-xs text-[#CBD5E1] leading-relaxed">
-                    Submitting on behalf of all teammates:{" "}
-                    <span className="text-white font-semibold">
-                      {activeMatchedGroup.members.map(m => m.fullName).join(", ")}
-                    </span>
-                    . Your instructor's evaluation and grade will automatically synchronize across all team members.
-                  </p>
-                </div>
-              ) : (
-                <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-2">
-                  <div className="flex items-center space-x-2 text-amber-300 text-xs font-bold">
-                    <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
-                    <span>Group Project: Team Required</span>
-                  </div>
-                  <p className="text-xs text-amber-200/90 leading-relaxed">
-                    This task is assigned as a Group Project. You must join or create a study group for your class before submitting work. Please switch to the <strong>My Study Groups</strong> tab to form or join your team.
-                  </p>
-                </div>
-              )
-            )}
-
-            {/* Submission Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {activeAssignment.allowTextSubmission && (
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in">
+            <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-[#334155] bg-[#1E293B] p-6 shadow-2xl space-y-6">
+              <div className="flex items-start justify-between border-b border-[#334155] pb-4">
                 <div>
-                  <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
-                    Your Solution / Markdown Notes / Code Answer
-                  </label>
-                  <textarea
-                    rows={6}
-                    value={textAnswer}
-                    onChange={(e) => setTextAnswer(e.target.value)}
-                    placeholder="Type your explanation, answers, and code here... (Markdown supported)"
-                    className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs font-mono text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none leading-relaxed"
-                  />
-                </div>
-              )}
-
-              {activeAssignment.allowFileUpload && (
-                <div>
-                  <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
-                    File Attachment (PDF, DOCX, MD, TXT, JSON, CSV, Source Code, or Image — No .zip)
-                  </label>
-                  <div className="flex items-center space-x-3">
-                    <label 
-                      onClick={() => {
-                        if (typeof window !== "undefined") {
-                          (window as any).__SYLLABUS_FILE_PICKER_ACTIVE = true;
-                          (window as any).__SYLLABUS_FILE_PICKER_TIMESTAMP = Date.now();
-                        }
-                      }}
-                      className="inline-flex items-center space-x-2 rounded-xl border border-[#334155] bg-[#0B0F19] px-4 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-[#06B6D4] cursor-pointer transition-all"
-                    >
-                      <Upload className="h-4 w-4 text-[#06B6D4]" />
-                      <span>{selectedFile ? "Replace File" : "Choose File (Max 5MB)"}</span>
-                      <input
-                        type="file"
-                        accept={ACCEPT_FILE_ATTRIBUTE}
-                        onClick={() => {
-                          if (typeof window !== "undefined") {
-                            (window as any).__SYLLABUS_FILE_PICKER_ACTIVE = true;
-                            (window as any).__SYLLABUS_FILE_PICKER_TIMESTAMP = Date.now();
-                          }
-                        }}
-                        onChange={(e) => handleFileChange(e, false)}
-                        className="hidden"
-                      />
-                    </label>
-
-                    {selectedFile && (
-                      <div className="flex items-center space-x-2 rounded-xl bg-[#1E293B] border border-[#334155] px-3 py-1.5 text-xs text-white">
-                        <FileCheck className="h-4 w-4 text-emerald-400" />
-                        <span className="font-mono text-[11px] truncate max-w-[200px]">{selectedFile.name}</span>
-                        <button
-                          type="button"
-                          onClick={() => setSelectedFile(null)}
-                          className="text-[#94A3B8] hover:text-rose-400"
-                        >
-                          <X className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-[#06B6D4] mb-1">
+                    <span>{activeAssignment.courseCode || "General"}</span>
+                    <span>•</span>
+                    <span>{activeAssignment.totalPoints} Total Points</span>
+                    {activeAssignment.dueDate && (
+                      <>
+                        <span>•</span>
+                        <span className={isPastDue ? "text-rose-400 font-bold" : "text-[#94A3B8]"}>
+                          Due: {formatAssignmentDueDate(activeAssignment.dueDate)}
+                          {isPastDue ? " (Closed)" : ""}
+                        </span>
+                      </>
                     )}
                   </div>
+                  <h3 className="text-lg font-extrabold text-white">{activeAssignment.title}</h3>
                 </div>
-              )}
-
-              {submitSuccess && (
-                <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center space-x-2">
-                  <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  <span>Assignment submitted successfully! Your instructor can now review your work.</span>
-                </div>
-              )}
-
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-[#334155]">
                 <button
-                  type="button"
                   onClick={() => setActiveAssignment(null)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#94A3B8] hover:text-white bg-[#0B0F19] border border-[#334155]"
+                  className="rounded-lg p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155]"
                 >
-                  Close
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={submitting || (activeAssignment.submissionType === "group" && !activeMatchedGroup)}
-                  className="inline-flex items-center space-x-1.5 px-5 py-2 rounded-xl text-xs font-bold text-slate-950 bg-[#06B6D4] hover:bg-[#0891B2] hover:text-white transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <Send className="h-3.5 w-3.5" />
-                  <span>
-                    {submitting 
-                      ? "Submitting..." 
-                      : (activeAssignment.submissionType === "group" && !activeMatchedGroup)
-                      ? "Team Required to Submit"
-                      : submissions[activeAssignment.id] 
-                      ? "Update Submission" 
-                      : "Submit Assignment"}
-                  </span>
+                  <X className="h-5 w-5" />
                 </button>
               </div>
-            </form>
+
+              {/* Assignment Instructions in Markdown */}
+              <div className="rounded-xl border border-[#334155] bg-[#0B0F19] p-4 space-y-2">
+                <span className="text-[10px] font-mono text-[#06B6D4] uppercase tracking-wider block">Instructions:</span>
+                <div className="prose prose-invert prose-xs max-w-none leading-relaxed text-[#CBD5E1]">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {activeAssignment.instructionsMarkdown || activeAssignment.description}
+                  </ReactMarkdown>
+                </div>
+              </div>
+
+              {/* CASE 1: STUDENT HAS ALREADY SUBMITTED (LOCKED AGAINST RE-SUBMISSION OR MODIFICATION) */}
+              {existingSubmission ? (
+                <div className="space-y-4">
+                  {existingSubmission.status === "graded" ? (
+                    <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 space-y-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-xs font-bold text-emerald-400 flex items-center space-x-1.5">
+                          <Award className="h-4 w-4" />
+                          <span>Teacher Evaluation &amp; Official Grade</span>
+                        </span>
+                        <div className="flex items-center space-x-2">
+                          <span className="text-xs font-mono font-extrabold text-emerald-300 bg-emerald-500/20 px-2.5 py-1 rounded-md border border-emerald-500/40">
+                            {existingSubmission.score} / {existingSubmission.maxScore || activeAssignment.totalPoints} Points (
+                            {Math.round(((existingSubmission.score || 0) / (existingSubmission.maxScore || activeAssignment.totalPoints || 100)) * 100)}%)
+                          </span>
+                        </div>
+                      </div>
+                      {existingSubmission.feedback && (
+                        <p className="text-xs text-[#CBD5E1] italic leading-relaxed">
+                          &ldquo;{existingSubmission.feedback}&rdquo;
+                        </p>
+                      )}
+                      <div className="pt-2 border-t border-emerald-500/20 flex items-center space-x-1.5 text-[11px] font-mono text-emerald-300/90">
+                        <Lock className="h-3.5 w-3.5 shrink-0" />
+                        <span>Final grade recorded. Graded submissions are locked and cannot be modified.</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-amber-300 flex items-center space-x-1.5">
+                          <Lock className="h-4 w-4 text-amber-400" />
+                          <span>Submission Locked — Awaiting Instructor Grading</span>
+                        </span>
+                        <span className="text-[11px] font-mono text-amber-300/90">
+                          Submitted {new Date(existingSubmission.submittedAt).toLocaleString()}
+                        </span>
+                      </div>
+                      <p className="text-xs text-amber-200/90 leading-relaxed">
+                        Your assignment has been submitted and is locked for evaluation. You cannot modify or re-submit your work while awaiting your instructor&apos;s grade.
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Read-only view of what the student submitted */}
+                  {existingSubmission.contentMarkdown && (
+                    <div className="rounded-xl border border-[#334155] bg-[#0B0F19] p-4 space-y-2">
+                      <span className="text-[10px] font-mono text-[#06B6D4] uppercase tracking-wider block">
+                        Your Submitted Solution / Notes (Read-Only):
+                      </span>
+                      <div className="prose prose-invert prose-xs max-w-none text-[#CBD5E1] leading-relaxed">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {existingSubmission.contentMarkdown}
+                        </ReactMarkdown>
+                      </div>
+                    </div>
+                  )}
+
+                  {existingSubmission.fileData && (
+                    <div className="flex items-center justify-between rounded-xl border border-[#334155] bg-[#0B0F19] p-3.5">
+                      <div className="flex items-center space-x-2.5">
+                        <FileCheck className="h-5 w-5 text-emerald-400" />
+                        <div>
+                          <span className="block text-xs font-bold text-white">{existingSubmission.fileData.name}</span>
+                          <span className="block text-[10px] font-mono text-[#94A3B8]">
+                            Submitted File • {(existingSubmission.fileData.size / 1024).toFixed(1)} KB (Locked)
+                          </span>
+                        </div>
+                      </div>
+                      {existingSubmission.fileData.base64Url && (
+                        <a
+                          href={existingSubmission.fileData.base64Url}
+                          download={existingSubmission.fileData.name}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center space-x-1 rounded-lg bg-[#06B6D4] px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+                        >
+                          <Upload className="h-3 w-3" />
+                          <span>Download Copy</span>
+                        </a>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end pt-3 border-t border-[#334155]">
+                    <button
+                      type="button"
+                      onClick={() => setActiveAssignment(null)}
+                      className="px-5 py-2 rounded-xl text-xs font-bold text-slate-950 bg-[#06B6D4] hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              ) : isPastDue ? (
+                /* CASE 2: DEADLINE HAS PASSED AND STUDENT DID NOT SUBMIT */
+                <div className="space-y-4">
+                  <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-4 space-y-2">
+                    <div className="flex items-center space-x-2 text-rose-300 text-xs font-bold">
+                      <Lock className="h-4 w-4 shrink-0 text-rose-400" />
+                      <span>Submission Closed — Due Date Has Passed</span>
+                    </div>
+                    <p className="text-xs text-rose-200/90 leading-relaxed">
+                      The deadline for this assignment (<strong>{formatAssignmentDueDate(activeAssignment.dueDate)}</strong>) has expired. New submissions and changes are no longer accepted after the due date.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-end pt-3 border-t border-[#334155]">
+                    <button
+                      type="button"
+                      onClick={() => setActiveAssignment(null)}
+                      className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-[#0B0F19] border border-[#334155] hover:bg-slate-800"
+                    >
+                      Close
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                /* CASE 3: OPEN FOR INITIAL SUBMISSION (1 ATTEMPT ONLY) */
+                <>
+                  {/* Group Project Team Information / Warning */}
+                  {activeAssignment.submissionType === "group" && (
+                    activeMatchedGroup ? (
+                      <div className="rounded-xl border border-purple-500/40 bg-purple-500/10 p-4 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-purple-300 flex items-center space-x-1.5">
+                            <Users className="h-4 w-4 text-purple-400" />
+                            <span>Group Project Submission: {activeMatchedGroup.name}</span>
+                          </span>
+                          <span className="text-[10px] font-mono text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded border border-purple-500/30">
+                            Code: {activeMatchedGroup.joinCode}
+                          </span>
+                        </div>
+                        <p className="text-xs text-[#CBD5E1] leading-relaxed">
+                          Submitting on behalf of all teammates:{" "}
+                          <span className="text-white font-semibold">
+                            {activeMatchedGroup.members.map(m => m.fullName).join(", ")}
+                          </span>
+                          . Your instructor&apos;s evaluation and grade will automatically synchronize across all team members.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 space-y-2">
+                        <div className="flex items-center space-x-2 text-amber-300 text-xs font-bold">
+                          <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
+                          <span>Group Project: Team Required</span>
+                        </div>
+                        <p className="text-xs text-amber-200/90 leading-relaxed">
+                          This task is assigned as a Group Project. You must join or create a study group for your class before submitting work. Please switch to the <strong>My Study Groups</strong> tab to form or join your team.
+                        </p>
+                      </div>
+                    )
+                  )}
+
+                  <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 px-3.5 py-2.5 text-[11px] text-cyan-200/90 flex items-center space-x-2">
+                    <Lock className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
+                    <span>
+                      <strong>Single-Submission Policy:</strong> Please review your work carefully before submitting. Once submitted, your assignment is locked for grading and cannot be edited or re-submitted.
+                    </span>
+                  </div>
+
+                  {/* Submission Form */}
+                  <form onSubmit={handleSubmit} className="space-y-4">
+                    {activeAssignment.allowTextSubmission && (
+                      <div>
+                        <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                          Your Solution / Markdown Notes / Code Answer
+                        </label>
+                        <textarea
+                          rows={6}
+                          value={textAnswer}
+                          onChange={(e) => setTextAnswer(e.target.value)}
+                          placeholder="Type your explanation, answers, and code here... (Markdown supported)"
+                          className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs font-mono text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none leading-relaxed"
+                        />
+                      </div>
+                    )}
+
+                    {activeAssignment.allowFileUpload && (
+                      <div>
+                        <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                          File Attachment (PDF, DOCX, MD, TXT, JSON, CSV, Source Code, or Image — No .zip)
+                        </label>
+                        <div className="flex items-center space-x-3">
+                          <label 
+                            onClick={() => {
+                              if (typeof window !== "undefined") {
+                                (window as any).__SYLLABUS_FILE_PICKER_ACTIVE = true;
+                                (window as any).__SYLLABUS_FILE_PICKER_TIMESTAMP = Date.now();
+                              }
+                            }}
+                            className="inline-flex items-center space-x-2 rounded-xl border border-[#334155] bg-[#0B0F19] px-4 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-[#06B6D4] cursor-pointer transition-all"
+                          >
+                            <Upload className="h-4 w-4 text-[#06B6D4]" />
+                            <span>{selectedFile ? "Change Selected File" : "Choose File (Max 5MB)"}</span>
+                            <input
+                              type="file"
+                              accept={ACCEPT_FILE_ATTRIBUTE}
+                              onClick={() => {
+                                if (typeof window !== "undefined") {
+                                  (window as any).__SYLLABUS_FILE_PICKER_ACTIVE = true;
+                                  (window as any).__SYLLABUS_FILE_PICKER_TIMESTAMP = Date.now();
+                                }
+                              }}
+                              onChange={(e) => handleFileChange(e, false)}
+                              className="hidden"
+                            />
+                          </label>
+
+                          {selectedFile && (
+                            <div className="flex items-center space-x-2 rounded-xl bg-[#1E293B] border border-[#334155] px-3 py-1.5 text-xs text-white">
+                              <FileCheck className="h-4 w-4 text-emerald-400" />
+                              <span className="font-mono text-[11px] truncate max-w-[200px]">{selectedFile.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => setSelectedFile(null)}
+                                className="text-[#94A3B8] hover:text-rose-400"
+                              >
+                                <X className="h-3.5 w-3.5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {submitSuccess && (
+                      <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center space-x-2">
+                        <CheckCircle2 className="h-4 w-4 shrink-0" />
+                        <span>Assignment submitted and locked for grading! Your instructor can now review your work.</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-end space-x-3 pt-3 border-t border-[#334155]">
+                      <button
+                        type="button"
+                        onClick={() => setActiveAssignment(null)}
+                        className="px-4 py-2 rounded-xl text-xs font-semibold text-[#94A3B8] hover:text-white bg-[#0B0F19] border border-[#334155]"
+                      >
+                        Close
+                      </button>
+
+                      <button
+                        type="submit"
+                        disabled={submitting || (activeAssignment.submissionType === "group" && !activeMatchedGroup)}
+                        className="inline-flex items-center space-x-1.5 px-5 py-2 rounded-xl text-xs font-bold text-slate-950 bg-[#06B6D4] hover:bg-[#0891B2] hover:text-white transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        <Send className="h-3.5 w-3.5" />
+                        <span>
+                          {submitting 
+                            ? "Submitting..." 
+                            : (activeAssignment.submissionType === "group" && !activeMatchedGroup)
+                            ? "Team Required to Submit"
+                            : "Submit Final Answer"}
+                        </span>
+                      </button>
+                    </div>
+                  </form>
+                </>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

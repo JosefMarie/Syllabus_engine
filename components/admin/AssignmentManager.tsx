@@ -44,10 +44,35 @@ import {
   BookOpen,
   Filter,
   Crown,
-  RefreshCw
+  RefreshCw,
+  Download
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+// Parse YYYY-MM-DD due dates as 23:59:59.999 local time on that date so assignments remain open through the entire due date
+const getAssignmentDeadlineDate = (dueDateStr?: string): Date | null => {
+  if (!dueDateStr) return null;
+  const trimmed = dueDateStr.trim();
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (match) {
+    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 23, 59, 59, 999);
+  }
+  const parsed = new Date(trimmed);
+  return isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const isAssignmentPastDue = (dueDateStr?: string): boolean => {
+  const deadline = getAssignmentDeadlineDate(dueDateStr);
+  if (!deadline) return false;
+  return Date.now() > deadline.getTime();
+};
+
+const formatAssignmentDueDate = (dueDateStr?: string): string => {
+  const deadline = getAssignmentDeadlineDate(dueDateStr);
+  if (!deadline) return "";
+  return deadline.toLocaleDateString();
+};
 
 // Helper functions for matching target cohorts and groups
 const isLevelMatch = (groupLevel?: string, targetLevel?: string) => {
@@ -657,6 +682,103 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
     return matchesCourse && matchesStatus;
   });
 
+  // Export assignment marks to an Excel-compatible CSV spreadsheet
+  const downloadAssignmentMarksCsv = (
+    titleLabel: string,
+    courseCodeLabel: string,
+    subsToExport: AssignmentSubmission[],
+    defaultMaxPoints: number = 100
+  ) => {
+    if (!subsToExport || subsToExport.length === 0) {
+      alert("No student submissions available to export for this selection.");
+      return;
+    }
+
+    const escapeCsv = (val: any): string => {
+      if (val === null || val === undefined) return '""';
+      const str = String(val).replace(/\r?\n|\r/g, " ").trim();
+      return `"${str.replace(/"/g, '""')}"`;
+    };
+
+    const getLetterGrade = (pct: number): string => {
+      if (pct >= 80) return "A";
+      if (pct >= 70) return "B";
+      if (pct >= 60) return "C";
+      if (pct >= 50) return "D";
+      return "F";
+    };
+
+    // Sort alphabetically by Class Level then Student Name
+    const sorted = [...subsToExport].sort((a, b) => {
+      const lvlCmp = (a.level || "").localeCompare(b.level || "");
+      if (lvlCmp !== 0) return lvlCmp;
+      return (a.studentName || "").localeCompare(b.studentName || "");
+    });
+
+    const headers = [
+      "No.",
+      "Student Name",
+      "Username",
+      "Class Level",
+      "Course Code",
+      "Assignment Title",
+      "Submission Mode",
+      "Group Name",
+      "Score",
+      "Max Score",
+      "Percentage (%)",
+      "Grade",
+      "Status",
+      "Submitted At",
+      "Graded At",
+      "Instructor Feedback"
+    ];
+
+    const rows = sorted.map((s, idx) => {
+      const matchedAsg = assignments.find(a => a.id === s.assignmentId);
+      const maxPts = s.maxScore || matchedAsg?.totalPoints || defaultMaxPoints || 100;
+      const isGraded = s.status === "graded" && typeof s.score === "number";
+      const pct = isGraded && maxPts > 0 ? Math.round((s.score! / maxPts) * 100) : null;
+      const grade = pct !== null ? getLetterGrade(pct) : "Pending";
+
+      return [
+        idx + 1,
+        s.studentName || "Unknown Student",
+        s.studentUsername ? `@${s.studentUsername}` : "",
+        s.level || matchedAsg?.level || "",
+        s.courseCode || matchedAsg?.courseCode || courseCodeLabel || "General",
+        s.submissionTitle || matchedAsg?.title || titleLabel || "Assignment",
+        s.submissionType === "group" || s.groupId ? "Group" : "Individual",
+        s.groupName || "",
+        isGraded ? s.score : "Pending",
+        maxPts,
+        pct !== null ? `${pct}%` : "Pending",
+        grade,
+        isGraded ? "GRADED" : "SUBMITTED",
+        s.submittedAt ? new Date(s.submittedAt).toLocaleString() : "",
+        s.gradedAt ? new Date(s.gradedAt).toLocaleString() : "",
+        s.feedback || ""
+      ].map(escapeCsv).join(",");
+    });
+
+    // Prefix with UTF-8 BOM (\uFEFF) so Microsoft Excel opens special characters and columns cleanly
+    const csvContent = "\uFEFF" + [headers.map(escapeCsv).join(","), ...rows].join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+
+    const safeCourse = (courseCodeLabel || "Course").replace(/[^a-zA-Z0-9_-]/g, "_");
+    const safeTitle = (titleLabel || "Assignment_Marks").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 45);
+    const dateStamp = new Date().toISOString().slice(0, 10);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", `${safeCourse}_${safeTitle}_Marks_${dateStamp}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+  };
+
   return (
     <div className="space-y-6">
       {/* Tab Navigation & Action Bar */}
@@ -758,8 +880,9 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {assignments.map((asg) => {
                 const targetTrade = trades.find(t => t.id === asg.tradeId);
-                const isOverdue = asg.dueDate && new Date(asg.dueDate) < new Date();
-                const taskSubmissionsCount = allSubmissionsList.filter(s => s.assignmentId === asg.id).length;
+                const isOverdue = isAssignmentPastDue(asg.dueDate);
+                const taskSubmissions = allSubmissionsList.filter(s => s.assignmentId === asg.id);
+                const taskSubmissionsCount = taskSubmissions.length;
 
                 return (
                   <div
@@ -823,20 +946,41 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                         {asg.dueDate && (
                           <div className={`flex items-center space-x-2 ${isOverdue ? "text-rose-400 font-bold" : "text-[#94A3B8]"}`}>
                             <Calendar className="h-3.5 w-3.5" />
-                            <span>Due: {new Date(asg.dueDate).toLocaleDateString()} {isOverdue && "(Expired)"}</span>
+                            <span>Due: {formatAssignmentDueDate(asg.dueDate)} {isOverdue && "(Expired)"}</span>
                           </div>
                         )}
                       </div>
                     </div>
 
                     <div className="pt-3 border-t border-[#334155]/60 flex items-center justify-between gap-2">
-                      <button
-                        onClick={() => handleViewSubmissions(asg)}
-                        className="inline-flex items-center space-x-1.5 text-xs font-bold text-[#06B6D4] hover:text-white bg-[#06B6D4]/10 hover:bg-[#06B6D4] hover:text-slate-950 px-3 py-1.5 rounded-lg border border-[#06B6D4]/30 transition-all"
-                      >
-                        <Award className="h-3.5 w-3.5" />
-                        <span>Submissions ({taskSubmissionsCount})</span>
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => handleViewSubmissions(asg)}
+                          className="inline-flex items-center space-x-1.5 text-xs font-bold text-[#06B6D4] hover:text-white bg-[#06B6D4]/10 hover:bg-[#06B6D4] hover:text-slate-950 px-3 py-1.5 rounded-lg border border-[#06B6D4]/30 transition-all"
+                        >
+                          <Award className="h-3.5 w-3.5" />
+                          <span>Submissions ({taskSubmissionsCount})</span>
+                        </button>
+
+                        {taskSubmissionsCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              downloadAssignmentMarksCsv(
+                                asg.title,
+                                asg.courseCode || "General",
+                                taskSubmissions,
+                                asg.totalPoints
+                              )
+                            }
+                            title={`Download Marks Sheet (CSV) for "${asg.title}"`}
+                            className="inline-flex items-center space-x-1 text-xs font-bold text-emerald-400 hover:text-slate-950 bg-emerald-500/10 hover:bg-emerald-400 px-2.5 py-1.5 rounded-lg border border-emerald-500/30 transition-all"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                            <span>Marks</span>
+                          </button>
+                        )}
+                      </div>
 
                       <div className="flex items-center space-x-1">
                         <button
@@ -930,6 +1074,24 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                   <span>Re-Grade All with AI ({filteredCourseSubmissions.length})</span>
                 </button>
               ) : null}
+
+              {filteredCourseSubmissions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    downloadAssignmentMarksCsv(
+                      courseFilter === "all" ? "All_Courses_Submissions" : `${courseFilter}_Submissions`,
+                      courseFilter === "all" ? "All_Courses" : courseFilter,
+                      filteredCourseSubmissions
+                    )
+                  }
+                  className="inline-flex items-center space-x-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-3.5 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500 hover:text-slate-950 transition-all shadow-sm"
+                  title="Download Marks Sheet (CSV) for the displayed submissions"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Download Marks ({filteredCourseSubmissions.length})</span>
+                </button>
+              )}
             </div>
           </div>
 
@@ -1484,6 +1646,25 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                   <span>Re-Grade All with AI ({submissions.length})</span>
                 </button>
               ) : null}
+
+              {submissions.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    downloadAssignmentMarksCsv(
+                      selectedAssignment.title,
+                      selectedAssignment.courseCode || "General",
+                      submissions,
+                      selectedAssignment.totalPoints
+                    )
+                  }
+                  className="inline-flex items-center space-x-1.5 rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-3.5 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500 hover:text-slate-950 transition-all shadow-sm"
+                  title="Download Marks Sheet (CSV / Excel) for this assignment"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Download Marks (CSV)</span>
+                </button>
+              )}
             </div>
           </div>
 
