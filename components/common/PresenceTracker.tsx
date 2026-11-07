@@ -383,13 +383,12 @@ export default function PresenceTracker({
       const now = Date.now();
       const stateChanged = state !== lastReportedStateRef.current;
       const subtopicChanged = (subtopicTitle || "") !== lastReportedSubtopicRef.current;
-      // Adaptive steady-state heartbeat: 45s steady-state preserves router bandwidth on crowded school Wi-Fi
+      // Adaptive steady-state heartbeat: 30s steady-state preserves Firestore quota & network bandwidth
       // while state transitions (unfocused, changing topic, strikes) remain 100% instant.
-      const routineHeartbeatDue = (now - lastPresenceWriteRef.current) >= 45000;
-      const isUnfocusedTracking = unfocusedDuration > 0;
+      const routineHeartbeatDue = (now - lastPresenceWriteRef.current) >= 30000;
 
-      // Adaptive Write: Immediate on state/topic shift or active unfocused tracking, 45s steady-state heartbeat
-      if (stateChanged || subtopicChanged || routineHeartbeatDue || isUnfocusedTracking) {
+      // Adaptive Write: Immediate on state/topic shift, strikes, or every 30s steady-state heartbeat
+      if (stateChanged || subtopicChanged || routineHeartbeatDue) {
         lastReportedStateRef.current = state;
         lastReportedSubtopicRef.current = subtopicTitle || "";
         lastPresenceWriteRef.current = now;

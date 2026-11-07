@@ -2843,12 +2843,17 @@ export async function saveAssignment(assignment: Assignment): Promise<void> {
  * Records that a student received an assignment on their dashboard ("received")
  * or clicked Start / opened the assignment modal ("opened").
  */
+const sessionRecordedReceipts = new Set<string>();
+
 export async function recordAssignmentStudentReceipt(
   assignmentId: string,
   student: UserProfile,
   action: "received" | "opened"
 ): Promise<void> {
   if (!assignmentId || !student?.uid) return;
+  const sessionKey = `${assignmentId}_${student.uid}_${action}`;
+  if (sessionRecordedReceipts.has(sessionKey)) return;
+
   const nowIso = new Date().toISOString();
 
   const localList = getLocalAssignments();
@@ -2857,8 +2862,11 @@ export async function recordAssignmentStudentReceipt(
 
   // If only recording "received" and already recorded both receivedAt (and openedAt if applicable), skip redundant write
   if (action === "received" && prevReceipt?.receivedAt) {
+    sessionRecordedReceipts.add(sessionKey);
     return;
   }
+
+  sessionRecordedReceipts.add(sessionKey);
 
   const nextReceipt = {
     studentUid: student.uid,
@@ -2887,21 +2895,21 @@ export async function recordAssignmentStudentReceipt(
     } catch (e) {}
   }
 
-  // 2. Update Firestore ( ensures baseline assignments or remote assignments have the receipt stored )
+  // 2. Update Firestore with atomic dot-notation field update
+  // This guarantees we NEVER overwrite any other student's receipt,
+  // NEVER overwrite teacher modifications (forceAssignedStudentUids, title, dueDate),
+  // and keeps payload under 150 bytes to eliminate write contention!
   if (isFirebaseConfigured && db) {
     try {
-      if (target) {
-        const payload = sanitizeForFirestore({
-          ...target,
-          studentReceipts: {
-            ...(target.studentReceipts || {}),
-            [student.uid]: sanitizedReceipt
-          }
+      const docRef = doc(db, "assignments", assignmentId);
+      try {
+        await updateDoc(docRef, {
+          [`studentReceipts.${student.uid}`]: sanitizedReceipt
         });
-        await setDoc(doc(db, "assignments", assignmentId), payload, { merge: true });
-      } else {
+      } catch (updErr: any) {
+        // Fallback to setDoc merge only if document doesn't exist yet, but ONLY updating the student's specific key!
         await setDoc(
-          doc(db, "assignments", assignmentId),
+          docRef,
           {
             studentReceipts: {
               [student.uid]: sanitizedReceipt

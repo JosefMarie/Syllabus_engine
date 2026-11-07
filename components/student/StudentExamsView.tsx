@@ -812,8 +812,8 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
     // Send immediate initial ping
     sendHeartbeat();
 
-    // 2. Periodic Heartbeat sync (every 5 seconds)
-    const heartbeatTimer = setInterval(sendHeartbeat, 5000);
+    // 2. Periodic Heartbeat sync (every 25 seconds to preserve Firestore quotas without flooding writes)
+    const heartbeatTimer = setInterval(sendHeartbeat, 25000);
 
     return () => {
       unsub();

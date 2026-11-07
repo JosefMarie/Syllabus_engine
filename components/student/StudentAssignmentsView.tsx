@@ -80,7 +80,6 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
   const [myGroups, setMyGroups] = useState<StudentGroup[]>([]);
   const [loading, setLoading] = useState<boolean>(() => getLocalAssignments().length === 0);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
-  const [selectedLevelFilter, setSelectedLevelFilter] = useState<string>("my_level");
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState<string>("all");
 
   // Modal for teacher-assigned assignment
@@ -147,20 +146,29 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
     return matchesLevel && matchesTrade;
   });
 
-  // Compute assignments matching trade & group membership first
-  const tradeAndGroupMatchedAssignments = useMemo(() => {
+  // Strictly filter assignments matching student's level, trade, and group
+  // A student of Level 3 sees ONLY Level 3 assignments.
+  // A student of Level 4 sees ONLY Level 4 assignments.
+  // A student of Level 5 sees ONLY Level 5 assignments.
+  // Cross-level viewing is completely prohibited.
+  const myLevelAssignments = useMemo(() => {
     return rawAssignments.filter(a => {
       if (a.status && a.status !== "published") return false;
 
-      // Force-Assigned by instructor always bypasses trade and group restrictions
+      // Force-Assigned by instructor always belongs in student's tasks
       if (currentUser?.uid && a.forceAssignedStudentUids?.includes(currentUser.uid)) {
         return true;
       }
 
+      // 1. Strict Trade match
       const matchesTrade = isTradeMatch(a.tradeId, currentUser.tradeId);
       if (!matchesTrade) return false;
 
-      // If targeted to a specific group, only members of that group receive this assignment
+      // 2. Strict Level match: student ONLY sees assignments assigned strictly to their level (or 'all' levels)
+      const matchesLevel = isLevelMatch(a.level, currentUser.level);
+      if (!matchesLevel) return false;
+
+      // 3. Targeted group assignment where student is a group member
       if (a.submissionType === "group" && a.targetGroupId && a.targetGroupId !== "all_groups") {
         const isMemberOfGroup = myGroups.some(g => g.id === a.targetGroupId);
         if (!isMemberOfGroup) return false;
@@ -168,52 +176,13 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
       return true;
     });
-  }, [rawAssignments, myGroups, currentUser?.tradeId, currentUser?.uid]);
+  }, [rawAssignments, currentUser?.level, currentUser?.tradeId, currentUser?.uid, myGroups]);
 
-  // Assignments matching the student's class level, enrolled courses, targeted group, or force-assigned
-  const myLevelAssignments = useMemo(() => {
-    return tradeAndGroupMatchedAssignments.filter(a => {
-      // 1. Force-assigned by instructor always belongs in student's immediate tasks
-      if (currentUser?.uid && a.forceAssignedStudentUids?.includes(currentUser.uid)) {
-        return true;
-      }
-      // 2. Strict level match
-      if (isLevelMatch(a.level, currentUser.level)) {
-        return true;
-      }
-      // 3. Course code match against courses taught in the student's cohort
-      if (a.courseCode && studentCourses.some(sc => sc.courseCode === a.courseCode)) {
-        return true;
-      }
-      // 4. Targeted group assignment where student is a group member
-      if (a.submissionType === "group" && a.targetGroupId && myGroups.some(g => g.id === a.targetGroupId)) {
-        return true;
-      }
-      return false;
-    });
-  }, [tradeAndGroupMatchedAssignments, currentUser?.level, currentUser?.uid, studentCourses, myGroups]);
-
-  // If the student's registered level has 0 assignments (e.g. they registered with default "Level 3"),
-  // automatically show all published assignments across levels so they are never stuck seeing 0 tasks.
-  const effectiveLevelFilter =
-    selectedLevelFilter === "my_level" && myLevelAssignments.length === 0 && tradeAndGroupMatchedAssignments.length > 0
-      ? "all"
-      : selectedLevelFilter;
-
-  const levelMatchedAssignments = useMemo(() => {
-    if (effectiveLevelFilter === "all") {
-      return tradeAndGroupMatchedAssignments;
-    }
-    if (effectiveLevelFilter === "my_level") {
-      return myLevelAssignments;
-    }
-    return tradeAndGroupMatchedAssignments.filter(a => isLevelMatch(a.level, effectiveLevelFilter));
-  }, [tradeAndGroupMatchedAssignments, myLevelAssignments, effectiveLevelFilter]);
-
+  // Subject filter within the student's level assignments
   const assignments = useMemo(() => {
-    if (selectedSubjectFilter === "all") return levelMatchedAssignments;
-    return levelMatchedAssignments.filter(a => (a.courseCode || "General") === selectedSubjectFilter);
-  }, [levelMatchedAssignments, selectedSubjectFilter]);
+    if (selectedSubjectFilter === "all") return myLevelAssignments;
+    return myLevelAssignments.filter(a => (a.courseCode || "General") === selectedSubjectFilter);
+  }, [myLevelAssignments, selectedSubjectFilter]);
 
   // Compute distinct subjects across assignments & student submissions, plus per-subject marks summary
   const subjectMarksSummary = useMemo(() => {
@@ -314,12 +283,12 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
   // Subject options for the filter dropdown
   const availableSubjectCodes = useMemo(() => {
     const codes = new Set<string>();
-    levelMatchedAssignments.forEach(a => codes.add((a.courseCode || "General").trim() || "General"));
+    myLevelAssignments.forEach(a => codes.add((a.courseCode || "General").trim() || "General"));
     Object.values(submissions).forEach(s => {
       if (s.courseCode) codes.add(s.courseCode.trim());
     });
     return Array.from(codes);
-  }, [levelMatchedAssignments, submissions]);
+  }, [myLevelAssignments, submissions]);
 
   useEffect(() => {
     let isMounted = true;
@@ -408,19 +377,30 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
     }
   };
 
-  // Automatically record "received" receipt for all assignments delivered to this student's view
+  // Automatically record "received" receipt for assignments strictly delivered to this student's level view (staggered to prevent Firestore write spikes)
   useEffect(() => {
-    if (!currentUser?.uid || tradeAndGroupMatchedAssignments.length === 0) return;
+    if (!currentUser?.uid || myLevelAssignments.length === 0) return;
 
-    tradeAndGroupMatchedAssignments.forEach(asg => {
-      const alreadyReceipted = asg.studentReceipts?.[currentUser.uid]?.receivedAt;
-      if (!alreadyReceipted) {
+    const unreceipted = myLevelAssignments.filter(
+      asg => !asg.studentReceipts?.[currentUser.uid]?.receivedAt
+    );
+
+    if (unreceipted.length === 0) return;
+
+    const timers: NodeJS.Timeout[] = [];
+    unreceipted.forEach((asg, index) => {
+      const timer = setTimeout(() => {
         recordAssignmentStudentReceipt(asg.id, currentUser, "received").catch(err => {
           console.warn("Could not record assignment receipt:", err);
         });
-      }
+      }, index * 350);
+      timers.push(timer);
     });
-  }, [tradeAndGroupMatchedAssignments, currentUser]);
+
+    return () => {
+      timers.forEach(t => clearTimeout(t));
+    };
+  }, [myLevelAssignments, currentUser]);
 
   const handleOpenAssignment = (asg: Assignment) => {
     setActiveAssignment(asg);
@@ -894,51 +874,10 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
             <h3 className="text-xs font-bold font-mono text-[#94A3B8] uppercase tracking-wider">
               Assigned by Instructor ({assignments.length})
             </h3>
-            <div className="flex items-center rounded-xl bg-[#0B0F19] p-0.5 border border-[#334155]">
-              <button
-                type="button"
-                onClick={() => setSelectedLevelFilter("my_level")}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all ${
-                  effectiveLevelFilter === "my_level"
-                    ? "bg-[#06B6D4] text-slate-950"
-                    : "text-[#94A3B8] hover:text-white"
-                }`}
-              >
-                My Class ({currentUser.level || "All"}) ({myLevelAssignments.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedLevelFilter("all")}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all ${
-                  effectiveLevelFilter === "all"
-                    ? "bg-[#06B6D4] text-slate-950"
-                    : "text-[#94A3B8] hover:text-white"
-                }`}
-              >
-                All Levels ({tradeAndGroupMatchedAssignments.length})
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedLevelFilter("Level 5")}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all ${
-                  effectiveLevelFilter === "Level 5"
-                    ? "bg-[#06B6D4] text-slate-950"
-                    : "text-[#94A3B8] hover:text-white"
-                }`}
-              >
-                Level 5
-              </button>
-              <button
-                type="button"
-                onClick={() => setSelectedLevelFilter("Level 4")}
-                className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all ${
-                  effectiveLevelFilter === "Level 4"
-                    ? "bg-[#06B6D4] text-slate-950"
-                    : "text-[#94A3B8] hover:text-white"
-                }`}
-              >
-                Level 4
-              </button>
+            <div className="flex items-center space-x-2">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold bg-[#06B6D4]/15 text-[#06B6D4] border border-[#06B6D4]/30">
+                {currentUser.level || "Class Tasks"} ({myLevelAssignments.length})
+              </span>
             </div>
 
             {availableSubjectCodes.length > 1 && (
@@ -947,7 +886,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                 onChange={(e) => setSelectedSubjectFilter(e.target.value)}
                 className="rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-1.5 text-[11px] font-mono text-white focus:border-[#06B6D4] focus:outline-none"
               >
-                <option value="all">All Subjects ({levelMatchedAssignments.length})</option>
+                <option value="all">All {currentUser.level || "Class"} Subjects ({myLevelAssignments.length})</option>
                 {availableSubjectCodes.map((code) => {
                   const syl = syllabi.find(s => s.courseCode === code);
                   return (
@@ -967,20 +906,13 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
         {assignments.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-[#334155] bg-[#1E293B]/40 p-8 text-center">
             <FileText className="mx-auto h-10 w-10 text-[#64748B] mb-2" />
-            <h3 className="text-sm font-bold text-white mb-1">No Instructor Assignments Found for This Filter</h3>
+            <h3 className="text-sm font-bold text-white mb-1">
+              No Assignments Posted for {currentUser.level || "Your Class"} Yet
+            </h3>
             <p className="text-xs text-[#94A3B8] max-w-sm mx-auto mb-4">
-              Switch to &ldquo;All Levels&rdquo; above to view assignments across all classes, or click the button below to submit course work directly.
+              When your instructor publishes an assignment for {currentUser.level || "your level"}, it will appear here automatically.
             </p>
             <div className="flex items-center justify-center gap-2">
-              {effectiveLevelFilter !== "all" && tradeAndGroupMatchedAssignments.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setSelectedLevelFilter("all")}
-                  className="inline-flex items-center space-x-1.5 rounded-xl border border-[#06B6D4]/40 bg-[#06B6D4]/10 px-3.5 py-1.5 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4] hover:text-slate-950 transition-all"
-                >
-                  <span>Show All Class Assignments ({tradeAndGroupMatchedAssignments.length})</span>
-                </button>
-              )}
               <button
                 onClick={() => {
                   if (studentCourses.length > 0 && !selectedCourseCode) {
