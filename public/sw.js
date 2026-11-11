@@ -1,4 +1,4 @@
-const CACHE_NAME = "syllabus-pwa-v7";
+const CACHE_NAME = "syllabus-pwa-v9";
 
 // Static assets to precache immediately on install (public safe assets only)
 const PRECACHE_ASSETS = [
@@ -59,8 +59,8 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // 2. HTML Navigation requests: Network-First, fallback to Cache, fallback to Root
-  if (event.request.mode === "navigate") {
+  // 2. HTML Navigation & Next.js RSC (.txt) requests: Network-First, fallback to Cache
+  if (event.request.mode === "navigate" || url.pathname.endsWith(".txt")) {
     event.respondWith(
       fetch(event.request)
         .then((networkResponse) => {
@@ -74,17 +74,20 @@ self.addEventListener("fetch", (event) => {
           const cached = await caches.match(event.request);
           if (cached) return cached;
 
-          // For sub-routes in SPA, fallback to cached root or view
-          if (url.pathname.startsWith("/syllabus/view")) {
-            const viewFallback = await caches.match("/syllabus/view");
-            if (viewFallback) return viewFallback;
-          }
-          const rootFallback = await caches.match("/");
-          if (rootFallback) return rootFallback;
+          if (event.request.mode === "navigate") {
+            // For sub-routes in SPA, fallback to cached root or view
+            if (url.pathname.startsWith("/syllabus/view")) {
+              const viewFallback = await caches.match("/syllabus/view");
+              if (viewFallback) return viewFallback;
+            }
+            const rootFallback = await caches.match("/");
+            if (rootFallback) return rootFallback;
 
-          return new Response("You are currently offline. Please reconnect to access this syllabus content.", {
-            headers: { "Content-Type": "text/html" }
-          });
+            return new Response("You are currently offline. Please reconnect to access this syllabus content.", {
+              headers: { "Content-Type": "text/html" }
+            });
+          }
+          return Response.error();
         })
     );
     return;

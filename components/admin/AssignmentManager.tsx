@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Assignment, AssignmentSubmission } from "@/types/assignment";
 import { StudentGroup } from "@/types/group";
 import { Syllabus } from "@/types/syllabus";
@@ -21,7 +21,9 @@ import {
   getAllUserProfiles,
   subscribeToAllUserProfiles,
   forceAssignAssignmentToStudents,
-  deleteAssignmentSubmission
+  deleteAssignmentSubmission,
+  mergeAssignmentsLists,
+  generateAssignmentCode
 } from "@/lib/db";
 import { parseAssignmentWithGemini } from "@/lib/gemini";
 import { gradeSubmissionWithGemini, AiGradingResult } from "@/lib/aiGrading";
@@ -55,7 +57,11 @@ import {
   CheckCheck,
   Send,
   UserCheck,
-  RotateCcw
+  RotateCcw,
+  Archive,
+  ArchiveRestore,
+  Link2,
+  Copy
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -144,7 +150,11 @@ const getStudentAssignmentStatus = (
   groups: StudentGroup[]
 ) => {
   const studentSub = allSubs.find(s => {
-    if (s.assignmentId !== asg.id) return false;
+    const matchesAsg =
+      s.assignmentId === asg.id ||
+      s.linkedAssignmentId === asg.id ||
+      (asg.assignmentCode && s.linkedAssignmentCode?.toUpperCase() === asg.assignmentCode.toUpperCase());
+    if (!matchesAsg) return false;
     if (s.studentUid === student.uid) return true;
     if (s.submissionType === "group" && s.groupId) {
       const grp = groups.find(g => g.id === s.groupId);
@@ -266,12 +276,17 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
       return !localStorage.getItem("syllabus_platform_assignments_v1");
     } catch { return true; }
   });
-  const [activeTab, setActiveTab] = useState<"list" | "create" | "submissions" | "course_submissions">("list");
+  const [activeTab, setActiveTab] = useState<"list" | "archived" | "create" | "submissions" | "course_submissions">("list");
   
-  // Specific assignment submissions & delivery tracking view
+  // Specific assignment view, submissions & delivery tracking state
+  const [viewingAssignment, setViewingAssignment] = useState<Assignment | null>(null);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
   const [submissions, setSubmissions] = useState<AssignmentSubmission[]>([]);
   const [loadingSubmissions, setLoadingSubmissions] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [publishBanner, setPublishBanner] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const pendingOptimisticRef = useRef<Map<string, { assignment: Assignment; expiresAt: number }>>(new Map());
   const [submissionSubTab, setSubmissionSubTab] = useState<"submissions" | "tracker">("submissions");
   const [trackerFilter, setTrackerFilter] = useState<"all" | "missing" | "opened" | "got_it" | "submitted">("all");
   const [trackerCohort, setTrackerCohort] = useState<"target" | "all">("target");
@@ -279,9 +294,15 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
   const [forceAssigningUid, setForceAssigningUid] = useState<string | null>(null);
   const [forceAssigningAll, setForceAssigningAll] = useState<boolean>(false);
 
-  // Filter for Course Submissions tab
+  // Filter & Grouping for Course Submissions tab
   const [courseFilter, setCourseFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [submissionViewMode, setSubmissionViewMode] = useState<"grouped" | "table">("grouped");
+  const [submissionSourceFilter, setSubmissionSourceFilter] = useState<"all" | "self" | "assigned">("all");
+  const [submissionArchiveFilter, setSubmissionArchiveFilter] = useState<"active" | "archived">("active");
+  const [groupLinkTarget, setGroupLinkTarget] = useState<Record<string, string>>({});
+  const [copiedCodeId, setCopiedCodeId] = useState<string | null>(null);
+  const [viewingSubmissionWork, setViewingSubmissionWork] = useState<AssignmentSubmission | null>(null);
 
   // Grading modal state
   const [gradingSubmission, setGradingSubmission] = useState<AssignmentSubmission | null>(null);
@@ -322,6 +343,16 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
   const [isParsingDoc, setIsParsingDoc] = useState(false);
   const [parseStatus, setParseStatus] = useState<string | null>(null);
 
+  const activeAssignments = useMemo(
+    () => assignments.filter(a => a.status !== "archived"),
+    [assignments]
+  );
+
+  const archivedAssignments = useMemo(
+    () => assignments.filter(a => a.status === "archived"),
+    [assignments]
+  );
+
   // Compute eligible student groups filtered by target level and trade.
   // In this system, student groups represent the entire class cohort for that level, serving all courses taught within that level.
   const targetableGroups = useMemo(() => {
@@ -342,13 +373,26 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
     }
   }, [targetableGroups, formTargetGroupId]);
 
+  const applyAssignmentsWithPending = (incoming: Assignment[]): Assignment[] => {
+    const now = Date.now();
+    const pendingList: Assignment[] = [];
+    pendingOptimisticRef.current.forEach((entry, id) => {
+      if (now < entry.expiresAt) {
+        pendingList.push(entry.assignment);
+      } else {
+        pendingOptimisticRef.current.delete(id);
+      }
+    });
+    return pendingList.length > 0 ? mergeAssignmentsLists(incoming, pendingList) : incoming;
+  };
+
   useEffect(() => {
     let isMounted = true;
 
     // Real-time listener for assignments
     const unsubAssignments = subscribeToAssignments((data) => {
       if (isMounted) {
-        setAssignments(data);
+        setAssignments(applyAssignmentsWithPending(data));
         setLoading(false);
       }
     });
@@ -384,8 +428,10 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
     };
   }, []);
 
-  const loadAllData = async () => {
-    setLoading(true);
+  const loadAllData = async (silent: boolean = false) => {
+    if (!silent) {
+      setLoading(true);
+    }
     try {
       const [asgData, allSubs, allG, allU] = await Promise.all([
         getAllAssignments().catch(() => []),
@@ -393,14 +439,16 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
         getAllGroups().catch(() => []),
         getAllUserProfiles().catch(() => [])
       ]);
-      if (asgData) setAssignments(asgData);
+      if (asgData) setAssignments(applyAssignmentsWithPending(asgData));
       if (allSubs) setAllSubmissionsList(allSubs);
       if (allG) setCourseGroups(allG);
       if (allU) setAllStudents(allU.filter(u => u.role !== "teacher" && u.status === "approved"));
     } catch (err) {
       console.error("Error loading assignments, submissions & groups:", err);
     } finally {
-      setLoading(false);
+      if (!silent) {
+        setLoading(false);
+      }
     }
   };
 
@@ -476,41 +524,93 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
     }
   };
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSave = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (isSaving) return;
+
+    setFormError(null);
+
     if (!formTitle.trim()) {
-      alert("Please provide an assignment title.");
+      const msg = "Please provide an Assignment Title before publishing.";
+      setFormError(msg);
+      alert(msg);
       return;
     }
 
-    const newAssignment: Assignment = {
-      id: editingId || `asg_${Date.now()}`,
-      title: formTitle.trim(),
-      courseCode: formCourseCode.trim(),
-      courseTitle: syllabi.find(s => s.courseCode === formCourseCode)?.title || "",
-      tradeId: formTradeId,
-      level: formLevel,
-      description: formDescription.trim(),
-      instructionsMarkdown: formInstructions.trim() || formDescription.trim(),
-      totalPoints: Number(formTotalPoints) || 100,
-      dueDate: formDueDate || undefined,
-      allowFileUpload: formAllowFile,
-      allowTextSubmission: formAllowText,
-      submissionType: formSubmissionType,
-      targetGroupId: formSubmissionType === "group" ? formTargetGroupId : undefined,
-      status: "published",
-      createdAt: editingId ? (assignments.find(a => a.id === editingId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      createdBy: adminEmail || "Josef Marie"
-    };
+    const parsedPoints = Number(formTotalPoints);
+    if (!Number.isFinite(parsedPoints) || parsedPoints < 1 || parsedPoints > 1000) {
+      const msg = "Total Points / Marks must be a number between 1 and 1000.";
+      setFormError(msg);
+      alert(msg);
+      return;
+    }
 
-    await saveAssignment(newAssignment);
-    await loadAllData();
-    resetForm();
-    setActiveTab("list");
+    setIsSaving(true);
+    try {
+      const existingAssignment = editingId ? assignments.find(a => a.id === editingId) : undefined;
+      const resolvedCode = existingAssignment?.assignmentCode || generateAssignmentCode();
+      const newAssignment: Assignment = {
+        id: editingId || `asg_${Date.now()}`,
+        assignmentCode: resolvedCode,
+        title: formTitle.trim(),
+        courseCode: (formCourseCode || "").trim(),
+        courseTitle: (syllabi || []).find(s => s.courseCode === formCourseCode)?.title || "",
+        tradeId: formTradeId || "all",
+        level: formLevel || "all",
+        description: formDescription.trim(),
+        instructionsMarkdown: formInstructions.trim() || formDescription.trim(),
+        totalPoints: parsedPoints,
+        dueDate: formDueDate ? formDueDate.trim() : undefined,
+        allowFileUpload: formAllowFile,
+        allowTextSubmission: formAllowText,
+        submissionType: formSubmissionType,
+        targetGroupId: formSubmissionType === "group" ? formTargetGroupId : undefined,
+        status: existingAssignment?.status === "archived" ? "archived" : "published",
+        createdAt: existingAssignment?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        createdBy: adminEmail || "Josef Marie",
+        forceAssignedStudentUids: existingAssignment?.forceAssignedStudentUids,
+        studentReceipts: existingAssignment?.studentReceipts,
+        attachments: existingAssignment?.attachments
+      };
+
+      pendingOptimisticRef.current.set(newAssignment.id, {
+        assignment: newAssignment,
+        expiresAt: Date.now() + 60000
+      });
+
+      // 1. Optimistic React update: Immediately add to list and switch tabs
+      setAssignments(prev => mergeAssignmentsLists(prev, [newAssignment]));
+      setLoading(false);
+      resetForm();
+      setActiveTab(newAssignment.status === "archived" ? "archived" : "list");
+
+      // 2. Persist to LocalStorage & Firestore
+      await saveAssignment(newAssignment);
+
+      setPublishBanner({
+        type: "success",
+        message: `Assignment "${newAssignment.title}" published! Share Assignment ID: ${resolvedCode}`
+      });
+
+      // 3. Silent background sync
+      loadAllData(true).catch(err => console.warn("Background loadAllData error:", err));
+    } catch (err: any) {
+      console.error("Failed to save assignment:", err);
+      const errMsg = err?.message || "Please check your internet connection and try again.";
+      setFormError(errMsg);
+      setPublishBanner({
+        type: "error",
+        message: `Saved locally, but cloud sync encountered an error: ${errMsg}`
+      });
+      alert("Cloud sync error while publishing assignment: " + errMsg);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const resetForm = () => {
+    setFormError(null);
     setEditingId(null);
     setFormTitle("");
     setFormCourseCode("");
@@ -544,6 +644,44 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
     setActiveTab("create");
   };
 
+  const handleToggleArchive = async (asg: Assignment) => {
+    const nextStatus = asg.status === "archived" ? "published" : "archived";
+    const updated: Assignment = {
+      ...asg,
+      status: nextStatus,
+      updatedAt: new Date().toISOString()
+    };
+
+    pendingOptimisticRef.current.set(updated.id, {
+      assignment: updated,
+      expiresAt: Date.now() + 60000
+    });
+
+    setAssignments(prev => mergeAssignmentsLists(prev, [updated]));
+    if (selectedAssignment?.id === updated.id) {
+      setSelectedAssignment(updated);
+    }
+    if (viewingAssignment?.id === updated.id) {
+      setViewingAssignment(updated);
+    }
+
+    setPublishBanner({
+      type: "success",
+      message:
+        nextStatus === "archived"
+          ? `Archived "${asg.title}" — hidden from your active tasks list.`
+          : `Restored "${asg.title}" back to active Instructor Tasks.`
+    });
+
+    try {
+      await saveAssignment(updated);
+      loadAllData(true).catch(err => console.warn("Background archive sync error:", err));
+    } catch (err: any) {
+      console.error("Failed to update archive status:", err);
+      alert("Failed to update archive status: " + (err?.message || "Unknown error"));
+    }
+  };
+
   const handleDelete = async (id: string, title: string) => {
     if (confirm(`Permanently delete assignment "${title}"?`)) {
       await deleteAssignment(id);
@@ -555,12 +693,156 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
     }
   };
 
+  const resolveLinkedAssignment = (sub: AssignmentSubmission): Assignment | undefined => {
+    if (sub.linkedAssignmentId) {
+      const byLinked = assignments.find(a => a.id === sub.linkedAssignmentId);
+      if (byLinked) return byLinked;
+    }
+    if (sub.linkedAssignmentCode) {
+      const code = sub.linkedAssignmentCode.trim().toUpperCase();
+      const byCode = assignments.find(
+        a => (a.assignmentCode && a.assignmentCode.toUpperCase() === code) || a.id.toUpperCase() === code
+      );
+      if (byCode) return byCode;
+    }
+    return assignments.find(a => a.id === sub.assignmentId);
+  };
+
+  const doesSubmissionBelongToAssignment = (s: AssignmentSubmission, asg: Assignment): boolean => {
+    if (s.assignmentId === asg.id || s.linkedAssignmentId === asg.id) return true;
+    if (asg.assignmentCode && s.linkedAssignmentCode?.toUpperCase() === asg.assignmentCode.toUpperCase()) return true;
+    return false;
+  };
+
+  const handleGenerateAssignmentCode = async (asg: Assignment) => {
+    const code = asg.assignmentCode || generateAssignmentCode();
+    const updated: Assignment = { ...asg, assignmentCode: code, updatedAt: new Date().toISOString() };
+    pendingOptimisticRef.current.set(updated.id, { assignment: updated, expiresAt: Date.now() + 60000 });
+    setAssignments(prev => mergeAssignmentsLists(prev, [updated]));
+    if (selectedAssignment?.id === updated.id) setSelectedAssignment(updated);
+    if (viewingAssignment?.id === updated.id) setViewingAssignment(updated);
+    try {
+      await saveAssignment(updated);
+      if (typeof navigator !== "undefined" && navigator.clipboard) {
+        navigator.clipboard.writeText(code).catch(() => {});
+      }
+      setCopiedCodeId(asg.id);
+      setTimeout(() => setCopiedCodeId(prev => (prev === asg.id ? null : prev)), 2000);
+      setPublishBanner({
+        type: "success",
+        message: `Generated Assignment ID "${code}" for "${asg.title}" and copied to clipboard.`
+      });
+    } catch (err: any) {
+      alert("Failed to generate Assignment ID: " + (err?.message || "Unknown error"));
+    }
+  };
+
+  const handleCopyAssignmentCode = (id: string, code: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(code).catch(() => {});
+    }
+    setCopiedCodeId(id);
+    setTimeout(() => setCopiedCodeId(prev => (prev === id ? null : prev)), 2000);
+  };
+
+  const handleLinkSubmissionToAssignment = async (sub: AssignmentSubmission, targetAsgId: string) => {
+    const targetAsg = targetAsgId ? assignments.find(a => a.id === targetAsgId) : undefined;
+    const updated: AssignmentSubmission = {
+      ...sub,
+      linkedAssignmentId: targetAsg ? targetAsg.id : undefined,
+      linkedAssignmentCode: targetAsg?.assignmentCode || undefined,
+      maxScore: targetAsg ? targetAsg.totalPoints : (sub.maxScore || 100)
+    };
+    setAllSubmissionsList(prev => prev.map(s => (s.id === updated.id ? updated : s)));
+    setSubmissions(prev => prev.map(s => (s.id === updated.id ? updated : s)));
+    if (gradingSubmission?.id === updated.id) {
+      setGradingSubmission(updated);
+      setGradeScore(prevScore => (updated.status === "graded" ? prevScore : Math.min(prevScore, updated.maxScore)));
+    }
+    try {
+      await saveAssignmentSubmission(updated);
+    } catch (err) {
+      console.error("Failed to link submission:", err);
+      alert("Failed to save assignment link.");
+    }
+  };
+
+  const handleLinkGroupToAssignment = async (groupSubs: AssignmentSubmission[], targetAsgId: string) => {
+    if (!targetAsgId) {
+      alert("Please select an assignment to link to this group.");
+      return;
+    }
+    const targetAsg = assignments.find(a => a.id === targetAsgId);
+    if (!targetAsg) return;
+
+    const updatedSubs: AssignmentSubmission[] = groupSubs.map(sub => ({
+      ...sub,
+      linkedAssignmentId: targetAsg.id,
+      linkedAssignmentCode: targetAsg.assignmentCode || undefined,
+      maxScore: targetAsg.totalPoints
+    }));
+    const updatedMap = new Map(updatedSubs.map(s => [s.id, s]));
+    setAllSubmissionsList(prev => prev.map(s => updatedMap.get(s.id) || s));
+    setSubmissions(prev => prev.map(s => updatedMap.get(s.id) || s));
+
+    await Promise.allSettled(updatedSubs.map(s => saveAssignmentSubmission(s)));
+    setPublishBanner({
+      type: "success",
+      message: `Linked ${updatedSubs.length} submission(s) to "${targetAsg.title}" (${targetAsg.assignmentCode || targetAsg.courseCode || "Task"}). You can now grade them against its rubric.`
+    });
+  };
+
+  const handleToggleArchiveSubmission = async (sub: AssignmentSubmission) => {
+    const nextArchived = !sub.archived;
+    const updated: AssignmentSubmission = {
+      ...sub,
+      archived: nextArchived,
+      archivedAt: nextArchived ? new Date().toISOString() : undefined
+    };
+    setAllSubmissionsList(prev => prev.map(s => (s.id === updated.id ? updated : s)));
+    setSubmissions(prev => prev.map(s => (s.id === updated.id ? updated : s)));
+    try {
+      await saveAssignmentSubmission(updated);
+    } catch (err) {
+      console.error("Failed to toggle submission archive:", err);
+    }
+  };
+
+  const handleArchiveGradedInGroup = async (groupSubs: AssignmentSubmission[], archive: boolean) => {
+    const targets = archive
+      ? groupSubs.filter(s => s.status === "graded" && !s.archived)
+      : groupSubs.filter(s => s.archived);
+
+    if (targets.length === 0) {
+      alert(archive ? "No graded submissions in this group to archive yet." : "No archived submissions to restore.");
+      return;
+    }
+
+    const now = new Date().toISOString();
+    const updatedSubs: AssignmentSubmission[] = targets.map(s => ({
+      ...s,
+      archived: archive,
+      archivedAt: archive ? now : undefined
+    }));
+    const updatedMap = new Map(updatedSubs.map(s => [s.id, s]));
+    setAllSubmissionsList(prev => prev.map(s => updatedMap.get(s.id) || s));
+    setSubmissions(prev => prev.map(s => updatedMap.get(s.id) || s));
+
+    await Promise.allSettled(updatedSubs.map(s => saveAssignmentSubmission(s)));
+    setPublishBanner({
+      type: "success",
+      message: archive
+        ? `Archived ${updatedSubs.length} corrected submission(s) — moved out of your active grading queue.`
+        : `Restored ${updatedSubs.length} submission(s) back to active review.`
+    });
+  };
+
   const handleViewSubmissions = async (asg: Assignment, initialSubTab: "submissions" | "tracker" = "submissions") => {
     setSelectedAssignment(asg);
     setSubmissionSubTab(initialSubTab);
     setActiveTab("submissions");
     // Immediately populate from real-time allSubmissionsList if available
-    const cached = allSubmissionsList.filter(s => s.assignmentId === asg.id);
+    const cached = allSubmissionsList.filter(s => doesSubmissionBelongToAssignment(s, asg));
     if (cached.length > 0) {
       setSubmissions(cached);
       setLoadingSubmissions(false);
@@ -582,7 +864,7 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
   // Keep selectedAssignment's submissions list in sync with real-time allSubmissionsList
   useEffect(() => {
     if (selectedAssignment) {
-      const matching = allSubmissionsList.filter(s => s.assignmentId === selectedAssignment.id);
+      const matching = allSubmissionsList.filter(s => doesSubmissionBelongToAssignment(s, selectedAssignment));
       if (matching.length > 0) {
         setSubmissions(matching);
       }
@@ -668,7 +950,7 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
   const handleTriggerAiGrade = async (sub: AssignmentSubmission) => {
     setIsAiGrading(true);
     try {
-      const parentAssignment = assignments.find(a => a.id === sub.assignmentId) || {
+      const parentAssignment = resolveLinkedAssignment(sub) || {
         id: sub.assignmentId,
         title: sub.submissionTitle || "Course Assignment",
         courseCode: sub.courseCode,
@@ -723,7 +1005,7 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
         item.isGrading = true;
         setBatchAiList([...updatedList]);
 
-        const parentAssignment = assignments.find(a => a.id === item.submission.assignmentId) || {
+        const parentAssignment = resolveLinkedAssignment(item.submission) || {
           id: item.submission.assignmentId,
           title: item.submission.submissionTitle || "Course Assignment",
           courseCode: item.submission.courseCode,
@@ -866,14 +1148,104 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
     }
   };
 
-  // Filter submissions by course and grading status for the Course Submissions desk
-  const filteredCourseSubmissions = allSubmissionsList.filter(s => {
-    const matchesCourse = courseFilter === "all" || s.courseCode === courseFilter;
-    const matchesStatus = statusFilter === "all" || 
-      (statusFilter === "graded" && s.status === "graded") ||
-      (statusFilter === "pending" && s.status !== "graded");
-    return matchesCourse && matchesStatus;
-  });
+  // Filter submissions by course, grading status, source (self vs assigned), and archive status
+  const archivedCourseSubmissionsCount = useMemo(
+    () => allSubmissionsList.filter(s => Boolean(s.archived)).length,
+    [allSubmissionsList]
+  );
+
+  const filteredCourseSubmissions = useMemo(() => {
+    return allSubmissionsList.filter(s => {
+      const isArchived = Boolean(s.archived);
+      if (submissionArchiveFilter === "active" && isArchived) return false;
+      if (submissionArchiveFilter === "archived" && !isArchived) return false;
+
+      const matchesCourse = courseFilter === "all" || s.courseCode === courseFilter;
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "graded" && s.status === "graded") ||
+        (statusFilter === "pending" && s.status !== "graded");
+
+      const isSelf = Boolean(s.isIndependentSubmission || s.assignmentId?.startsWith("indep_") || s.assignmentId === "independent");
+      const matchesSource =
+        submissionSourceFilter === "all" ||
+        (submissionSourceFilter === "self" && isSelf) ||
+        (submissionSourceFilter === "assigned" && !isSelf);
+
+      return matchesCourse && matchesStatus && matchesSource;
+    });
+  }, [allSubmissionsList, courseFilter, statusFilter, submissionSourceFilter, submissionArchiveFilter]);
+
+  // Group filtered submissions by Submission Date (YYYY-MM-DD) and Course / Module
+  const groupedCourseSubmissions = useMemo(() => {
+    const groupsMap = new Map<
+      string,
+      {
+        key: string;
+        dateKey: string;
+        dateLabel: string;
+        courseCode: string;
+        courseTitle: string;
+        items: AssignmentSubmission[];
+        linkedAssignment?: Assignment;
+        pendingCount: number;
+        gradedCount: number;
+        selfCount: number;
+      }
+    >();
+
+    for (const sub of filteredCourseSubmissions) {
+      const dt = sub.submittedAt ? new Date(sub.submittedAt) : new Date();
+      const validDate = !isNaN(dt.getTime()) ? dt : new Date();
+      const yyyy = validDate.getFullYear();
+      const mm = String(validDate.getMonth() + 1).padStart(2, "0");
+      const dd = String(validDate.getDate()).padStart(2, "0");
+      const dateKey = `${yyyy}-${mm}-${dd}`;
+      const dateLabel = validDate.toLocaleDateString(undefined, {
+        weekday: "short",
+        year: "numeric",
+        month: "short",
+        day: "numeric"
+      });
+      const courseCode = (sub.courseCode || "General").trim() || "General";
+      const matchedSyl = syllabi.find(sy => sy.courseCode === courseCode);
+      const courseTitle = matchedSyl?.title || sub.courseTitle || "";
+      const key = `${dateKey}__${courseCode}`;
+
+      if (!groupsMap.has(key)) {
+        groupsMap.set(key, {
+          key,
+          dateKey,
+          dateLabel,
+          courseCode,
+          courseTitle,
+          items: [],
+          pendingCount: 0,
+          gradedCount: 0,
+          selfCount: 0
+        });
+      }
+
+      const grp = groupsMap.get(key)!;
+      grp.items.push(sub);
+      if (sub.status === "graded") grp.gradedCount += 1;
+      else grp.pendingCount += 1;
+
+      const isSelf = Boolean(sub.isIndependentSubmission || sub.assignmentId?.startsWith("indep_") || sub.assignmentId === "independent");
+      if (isSelf) grp.selfCount += 1;
+
+      if (!grp.linkedAssignment) {
+        const resolved = resolveLinkedAssignment(sub);
+        if (resolved) grp.linkedAssignment = resolved;
+      }
+    }
+
+    return Array.from(groupsMap.values()).sort((a, b) => {
+      const dateCmp = b.dateKey.localeCompare(a.dateKey);
+      if (dateCmp !== 0) return dateCmp;
+      return a.courseCode.localeCompare(b.courseCode);
+    });
+  }, [filteredCourseSubmissions, syllabi, assignments]);
 
   // Export assignment marks to an Excel-compatible CSV spreadsheet
   const downloadAssignmentMarksCsv = (
@@ -972,6 +1344,377 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   };
 
+  const renderAssignmentCard = (asg: Assignment, isArchivedView: boolean = false) => {
+    const targetTrade = trades.find(t => t.id === asg.tradeId);
+    const isOverdue = isAssignmentPastDue(asg.dueDate);
+    const taskSubmissions = allSubmissionsList.filter(s => doesSubmissionBelongToAssignment(s, asg));
+    const taskSubmissionsCount = taskSubmissions.length;
+    const gradedSubmissionsCount = taskSubmissions.filter(s => s.status === "graded").length;
+    const isAllGraded = taskSubmissionsCount > 0 && gradedSubmissionsCount === taskSubmissionsCount;
+
+    const targetCohort = getTargetStudentsForAssignment(asg, allStudents, courseGroups, trades);
+    const cohortStatuses = targetCohort.map(st => getStudentAssignmentStatus(asg, st, allSubmissionsList, courseGroups));
+    const receivedCount = cohortStatuses.filter(s => s.hasReceived).length;
+    const openedCount = cohortStatuses.filter(s => s.hasOpened).length;
+    const missingCount = cohortStatuses.filter(s => s.statusCode === "missing").length;
+
+    return (
+      <div
+        key={asg.id}
+        className={`flex flex-col justify-between rounded-2xl border p-5 transition-all shadow-xl group ${
+          isArchivedView
+            ? "border-amber-500/30 bg-[#1E293B]/60 hover:border-amber-400/50"
+            : "border-[#334155] bg-[#1E293B]/90 hover:border-[#06B6D4]/50"
+        }`}
+      >
+        <div>
+          <div className="flex items-start justify-between gap-2 mb-3">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="rounded-md bg-[#06B6D4]/10 border border-[#06B6D4]/30 px-2 py-0.5 text-[10px] font-mono font-bold text-[#06B6D4]">
+                {asg.courseCode || "General"}
+              </span>
+              {asg.assignmentCode ? (
+                <button
+                  type="button"
+                  onClick={() => handleCopyAssignmentCode(asg.id, asg.assignmentCode!)}
+                  title="Copy Assignment ID to share with students for self-submission linking"
+                  className="inline-flex items-center space-x-1 rounded-md bg-indigo-500/15 border border-indigo-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-indigo-300 hover:bg-indigo-500 hover:text-white transition-all"
+                >
+                  <Copy className="h-2.5 w-2.5" />
+                  <span>{copiedCodeId === asg.id ? "Copied!" : `ID: ${asg.assignmentCode}`}</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleGenerateAssignmentCode(asg)}
+                  title="Generate a short Assignment ID for students who self-submit"
+                  className="inline-flex items-center space-x-1 rounded-md bg-slate-800 border border-slate-600 px-2 py-0.5 text-[10px] font-mono font-bold text-slate-300 hover:border-indigo-400 hover:text-indigo-300 transition-all"
+                >
+                  <Link2 className="h-2.5 w-2.5" />
+                  <span>Generate ID</span>
+                </button>
+              )}
+              {isArchivedView && (
+                <span className="rounded-md bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-amber-300">
+                  Archived
+                </span>
+              )}
+              {isAllGraded && (
+                <span className="rounded-md bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-emerald-300">
+                  All Graded ({gradedSubmissionsCount}/{taskSubmissionsCount})
+                </span>
+              )}
+            </div>
+            <div className="flex items-center space-x-1.5 shrink-0">
+              {asg.submissionType === "group" && (() => {
+                const targetedGrp = courseGroups.find(g => g.id === asg.targetGroupId);
+                return (
+                  <span className="rounded-md bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-purple-300 flex items-center space-x-1">
+                    <Users className="h-3 w-3" />
+                    <span>{targetedGrp ? `Team: ${targetedGrp.name}` : "Group Task"}</span>
+                  </span>
+                );
+              })()}
+              <span className="rounded-md bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-mono text-emerald-400">
+                {asg.totalPoints} Pts
+              </span>
+            </div>
+          </div>
+
+          <h3
+            onClick={() => setViewingAssignment(asg)}
+            className="text-sm font-extrabold text-white group-hover:text-[#06B6D4] transition-colors line-clamp-2 mb-2 cursor-pointer"
+            title="Click to view full assignment instructions"
+          >
+            {asg.title}
+          </h3>
+
+          <p className="text-xs text-[#94A3B8] line-clamp-3 mb-4 leading-relaxed">
+            {asg.description || asg.instructionsMarkdown}
+          </p>
+
+          <div className="space-y-1.5 mb-4 text-[11px] font-mono text-[#64748B]">
+            <div className="flex items-center space-x-2">
+              <Users className="h-3.5 w-3.5 text-[#94A3B8]" />
+              <span>Class: {asg.level === "all" ? "All Levels" : asg.level} • {asg.tradeId === "all" ? "All Trades" : targetTrade?.name || asg.tradeId}</span>
+            </div>
+            {asg.submissionType === "group" && (
+              <div className="flex items-center space-x-2 text-[11px] text-purple-300">
+                <Users className="h-3.5 w-3.5 text-purple-400 shrink-0" />
+                <span>
+                  {asg.targetGroupId && asg.targetGroupId !== "all_groups" ? (() => {
+                    const targetedGrp = courseGroups.find(g => g.id === asg.targetGroupId);
+                    if (!targetedGrp) return "Target: Specific Team";
+                    const ldr = getGroupLeaderName(targetedGrp);
+                    return (
+                      <>
+                        <span className="font-bold text-purple-200">Target Group:</span> {targetedGrp.name}
+                        {" "}<span className="text-amber-300 font-semibold">(Leader: {ldr})</span>
+                      </>
+                    );
+                  })() : (
+                    <span>Assigned to: <strong className="text-purple-200">All Groups in Level</strong></span>
+                  )}
+                </span>
+              </div>
+            )}
+            {asg.dueDate && (
+              <div className={`flex items-center space-x-2 ${isOverdue ? "text-rose-400 font-bold" : "text-[#94A3B8]"}`}>
+                <Calendar className="h-3.5 w-3.5" />
+                <span>Due: {formatAssignmentDueDate(asg.dueDate)} {isOverdue && "(Expired)"}</span>
+              </div>
+            )}
+
+            {/* Live Delivery, "Clicked Start" & Missing Student Stats */}
+            <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
+              <span className="inline-flex items-center space-x-1 rounded-md bg-[#06B6D4]/10 border border-[#06B6D4]/30 px-2 py-0.5 text-[10px] font-mono text-[#06B6D4]">
+                <CheckCheck className="h-2.5 w-2.5" />
+                <span>Got It: {receivedCount} / {targetCohort.length}</span>
+              </span>
+              <span className="inline-flex items-center space-x-1 rounded-md bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 text-[10px] font-mono text-purple-300">
+                <PlayCircle className="h-2.5 w-2.5" />
+                <span>Clicked Start: {openedCount}</span>
+              </span>
+              {!isArchivedView && (
+                missingCount > 0 ? (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleViewSubmissions(asg, "tracker");
+                      setTrackerFilter("missing");
+                    }}
+                    className="inline-flex items-center space-x-1 rounded-md bg-amber-500/15 border border-amber-500/40 px-2 py-0.5 text-[10px] font-mono font-bold text-amber-300 hover:bg-amber-500 hover:text-slate-950 transition-all cursor-pointer"
+                    title="Click to view students who haven't received it and force-assign"
+                  >
+                    <Zap className="h-2.5 w-2.5" />
+                    <span>{missingCount} Missing • Force Assign</span>
+                  </button>
+                ) : (
+                  <span className="inline-flex items-center space-x-1 rounded-md bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-mono text-emerald-400">
+                    <Check className="h-2.5 w-2.5" />
+                    <span>100% Delivered</span>
+                  </span>
+                )
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-3 border-t border-[#334155]/60 flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => handleViewSubmissions(asg, "submissions")}
+              className="inline-flex items-center space-x-1.5 text-xs font-bold text-[#06B6D4] hover:text-white bg-[#06B6D4]/10 hover:bg-[#06B6D4] hover:text-slate-950 px-2.5 py-1.5 rounded-lg border border-[#06B6D4]/30 transition-all"
+            >
+              <Award className="h-3.5 w-3.5" />
+              <span>Submissions ({taskSubmissionsCount})</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setViewingAssignment(asg)}
+              className="inline-flex items-center space-x-1 text-xs font-bold text-slate-200 hover:text-slate-950 bg-slate-800 hover:bg-[#06B6D4] px-2.5 py-1.5 rounded-lg border border-slate-700 transition-all"
+              title="View full assignment instructions and questions you gave"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              <span>View</span>
+            </button>
+
+            {!isArchivedView && (
+              <button
+                type="button"
+                onClick={() => handleViewSubmissions(asg, "tracker")}
+                className="inline-flex items-center space-x-1 text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-700 transition-all"
+                title="View who got it, who clicked Start, and force-assign missing students"
+              >
+                <Users className="h-3.5 w-3.5 text-[#06B6D4]" />
+                <span>Tracker</span>
+              </button>
+            )}
+
+            {taskSubmissionsCount > 0 && (
+              <button
+                type="button"
+                onClick={() =>
+                  downloadAssignmentMarksCsv(
+                    asg.title,
+                    asg.courseCode || "General",
+                    taskSubmissions,
+                    asg.totalPoints
+                  )
+                }
+                title={`Download Marks Sheet (CSV) for "${asg.title}"`}
+                className="inline-flex items-center space-x-1 text-xs font-bold text-emerald-400 hover:text-slate-950 bg-emerald-500/10 hover:bg-emerald-400 px-2.5 py-1.5 rounded-lg border border-emerald-500/30 transition-all"
+              >
+                <Download className="h-3.5 w-3.5" />
+                <span>Marks</span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center space-x-1 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleToggleArchive(asg)}
+              title={
+                isArchivedView
+                  ? "Restore assignment back to active Instructor Tasks"
+                  : "Archive corrected assignment (hide from active list)"
+              }
+              className={`p-1.5 rounded-lg transition-colors ${
+                isArchivedView
+                  ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                  : "text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+              }`}
+            >
+              {isArchivedView ? (
+                <ArchiveRestore className="h-3.5 w-3.5" />
+              ) : (
+                <Archive className="h-3.5 w-3.5" />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleEdit(asg)}
+              title="Edit Assignment"
+              className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white hover:bg-[#334155] transition-colors"
+            >
+              <Edit3 className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDelete(asg.id, asg.title)}
+              title="Delete Assignment"
+              className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderSubmissionRow = (sub: AssignmentSubmission) => {
+    const isGraded = sub.status === "graded";
+    const linkedAsg = resolveLinkedAssignment(sub);
+    const isSelf = Boolean(sub.isIndependentSubmission || sub.assignmentId?.startsWith("indep_") || sub.assignmentId === "independent");
+
+    return (
+      <tr key={sub.id} className="hover:bg-[#0B0F19]/40 transition-colors">
+        <td className="px-4 py-3">
+          <span className="rounded-md bg-[#06B6D4]/10 border border-[#06B6D4]/30 px-2 py-0.5 font-mono text-[10px] font-bold text-[#06B6D4]">
+            {sub.courseCode || "General"}
+          </span>
+          {sub.courseTitle && (
+            <span className="block text-[10px] text-[#94A3B8] truncate max-w-[140px] mt-0.5">
+              {sub.courseTitle}
+            </span>
+          )}
+        </td>
+        <td className="px-4 py-3 font-semibold text-white">
+          {sub.studentName}
+          <span className="block text-[10px] font-mono text-[#64748B]">
+            @{sub.studentUsername} • {sub.level}
+          </span>
+        </td>
+        <td className="px-4 py-3 text-white font-medium max-w-[220px]">
+          <span className="block truncate">{sub.submissionTitle || "Course Assignment"}</span>
+          {linkedAsg ? (
+            <button
+              type="button"
+              onClick={() => setViewingAssignment(linkedAsg)}
+              className="mt-0.5 inline-flex items-center space-x-1 rounded bg-indigo-500/15 border border-indigo-500/30 px-1.5 py-0.5 text-[10px] font-mono text-indigo-300 hover:bg-indigo-500 hover:text-white transition-all"
+              title={`Linked to "${linkedAsg.title}" — click to view assignment prompt`}
+            >
+              <Link2 className="h-2.5 w-2.5" />
+              <span className="truncate max-w-[170px]">
+                {linkedAsg.assignmentCode || linkedAsg.title}
+              </span>
+            </button>
+          ) : sub.linkedAssignmentCode ? (
+            <span className="mt-0.5 inline-flex items-center space-x-1 rounded bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 text-[10px] font-mono text-amber-300">
+              <Link2 className="h-2.5 w-2.5" />
+              <span>Code: {sub.linkedAssignmentCode}</span>
+            </span>
+          ) : null}
+        </td>
+        <td className="px-4 py-3">
+          <div className="flex flex-col space-y-0.5">
+            <span className="inline-flex items-center space-x-1 font-mono text-[10px] text-[#06B6D4]">
+              {sub.fileData ? <Upload className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
+              <span className="truncate max-w-[120px]">{sub.fileData ? sub.fileData.name : "Text Answer"}</span>
+            </span>
+            {isSelf ? (
+              <span className="text-[9px] font-mono text-purple-300">Self-Submitted</span>
+            ) : (
+              <span className="text-[9px] font-mono text-[#64748B]">Assigned Task</span>
+            )}
+          </div>
+        </td>
+        <td className="px-4 py-3 font-mono text-[11px] text-[#94A3B8]">
+          {new Date(sub.submittedAt).toLocaleDateString()} {new Date(sub.submittedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+        </td>
+        <td className="px-4 py-3">
+          {isGraded ? (
+            <span className="inline-flex items-center space-x-1 rounded-md bg-emerald-500/10 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-400 border border-emerald-500/30">
+              <CheckCircle2 className="h-3 w-3" />
+              <span>{sub.score} / {sub.maxScore}</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center space-x-1 rounded-md bg-amber-500/10 px-2 py-0.5 font-mono text-[11px] font-bold text-amber-400 border border-amber-500/30">
+              <Clock className="h-3 w-3" />
+              <span>Needs Grading</span>
+            </span>
+          )}
+        </td>
+        <td className="px-4 py-3 text-right">
+          <div className="flex items-center justify-end space-x-1.5">
+            <button
+              type="button"
+              onClick={() => (sub.fileData ? setPreviewSubmission(sub) : setViewingSubmissionWork(sub))}
+              className="inline-flex items-center space-x-1 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-xs font-semibold text-slate-300 hover:text-white hover:border-cyan-500/50 transition-all shadow-sm"
+              title="View student submission"
+            >
+              <Eye className="h-3 w-3 text-cyan-400" />
+              <span className="hidden sm:inline">{sub.fileData ? "Preview" : "Read"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => openGradingModal(sub)}
+              className="inline-flex items-center space-x-1 rounded-lg bg-[#06B6D4]/15 px-2.5 py-1 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4] hover:text-slate-950 transition-all border border-[#06B6D4]/30"
+            >
+              <Award className="h-3.5 w-3.5" />
+              <span>{isGraded ? "Edit Grade" : "Grade & Review"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleToggleArchiveSubmission(sub)}
+              className={`p-1 rounded-lg transition-colors ${
+                sub.archived
+                  ? "text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10"
+                  : "text-amber-400 hover:text-amber-300 hover:bg-amber-500/10"
+              }`}
+              title={sub.archived ? "Restore submission to active review" : "Archive corrected submission"}
+            >
+              {sub.archived ? <ArchiveRestore className="h-3.5 w-3.5" /> : <Archive className="h-3.5 w-3.5" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleDeleteSubmission(sub)}
+              className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+              title="Delete this submission"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </td>
+      </tr>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Tab Navigation & Action Bar */}
@@ -985,7 +1728,19 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                 : "bg-[#1E293B] text-[#94A3B8] hover:text-white border border-[#334155]"
             }`}
           >
-            Instructor Tasks ({assignments.length})
+            Instructor Tasks ({activeAssignments.length})
+          </button>
+
+          <button
+            onClick={() => { setActiveTab("archived"); resetForm(); }}
+            className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center space-x-1.5 ${
+              activeTab === "archived"
+                ? "bg-amber-500 text-slate-950 shadow-md"
+                : "bg-[#1E293B] text-[#94A3B8] hover:text-white border border-[#334155]"
+            }`}
+          >
+            <Archive className="h-3.5 w-3.5" />
+            <span>Archived ({archivedAssignments.length})</span>
           </button>
 
           <button
@@ -1037,7 +1792,27 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
         </div>
       </div>
 
-      {/* 1. LIST VIEW (OFFICIAL INSTRUCTOR ASSIGNMENTS) */}
+      {/* Publish / Sync Status Banner */}
+      {publishBanner && (
+        <div
+          className={`flex items-center justify-between rounded-xl border px-4 py-3 text-xs font-semibold ${
+            publishBanner.type === "success"
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+              : "border-rose-500/40 bg-rose-500/10 text-rose-300"
+          }`}
+        >
+          <span>{publishBanner.message}</span>
+          <button
+            type="button"
+            onClick={() => setPublishBanner(null)}
+            className="ml-4 text-[11px] underline opacity-80 hover:opacity-100"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {/* 1. LIST VIEW (ACTIVE INSTRUCTOR ASSIGNMENTS) */}
       {activeTab === "list" && (
         <div className="space-y-4">
           {loading ? (
@@ -1045,21 +1820,36 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
               <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-2" />
               Loading Assignments...
             </div>
-          ) : assignments.length === 0 ? (
+          ) : activeAssignments.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[#334155] p-12 text-center bg-[#1E293B]/40">
               <FileText className="mx-auto h-12 w-12 text-[#64748B] mb-3" />
-              <h3 className="text-base font-bold text-white mb-1">No Instructor Assignments Created Yet</h3>
+              <h3 className="text-base font-bold text-white mb-1">
+                {archivedAssignments.length > 0
+                  ? "All Assignments Have Been Archived"
+                  : "No Instructor Assignments Created Yet"}
+              </h3>
               <p className="text-xs text-[#94A3B8] max-w-md mx-auto mb-6">
-                Create assignments, upload a PDF document or paste instructions. You can target specific classes, trades, or subjects.
+                {archivedAssignments.length > 0
+                  ? `You have ${archivedAssignments.length} corrected assignment(s) stored in your Archive. Create a new assignment or check the Archived tab.`
+                  : "Create assignments, upload a PDF document or paste instructions. You can target specific classes, trades, or subjects."}
               </p>
-              <div className="flex items-center justify-center gap-3">
+              <div className="flex flex-wrap items-center justify-center gap-3">
                 <button
                   onClick={() => { resetForm(); setActiveTab("create"); }}
                   className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-4 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
                 >
                   <Plus className="h-4 w-4" />
-                  <span>Create First Assignment</span>
+                  <span>{archivedAssignments.length > 0 ? "Create New Assignment" : "Create First Assignment"}</span>
                 </button>
+                {archivedAssignments.length > 0 && (
+                  <button
+                    onClick={() => setActiveTab("archived")}
+                    className="inline-flex items-center space-x-2 rounded-xl bg-amber-500/15 border border-amber-500/30 px-4 py-2 text-xs font-semibold text-amber-300 hover:bg-amber-500 hover:text-slate-950 transition-all shadow-md"
+                  >
+                    <Archive className="h-4 w-4" />
+                    <span>View Archived ({archivedAssignments.length})</span>
+                  </button>
+                )}
                 <button
                   onClick={() => setActiveTab("course_submissions")}
                   className="inline-flex items-center space-x-2 rounded-xl bg-[#1E293B] border border-[#334155] px-4 py-2 text-xs font-semibold text-white hover:border-[#06B6D4] transition-all shadow-md"
@@ -1071,200 +1861,119 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {assignments.map((asg) => {
-                const targetTrade = trades.find(t => t.id === asg.tradeId);
-                const isOverdue = isAssignmentPastDue(asg.dueDate);
-                const taskSubmissions = allSubmissionsList.filter(s => s.assignmentId === asg.id);
-                const taskSubmissionsCount = taskSubmissions.length;
-
-                const targetCohort = getTargetStudentsForAssignment(asg, allStudents, courseGroups, trades);
-                const cohortStatuses = targetCohort.map(st => getStudentAssignmentStatus(asg, st, allSubmissionsList, courseGroups));
-                const receivedCount = cohortStatuses.filter(s => s.hasReceived).length;
-                const openedCount = cohortStatuses.filter(s => s.hasOpened).length;
-                const missingCount = cohortStatuses.filter(s => s.statusCode === "missing").length;
-
-                return (
-                  <div
-                    key={asg.id}
-                    className="flex flex-col justify-between rounded-2xl border border-[#334155] bg-[#1E293B]/90 p-5 hover:border-[#06B6D4]/50 transition-all shadow-xl group"
-                  >
-                    <div>
-                      <div className="flex items-start justify-between gap-2 mb-3">
-                        <span className="rounded-md bg-[#06B6D4]/10 border border-[#06B6D4]/30 px-2 py-0.5 text-[10px] font-mono font-bold text-[#06B6D4]">
-                          {asg.courseCode || "General"}
-                        </span>
-                        <div className="flex items-center space-x-1.5">
-                          {asg.submissionType === "group" && (() => {
-                            const targetedGrp = courseGroups.find(g => g.id === asg.targetGroupId);
-                            return (
-                              <span className="rounded-md bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-purple-300 flex items-center space-x-1">
-                                <Users className="h-3 w-3" />
-                                <span>{targetedGrp ? `Team: ${targetedGrp.name}` : "Group Task"}</span>
-                              </span>
-                            );
-                          })()}
-                          <span className="rounded-md bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-mono text-emerald-400">
-                            {asg.totalPoints} Pts
-                          </span>
-                        </div>
-                      </div>
-
-                      <h3 className="text-sm font-extrabold text-white group-hover:text-[#06B6D4] transition-colors line-clamp-2 mb-2">
-                        {asg.title}
-                      </h3>
-
-                      <p className="text-xs text-[#94A3B8] line-clamp-3 mb-4 leading-relaxed">
-                        {asg.description || asg.instructionsMarkdown}
-                      </p>
-
-                      <div className="space-y-1.5 mb-4 text-[11px] font-mono text-[#64748B]">
-                        <div className="flex items-center space-x-2">
-                          <Users className="h-3.5 w-3.5 text-[#94A3B8]" />
-                          <span>Class: {asg.level === "all" ? "All Levels" : asg.level} • {asg.tradeId === "all" ? "All Trades" : targetTrade?.name || asg.tradeId}</span>
-                        </div>
-                        {asg.submissionType === "group" && (
-                          <div className="flex items-center space-x-2 text-[11px] text-purple-300">
-                            <Users className="h-3.5 w-3.5 text-purple-400 shrink-0" />
-                            <span>
-                              {asg.targetGroupId && asg.targetGroupId !== "all_groups" ? (() => {
-                                const targetedGrp = courseGroups.find(g => g.id === asg.targetGroupId);
-                                if (!targetedGrp) return "Target: Specific Team";
-                                const ldr = getGroupLeaderName(targetedGrp);
-                                return (
-                                  <>
-                                    <span className="font-bold text-purple-200">Target Group:</span> {targetedGrp.name}
-                                    {" "}<span className="text-amber-300 font-semibold">(Leader: {ldr})</span>
-                                  </>
-                                );
-                              })() : (
-                                <span>Assigned to: <strong className="text-purple-200">All Groups in Level</strong></span>
-                              )}
-                            </span>
-                          </div>
-                        )}
-                        {asg.dueDate && (
-                          <div className={`flex items-center space-x-2 ${isOverdue ? "text-rose-400 font-bold" : "text-[#94A3B8]"}`}>
-                            <Calendar className="h-3.5 w-3.5" />
-                            <span>Due: {formatAssignmentDueDate(asg.dueDate)} {isOverdue && "(Expired)"}</span>
-                          </div>
-                        )}
-
-                        {/* Live Delivery, "Clicked Start" & Missing Student Stats */}
-                        <div className="flex flex-wrap items-center gap-1.5 pt-1.5">
-                          <span className="inline-flex items-center space-x-1 rounded-md bg-[#06B6D4]/10 border border-[#06B6D4]/30 px-2 py-0.5 text-[10px] font-mono text-[#06B6D4]">
-                            <CheckCheck className="h-2.5 w-2.5" />
-                            <span>Got It: {receivedCount} / {targetCohort.length}</span>
-                          </span>
-                          <span className="inline-flex items-center space-x-1 rounded-md bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 text-[10px] font-mono text-purple-300">
-                            <PlayCircle className="h-2.5 w-2.5" />
-                            <span>Clicked Start: {openedCount}</span>
-                          </span>
-                          {missingCount > 0 ? (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewSubmissions(asg, "tracker");
-                                setTrackerFilter("missing");
-                              }}
-                              className="inline-flex items-center space-x-1 rounded-md bg-amber-500/15 border border-amber-500/40 px-2 py-0.5 text-[10px] font-mono font-bold text-amber-300 hover:bg-amber-500 hover:text-slate-950 transition-all cursor-pointer"
-                              title="Click to view students who haven't received it and force-assign"
-                            >
-                              <Zap className="h-2.5 w-2.5" />
-                              <span>{missingCount} Missing • Force Assign</span>
-                            </button>
-                          ) : (
-                            <span className="inline-flex items-center space-x-1 rounded-md bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-mono text-emerald-400">
-                              <Check className="h-2.5 w-2.5" />
-                              <span>100% Delivered</span>
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="pt-3 border-t border-[#334155]/60 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => handleViewSubmissions(asg, "submissions")}
-                          className="inline-flex items-center space-x-1.5 text-xs font-bold text-[#06B6D4] hover:text-white bg-[#06B6D4]/10 hover:bg-[#06B6D4] hover:text-slate-950 px-3 py-1.5 rounded-lg border border-[#06B6D4]/30 transition-all"
-                        >
-                          <Award className="h-3.5 w-3.5" />
-                          <span>Submissions ({taskSubmissionsCount})</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleViewSubmissions(asg, "tracker")}
-                          className="inline-flex items-center space-x-1 text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 px-2.5 py-1.5 rounded-lg border border-slate-700 transition-all"
-                          title="View who got it, who clicked Start, and force-assign missing students"
-                        >
-                          <Users className="h-3.5 w-3.5 text-[#06B6D4]" />
-                          <span>Tracker</span>
-                        </button>
-
-                        {taskSubmissionsCount > 0 && (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              downloadAssignmentMarksCsv(
-                                asg.title,
-                                asg.courseCode || "General",
-                                taskSubmissions,
-                                asg.totalPoints
-                              )
-                            }
-                            title={`Download Marks Sheet (CSV) for "${asg.title}"`}
-                            className="inline-flex items-center space-x-1 text-xs font-bold text-emerald-400 hover:text-slate-950 bg-emerald-500/10 hover:bg-emerald-400 px-2.5 py-1.5 rounded-lg border border-emerald-500/30 transition-all"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                            <span>Marks</span>
-                          </button>
-                        )}
-                      </div>
-
-                      <div className="flex items-center space-x-1">
-                        <button
-                          onClick={() => handleEdit(asg)}
-                          title="Edit Assignment"
-                          className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white hover:bg-[#334155] transition-colors"
-                        >
-                          <Edit3 className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(asg.id, asg.title)}
-                          title="Delete Assignment"
-                          className="p-1.5 rounded-lg text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-colors"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+              {activeAssignments.map((asg) => renderAssignmentCard(asg, false))}
             </div>
           )}
         </div>
       )}
 
-      {/* 2. COURSE SUBMISSIONS DESK (VIEW ALL SUBMISSIONS GROUPED / FILTERED BY COURSE) */}
+      {/* 1B. ARCHIVED ASSIGNMENTS VIEW (CORRECTED / COMPLETED) */}
+      {activeTab === "archived" && (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-start space-x-3">
+              <Archive className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <h2 className="text-sm font-extrabold text-white">Corrected &amp; Archived Assignments</h2>
+                <p className="text-xs text-[#94A3B8]">
+                  Assignments you finished correcting are stored safely here out of your active list. All student marks remain saved in the Master Gradebook and Marks Sheets.
+                </p>
+              </div>
+            </div>
+            <span className="text-xs font-mono font-bold text-amber-300 shrink-0">
+              {archivedAssignments.length} Archived
+            </span>
+          </div>
+
+          {archivedAssignments.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[#334155] p-12 text-center bg-[#1E293B]/40">
+              <Archive className="mx-auto h-12 w-12 text-[#64748B] mb-3" />
+              <h3 className="text-base font-bold text-white mb-1">No Archived Assignments Yet</h3>
+              <p className="text-xs text-[#94A3B8] max-w-md mx-auto">
+                When you finish correcting an assignment, click the Archive icon on its card (or inside its Submissions screen) to move it here and keep your active list clean.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {archivedAssignments.map((asg) => renderAssignmentCard(asg, true))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 2. COURSE SUBMISSIONS DESK (GROUPED BY DATE & COURSE/MODULE + LINKING + ARCHIVE) */}
       {activeTab === "course_submissions" && (
         <div className="space-y-5">
-          {/* Header & Course Filter Bar */}
-          <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-base font-extrabold text-white flex items-center space-x-2">
-                <BookOpen className="h-5 w-5 text-[#06B6D4]" />
-                <span>All Submitted Student Assignments By Course</span>
-              </h2>
-              <p className="text-xs text-[#94A3B8] mt-0.5">
-                Review and grade student work submitted under specific courses, both from assigned tasks and student-uploaded course projects.
-              </p>
+          {/* Header & Filter Bar */}
+          <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5 space-y-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-base font-extrabold text-white flex items-center space-x-2">
+                  <BookOpen className="h-5 w-5 text-[#06B6D4]" />
+                  <span>Submitted Student Assignments By Date &amp; Course</span>
+                </h2>
+                <p className="text-xs text-[#94A3B8] mt-0.5">
+                  Self-submitted and assigned works grouped by date and module. Link a group to an official Assignment ID to grade against its rubric, then archive corrected ones.
+                </p>
+              </div>
+
+              {/* View Mode + Archive Queue Switch */}
+              <div className="flex flex-wrap items-center gap-2">
+                <div className="inline-flex rounded-xl border border-[#334155] bg-[#0B0F19] p-1 text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setSubmissionArchiveFilter("active")}
+                    className={`px-3 py-1 rounded-lg transition-all ${
+                      submissionArchiveFilter === "active"
+                        ? "bg-[#06B6D4] text-slate-950"
+                        : "text-[#94A3B8] hover:text-white"
+                    }`}
+                  >
+                    Active ({allSubmissionsList.length - archivedCourseSubmissionsCount})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSubmissionArchiveFilter("archived")}
+                    className={`inline-flex items-center space-x-1 px-3 py-1 rounded-lg transition-all ${
+                      submissionArchiveFilter === "archived"
+                        ? "bg-amber-500 text-slate-950"
+                        : "text-[#94A3B8] hover:text-white"
+                    }`}
+                  >
+                    <Archive className="h-3 w-3" />
+                    <span>Archived ({archivedCourseSubmissionsCount})</span>
+                  </button>
+                </div>
+
+                <div className="inline-flex rounded-xl border border-[#334155] bg-[#0B0F19] p-1 text-xs font-bold">
+                  <button
+                    type="button"
+                    onClick={() => setSubmissionViewMode("grouped")}
+                    className={`px-3 py-1 rounded-lg transition-all ${
+                      submissionViewMode === "grouped"
+                        ? "bg-indigo-500 text-white"
+                        : "text-[#94A3B8] hover:text-white"
+                    }`}
+                  >
+                    By Date &amp; Course
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSubmissionViewMode("table")}
+                    className={`px-3 py-1 rounded-lg transition-all ${
+                      submissionViewMode === "table"
+                        ? "bg-indigo-500 text-white"
+                        : "text-[#94A3B8] hover:text-white"
+                    }`}
+                  >
+                    All Rows
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Filter controls */}
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 pt-3 border-t border-[#334155]/60">
               <div className="flex items-center space-x-2">
                 <span className="text-xs font-mono text-[#94A3B8]">Course:</span>
                 <select
@@ -1278,6 +1987,19 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                       {s.courseCode} ({allSubmissionsList.filter(sub => sub.courseCode === s.courseCode).length})
                     </option>
                   ))}
+                </select>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-mono text-[#94A3B8]">Source:</span>
+                <select
+                  value={submissionSourceFilter}
+                  onChange={(e) => setSubmissionSourceFilter(e.target.value as any)}
+                  className="rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-1.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                >
+                  <option value="all">All Submissions</option>
+                  <option value="self">Self-Submitted Only</option>
+                  <option value="assigned">Assigned Tasks Only</option>
                 </select>
               </div>
 
@@ -1336,19 +2058,23 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
             </div>
           </div>
 
-          {/* Submissions Table */}
+          {/* Submissions Content: Grouped by Date & Course OR Flat Table */}
           {filteredCourseSubmissions.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[#334155] p-12 text-center bg-[#1E293B]/40">
               <Users className="mx-auto h-10 w-10 text-[#64748B] mb-2" />
               <h3 className="text-sm font-bold text-white mb-1">
-                {statusFilter === "pending" && allSubmissionsList.some(s => s.status === "graded")
+                {submissionArchiveFilter === "archived"
+                  ? "No Archived Submissions Yet"
+                  : statusFilter === "pending" && allSubmissionsList.some(s => s.status === "graded")
                   ? "All Caught Up! No Pending Submissions"
                   : "No Submissions Found"}
               </h3>
               <p className="text-xs text-[#94A3B8] max-w-sm mx-auto">
-                {statusFilter === "pending" && allSubmissionsList.some(s => s.status === "graded")
+                {submissionArchiveFilter === "archived"
+                  ? "When you finish grading submissions (especially self-submitted work), archive them to keep your active grading queue clean."
+                  : statusFilter === "pending" && allSubmissionsList.some(s => s.status === "graded")
                   ? "All student submissions matching this course have been graded. Switch the status filter above to 'All Statuses' or 'Graded' to review them."
-                  : "No assignments have been submitted matching the selected course and status filters."}
+                  : "No assignments have been submitted matching the selected course and filters."}
               </p>
               {statusFilter !== "all" && (
                 <button
@@ -1360,6 +2086,174 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                 </button>
               )}
             </div>
+          ) : submissionViewMode === "grouped" ? (
+            <div className="space-y-5">
+              {groupedCourseSubmissions.map((group) => {
+                const selectedAsgId = groupLinkTarget[group.key] ?? group.linkedAssignment?.id ?? "";
+                const courseMatchedAssignments = assignments.filter(
+                  a => !a.courseCode || a.courseCode === group.courseCode || group.courseCode === "General"
+                );
+                const otherAssignments = assignments.filter(
+                  a => a.courseCode && a.courseCode !== group.courseCode && group.courseCode !== "General"
+                );
+
+                return (
+                  <div key={group.key} className="rounded-2xl border border-[#334155] bg-[#1E293B] overflow-hidden shadow-xl">
+                    {/* Group Header: Date + Module + Assignment Linking + Group Batch Actions */}
+                    <div className="border-b border-[#334155] bg-[#0B0F19]/70 px-5 py-4 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                      <div className="space-y-1.5">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center space-x-1.5 rounded-md bg-slate-800 border border-slate-700 px-2.5 py-1 text-xs font-mono font-bold text-white">
+                            <Calendar className="h-3.5 w-3.5 text-[#06B6D4]" />
+                            <span>{group.dateLabel}</span>
+                          </span>
+                          <span className="rounded-md bg-[#06B6D4]/15 border border-[#06B6D4]/30 px-2.5 py-1 text-xs font-mono font-bold text-[#06B6D4]">
+                            {group.courseCode}
+                          </span>
+                          {group.courseTitle && (
+                            <span className="text-xs font-semibold text-white">
+                              {group.courseTitle}
+                            </span>
+                          )}
+                          {group.selfCount > 0 && (
+                            <span className="rounded-md bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-purple-300">
+                              {group.selfCount} Self-Submitted
+                            </span>
+                          )}
+                          <span className="rounded-md bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-mono text-emerald-300">
+                            {group.gradedCount}/{group.items.length} Graded
+                          </span>
+                        </div>
+
+                        {group.linkedAssignment && (
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className="text-[#94A3B8]">Linked Assignment:</span>
+                            <button
+                              type="button"
+                              onClick={() => setViewingAssignment(group.linkedAssignment!)}
+                              className="inline-flex items-center space-x-1.5 rounded-lg bg-indigo-500/15 border border-indigo-500/30 px-2.5 py-0.5 text-[11px] font-bold text-indigo-300 hover:bg-indigo-500 hover:text-white transition-all"
+                            >
+                              <Eye className="h-3 w-3" />
+                              <span>
+                                {group.linkedAssignment.assignmentCode ? `[${group.linkedAssignment.assignmentCode}] ` : ""}
+                                {group.linkedAssignment.title} ({group.linkedAssignment.totalPoints} Pts)
+                              </span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2">
+                        {/* Link Group to Official Assignment */}
+                        <div className="flex items-center space-x-1.5">
+                          <select
+                            value={selectedAsgId}
+                            onChange={(e) =>
+                              setGroupLinkTarget(prev => ({ ...prev, [group.key]: e.target.value }))
+                            }
+                            className="rounded-xl border border-indigo-500/40 bg-[#0B0F19] px-2.5 py-1.5 text-xs text-white focus:border-indigo-400 focus:outline-none max-w-[230px]"
+                            title="Select official assignment rubric to link this Date+Course group against"
+                          >
+                            <option value="">-- Select Assignment to Link --</option>
+                            {courseMatchedAssignments.map(a => (
+                              <option key={a.id} value={a.id}>
+                                {a.assignmentCode ? `[${a.assignmentCode}] ` : ""}{a.title.slice(0, 32)} ({a.totalPoints} Pts)
+                              </option>
+                            ))}
+                            {otherAssignments.map(a => (
+                              <option key={a.id} value={a.id}>
+                                ({a.courseCode || "Gen"}) {a.assignmentCode ? `[${a.assignmentCode}] ` : ""}{a.title.slice(0, 26)}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            disabled={!selectedAsgId}
+                            onClick={() => handleLinkGroupToAssignment(group.items, selectedAsgId)}
+                            className="inline-flex items-center space-x-1 rounded-xl border border-indigo-500/40 bg-indigo-500/15 px-3 py-1.5 text-xs font-bold text-indigo-300 hover:bg-indigo-500 hover:text-white transition-all disabled:opacity-40"
+                            title="Link all submissions in this Date + Course group to the selected assignment"
+                          >
+                            <Link2 className="h-3.5 w-3.5" />
+                            <span>Link Group</span>
+                          </button>
+                        </div>
+
+                        {group.pendingCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleStartBatchAi(group.items.filter(s => s.status !== "graded"))}
+                            className="inline-flex items-center space-x-1 rounded-xl border border-amber-500/40 bg-amber-500/15 px-3 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-500 hover:text-slate-950 transition-all"
+                            title="AI Grade all pending submissions in this Date + Course group"
+                          >
+                            <Sparkles className="h-3.5 w-3.5" />
+                            <span>AI Grade ({group.pendingCount})</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() =>
+                            downloadAssignmentMarksCsv(
+                              `${group.courseCode}_${group.dateKey}`,
+                              group.courseCode,
+                              group.items,
+                              group.linkedAssignment?.totalPoints || 100
+                            )
+                          }
+                          className="inline-flex items-center space-x-1 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500 hover:text-slate-950 transition-all"
+                          title="Export CSV Marks for this Date + Course group"
+                        >
+                          <Download className="h-3.5 w-3.5" />
+                          <span>CSV</span>
+                        </button>
+
+                        {submissionArchiveFilter === "active" && group.gradedCount > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleArchiveGradedInGroup(group.items, true)}
+                            className="inline-flex items-center space-x-1 rounded-xl border border-amber-500/40 bg-amber-500/10 px-2.5 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-500 hover:text-slate-950 transition-all"
+                            title="Archive all graded submissions in this group"
+                          >
+                            <Archive className="h-3.5 w-3.5" />
+                            <span>Archive Graded ({group.gradedCount})</span>
+                          </button>
+                        )}
+
+                        {submissionArchiveFilter === "archived" && (
+                          <button
+                            type="button"
+                            onClick={() => handleArchiveGradedInGroup(group.items, false)}
+                            className="inline-flex items-center space-x-1 rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500 hover:text-slate-950 transition-all"
+                          >
+                            <ArchiveRestore className="h-3.5 w-3.5" />
+                            <span>Restore Group</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left text-xs">
+                        <thead className="border-b border-[#334155] bg-[#0B0F19]/40 text-[#94A3B8] font-mono">
+                          <tr>
+                            <th className="px-4 py-2.5">Course / Subject</th>
+                            <th className="px-4 py-2.5">Student Name</th>
+                            <th className="px-4 py-2.5">Topic / Linked Assignment</th>
+                            <th className="px-4 py-2.5">Submission Type</th>
+                            <th className="px-4 py-2.5">Submitted At</th>
+                            <th className="px-4 py-2.5">Status / Grade</th>
+                            <th className="px-4 py-2.5 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#334155]/60 text-[#CBD5E1]">
+                          {group.items.map(renderSubmissionRow)}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
             <div className="rounded-2xl border border-[#334155] bg-[#1E293B] overflow-hidden shadow-xl">
               <div className="overflow-x-auto">
@@ -1368,7 +2262,7 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                     <tr>
                       <th className="px-4 py-3">Course / Subject</th>
                       <th className="px-4 py-3">Student Name</th>
-                      <th className="px-4 py-3">Assignment Topic</th>
+                      <th className="px-4 py-3">Topic / Linked Assignment</th>
                       <th className="px-4 py-3">Submission Type</th>
                       <th className="px-4 py-3">Submitted At</th>
                       <th className="px-4 py-3">Status / Grade</th>
@@ -1376,91 +2270,7 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#334155]/60 text-[#CBD5E1]">
-                    {filteredCourseSubmissions.map((sub) => {
-                      const isGraded = sub.status === "graded";
-                      return (
-                        <tr key={sub.id} className="hover:bg-[#0B0F19]/40 transition-colors">
-                          <td className="px-4 py-3">
-                            <span className="rounded-md bg-[#06B6D4]/10 border border-[#06B6D4]/30 px-2 py-0.5 font-mono text-[10px] font-bold text-[#06B6D4]">
-                              {sub.courseCode || "General"}
-                            </span>
-                            {sub.courseTitle && (
-                              <span className="block text-[10px] text-[#94A3B8] truncate max-w-[140px] mt-0.5">
-                                {sub.courseTitle}
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 font-semibold text-white">
-                            {sub.studentName}
-                            <span className="block text-[10px] font-mono text-[#64748B]">
-                              @{sub.studentUsername} • {sub.level}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-white font-medium max-w-[180px] truncate">
-                            {sub.submissionTitle || "Course Assignment"}
-                          </td>
-                          <td className="px-4 py-3">
-                            <div className="flex flex-col space-y-0.5">
-                              <span className="inline-flex items-center space-x-1 font-mono text-[10px] text-[#06B6D4]">
-                                {sub.fileData ? <Upload className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
-                                <span className="truncate max-w-[120px]">{sub.fileData ? sub.fileData.name : "Text Answer"}</span>
-                              </span>
-                              {sub.isIndependentSubmission ? (
-                                <span className="text-[9px] font-mono text-purple-300">Self-Submitted</span>
-                              ) : (
-                                <span className="text-[9px] font-mono text-[#64748B]">Assigned Task</span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-4 py-3 font-mono text-[11px] text-[#94A3B8]">
-                            {new Date(sub.submittedAt).toLocaleDateString()} {new Date(sub.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </td>
-                          <td className="px-4 py-3">
-                            {isGraded ? (
-                              <span className="inline-flex items-center space-x-1 rounded-md bg-emerald-500/10 px-2 py-0.5 font-mono text-[11px] font-bold text-emerald-400 border border-emerald-500/30">
-                                <CheckCircle2 className="h-3 w-3" />
-                                <span>{sub.score} / {sub.maxScore}</span>
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center space-x-1 rounded-md bg-amber-500/10 px-2 py-0.5 font-mono text-[11px] font-bold text-amber-400 border border-amber-500/30">
-                                <Clock className="h-3 w-3" />
-                                <span>Needs Grading</span>
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            <div className="flex items-center justify-end space-x-1.5">
-                              {sub.fileData && (
-                                <button
-                                  type="button"
-                                  onClick={() => setPreviewSubmission(sub)}
-                                  className="inline-flex items-center space-x-1 rounded-lg border border-slate-700 bg-slate-800 px-2 py-1 text-xs font-semibold text-slate-300 hover:text-white hover:border-cyan-500/50 transition-all shadow-sm"
-                                  title="Open In-App Preview (no download needed)"
-                                >
-                                  <Eye className="h-3 w-3 text-cyan-400" />
-                                  <span className="hidden sm:inline">Preview</span>
-                                </button>
-                              )}
-                              <button
-                                onClick={() => openGradingModal(sub)}
-                                className="inline-flex items-center space-x-1 rounded-lg bg-[#06B6D4]/15 px-2.5 py-1 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4] hover:text-slate-950 transition-all border border-[#06B6D4]/30"
-                              >
-                                <Award className="h-3.5 w-3.5" />
-                                <span>{isGraded ? "Edit Grade" : "Grade & Review"}</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteSubmission(sub)}
-                                className="p-1 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
-                                title="Delete this submission"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
+                    {filteredCourseSubmissions.map(renderSubmissionRow)}
                   </tbody>
                 </table>
               </div>
@@ -1480,7 +2290,7 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                 <span>{editingId ? "Edit Course Assignment" : "Build & Publish Assignment"}</span>
               </h2>
 
-              <form onSubmit={handleSave} className="space-y-4">
+              <form onSubmit={handleSave} noValidate className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
                     Assignment Title <span className="text-rose-400">*</span>
@@ -1744,6 +2554,13 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                   )}
                 </div>
 
+                {formError && (
+                  <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-xs font-semibold text-rose-300 flex items-center space-x-2">
+                    <AlertCircle className="h-4 w-4 text-rose-400 shrink-0" />
+                    <span>{formError}</span>
+                  </div>
+                )}
+
                 <div className="flex items-center justify-end space-x-3 pt-4 border-t border-[#334155]">
                   <button
                     type="button"
@@ -1754,9 +2571,15 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                   </button>
                   <button
                     type="submit"
-                    className="px-5 py-2 rounded-xl text-xs font-bold text-slate-950 bg-[#06B6D4] hover:bg-[#0891B2] hover:text-white transition-all shadow-lg"
+                    disabled={isSaving}
+                    className="px-5 py-2 rounded-xl text-xs font-bold text-slate-950 bg-[#06B6D4] hover:bg-[#0891B2] hover:text-white transition-all shadow-lg disabled:opacity-50 flex items-center space-x-2"
                   >
-                    {editingId ? "Update Assignment" : "Publish Assignment"}
+                    {isSaving && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
+                    <span>
+                      {isSaving
+                        ? (editingId ? "Updating Assignment..." : "Publishing Assignment...")
+                        : (editingId ? "Update Assignment" : "Publish Assignment")}
+                    </span>
                   </button>
                 </div>
               </form>
@@ -1870,10 +2693,45 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
               <h2 className="text-base font-extrabold text-white">{selectedAssignment.title}</h2>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2.5">
               <span className="text-xs font-mono text-[#94A3B8]">
                 {submissions.length} Submissions ({submissions.filter(s => s.status === "graded").length} Graded)
               </span>
+              <button
+                type="button"
+                onClick={() => setViewingAssignment(selectedAssignment)}
+                className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-1.5 text-xs font-bold text-slate-200 hover:border-[#06B6D4] hover:text-[#06B6D4] transition-all"
+                title="View the assignment prompt and instructions you gave"
+              >
+                <Eye className="h-3.5 w-3.5" />
+                <span>View Assignment</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleToggleArchive(selectedAssignment)}
+                className={`inline-flex items-center space-x-1.5 rounded-xl border px-3 py-1.5 text-xs font-bold transition-all ${
+                  selectedAssignment.status === "archived"
+                    ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500 hover:text-slate-950"
+                    : "border-amber-500/40 bg-amber-500/15 text-amber-300 hover:bg-amber-500 hover:text-slate-950"
+                }`}
+                title={
+                  selectedAssignment.status === "archived"
+                    ? "Restore this assignment to your active tasks"
+                    : "Archive this assignment once finished correcting"
+                }
+              >
+                {selectedAssignment.status === "archived" ? (
+                  <>
+                    <ArchiveRestore className="h-3.5 w-3.5" />
+                    <span>Restore to Active</span>
+                  </>
+                ) : (
+                  <>
+                    <Archive className="h-3.5 w-3.5" />
+                    <span>Archive Assignment</span>
+                  </>
+                )}
+              </button>
               {submissions.filter(s => s.status !== "graded").length > 0 ? (
                 <button
                   type="button"
@@ -2444,6 +3302,48 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
               </button>
             </div>
 
+            {/* Link to Official Assignment Rubric (for Self-Submissions & Manual Linking) */}
+            {(() => {
+              const linked = resolveLinkedAssignment(gradingSubmission);
+              return (
+                <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/10 p-3.5 space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-bold text-indigo-200 flex items-center space-x-1.5">
+                      <Link2 className="h-3.5 w-3.5 text-indigo-400" />
+                      <span>Linked Assignment / Grading Rubric</span>
+                    </span>
+                    {linked && (
+                      <button
+                        type="button"
+                        onClick={() => setViewingAssignment(linked)}
+                        className="inline-flex items-center space-x-1 rounded-lg bg-indigo-500/20 border border-indigo-400/40 px-2.5 py-1 text-[11px] font-bold text-indigo-200 hover:bg-indigo-500 hover:text-white transition-all"
+                      >
+                        <Eye className="h-3 w-3" />
+                        <span>View Assignment Prompt</span>
+                      </button>
+                    )}
+                  </div>
+                  <select
+                    value={linked?.id || ""}
+                    onChange={(e) => handleLinkSubmissionToAssignment(gradingSubmission, e.target.value)}
+                    className="w-full rounded-xl border border-indigo-500/40 bg-[#0B0F19] px-3 py-2 text-xs text-white focus:border-indigo-400 focus:outline-none"
+                  >
+                    <option value="">-- No Official Assignment Linked (General Course Rubric) --</option>
+                    {assignments.map(a => (
+                      <option key={a.id} value={a.id}>
+                        {a.assignmentCode ? `[${a.assignmentCode}] ` : ""}{a.courseCode ? `${a.courseCode} • ` : ""}{a.title} ({a.totalPoints} Pts)
+                      </option>
+                    ))}
+                  </select>
+                  {gradingSubmission.linkedAssignmentCode && !linked && (
+                    <p className="text-[11px] text-amber-300 font-mono">
+                      Student entered Assignment ID: {gradingSubmission.linkedAssignmentCode}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Group Project Notice */}
             {gradingSubmission.groupName && (
               <div className="rounded-xl border border-purple-500/30 bg-purple-500/10 p-3.5 text-xs text-purple-200">
@@ -2815,6 +3715,275 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW ASSIGNMENT MODAL (READ-ONLY PREVIEW OF THE ASSIGNMENT GIVEN) */}
+      {viewingAssignment && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4"
+          onClick={() => setViewingAssignment(null)}
+        >
+          <div
+            className="w-full max-w-3xl max-h-[90vh] flex flex-col rounded-2xl border border-[#334155] bg-[#1E293B] shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-start justify-between gap-4 border-b border-[#334155] bg-[#0B0F19]/80 px-6 py-4">
+              <div className="space-y-1.5 min-w-0">
+                <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono">
+                  <span className="rounded-md bg-[#06B6D4]/15 border border-[#06B6D4]/30 px-2 py-0.5 font-bold text-[#06B6D4]">
+                    {viewingAssignment.courseCode || "General"}
+                  </span>
+                  {viewingAssignment.assignmentCode ? (
+                    <button
+                      type="button"
+                      onClick={() => handleCopyAssignmentCode(viewingAssignment.id, viewingAssignment.assignmentCode!)}
+                      className="inline-flex items-center space-x-1 rounded-md bg-indigo-500/20 border border-indigo-500/40 px-2 py-0.5 font-bold text-indigo-300 hover:bg-indigo-500 hover:text-white transition-all"
+                    >
+                      <Copy className="h-3 w-3" />
+                      <span>{copiedCodeId === viewingAssignment.id ? "Copied ID!" : `ID: ${viewingAssignment.assignmentCode}`}</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleGenerateAssignmentCode(viewingAssignment)}
+                      className="inline-flex items-center space-x-1 rounded-md bg-slate-800 border border-slate-600 px-2 py-0.5 font-bold text-slate-300 hover:border-indigo-400 hover:text-indigo-300 transition-all"
+                    >
+                      <Link2 className="h-3 w-3" />
+                      <span>Generate Assignment ID</span>
+                    </button>
+                  )}
+                  <span className="rounded-md bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-emerald-300 font-bold">
+                    {viewingAssignment.totalPoints} Points
+                  </span>
+                  {viewingAssignment.status === "archived" ? (
+                    <span className="rounded-md bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-amber-300 font-bold">
+                      Archived
+                    </span>
+                  ) : (
+                    <span className="rounded-md bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 text-cyan-300">
+                      Published
+                    </span>
+                  )}
+                  {viewingAssignment.submissionType === "group" && (
+                    <span className="rounded-md bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 text-purple-300 font-bold">
+                      {viewingAssignment.targetGroupId && viewingAssignment.targetGroupId !== "all_groups"
+                        ? `Group: ${courseGroups.find(g => g.id === viewingAssignment.targetGroupId)?.name || "Specific Team"}`
+                        : "Group Project (All Groups)"}
+                    </span>
+                  )}
+                </div>
+                <h2 className="text-base sm:text-lg font-extrabold text-white break-words">
+                  {viewingAssignment.title}
+                </h2>
+                {viewingAssignment.courseTitle && (
+                  <p className="text-xs text-[#94A3B8]">{viewingAssignment.courseTitle}</p>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setViewingAssignment(null)}
+                className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white hover:bg-[#334155] transition-colors shrink-0"
+                title="Close preview"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Metadata Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 border-b border-[#334155] bg-[#0F172A] px-6 py-3 text-[11px] font-mono">
+              <div>
+                <span className="block text-[#64748B]">Target Class</span>
+                <span className="text-white font-bold">
+                  {viewingAssignment.level === "all" ? "All Levels" : viewingAssignment.level}
+                </span>
+              </div>
+              <div>
+                <span className="block text-[#64748B]">Trade / Program</span>
+                <span className="text-white font-bold truncate block">
+                  {viewingAssignment.tradeId === "all"
+                    ? "All Trades"
+                    : trades.find(t => t.id === viewingAssignment.tradeId)?.name || viewingAssignment.tradeId}
+                </span>
+              </div>
+              <div>
+                <span className="block text-[#64748B]">Due Date</span>
+                <span className={`font-bold ${isAssignmentPastDue(viewingAssignment.dueDate) ? "text-rose-400" : "text-white"}`}>
+                  {viewingAssignment.dueDate ? formatAssignmentDueDate(viewingAssignment.dueDate) : "No deadline"}
+                </span>
+              </div>
+              <div>
+                <span className="block text-[#64748B]">Allowed Formats</span>
+                <span className="text-cyan-300 font-bold">
+                  {[
+                    viewingAssignment.allowTextSubmission && "Text",
+                    viewingAssignment.allowFileUpload && "File Upload"
+                  ]
+                    .filter(Boolean)
+                    .join(" + ") || "Standard"}
+                </span>
+              </div>
+            </div>
+
+            {/* Scrollable Instructions Body */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-5">
+              {viewingAssignment.description && (
+                <div className="rounded-xl border border-[#334155] bg-[#0B0F19] p-4">
+                  <span className="block text-[10px] font-mono uppercase tracking-wider text-[#64748B] mb-1">
+                    Summary / Overview
+                  </span>
+                  <p className="text-xs text-[#CBD5E1] leading-relaxed">
+                    {viewingAssignment.description}
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <span className="block text-[10px] font-mono uppercase tracking-wider text-[#06B6D4] mb-2">
+                  Instructions, Questions &amp; Tasks Given to Students
+                </span>
+                <div className="rounded-xl border border-[#334155] bg-[#0B0F19] p-5 prose prose-invert prose-sm max-w-none prose-headings:text-white prose-p:text-[#CBD5E1] prose-li:text-[#CBD5E1] prose-strong:text-white prose-code:text-[#06B6D4] prose-pre:bg-[#0F172A] prose-pre:border prose-pre:border-[#334155]">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {viewingAssignment.instructionsMarkdown || viewingAssignment.description || "*No detailed instructions provided.*"}
+                  </ReactMarkdown>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] font-mono text-[#64748B] pt-1">
+                <span>
+                  Created by: <strong className="text-[#94A3B8]">{viewingAssignment.createdBy || "Instructor"}</strong>
+                </span>
+                <span>
+                  Published: <strong className="text-[#94A3B8]">{new Date(viewingAssignment.createdAt).toLocaleString()}</strong>
+                </span>
+              </div>
+            </div>
+
+            {/* Footer Actions */}
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#334155] bg-[#0B0F19]/80 px-6 py-3.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = viewingAssignment;
+                    setViewingAssignment(null);
+                    handleEdit(target);
+                  }}
+                  className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3.5 py-2 text-xs font-bold text-white hover:border-[#06B6D4] transition-all"
+                >
+                  <Edit3 className="h-3.5 w-3.5 text-[#06B6D4]" />
+                  <span>Edit Assignment</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = viewingAssignment;
+                    setViewingAssignment(null);
+                    handleViewSubmissions(target, "submissions");
+                  }}
+                  className="inline-flex items-center space-x-1.5 rounded-xl border border-[#06B6D4]/40 bg-[#06B6D4]/10 px-3.5 py-2 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4] hover:text-slate-950 transition-all"
+                >
+                  <Award className="h-3.5 w-3.5" />
+                  <span>View Submissions</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => handleToggleArchive(viewingAssignment)}
+                  className={`inline-flex items-center space-x-1.5 rounded-xl border px-3.5 py-2 text-xs font-bold transition-all ${
+                    viewingAssignment.status === "archived"
+                      ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500 hover:text-slate-950"
+                      : "border-amber-500/40 bg-amber-500/15 text-amber-300 hover:bg-amber-500 hover:text-slate-950"
+                  }`}
+                >
+                  {viewingAssignment.status === "archived" ? (
+                    <>
+                      <ArchiveRestore className="h-3.5 w-3.5" />
+                      <span>Restore to Active</span>
+                    </>
+                  ) : (
+                    <>
+                      <Archive className="h-3.5 w-3.5" />
+                      <span>Archive Assignment</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setViewingAssignment(null)}
+                className="rounded-xl bg-[#334155] px-4 py-2 text-xs font-bold text-white hover:bg-[#475569] transition-all"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW TEXT/MARKDOWN SUBMISSION MODAL (QUICK READ WITHOUT DOWNLOAD OR GRADING) */}
+      {viewingSubmissionWork && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4"
+          onClick={() => setViewingSubmissionWork(null)}
+        >
+          <div
+            className="w-full max-w-2xl max-h-[85vh] flex flex-col rounded-2xl border border-[#334155] bg-[#1E293B] shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-[#334155] bg-[#0B0F19]/80 px-6 py-4">
+              <div>
+                <span className="text-[10px] font-mono text-[#06B6D4] uppercase tracking-wider">
+                  {viewingSubmissionWork.courseCode || "General"} • Submitted Solution
+                </span>
+                <h3 className="text-base font-extrabold text-white mt-0.5">
+                  {viewingSubmissionWork.submissionTitle || "Student Submission"}
+                </h3>
+                <p className="text-xs text-[#94A3B8]">
+                  By {viewingSubmissionWork.studentName} (@{viewingSubmissionWork.studentUsername}) • {new Date(viewingSubmissionWork.submittedAt).toLocaleString()}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setViewingSubmissionWork(null)}
+                className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white hover:bg-[#334155]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="rounded-xl border border-[#334155] bg-[#0B0F19] p-5 prose prose-invert prose-sm max-w-none prose-headings:text-white prose-p:text-[#CBD5E1] prose-code:text-[#06B6D4]">
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {viewingSubmissionWork.contentMarkdown || "*No text content provided.*"}
+                </ReactMarkdown>
+              </div>
+            </div>
+            <div className="flex items-center justify-between border-t border-[#334155] bg-[#0B0F19]/80 px-6 py-3.5">
+              <button
+                type="button"
+                onClick={() => {
+                  const target = viewingSubmissionWork;
+                  setViewingSubmissionWork(null);
+                  openGradingModal(target);
+                }}
+                className="inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4] px-4 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all"
+              >
+                <Award className="h-3.5 w-3.5" />
+                <span>Grade This Submission</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewingSubmissionWork(null)}
+                className="rounded-xl bg-[#334155] px-4 py-2 text-xs font-bold text-white hover:bg-[#475569] transition-all"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>

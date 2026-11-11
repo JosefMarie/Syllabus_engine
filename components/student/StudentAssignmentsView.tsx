@@ -88,6 +88,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
   // Modal for student self-initiated course assignment submission
   const [isSelfSubmitModalOpen, setIsSelfSubmitModalOpen] = useState(false);
   const [selectedCourseCode, setSelectedCourseCode] = useState("");
+  const [assignmentIdCode, setAssignmentIdCode] = useState("");
   const [customTitle, setCustomTitle] = useState("");
   const [customMarkdown, setCustomMarkdown] = useState("");
   const [customFile, setCustomFile] = useState<{
@@ -553,14 +554,28 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
     }
   };
 
+  const matchedAssignmentByCode = useMemo(() => {
+    const code = assignmentIdCode.trim().toUpperCase();
+    if (!code) return null;
+    return (
+      rawAssignments.find(
+        (a) =>
+          (a.assignmentCode && a.assignmentCode.toUpperCase() === code) ||
+          a.id.toUpperCase() === code
+      ) || null
+    );
+  }, [assignmentIdCode, rawAssignments]);
+
   // Submit an independent course project / assignment directly by course
   const handleSelfSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedCourseCode) {
+    const resolvedCourseCode = selectedCourseCode || matchedAssignmentByCode?.courseCode || "";
+    if (!resolvedCourseCode) {
       alert("Please select the course or subject for this assignment.");
       return;
     }
-    if (!customTitle.trim()) {
+    const resolvedTitle = customTitle.trim() || matchedAssignmentByCode?.title || "";
+    if (!resolvedTitle) {
       alert("Please provide an assignment title or topic.");
       return;
     }
@@ -571,16 +586,19 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
     setSubmittingSelf(true);
     try {
-      const matchedCourse = syllabi.find(s => s.courseCode === selectedCourseCode);
+      const matchedCourse = syllabi.find(s => s.courseCode === resolvedCourseCode);
       const submissionId = `indep_${currentUser.uid}_${Date.now()}`;
-      
+      const normalizedCode = assignmentIdCode.trim().toUpperCase();
+
       const newSubmission: AssignmentSubmission = {
         id: submissionId,
-        assignmentId: `indep_${selectedCourseCode}`,
-        courseCode: selectedCourseCode,
-        courseTitle: matchedCourse ? matchedCourse.title : selectedCourseCode,
-        submissionTitle: customTitle.trim(),
+        assignmentId: `indep_${resolvedCourseCode}`,
+        courseCode: resolvedCourseCode,
+        courseTitle: matchedCourse ? matchedCourse.title : (matchedAssignmentByCode?.courseTitle || resolvedCourseCode),
+        submissionTitle: resolvedTitle,
         isIndependentSubmission: true,
+        linkedAssignmentId: matchedAssignmentByCode?.id,
+        linkedAssignmentCode: matchedAssignmentByCode?.assignmentCode || (normalizedCode || undefined),
         studentUid: currentUser.uid,
         studentName: currentUser.fullName,
         studentUsername: currentUser.username,
@@ -589,7 +607,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
         contentMarkdown: customMarkdown.trim(),
         fileData: customFile || undefined,
         status: "submitted",
-        maxScore: 100,
+        maxScore: matchedAssignmentByCode?.totalPoints || 100,
         submittedAt: new Date().toISOString()
       };
 
@@ -599,6 +617,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
       setTimeout(() => {
         setIsSelfSubmitModalOpen(false);
         setSelfSubmitSuccess(false);
+        setAssignmentIdCode("");
         setCustomTitle("");
         setCustomMarkdown("");
         setCustomFile(null);
@@ -1073,6 +1092,53 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
             </div>
 
             <form onSubmit={handleSelfSubmit} className="space-y-4">
+              {/* Optional Assignment ID from Instructor */}
+              <div className="rounded-xl border border-[#06B6D4]/30 bg-[#06B6D4]/5 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-[#06B6D4]">
+                    Assignment ID from Teacher (Optional)
+                  </label>
+                  <span className="text-[10px] font-mono text-[#94A3B8]">e.g. ASG-K9M4</span>
+                </div>
+                <input
+                  type="text"
+                  value={assignmentIdCode}
+                  onChange={(e) => {
+                    const val = e.target.value.toUpperCase();
+                    setAssignmentIdCode(val);
+                    const found = rawAssignments.find(
+                      (a) =>
+                        (a.assignmentCode && a.assignmentCode.toUpperCase() === val.trim()) ||
+                        a.id.toUpperCase() === val.trim()
+                    );
+                    if (found) {
+                      if (found.courseCode && !selectedCourseCode) {
+                        setSelectedCourseCode(found.courseCode);
+                      }
+                      if (found.title && !customTitle.trim()) {
+                        setCustomTitle(found.title);
+                      }
+                    }
+                  }}
+                  placeholder="Enter Assignment ID shared by your teacher (if assignment wasn't visible)"
+                  className="w-full rounded-xl border border-[#334155]/70 bg-[#0B0F19]/80 px-3.5 py-2 text-xs font-mono text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none uppercase"
+                />
+                {assignmentIdCode.trim() && (
+                  matchedAssignmentByCode ? (
+                    <p className="text-[11px] font-semibold text-emerald-400 flex items-center space-x-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                      <span>
+                        Linked to: {matchedAssignmentByCode.title} ({matchedAssignmentByCode.courseCode || "General"} • {matchedAssignmentByCode.totalPoints} Pts)
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-amber-300">
+                      Code &quot;{assignmentIdCode.trim()}&quot; will be attached so your teacher can match and grade your work directly.
+                    </p>
+                  )
+                )}
+              </div>
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-bold text-[#CBD5E1] mb-1">

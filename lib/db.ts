@@ -2809,12 +2809,21 @@ export async function getAllAssignments(): Promise<Assignment[]> {
   return localList;
 }
 
+export function generateAssignmentCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let suffix = "";
+  for (let i = 0; i < 4; i++) {
+    suffix += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return `ASG-${suffix}`;
+}
+
 export async function saveAssignment(assignment: Assignment): Promise<void> {
   const sanitized = sanitizeForFirestore(assignment);
 
-  // 1. LocalStorage
+  // 1. LocalStorage (with quota recovery if submissions cache filled storage)
   if (typeof window !== "undefined") {
-    try {
+    const saveLocal = () => {
       const deletedIds = getDeletedAssignmentIds();
       if (deletedIds.has(assignment.id)) {
         deletedIds.delete(assignment.id);
@@ -2824,17 +2833,31 @@ export async function saveAssignment(assignment: Assignment): Promise<void> {
       const merged = mergeAssignmentsLists(existing, [assignment]);
       localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(merged));
       window.dispatchEvent(new CustomEvent("syllabus_assignments_updated"));
+    };
+
+    try {
+      saveLocal();
     } catch (e) {
-      console.error("Local save assignment error:", e);
+      console.warn("LocalStorage quota hit while saving assignment, trimming heavy submission cache...", e);
+      try {
+        localStorage.removeItem(SUBMISSIONS_KEY);
+        saveLocal();
+      } catch (retryErr) {
+        console.error("Local save assignment error after cache cleanup:", retryErr);
+      }
     }
   }
 
-  // 2. Firestore
+  // 2. Firestore (race against 7s timeout so offline/queued writes don't hang UI, but surface real errors)
   if (isFirebaseConfigured && db) {
-    try {
-      await setDoc(doc(db, "assignments", assignment.id), sanitized, { merge: true });
-    } catch (e) {
-      console.error("Firestore save assignment error:", e);
+    const writePromise = setDoc(doc(db, "assignments", assignment.id), sanitized, { merge: true });
+    const timeoutPromise = new Promise<"timeout">((resolve) => setTimeout(() => resolve("timeout"), 7000));
+    const outcome = await Promise.race([
+      writePromise.then(() => "ok" as const),
+      timeoutPromise
+    ]);
+    if (outcome === "timeout") {
+      console.warn("Firestore saveAssignment timed out (write remains queued in persistent offline cache).");
     }
   }
 }
@@ -2992,10 +3015,13 @@ export async function deleteAssignment(assignmentId: string): Promise<void> {
 export async function getSubmissionsForAssignment(assignmentId: string): Promise<AssignmentSubmission[]> {
   if (isFirebaseConfigured && db) {
     try {
-      const q = query(collection(db, "submissions"), where("assignmentId", "==", assignmentId));
-      const snap = await getDocs(q);
-      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as AssignmentSubmission));
-      return list;
+      const qDirect = query(collection(db, "submissions"), where("assignmentId", "==", assignmentId));
+      const qLinked = query(collection(db, "submissions"), where("linkedAssignmentId", "==", assignmentId));
+      const [snapDirect, snapLinked] = await Promise.all([getDocs(qDirect), getDocs(qLinked)]);
+      const map = new Map<string, AssignmentSubmission>();
+      snapDirect.docs.forEach(d => map.set(d.id, { ...d.data(), id: d.id } as AssignmentSubmission));
+      snapLinked.docs.forEach(d => map.set(d.id, { ...d.data(), id: d.id } as AssignmentSubmission));
+      return Array.from(map.values());
     } catch (e) {
       console.warn("Firestore getSubmissionsForAssignment error:", e);
     }
@@ -3006,7 +3032,7 @@ export async function getSubmissionsForAssignment(assignmentId: string): Promise
       const raw = localStorage.getItem(SUBMISSIONS_KEY);
       if (raw) {
         const all: AssignmentSubmission[] = JSON.parse(raw);
-        return all.filter(s => s.assignmentId === assignmentId);
+        return all.filter(s => s.assignmentId === assignmentId || s.linkedAssignmentId === assignmentId);
       }
     } catch (e) {}
   }
@@ -3090,6 +3116,27 @@ export async function deleteAssignmentSubmission(submissionId: string): Promise<
   }
 }
 
+function cacheSubmissionsSafely(list: AssignmentSubmission[]): void {
+  if (typeof window === "undefined") return;
+  try {
+    // Strip large inline base64 blobs from localStorage mirror (full payloads remain in Firestore/IndexedDB)
+    const compact = list.map((sub) => {
+      if (sub.fileData?.base64Url && sub.fileData.base64Url.length > 4096) {
+        return {
+          ...sub,
+          fileData: {
+            name: sub.fileData.name,
+            size: sub.fileData.size,
+            type: sub.fileData.type,
+          },
+        };
+      }
+      return sub;
+    });
+    localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(compact));
+  } catch (e) {}
+}
+
 export function getLocalSubmissions(): AssignmentSubmission[] {
   if (typeof window === "undefined") return [];
   try {
@@ -3110,11 +3157,7 @@ export function subscribeToSubmissions(callback: (submissions: AssignmentSubmiss
       const unsubscribe = onSnapshot(q, (snap) => {
         const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as AssignmentSubmission));
         list.sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
-        if (typeof window !== "undefined") {
-          try {
-            localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(list));
-          } catch (e) {}
-        }
+        cacheSubmissionsSafely(list);
         callback(list);
       }, (err) => {
         console.warn("Firestore submissions subscription failed:", err);
@@ -3142,11 +3185,7 @@ export async function getAllSubmissions(): Promise<AssignmentSubmission[]> {
         if (!snap.empty) {
           const list = snap.docs.map((d: any) => ({ ...d.data(), id: d.id } as AssignmentSubmission));
           list.sort((a: AssignmentSubmission, b: AssignmentSubmission) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
-          if (typeof window !== "undefined") {
-            try {
-              localStorage.setItem(SUBMISSIONS_KEY, JSON.stringify(list));
-            } catch (e) {}
-          }
+          cacheSubmissionsSafely(list);
           return list;
         }
         return [];

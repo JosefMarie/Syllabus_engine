@@ -15,6 +15,7 @@ export interface AssignmentStudentReceipt {
 
 export interface Assignment {
   id: string;
+  assignmentCode?: string; // Short shareable Assignment ID (e.g. "ASG-K9M4") for linking self-submissions
   title: string;
   courseCode: string;
   courseTitle?: string;
@@ -50,6 +51,10 @@ export interface AssignmentSubmission {
   courseTitle?: string; // e.g. "Data Structures and Algorithms"
   submissionTitle?: string; // Custom title for independent work or assignment title
   isIndependentSubmission?: boolean; // True if student self-submitted under course
+  linkedAssignmentId?: string; // Official Assignment ID linked by code or instructor
+  linkedAssignmentCode?: string; // Shareable Assignment ID code entered by student or linked by instructor
+  archived?: boolean; // Hidden from active teacher submission queues once graded
+  archivedAt?: string;
   studentUid: string;
   studentName: string;
   studentUsername: string;
