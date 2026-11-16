@@ -134,41 +134,12 @@ export default function StudentProgressManager() {
       setTimeRecords(liveRecords);
     });
 
-    // 3. Load full data (syllabi, trades, progress summaries)
+    // 3. Load full data on mount (syllabi, trades, progress summaries)
     loadData();
-
-    // 4. Low-frequency background sync for progress matrices (every 120s) with concurrency guard
-    let isSyncing = false;
-    const interval = setInterval(async () => {
-      if (isSyncing) return;
-      isSyncing = true;
-      try {
-        const summaries = await getStudentProgressSummaries();
-        if (summaries && summaries.length > 0) {
-          setStudents(summaries);
-        }
-      } catch (e) {
-        // silent
-      } finally {
-        isSyncing = false;
-      }
-    }, 120000);
-
-    const handleStorage = (e: StorageEvent) => {
-      if (e.key === "syllabus_platform_notifications_v1" || e.key === "syllabus_platform_users_v1") {
-        getStudentProgressSummaries().then(setStudents).catch(() => {});
-      }
-    };
-    window.addEventListener("storage", handleStorage);
-    window.addEventListener("syllabus_notification_received", () => {
-      getStudentProgressSummaries().then(setStudents).catch(() => {});
-    });
 
     return () => {
       unsubPresences();
       unsubTimeRecords();
-      clearInterval(interval);
-      window.removeEventListener("storage", handleStorage);
     };
   }, []);
 

@@ -7,8 +7,7 @@ import {
   getChallenges, 
   subscribeToChallenges, 
   saveChallengeSubmission, 
-  getChallengeSubmissions, 
-  subscribeToChallengeSubmissions 
+  getChallengeSubmissions
 } from "@/lib/db";
 import { runChallengeTests, RunResultsSummary } from "@/lib/challengeRunner";
 import { 
@@ -51,9 +50,11 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
   const [runResults, setRunResults] = useState<RunResultsSummary | null>(null);
   const [showCelebration, setShowCelebration] = useState(false);
 
-  // Subscribe to challenges and submissions
+  // Subscribe to challenges and load submissions once (avoids real-time collection listener)
   useEffect(() => {
+    let isMounted = true;
     const unsubC = subscribeToChallenges((list) => {
+      if (!isMounted) return;
       const activeList = list.filter((c) => c.active !== false);
       setChallenges(activeList);
       if (!selectedChallenge && activeList.length > 0) {
@@ -62,13 +63,13 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
       }
     });
 
-    const unsubS = subscribeToChallengeSubmissions((subs) => {
-      setSubmissions(subs || []);
-    });
+    getChallengeSubmissions().then((subs) => {
+      if (isMounted) setSubmissions(subs || []);
+    }).catch(() => {});
 
     return () => {
+      isMounted = false;
       unsubC();
-      unsubS();
     };
   }, []);
 
@@ -180,6 +181,15 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
       };
 
       await saveChallengeSubmission(submission);
+      setSubmissions((prev) => {
+        const idx = prev.findIndex((s) => s.id === submission.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = submission;
+          return next;
+        }
+        return [submission, ...prev];
+      });
 
       if (results.allPassed) {
         setShowCelebration(true);

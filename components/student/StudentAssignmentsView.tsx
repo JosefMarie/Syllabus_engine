@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { Assignment, AssignmentSubmission } from "@/types/assignment";
 import { StudentGroup } from "@/types/group";
-import { UserProfile } from "@/types/auth";
+import { UserProfile, Trade } from "@/types/auth";
 import { Syllabus } from "@/types/syllabus";
 import {
   getAllAssignments,
@@ -12,8 +12,10 @@ import {
   getStudentSubmissions,
   saveAssignmentSubmission,
   getStudentGroups,
+  getAllTrades,
+  getLocalTrades,
   subscribeToAssignments,
-  subscribeToSubmissions,
+  subscribeToStudentSubmissions,
   subscribeToGroups,
   recordAssignmentStudentReceipt,
   deleteAssignmentSubmission
@@ -75,6 +77,7 @@ interface StudentAssignmentsViewProps {
 
 export default function StudentAssignmentsView({ currentUser, syllabi = [] }: StudentAssignmentsViewProps) {
   const [rawAssignments, setRawAssignments] = useState<Assignment[]>(() => getLocalAssignments());
+  const [trades, setTrades] = useState<Trade[]>(() => getLocalTrades());
   const [submissions, setSubmissions] = useState<Record<string, AssignmentSubmission>>({});
   const [independentSubmissions, setIndependentSubmissions] = useState<AssignmentSubmission[]>([]);
   const [myGroups, setMyGroups] = useState<StudentGroup[]>([]);
@@ -122,28 +125,70 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
         : (myGroups.length > 0 ? myGroups[0] : null))
     : null;
 
-  // Helper functions for matching target cohorts and aliases
-  const isTradeMatch = (targetTradeId?: string, studentTradeId?: string) => {
+  // Helper functions for matching target cohorts, trade IDs/names, and normalized levels
+  const isTradeMatch = (targetTradeId?: string, studentTradeId?: string, courseCode?: string) => {
     if (!targetTradeId || targetTradeId === "all") return true;
     if (!studentTradeId || studentTradeId === "all") return true;
     if (targetTradeId === studentTradeId) return true;
-    // Match software engineering & software development aliases
+    if (targetTradeId.toLowerCase().trim() === studentTradeId.toLowerCase().trim()) return true;
+
+    // Resolve via loaded trades (by ID or Name)
+    const targetObj = trades.find(
+      t => t.id === targetTradeId || t.name.toLowerCase().trim() === targetTradeId.toLowerCase().trim()
+    );
+    const studentObj = trades.find(
+      t => t.id === studentTradeId || t.name.toLowerCase().trim() === studentTradeId.toLowerCase().trim()
+    );
+    if (targetObj && studentObj) {
+      if (targetObj.id === studentObj.id) return true;
+      if (targetObj.name.toLowerCase().trim() === studentObj.name.toLowerCase().trim()) return true;
+    }
+    if (targetObj && (targetObj.id === studentTradeId || targetObj.name.toLowerCase().trim() === studentTradeId.toLowerCase().trim())) {
+      return true;
+    }
+    if (studentObj && (studentObj.id === targetTradeId || studentObj.name.toLowerCase().trim() === targetTradeId.toLowerCase().trim())) {
+      return true;
+    }
+
+    // Match software engineering & software development legacy aliases
     const isSoftware1 = targetTradeId === "trade-sw-eng" || targetTradeId === "trade-1785861602651";
     const isSoftware2 = studentTradeId === "trade-sw-eng" || studentTradeId === "trade-1785861602651";
     if (isSoftware1 && isSoftware2) return true;
+
+    // Fallback: if assignment's courseCode matches a syllabus belonging to the student's trade
+    if (courseCode) {
+      const matchedSyl = syllabi.find(
+        s => s.courseCode?.toLowerCase().trim() === courseCode.toLowerCase().trim()
+      );
+      if (matchedSyl?.tradeId) {
+        if (matchedSyl.tradeId === studentTradeId) return true;
+        if (studentObj && (matchedSyl.tradeId === studentObj.id || matchedSyl.tradeId.toLowerCase().trim() === studentObj.name.toLowerCase().trim())) {
+          return true;
+        }
+      }
+    }
+
     return false;
+  };
+
+  const normalizeLevelToken = (lvl?: string) => {
+    if (!lvl) return "";
+    const lower = lvl.toLowerCase().trim();
+    if (lower === "all") return "all";
+    const numMatch = lower.match(/(?:level|l)?\s*(\d+)/);
+    return numMatch ? `level_${numMatch[1]}` : lower;
   };
 
   const isLevelMatch = (targetLevel?: string, studentLevel?: string) => {
     if (!targetLevel || targetLevel === "all") return true;
     if (!studentLevel || studentLevel === "all") return true;
-    return targetLevel.toLowerCase().trim() === studentLevel.toLowerCase().trim();
+    return normalizeLevelToken(targetLevel) === normalizeLevelToken(studentLevel);
   };
 
   // Available courses filtered by student level/trade
   const studentCourses = syllabi.filter(s => {
     const matchesLevel = isLevelMatch(s.level, currentUser.level);
-    const matchesTrade = isTradeMatch(s.tradeId, currentUser.tradeId);
+    const matchesTrade = isTradeMatch(s.tradeId, currentUser.tradeId, s.courseCode);
     return matchesLevel && matchesTrade;
   });
 
@@ -161,8 +206,8 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
         return true;
       }
 
-      // 1. Strict Trade match
-      const matchesTrade = isTradeMatch(a.tradeId, currentUser.tradeId);
+      // 1. Trade match (supports ID, Name, and Syllabus courseCode resolution)
+      const matchesTrade = isTradeMatch(a.tradeId, currentUser.tradeId, a.courseCode);
       if (!matchesTrade) return false;
 
       // 2. Strict Level match: student ONLY sees assignments assigned strictly to their level (or 'all' levels)
@@ -177,7 +222,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
       return true;
     });
-  }, [rawAssignments, currentUser?.level, currentUser?.tradeId, currentUser?.uid, myGroups]);
+  }, [rawAssignments, currentUser?.level, currentUser?.tradeId, currentUser?.uid, myGroups, trades, syllabi]);
 
   // Subject filter within the student's level assignments
   const assignments = useMemo(() => {
@@ -301,9 +346,8 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
       }
     });
 
-    const unsubSubs = subscribeToSubmissions((allSubs) => {
-      if (isMounted && currentUser?.uid) {
-        const mySubs = allSubs.filter(s => s.studentUid === currentUser.uid);
+    const unsubSubs = subscribeToStudentSubmissions(currentUser?.uid || "", (mySubs) => {
+      if (isMounted) {
         const subMap: Record<string, AssignmentSubmission> = {};
         const indep: AssignmentSubmission[] = [];
         mySubs.forEach(s => {
@@ -344,13 +388,17 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
       setIsSyncing(true);
     }
     try {
-      const [allAsg, studentSubs, groupsData] = await Promise.all([
+      const [allAsg, studentSubs, groupsData, tradesList] = await Promise.all([
         getAllAssignments(),
         getStudentSubmissions(currentUser.uid),
-        getStudentGroups(currentUser.uid)
+        getStudentGroups(currentUser.uid),
+        getAllTrades()
       ]);
 
       setRawAssignments(prev => mergeAssignmentsLists(prev, allAsg));
+      if (tradesList && tradesList.length > 0) {
+        setTrades(tradesList);
+      }
       if (groupsData.length > 0) {
         setMyGroups(groupsData);
       }
@@ -461,20 +509,24 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
     reader.readAsDataURL(file);
   };
 
-  // Submit to an official teacher-assigned task
+  // Submit or update an official teacher-assigned task
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeAssignment) return;
 
-    // 1. Block re-submission or editing if already submitted or graded
-    if (submissions[activeAssignment.id]) {
-      alert("You have already submitted this assignment. Once submitted, answers are locked for grading and cannot be modified or re-submitted.");
+    const existingSub = submissions[activeAssignment.id];
+    const extension = currentUser?.uid ? activeAssignment.studentExtensions?.[currentUser.uid] : undefined;
+    const effectiveDueDate = extension?.extendedDueDate || activeAssignment.dueDate;
+
+    // 1. Block editing if already graded by instructor
+    if (existingSub?.status === "graded") {
+      alert("This assignment has already been graded by your instructor and is locked.");
       return;
     }
 
-    // 2. Block submission if the assignment due date has passed
-    if (isAssignmentPastDue(activeAssignment.dueDate)) {
-      alert(`Submission Closed: The due date (${formatAssignmentDueDate(activeAssignment.dueDate)}) has passed. Late submissions are not permitted.`);
+    // 2. Block submission or editing if the effective due date (including any approved extension) has passed
+    if (isAssignmentPastDue(effectiveDueDate)) {
+      alert(`Submission Closed: The due date (${formatAssignmentDueDate(effectiveDueDate)}) has passed. Contact your instructor if you need a deadline extension.`);
       return;
     }
 
@@ -952,7 +1004,10 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
               const sub = submissions[asg.id];
               const isGraded = sub?.status === "graded";
               const isSubmitted = !!sub;
-              const isOverdue = isAssignmentPastDue(asg.dueDate);
+              const extension = currentUser?.uid ? asg.studentExtensions?.[currentUser.uid] : undefined;
+              const effectiveDueDate = extension?.extendedDueDate || asg.dueDate;
+              const isOverdue = isAssignmentPastDue(effectiveDueDate);
+              const canEditSubmission = isSubmitted && !isGraded && !isOverdue;
 
               return (
                 <div
@@ -1000,13 +1055,19 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                       {asg.description || asg.instructionsMarkdown}
                     </p>
 
-                    {asg.dueDate && (
-                      <div className={`flex items-center space-x-1.5 text-[11px] font-mono mb-3 ${isOverdue ? "text-rose-400 font-bold" : "text-[#94A3B8]"}`}>
-                        <Calendar className="h-3.5 w-3.5" />
+                    {(effectiveDueDate) && (
+                      <div className={`flex flex-wrap items-center gap-1.5 text-[11px] font-mono mb-3 ${isOverdue ? "text-rose-400 font-bold" : extension ? "text-cyan-300 font-semibold" : "text-[#94A3B8]"}`}>
+                        <Calendar className="h-3.5 w-3.5 shrink-0" />
                         <span>
-                          Due: {formatAssignmentDueDate(asg.dueDate)}
+                          {extension ? "Extended Due: " : "Due: "}
+                          {formatAssignmentDueDate(effectiveDueDate)}
                           {isOverdue ? " (Closed)" : ""}
                         </span>
+                        {extension && (
+                          <span className="rounded bg-cyan-500/15 border border-cyan-500/30 px-1.5 py-0.5 text-[9px] font-bold text-cyan-300">
+                            Approved Extension
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1020,10 +1081,15 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                             Graded: {sub.score} / {sub.maxScore} ({Math.round(((sub.score || 0) / (sub.maxScore || asg.totalPoints || 100)) * 100)}%)
                           </span>
                         </span>
+                      ) : canEditSubmission ? (
+                        <span className="inline-flex items-center space-x-1 rounded-md bg-cyan-500/15 border border-cyan-500/30 px-2 py-0.5 text-[11px] font-mono font-bold text-cyan-300">
+                          <CheckCircle2 className="h-3 w-3" />
+                          <span>Submitted • Editable</span>
+                        </span>
                       ) : isSubmitted ? (
                         <span className="inline-flex items-center space-x-1 rounded-md bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[11px] font-mono font-bold text-amber-400">
                           <Lock className="h-3 w-3" />
-                          <span>Submitted • Awaiting Grade</span>
+                          <span>Submitted • Locked</span>
                         </span>
                       ) : isOverdue ? (
                         <span className="inline-flex items-center space-x-1 rounded-md bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 text-[11px] font-mono font-bold text-rose-400">
@@ -1043,8 +1109,10 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                       className={`inline-flex items-center space-x-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-all shadow-md ${
                         isGraded
                           ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-slate-950"
-                          : isSubmitted
+                          : canEditSubmission
                           ? "bg-[#0B0F19] text-[#06B6D4] border border-[#06B6D4]/40 hover:bg-[#06B6D4] hover:text-slate-950"
+                          : isSubmitted
+                          ? "bg-slate-800 text-amber-300 border border-amber-500/30 hover:bg-slate-700"
                           : isOverdue
                           ? "bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700"
                           : "bg-[#06B6D4] text-slate-950 hover:bg-[#0891B2] hover:text-white"
@@ -1053,6 +1121,8 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                       <span>
                         {isGraded
                           ? "View Marks"
+                          : canEditSubmission
+                          ? "Edit Submission"
                           : isSubmitted
                           ? "View Submission"
                           : isOverdue
@@ -1366,7 +1436,12 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
       {/* MODAL 3: OFFICIAL ASSIGNMENT SUBMISSION / MARKS MODAL */}
       {activeAssignment && (() => {
         const existingSubmission = submissions[activeAssignment.id];
-        const isPastDue = isAssignmentPastDue(activeAssignment.dueDate);
+        const extension = currentUser?.uid ? activeAssignment.studentExtensions?.[currentUser.uid] : undefined;
+        const effectiveDueDate = extension?.extendedDueDate || activeAssignment.dueDate;
+        const isPastDue = isAssignmentPastDue(effectiveDueDate);
+        const isLockedSubmission = Boolean(
+          existingSubmission && (existingSubmission.status === "graded" || isPastDue)
+        );
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in">
@@ -1377,11 +1452,12 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                     <span>{activeAssignment.courseCode || "General"}</span>
                     <span>•</span>
                     <span>{activeAssignment.totalPoints} Total Points</span>
-                    {activeAssignment.dueDate && (
+                    {effectiveDueDate && (
                       <>
                         <span>•</span>
-                        <span className={isPastDue ? "text-rose-400 font-bold" : "text-[#94A3B8]"}>
-                          Due: {formatAssignmentDueDate(activeAssignment.dueDate)}
+                        <span className={isPastDue ? "text-rose-400 font-bold" : extension ? "text-cyan-300 font-bold" : "text-[#94A3B8]"}>
+                          {extension ? "Extended Due: " : "Due: "}
+                          {formatAssignmentDueDate(effectiveDueDate)}
                           {isPastDue ? " (Closed)" : ""}
                         </span>
                       </>
@@ -1407,8 +1483,32 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                 </div>
               </div>
 
-              {/* CASE 1: STUDENT HAS ALREADY SUBMITTED (LOCKED AGAINST RE-SUBMISSION OR MODIFICATION) */}
-              {existingSubmission ? (
+              {/* Assignment Attachments (if any) */}
+              {activeAssignment.attachments && activeAssignment.attachments.length > 0 && (
+                <div className="rounded-xl border border-[#334155] bg-[#0B0F19] p-4 space-y-2">
+                  <span className="text-[10px] font-mono text-[#06B6D4] uppercase tracking-wider block">
+                    Attached Reference Files:
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {activeAssignment.attachments.map((att, idx) => (
+                      <a
+                        key={`${att.name}-${idx}`}
+                        href={att.url || "#"}
+                        download={att.name}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center space-x-1.5 rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-1.5 text-xs font-semibold text-[#06B6D4] hover:border-[#06B6D4]"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        <span>{att.name}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* CASE 1: LOCKED SUBMISSION (ALREADY GRADED OR DEADLINE HAS PASSED) */}
+              {isLockedSubmission && existingSubmission ? (
                 <div className="space-y-4">
                   {existingSubmission.status === "graded" ? (
                     <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 space-y-2.5">
@@ -1510,7 +1610,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                       <span>Submission Closed — Due Date Has Passed</span>
                     </div>
                     <p className="text-xs text-rose-200/90 leading-relaxed">
-                      The deadline for this assignment (<strong>{formatAssignmentDueDate(activeAssignment.dueDate)}</strong>) has expired. New submissions and changes are no longer accepted after the due date.
+                      The deadline for this assignment (<strong>{formatAssignmentDueDate(effectiveDueDate)}</strong>) has expired. New submissions and edits are locked unless your instructor approves a deadline extension for your account.
                     </p>
                   </div>
 
@@ -1561,12 +1661,36 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                     )
                   )}
 
-                  <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 px-3.5 py-2.5 text-[11px] text-cyan-200/90 flex items-center space-x-2">
-                    <Lock className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
-                    <span>
-                      <strong>Single-Submission Policy:</strong> Please review your work carefully before submitting. Once submitted, your assignment is locked for grading and cannot be edited or re-submitted.
-                    </span>
-                  </div>
+                  {extension ? (
+                    <div className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-3.5 py-2.5 text-[11px] text-cyan-200 flex items-start space-x-2">
+                      <Clock className="h-4 w-4 text-cyan-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-bold text-white">
+                          Instructor-Approved Deadline Extension Active (until {formatAssignmentDueDate(effectiveDueDate)})
+                        </span>
+                        {extension.reason && (
+                          <span className="block text-cyan-200/80 mt-0.5">Reason: {extension.reason}</span>
+                        )}
+                        <span className="block text-cyan-200/80 mt-0.5">
+                          You can upload a file or update your submission until the extended deadline ends.
+                        </span>
+                      </div>
+                    </div>
+                  ) : existingSubmission ? (
+                    <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3.5 py-2.5 text-[11px] text-emerald-200 flex items-center space-x-2">
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                      <span>
+                        <strong>Submitted (Editable Until Deadline):</strong> You can still edit your answer or replace your uploaded file{effectiveDueDate ? ` until ${formatAssignmentDueDate(effectiveDueDate)}` : ""}. Once the deadline passes or your work is graded, editing will be locked.
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 px-3.5 py-2.5 text-[11px] text-cyan-200/90 flex items-center space-x-2">
+                      <Clock className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
+                      <span>
+                        <strong>Editable Until Deadline:</strong> You can update your submission or replace your uploaded file anytime before the deadline{effectiveDueDate ? ` (${formatAssignmentDueDate(effectiveDueDate)})` : ""}.
+                      </span>
+                    </div>
+                  )}
 
                   {/* Submission Form */}
                   <form onSubmit={handleSubmit} className="space-y-4">
@@ -1657,10 +1781,12 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                         <Send className="h-3.5 w-3.5" />
                         <span>
                           {submitting 
-                            ? "Submitting..." 
+                            ? (existingSubmission ? "Updating..." : "Submitting...") 
                             : (activeAssignment.submissionType === "group" && !activeMatchedGroup)
                             ? "Team Required to Submit"
-                            : "Submit Final Answer"}
+                            : existingSubmission
+                            ? "Update Submission"
+                            : "Submit Answer"}
                         </span>
                       </button>
                     </div>

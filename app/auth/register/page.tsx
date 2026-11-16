@@ -51,8 +51,12 @@ export default function RegisterPage() {
   useEffect(() => {
     async function load() {
       const list = await getAllTrades();
-      setTrades(list);
-      if (list.length > 0) setTradeId(list[0].id);
+      const swTrades = list.filter((t) =>
+        t.name.toLowerCase().includes("software development")
+      );
+      const effectiveTrades = swTrades.length > 0 ? swTrades : list;
+      setTrades(effectiveTrades);
+      if (effectiveTrades.length > 0) setTradeId(effectiveTrades[0].id);
       setLoadingTrades(false);
     }
     load();

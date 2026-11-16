@@ -13,6 +13,15 @@ export interface AssignmentStudentReceipt {
   openCount?: number;
 }
 
+export interface StudentDeadlineExtension {
+  studentUid: string;
+  studentName: string;
+  extendedDueDate: string; // YYYY-MM-DD or ISO string
+  reason?: string;
+  grantedAt: string;
+  grantedBy?: string;
+}
+
 export interface Assignment {
   id: string;
   assignmentCode?: string; // Short shareable Assignment ID (e.g. "ASG-K9M4") for linking self-submissions
@@ -33,6 +42,7 @@ export interface Assignment {
   targetGroupId?: string; // 'all_groups' or specific group id
   forceAssignedStudentUids?: string[]; // Explicit list of student UIDs force-assigned by instructor
   studentReceipts?: Record<string, AssignmentStudentReceipt>; // Map of studentUid -> delivery & "Start" click receipt
+  studentExtensions?: Record<string, StudentDeadlineExtension>; // Map of studentUid -> approved deadline extension
   createdAt: string;
   updatedAt: string;
   createdBy?: string;

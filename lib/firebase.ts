@@ -2,9 +2,9 @@ import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { 
   initializeFirestore,
   getFirestore, 
+  memoryLocalCache,
   persistentLocalCache,
   persistentMultipleTabManager,
-  memoryLocalCache,
   Firestore 
 } from "firebase/firestore";
 import { getAuth, Auth, GoogleAuthProvider } from "firebase/auth";
@@ -53,7 +53,8 @@ if (typeof window !== "undefined" || isFirebaseConfigured) {
             "syllabus_platform_exam_attempts_v1",
             "syllabus_platform_assignments_v1",
             "syllabus_platform_submissions_v1",
-            "syllabus_platform_groups_v1"
+            "syllabus_platform_groups_v1",
+            "syllabus_platform_activities_v1"
           ]);
 
           const keysToRemove: string[] = [];
@@ -66,11 +67,11 @@ if (typeof window !== "undefined" || isFirebaseConfigured) {
             if (key.startsWith("syllabus_offline_")) continue; // Preserve offline time & queues
             if (key.startsWith("syllabus_tab_detector_")) continue;
 
-            // Purge old firestore internal tokens and obsolete v1 dumps
+            // Purge old firestore internal tokens, legacy offline queues, and obsolete v1 dumps
             if (
               key.startsWith("firestore_") ||
               key.startsWith("syllabus_single_v1_") ||
-              key === "syllabus_platform_activities_v1"
+              key.startsWith("syllabus_offline_queue_")
             ) {
               keysToRemove.push(key);
             }
@@ -81,20 +82,17 @@ if (typeof window !== "undefined" || isFirebaseConfigured) {
         }
       }
 
-      // Initialize Firestore with persistent multi-tab IndexedDB cache and long polling fallback.
-      // 1. persistentLocalCache keeps all documents and queries on device disk (IndexedDB),
-      //    delivering 0ms instant reads and bulletproof offline access.
-      // 2. experimentalForceLongPolling guarantees reliable connectivity on public networks,
-      //    school Wi-Fi firewalls, proxies, and captive portals that block or drop WebSockets (wss://).
+      // Initialize Firestore with multi-tab IndexedDB persistence (`persistentLocalCache`)
+      // so unchanged documents are served from local cache on page refresh (0 network reads),
+      // with automatic fallback to `memoryLocalCache()` if IndexedDB is unavailable.
       try {
         db = initializeFirestore(app, {
           localCache: persistentLocalCache({
-            tabManager: persistentMultipleTabManager()
+            tabManager: persistentMultipleTabManager(),
           }),
           experimentalForceLongPolling: true,
         });
-      } catch (cacheErr) {
-        // Fallback to memoryLocalCache if IndexedDB is disabled in restricted private mode
+      } catch (persistErr) {
         try {
           db = initializeFirestore(app, {
             localCache: memoryLocalCache(),

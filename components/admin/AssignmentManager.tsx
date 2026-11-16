@@ -21,6 +21,8 @@ import {
   getAllUserProfiles,
   subscribeToAllUserProfiles,
   forceAssignAssignmentToStudents,
+  grantAssignmentStudentExtension,
+  revokeAssignmentStudentExtension,
   deleteAssignmentSubmission,
   mergeAssignmentsLists,
   generateAssignmentCode
@@ -293,6 +295,10 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
   const [trackerSearch, setTrackerSearch] = useState<string>("");
   const [forceAssigningUid, setForceAssigningUid] = useState<string | null>(null);
   const [forceAssigningAll, setForceAssigningAll] = useState<boolean>(false);
+  const [extensionTarget, setExtensionTarget] = useState<{ assignment: Assignment; student: UserProfile } | null>(null);
+  const [extensionDate, setExtensionDate] = useState<string>("");
+  const [extensionReason, setExtensionReason] = useState<string>("");
+  const [savingExtension, setSavingExtension] = useState<boolean>(false);
 
   // Filter & Grouping for Course Submissions tab
   const [courseFilter, setCourseFilter] = useState<string>("all");
@@ -571,6 +577,7 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
         createdBy: adminEmail || "Josef Marie",
         forceAssignedStudentUids: existingAssignment?.forceAssignedStudentUids,
         studentReceipts: existingAssignment?.studentReceipts,
+        studentExtensions: existingAssignment?.studentExtensions,
         attachments: existingAssignment?.attachments
       };
 
@@ -920,6 +927,53 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
       alert("Failed to bulk force assign: " + (err.message || "Unknown error"));
     } finally {
       setForceAssigningAll(false);
+    }
+  };
+
+  const handleOpenExtensionModal = (asg: Assignment, student: UserProfile) => {
+    const existingExt = asg.studentExtensions?.[student.uid];
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    setExtensionTarget({ assignment: asg, student });
+    setExtensionDate(existingExt?.extendedDueDate || tomorrow);
+    setExtensionReason(existingExt?.reason || "");
+  };
+
+  const handleSaveExtension = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!extensionTarget || !extensionDate) return;
+    setSavingExtension(true);
+    try {
+      const updated = await grantAssignmentStudentExtension(
+        extensionTarget.assignment,
+        extensionTarget.student,
+        extensionDate,
+        extensionReason,
+        adminEmail || "Josef Marie"
+      );
+      setAssignments(prev => mergeAssignmentsLists(prev, [updated]));
+      if (selectedAssignment?.id === updated.id) {
+        setSelectedAssignment(updated);
+      }
+      setExtensionTarget(null);
+    } catch (err) {
+      console.error("Error granting deadline extension:", err);
+      alert("Failed to approve deadline extension.");
+    } finally {
+      setSavingExtension(false);
+    }
+  };
+
+  const handleRevokeExtension = async (asg: Assignment, student: UserProfile) => {
+    if (!confirm(`Revoke the deadline extension for ${student.fullName}?`)) return;
+    try {
+      const updated = await revokeAssignmentStudentExtension(asg, student.uid);
+      setAssignments(prev => mergeAssignmentsLists(prev, [updated]));
+      if (selectedAssignment?.id === updated.id) {
+        setSelectedAssignment(updated);
+      }
+    } catch (err) {
+      console.error("Error revoking deadline extension:", err);
+      alert("Failed to revoke extension.");
     }
   };
 
@@ -3159,15 +3213,24 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                             const { student, statusCode, hasReceived, receivedAt, isForceAssigned, hasOpened, openedAt, openCount, isSubmitted, isGraded, score, maxScore, submittedAt } = item;
                             const studentGroup = courseGroups.find(g => g.members?.some(m => m.uid === student.uid));
                             const isBeingAssigned = forceAssigningUid === student.uid;
+                            const studentExtension = selectedAssignment.studentExtensions?.[student.uid];
 
                             return (
                               <tr key={student.uid} className="hover:bg-[#0B0F19]/40 transition-colors">
                                 <td className="px-4 py-3 font-semibold text-white">
-                                  <div className="flex items-center space-x-2">
+                                  <div className="flex flex-wrap items-center gap-1.5">
                                     <span>{student.fullName}</span>
                                     {isForceAssigned && (
                                       <span className="rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1.5 py-0.5 text-[9px] font-mono font-bold">
                                         ⚡ Force-Assigned
+                                      </span>
+                                    )}
+                                    {studentExtension && (
+                                      <span
+                                        className="rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 px-1.5 py-0.5 text-[9px] font-mono font-bold"
+                                        title={studentExtension.reason || "Instructor-approved deadline extension"}
+                                      >
+                                        ⏳ Extended: {studentExtension.extendedDueDate}
                                       </span>
                                     )}
                                   </div>
@@ -3252,22 +3315,49 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                                 </td>
 
                                 <td className="px-4 py-3 text-right">
-                                  <button
-                                    type="button"
-                                    disabled={isBeingAssigned}
-                                    onClick={() => handleForceAssignSingle(selectedAssignment, student)}
-                                    className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
-                                      statusCode === "missing"
-                                        ? "bg-amber-400 text-slate-950 hover:bg-amber-300"
-                                        : "bg-slate-800 border border-slate-700 text-slate-300 hover:text-white hover:border-[#06B6D4]"
-                                    }`}
-                                    title={statusCode === "missing" ? "Force-assign this assignment to student immediately" : "Re-push notification to student"}
-                                  >
-                                    <Zap className={`h-3.5 w-3.5 ${isBeingAssigned ? "animate-spin" : statusCode === "missing" ? "text-slate-950" : "text-amber-400"}`} />
-                                    <span>
-                                      {isBeingAssigned ? "Assigning..." : statusCode === "missing" ? "Force Assign" : "Re-Push"}
-                                    </span>
-                                  </button>
+                                  <div className="inline-flex flex-wrap items-center justify-end gap-1.5">
+                                    {!isGraded && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleOpenExtensionModal(selectedAssignment, student)}
+                                        className={`inline-flex items-center space-x-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                                          studentExtension
+                                            ? "bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/30"
+                                            : "bg-slate-800 border border-slate-700 text-cyan-300 hover:border-cyan-400 hover:text-white"
+                                        }`}
+                                        title="Approve or update a deadline extension for this student"
+                                      >
+                                        <Clock className="h-3.5 w-3.5" />
+                                        <span>{studentExtension ? "Edit Ext." : "Extend"}</span>
+                                      </button>
+                                    )}
+                                    {studentExtension && !isGraded && (
+                                      <button
+                                        type="button"
+                                        onClick={() => handleRevokeExtension(selectedAssignment, student)}
+                                        className="inline-flex items-center px-2 py-1.5 rounded-lg text-xs font-bold bg-rose-500/15 border border-rose-500/30 text-rose-300 hover:bg-rose-500/25"
+                                        title="Revoke deadline extension"
+                                      >
+                                        <X className="h-3.5 w-3.5" />
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      disabled={isBeingAssigned}
+                                      onClick={() => handleForceAssignSingle(selectedAssignment, student)}
+                                      className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm ${
+                                        statusCode === "missing"
+                                          ? "bg-amber-400 text-slate-950 hover:bg-amber-300"
+                                          : "bg-slate-800 border border-slate-700 text-slate-300 hover:text-white hover:border-[#06B6D4]"
+                                      }`}
+                                      title={statusCode === "missing" ? "Force-assign this assignment to student immediately" : "Re-push notification to student"}
+                                    >
+                                      <Zap className={`h-3.5 w-3.5 ${isBeingAssigned ? "animate-spin" : statusCode === "missing" ? "text-slate-950" : "text-amber-400"}`} />
+                                      <span>
+                                        {isBeingAssigned ? "Assigning..." : statusCode === "missing" ? "Force Assign" : "Re-Push"}
+                                      </span>
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -3985,6 +4075,82 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
                 Close
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: APPROVE STUDENT DEADLINE EXTENSION */}
+      {extensionTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#1E293B] p-6 shadow-2xl space-y-4">
+            <div className="flex items-start justify-between border-b border-[#334155] pb-3">
+              <div>
+                <h3 className="text-base font-extrabold text-white flex items-center space-x-2">
+                  <Clock className="h-4 w-4 text-[#06B6D4]" />
+                  <span>Approve Deadline Extension</span>
+                </h3>
+                <p className="text-xs text-[#94A3B8] mt-1">
+                  Allow <strong className="text-white">{extensionTarget.student.fullName}</strong> to upload or edit their submission for{" "}
+                  <strong className="text-[#06B6D4]">{extensionTarget.assignment.title}</strong>.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExtensionTarget(null)}
+                className="rounded-lg p-1 text-[#94A3B8] hover:text-white hover:bg-[#334155]"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveExtension} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                  New Extended Due Date *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={extensionDate}
+                  onChange={(e) => setExtensionDate(e.target.value)}
+                  className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-2 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                />
+                <p className="text-[10px] text-[#94A3B8] mt-1">
+                  Student can upload or edit their work until 11:59 PM on the selected date.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                  Reason / Note (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={extensionReason}
+                  onChange={(e) => setExtensionReason(e.target.value)}
+                  placeholder="e.g., Medical excuse, network outage, approved retake..."
+                  className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-2 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-2 pt-2 border-t border-[#334155]">
+                <button
+                  type="button"
+                  onClick={() => setExtensionTarget(null)}
+                  className="rounded-xl border border-[#334155] bg-[#0B0F19] px-4 py-2 text-xs font-semibold text-[#94A3B8] hover:text-white"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingExtension || !extensionDate}
+                  className="inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4] px-4 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all disabled:opacity-50"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  <span>{savingExtension ? "Approving..." : "Approve Extension"}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

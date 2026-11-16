@@ -9,7 +9,7 @@ import {
   LiveProctoringSession
 } from "@/types/exam";
 import { Syllabus } from "@/types/syllabus";
-import { UserProfile } from "@/types/auth";
+import { UserProfile, Trade } from "@/types/auth";
 import { 
   getExams, 
   getExamAttemptsForStudent, 
@@ -19,7 +19,9 @@ import {
   subscribeToStudentLiveSession,
   deleteLiveExamSession,
   subscribeToExams,
-  subscribeToAllExamAttempts
+  subscribeToStudentExamAttempts,
+  getAllTrades,
+  getLocalTrades
 } from "@/lib/db";
 import { 
   FileQuestion, 
@@ -112,33 +114,74 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
   // Filters
   const [selectedLevelFilter, setSelectedLevelFilter] = useState<string>("my_level");
+  const [trades, setTrades] = useState<Trade[]>(() => getLocalTrades());
   const [filterType, setFilterType] = useState<"all" | "quiz" | "exam">("all");
   const [filterCourse, setFilterCourse] = useState("all");
 
-  // Helper functions for matching target cohorts and aliases
-  const isTradeMatch = (targetTradeId?: string, studentTradeId?: string) => {
+  // Helper functions for matching target cohorts, trade IDs/names, and normalized levels
+  const isTradeMatch = (targetTradeId?: string, studentTradeId?: string, courseCode?: string) => {
     if (!targetTradeId || targetTradeId === "all") return true;
     if (!studentTradeId || studentTradeId === "all") return true;
     if (targetTradeId === studentTradeId) return true;
+    if (targetTradeId.toLowerCase().trim() === studentTradeId.toLowerCase().trim()) return true;
+
+    const targetObj = trades.find(
+      t => t.id === targetTradeId || t.name.toLowerCase().trim() === targetTradeId.toLowerCase().trim()
+    );
+    const studentObj = trades.find(
+      t => t.id === studentTradeId || t.name.toLowerCase().trim() === studentTradeId.toLowerCase().trim()
+    );
+    if (targetObj && studentObj) {
+      if (targetObj.id === studentObj.id) return true;
+      if (targetObj.name.toLowerCase().trim() === studentObj.name.toLowerCase().trim()) return true;
+    }
+    if (targetObj && (targetObj.id === studentTradeId || targetObj.name.toLowerCase().trim() === studentTradeId.toLowerCase().trim())) {
+      return true;
+    }
+    if (studentObj && (studentObj.id === targetTradeId || studentObj.name.toLowerCase().trim() === targetTradeId.toLowerCase().trim())) {
+      return true;
+    }
+
     const isSoftware1 = targetTradeId === "trade-sw-eng" || targetTradeId === "trade-1785861602651" || targetTradeId.toLowerCase().includes("software");
     const isSoftware2 = studentTradeId === "trade-sw-eng" || studentTradeId === "trade-1785861602651" || studentTradeId.toLowerCase().includes("software");
     if (isSoftware1 && isSoftware2) return true;
+
+    if (courseCode) {
+      const matchedSyl = syllabi.find(
+        s => s.courseCode?.toLowerCase().trim() === courseCode.toLowerCase().trim()
+      );
+      if (matchedSyl?.tradeId) {
+        if (matchedSyl.tradeId === studentTradeId) return true;
+        if (studentObj && (matchedSyl.tradeId === studentObj.id || matchedSyl.tradeId.toLowerCase().trim() === studentObj.name.toLowerCase().trim())) {
+          return true;
+        }
+      }
+    }
+
     return false;
+  };
+
+  const normalizeLevelToken = (lvl?: string) => {
+    if (!lvl) return "";
+    const lower = lvl.toLowerCase().trim();
+    if (lower === "all") return "all";
+    const numMatch = lower.match(/(?:level|l)?\s*(\d+)/);
+    return numMatch ? `level_${numMatch[1]}` : lower;
   };
 
   const isLevelMatch = (targetLevel?: string, studentLevel?: string) => {
     if (!targetLevel || targetLevel === "all") return true;
     if (!studentLevel || studentLevel === "all") return true;
-    return targetLevel.toLowerCase().trim() === studentLevel.toLowerCase().trim();
+    return normalizeLevelToken(targetLevel) === normalizeLevelToken(studentLevel);
   };
 
   // Trade-matched published exams
   const tradeMatchedExams: Exam[] = useMemo(() => {
     return rawExams.filter((e: Exam) => {
       if (e.status !== "published") return false;
-      return isTradeMatch(e.tradeId, currentUser.tradeId);
+      return isTradeMatch(e.tradeId, currentUser.tradeId, e.courseCode);
     });
-  }, [rawExams, currentUser?.tradeId]);
+  }, [rawExams, currentUser?.tradeId, trades, syllabi]);
 
   // Exams strictly matching the student's level or enrolled courses
   const myLevelExams: Exam[] = useMemo(() => {
@@ -375,10 +418,9 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
       setLoading(false);
     });
 
-    // 2. Real-time live Firestore subscription for attempts
-    const unsubAttempts = subscribeToAllExamAttempts((freshAttempts) => {
+    // 2. Real-time live Firestore subscription for this student's exam attempts only
+    const unsubAttempts = subscribeToStudentExamAttempts(currentUser.uid, (mine) => {
       if (!isMounted) return;
-      const mine = freshAttempts.filter(a => a.studentUid === currentUser.uid);
       setMyAttempts(mine);
     });
 
@@ -469,7 +511,8 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
       const timeoutPromise = new Promise<{ timeout: true }>(resolve => setTimeout(() => resolve({ timeout: true }), 5000));
       const fetchPromise = Promise.all([
         getExams(),
-        getExamAttemptsForStudent(currentUser.uid)
+        getExamAttemptsForStudent(currentUser.uid),
+        getAllTrades()
       ]);
 
       const result = await Promise.race([fetchPromise, timeoutPromise]);
@@ -479,9 +522,12 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
         return;
       }
 
-      const [allExams, attemptsList] = result;
+      const [allExams, attemptsList, tradesList] = result;
       setRawExams(allExams);
       setMyAttempts(attemptsList);
+      if (tradesList && tradesList.length > 0) {
+        setTrades(tradesList);
+      }
 
       // Check for an interrupted session saved in localStorage
       const savedSession = getActiveSession(currentUser.uid);

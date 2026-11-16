@@ -383,11 +383,11 @@ export default function PresenceTracker({
       const now = Date.now();
       const stateChanged = state !== lastReportedStateRef.current;
       const subtopicChanged = (subtopicTitle || "") !== lastReportedSubtopicRef.current;
-      // Adaptive steady-state heartbeat: 30s steady-state preserves Firestore quota & network bandwidth
+      // Adaptive steady-state heartbeat: 60s steady-state preserves Firestore quota & network bandwidth
       // while state transitions (unfocused, changing topic, strikes) remain 100% instant.
-      const routineHeartbeatDue = (now - lastPresenceWriteRef.current) >= 30000;
+      const routineHeartbeatDue = (now - lastPresenceWriteRef.current) >= 60000;
 
-      // Adaptive Write: Immediate on state/topic shift, strikes, or every 30s steady-state heartbeat
+      // Adaptive Write: Immediate on state/topic shift, strikes, or every 60s steady-state heartbeat
       if (stateChanged || subtopicChanged || routineHeartbeatDue) {
         lastReportedStateRef.current = state;
         lastReportedSubtopicRef.current = subtopicTitle || "";
@@ -400,8 +400,8 @@ export default function PresenceTracker({
       if (state === 'actively_reading' || (restrictionsDisabledRef.current && secondsSinceLastInput < 120)) {
         activeSecondsAccumulatorRef.current += 5; // 5 second tick
         
-        // Flush every 35 seconds of active study to persist progress without flooding public networks
-        if (activeSecondsAccumulatorRef.current >= 35) {
+        // Flush every 60 seconds (1 minute chunks) of active study to persist progress without flooding public networks
+        if (activeSecondsAccumulatorRef.current >= 60) {
           flushActiveSeconds();
         }
       }

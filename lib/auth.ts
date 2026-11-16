@@ -133,6 +133,152 @@ export async function revokeAllAdminSessions(reason: string = "Instructor reques
   }
 }
 
+const LAST_FORCED_REFRESH_KEY = "syllabus_last_forced_refresh_ts_v1";
+
+/**
+ * Purges old browser chunks (Cache Storage, Service Workers, sessionStorage,
+ * and cached localStorage data while preserving active login sessions) and reloads.
+ */
+export async function purgeClientCachesAndReload(newTimestamp: number): Promise<void> {
+  if (typeof window === "undefined") return;
+
+  try {
+    localStorage.setItem(LAST_FORCED_REFRESH_KEY, String(newTimestamp));
+  } catch {}
+
+  try {
+    if ("serviceWorker" in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      await Promise.allSettled(registrations.map((r) => r.unregister()));
+    }
+  } catch {}
+
+  try {
+    if ("caches" in window) {
+      const keys = await caches.keys();
+      await Promise.allSettled(keys.map((k) => caches.delete(k)));
+    }
+  } catch {}
+
+  try {
+    sessionStorage.clear();
+  } catch {}
+
+  try {
+    const preservedKeys = new Set([
+      CURRENT_USER_KEY,
+      ADMIN_SESSION_KEY,
+      "syllabus_admin_session_v1",
+      "syllabus_auth_session_v1",
+      LAST_FORCED_REFRESH_KEY,
+      "syllabus_admin_sidebar_collapsed",
+      "syllabus_admin_presence_sound",
+    ]);
+
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+      if (preservedKeys.has(key)) continue;
+      if (key.startsWith("firebase:authUser")) continue;
+      if (
+        key.startsWith("syllabus_") ||
+        key.startsWith("deleted_") ||
+        key.startsWith("firestore_")
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+  } catch {}
+
+  window.location.reload();
+}
+
+/**
+ * Triggers a global forced cache & chunk refresh for all connected and returning accounts.
+ */
+export async function triggerGlobalClientRefresh(
+  reason: string = "Instructor triggered global cache & content refresh"
+): Promise<number> {
+  const now = Date.now();
+  if (isFirebaseConfigured && db) {
+    await setDoc(
+      doc(db, "system", "client_sync"),
+      {
+        forceRefreshTimestamp: now,
+        triggeredAt: new Date().toISOString(),
+        reason,
+      },
+      { merge: true }
+    );
+  }
+  return now;
+}
+
+/**
+ * Subscribes to global forced-refresh signals on `system/client_sync` (1 doc read).
+ * Automatically purges stale chunks/caches and reloads if a newer refresh was triggered.
+ */
+export function subscribeToGlobalClientRefresh(
+  onRefreshing?: () => void
+): () => void {
+  if (typeof window === "undefined" || !isFirebaseConfigured || !db) {
+    return () => {};
+  }
+
+  const pageOpenedAt = Date.now();
+
+  try {
+    const unsub = onSnapshot(
+      doc(db, "system", "client_sync"),
+      (snap) => {
+        if (!snap.exists()) return;
+        const data = snap.data();
+        const serverTs =
+          typeof data?.forceRefreshTimestamp === "number"
+            ? data.forceRefreshTimestamp
+            : 0;
+        if (!serverTs) return;
+
+        let localTs = 0;
+        try {
+          localTs = Number(localStorage.getItem(LAST_FORCED_REFRESH_KEY) || "0");
+        } catch {}
+
+        // First-ever visit with this feature: record timestamp unless it was just triggered while tab is open
+        if (!localTs) {
+          if (serverTs > pageOpenedAt) {
+            if (onRefreshing) onRefreshing();
+            setTimeout(() => {
+              purgeClientCachesAndReload(serverTs);
+            }, 600);
+          } else {
+            try {
+              localStorage.setItem(LAST_FORCED_REFRESH_KEY, String(serverTs));
+            } catch {}
+          }
+          return;
+        }
+
+        if (serverTs > localTs) {
+          if (onRefreshing) onRefreshing();
+          setTimeout(() => {
+            purgeClientCachesAndReload(serverTs);
+          }, 600);
+        }
+      },
+      (err) => {
+        console.warn("Error listening to global client refresh:", err);
+      }
+    );
+    return unsub;
+  } catch (e) {
+    console.warn("Failed to attach global client refresh listener:", e);
+    return () => {};
+  }
+}
+
 export function saveAdminSession(admin: UserProfile | null) {
   if (typeof window === "undefined") return;
   try {

@@ -1,22 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { 
-  Wifi, 
-  WifiOff, 
-  RefreshCw, 
-  Download, 
-  CheckCircle2, 
-  CloudOff, 
-  X 
-} from "lucide-react";
-import { 
-  isDeviceOnline, 
-  onSyncStatusChange, 
-  syncPendingOfflineChanges, 
-  getPendingOfflineSyllabi, 
-  getPendingOfflineProgress 
-} from "@/lib/sync";
+import { WifiOff, RefreshCw, ExternalLink, X } from "lucide-react";
+import { subscribeToGlobalClientRefresh } from "@/lib/auth";
 
 interface PWAContextType {
   isOnline: boolean;
@@ -40,180 +26,152 @@ export function usePWA() {
   return useContext(PWAContext);
 }
 
+/**
+ * Online-Always Provider:
+ * - Removes any legacy Service Worker registrations and PWA caches from user devices.
+ * - Disables browser app-install prompts so the platform always runs live from the web host.
+ * - Displays a simple connection-lost indicator if the device drops offline.
+ */
 export default function PWAProvider({ children }: { children: React.ReactNode }) {
   const [isOnline, setIsOnline] = useState(true);
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [canInstall, setCanInstall] = useState(false);
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [syncSuccessToast, setSyncSuccessToast] = useState<string | null>(null);
-  const [bannerDismissed, setBannerDismissed] = useState(false);
-
-  const calculatePending = () => {
-    const syllabiCount = getPendingOfflineSyllabi().length;
-    const progressCount = getPendingOfflineProgress().length;
-    setPendingCount(syllabiCount + progressCount);
-  };
+  const [isStandaloneApp, setIsStandaloneApp] = useState(false);
+  const [standaloneNoticeDismissed, setStandaloneNoticeDismissed] = useState(false);
+  const [isForcingRefresh, setIsForcingRefresh] = useState(false);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     setIsOnline(navigator.onLine);
-    calculatePending();
 
-    // 1. Register Service Worker & trigger update check
+    const standalone =
+      window.matchMedia?.("(display-mode: standalone)")?.matches ||
+      Boolean((window.navigator as any).standalone);
+    setIsStandaloneApp(standalone);
+    try {
+      if (sessionStorage.getItem("syllabus_standalone_notice_dismissed") === "1") {
+        setStandaloneNoticeDismissed(true);
+      }
+    } catch {}
+
+    // 1. Automatically unregister any previously installed Service Workers
     if ("serviceWorker" in navigator) {
       navigator.serviceWorker
-        .register("/sw.js")
-        .then((reg) => {
-          reg.update().catch(() => {});
-          console.log("[PWA] Service Worker registered with scope:", reg.scope);
+        .getRegistrations()
+        .then((registrations) => {
+          registrations.forEach((reg) => {
+            reg.unregister().catch(() => {});
+          });
         })
-        .catch((err) => {
-          console.warn("[PWA] Service Worker registration failed:", err);
-        });
-
-      // Reload when new service worker takes control so the app immediately reflects the updated code
-      navigator.serviceWorker.addEventListener("controllerchange", () => {
-        console.log("[PWA] New version activated, refreshing application...");
-        window.location.reload();
-      });
+        .catch(() => {});
     }
 
-    // 2. Capture install prompt
-    const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-      setCanInstall(true);
-    };
-    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    // 2. Purge any leftover Cache Storage from legacy PWA builds
+    if ("caches" in window) {
+      caches
+        .keys()
+        .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+        .catch(() => {});
+    }
 
-    // 3. Listen to online/offline and sync queue events
-    const unsubscribeSync = onSyncStatusChange((status) => {
-      setIsOnline(status !== "offline");
-      setIsSyncing(status === "syncing");
-      calculatePending();
+    // 3. Clean up legacy offline queue storage keys
+    try {
+      localStorage.removeItem("syllabus_offline_queue_syllabi_v1");
+      localStorage.removeItem("syllabus_offline_queue_progress_v1");
+      sessionStorage.removeItem("syllabus_offline_queue_syllabi_v1");
+    } catch {}
+
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    // 4. Listen for global instructor-triggered cache & chunk refresh
+    const unsubRefresh = subscribeToGlobalClientRefresh(() => {
+      setIsForcingRefresh(true);
     });
 
-    const handleOnline = () => {
-      setIsOnline(true);
-      if ("serviceWorker" in navigator) {
-        navigator.serviceWorker.ready.then((reg) => reg.update().catch(() => {}));
-      }
-      syncPendingOfflineChanges();
-    };
-    window.addEventListener("online", handleOnline);
-
-    const handleQueueUpdated = () => calculatePending();
-    const handleSynced = (e: any) => {
-      calculatePending();
-      const count = (e?.detail?.syllabiCount || 0) + (e?.detail?.progressCount || 0);
-      if (count > 0) {
-        setSyncSuccessToast(`Successfully synced ${count} item${count > 1 ? 's' : ''} to cloud!`);
-        setTimeout(() => setSyncSuccessToast(null), 4500);
-      }
-    };
-
-    window.addEventListener("syllabus_pwa_queue_updated", handleQueueUpdated);
-    window.addEventListener("syllabus_pwa_synced", handleSynced);
-
-    // Initial check for pending items upon loading while online
-    if (navigator.onLine) {
-      syncPendingOfflineChanges();
-    }
-
     return () => {
-      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
       window.removeEventListener("online", handleOnline);
-      window.removeEventListener("syllabus_pwa_queue_updated", handleQueueUpdated);
-      window.removeEventListener("syllabus_pwa_synced", handleSynced);
-      unsubscribeSync();
+      window.removeEventListener("offline", handleOffline);
+      unsubRefresh();
     };
   }, []);
 
-  const promptInstall = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === "accepted") {
-      setCanInstall(false);
-      setDeferredPrompt(null);
-    }
-  };
-
-  const syncNow = async () => {
-    setIsSyncing(true);
-    await syncPendingOfflineChanges();
-    setIsSyncing(false);
-  };
+  const promptInstall = async () => {};
+  const syncNow = async () => {};
 
   return (
     <PWAContext.Provider
       value={{
         isOnline,
-        isSyncing,
-        pendingCount,
-        canInstall,
+        isSyncing: false,
+        pendingCount: 0,
+        canInstall: false,
         promptInstall,
         syncNow,
       }}
     >
       {children}
 
-      {/* Floating Connectivity & Offline Sync Status Bar */}
-      <div className="fixed bottom-4 left-4 z-40 flex flex-col gap-2 pointer-events-none">
-        {/* Offline Warning Banner */}
-        {!isOnline && !bannerDismissed && (
-          <div className="pointer-events-auto flex items-center gap-3 rounded-xl border border-amber-500/40 bg-[#0F172A]/95 px-4 py-2.5 text-xs text-amber-200 shadow-2xl backdrop-blur-md transition-all">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 text-amber-400">
-              <WifiOff className="h-4 w-4" />
+      {/* Global Forced Refresh Banner */}
+      {isForcingRefresh && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
+          <div className="flex items-center space-x-3 rounded-2xl border border-[#06B6D4]/50 bg-[#0F172A] px-6 py-4 shadow-2xl">
+            <RefreshCw className="h-5 w-5 animate-spin text-[#06B6D4]" />
+            <div>
+              <p className="text-sm font-bold text-white">Updating Platform Content...</p>
+              <p className="text-xs text-[#94A3B8]">Clearing old browser chunks and reloading fresh data.</p>
             </div>
-            <div className="flex flex-col">
-              <span className="font-bold font-mono tracking-tight text-white">
-                Offline Mode Active
-              </span>
-              <span className="text-[11px] text-amber-300/80">
-                You can browse and create courses offline. {pendingCount > 0 ? `(${pendingCount} changes queued)` : "Changes will auto-sync when online."}
-              </span>
-            </div>
-            <button
-              onClick={() => setBannerDismissed(true)}
-              className="ml-2 text-slate-400 hover:text-white p-1"
-              title="Dismiss"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Syncing Activity Banner */}
-        {isSyncing && (
-          <div className="pointer-events-auto flex items-center gap-2.5 rounded-xl border border-[#06B6D4]/40 bg-[#0F172A]/95 px-3.5 py-2 text-xs text-white shadow-xl backdrop-blur-md animate-pulse">
-            <RefreshCw className="h-3.5 w-3.5 animate-spin text-[#06B6D4]" />
-            <span className="font-mono font-bold text-[#06B6D4]">Cloud Sync:</span>
-            <span>Synchronizing offline changes...</span>
+      {/* Minimal Offline Warning Banner (Online-Always Mode) */}
+      {!isOnline && (
+        <div className="fixed bottom-4 left-4 z-40 pointer-events-auto flex items-center gap-3 rounded-xl border border-rose-500/40 bg-[#0F172A]/95 px-4 py-2.5 text-xs text-rose-200 shadow-2xl backdrop-blur-md">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-500/20 text-rose-400">
+            <WifiOff className="h-4 w-4" />
           </div>
-        )}
-
-        {/* Sync Success Toast */}
-        {syncSuccessToast && (
-          <div className="pointer-events-auto flex items-center gap-2 rounded-xl border border-emerald-500/40 bg-[#0F172A]/95 px-3.5 py-2 text-xs text-emerald-200 shadow-2xl backdrop-blur-md">
-            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-            <span className="font-mono font-bold text-white">{syncSuccessToast}</span>
+          <div className="flex flex-col">
+            <span className="font-bold font-mono tracking-tight text-white flex items-center gap-1.5">
+              <span>Internet Connection Lost</span>
+              <RefreshCw className="h-3 w-3 animate-spin text-rose-400" />
+            </span>
+            <span className="text-[11px] text-rose-300/80">
+              This platform requires an active internet connection. Waiting to reconnect...
+            </span>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Install PWA Prompt Pill */}
-        {canInstall && (
+      {/* Helpful notice for users still opening the legacy installed PWA shortcut */}
+      {isStandaloneApp && !standaloneNoticeDismissed && (
+        <div className="fixed bottom-4 right-4 z-40 max-w-sm pointer-events-auto flex items-start gap-3 rounded-xl border border-cyan-500/40 bg-[#0F172A]/95 px-4 py-3 text-xs text-slate-200 shadow-2xl backdrop-blur-md">
+          <ExternalLink className="h-4 w-4 text-cyan-400 shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <span className="block font-bold text-white">Installed App Retired (Online Mode)</span>
+            <p className="text-[11px] text-slate-300 leading-relaxed">
+              Offline app mode has been removed for faster performance. You can uninstall this app shortcut and use{" "}
+              <strong className="text-cyan-300">{typeof window !== "undefined" ? window.location.origin : "the website"}</strong>{" "}
+              directly in your browser.
+            </p>
+          </div>
           <button
-            onClick={promptInstall}
-            className="pointer-events-auto group flex items-center gap-2 rounded-xl border border-[#06B6D4]/50 bg-gradient-to-r from-[#06B6D4] to-[#0891B2] px-3.5 py-2 text-xs font-bold text-slate-950 shadow-2xl hover:scale-105 transition-all"
+            type="button"
+            onClick={() => {
+              setStandaloneNoticeDismissed(true);
+              try {
+                sessionStorage.setItem("syllabus_standalone_notice_dismissed", "1");
+              } catch {}
+            }}
+            className="text-slate-400 hover:text-white p-0.5 shrink-0"
+            title="Dismiss"
           >
-            <Download className="h-3.5 w-3.5" />
-            <span>Install Syllabus App</span>
+            <X className="h-3.5 w-3.5" />
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </PWAContext.Provider>
   );
 }

@@ -9,7 +9,6 @@ import { DeveloperTip } from "@/types/tip";
 import { StudentSuggestion, SuggestionStatus } from "@/types/suggestion";
 import { BroadcastBulletin } from "@/types/bulletin";
 import { CodingChallenge, ChallengeSubmission } from "@/types/challenge";
-import { INITIAL_DEVELOPER_TIPS } from "./tipsSeed";
 import { db, isFirebaseConfigured } from "./firebase";
 import { 
   collection, 
@@ -27,11 +26,8 @@ import {
   deleteField
 } from "firebase/firestore";
 import { 
-  queueOfflineSyllabus, 
   removePendingOfflineSyllabus, 
-  getPendingOfflineSyllabi,
-  queueOfflineProgress, 
-  syncPendingOfflineChanges 
+  getPendingOfflineSyllabi
 } from "./sync";
 import { 
   getSystemRestrictions, 
@@ -39,7 +35,6 @@ import {
   subscribeToSystemRestrictions, 
   getLocalRestrictions 
 } from "./restrictions";
-import { idbSet, idbGet, idbDelete, IDB_STORES } from "./database/indexedDb";
 
 const STORAGE_KEY = "syllabus_platform_syllabi_v1";
 const PROGRESS_KEY = "syllabus_platform_progress_v1";
@@ -47,26 +42,11 @@ const TRADES_KEY = "syllabus_platform_trades_v1";
 const USERS_KEY = "syllabus_platform_users_v1";
 const ACTIVITIES_KEY = "syllabus_platform_activities_v1";
 
-const DEFAULT_TRADES: Trade[] = [
-  {
-    id: "trade-sw-eng",
-    name: "Software Engineering & Web Systems",
-    description: "Full-stack web application development, algorithms, and cloud systems.",
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "trade-networking",
-    name: "Networking & Cyber Security",
-    description: "Network architecture, security protocols, and ethical hacking.",
-    createdAt: new Date().toISOString()
-  },
-  {
-    id: "trade-data-ai",
-    name: "Data Science & Applied AI",
-    description: "Machine learning models, data pipelines, and AI engineering.",
-    createdAt: new Date().toISOString()
-  }
-];
+const MOCK_TRADE_IDS = new Set([
+  "trade-sw-eng",
+  "trade-networking",
+  "trade-data-ai"
+]);
 
 /**
  * Sanitizes object by converting undefined values to null or deleting them,
@@ -138,7 +118,8 @@ export function cleanupLocalStorageQuota(): void {
       "syllabus_admin_presence_sound",
       "syllabus_platform_users_v1",
       "syllabus_platform_exams_v1",
-      "syllabus_platform_exam_attempts_v1"
+      "syllabus_platform_exam_attempts_v1",
+      "syllabus_platform_activities_v1"
     ]);
 
     const keysToRemove: string[] = [];
@@ -148,12 +129,11 @@ export function cleanupLocalStorageQuota(): void {
       if (preservedKeys.has(k)) continue;
       if (k.startsWith("firebase:authUser")) continue;
 
-      // Purge all firestore internal tokens, old offline queues, activities, and old dumps
+      // Purge all firestore internal tokens, old offline queues, and old dumps
       if (
         k.startsWith("firestore_") ||
         k.startsWith("firebase:") ||
         k.startsWith("syllabus_offline_queue_") ||
-        k === "syllabus_platform_activities_v1" ||
         k === "syllabus_platform_syllabi_v1" ||
         k.startsWith("syllabus_single_")
       ) {
@@ -300,8 +280,7 @@ export function saveSingleLocalSyllabus(syllabus: Syllabus): void {
     }
   }
 
-  // 3. Persist full uncapped document in native IndexedDB (no 5MB quota limit)
-  idbSet(IDB_STORES.SYLLABI, syllabus.id, syllabus).catch(() => {});
+  // Online-Always mode: skip disk IndexedDB writes on hot path
 }
 
 export function removeSingleLocalSyllabus(id: string): void {
@@ -311,13 +290,10 @@ export function removeSingleLocalSyllabus(id: string): void {
   } catch (e) {
     // Ignore
   }
-  idbDelete(IDB_STORES.SYLLABI, id).catch(() => {});
 }
 
 export async function getSingleLocalSyllabusAsync(id: string): Promise<Syllabus | null> {
-  const syncSyl = getSingleLocalSyllabus(id);
-  if (syncSyl) return syncSyl;
-  return await idbGet<Syllabus>(IDB_STORES.SYLLABI, id);
+  return getSingleLocalSyllabus(id);
 }
 
 // Build fast lookup citations map across the 5 levels
@@ -361,31 +337,39 @@ export async function getAllSyllabi(): Promise<Syllabus[]> {
     try {
       const q = query(collection(db, "syllabi"));
       const fetchPromise = getDocs(q);
-      // Fast race: if local candidates exist, allow 1200ms max. IndexedDB returns in <20ms.
-      // If network is congested, immediately return local and let background cache refresh silently.
-      const timeoutMs = localCandidates.length > 0 ? 1200 : 10000;
+      // Online-Always: prioritize fresh Firestore response with a generous 8s network timeout
+      const timeoutMs = 8000;
       const timeoutPromise = new Promise<null>((resolve) => 
         setTimeout(() => resolve(null), timeoutMs)
       );
       const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
       if (snapshot && 'forEach' in snapshot) {
+        const firestoreDb = db;
         const firestoreList: Syllabus[] = [];
+        const staleMockSyllabusIds: string[] = [];
         snapshot.forEach((docSnap) => {
           const val = { id: docSnap.id, ...docSnap.data() } as Syllabus;
-          if (!isDemoOrMockSyllabus(val)) {
-            firestoreList.push(val);
-            const existing = mergedMap.get(docSnap.id);
-            if (!existing) {
+          if (isDemoOrMockSyllabus(val)) {
+            staleMockSyllabusIds.push(docSnap.id);
+            return;
+          }
+          firestoreList.push(val);
+          const existing = mergedMap.get(docSnap.id);
+          if (!existing) {
+            mergedMap.set(docSnap.id, val);
+          } else {
+            const firestoreTime = new Date(val.updatedAt || 0).getTime();
+            const existingTime = new Date(existing.updatedAt || 0).getTime();
+            if (firestoreTime >= existingTime) {
               mergedMap.set(docSnap.id, val);
-            } else {
-              const firestoreTime = new Date(val.updatedAt || 0).getTime();
-              const existingTime = new Date(existing.updatedAt || 0).getTime();
-              if (firestoreTime >= existingTime) {
-                mergedMap.set(docSnap.id, val);
-              }
             }
           }
         });
+        if (staleMockSyllabusIds.length > 0) {
+          Promise.allSettled(
+            staleMockSyllabusIds.map((docId) => deleteDoc(doc(firestoreDb, "syllabi", docId)))
+          ).catch(() => {});
+        }
         // Cache refreshed list locally
         if (firestoreList.length > 0) {
           saveLocalSyllabi(Array.from(mergedMap.values()));
@@ -528,7 +512,8 @@ export async function getSyllabusById(id: string): Promise<Syllabus | null> {
         localDoc.learningOutcomes.length > 0 &&
         localDoc.learningOutcomes[0]?.indicativeContents?.[0]?.topics?.[0]?.subtopics?.[0]?.contentMarkdown
       );
-      const timeoutMs = hasFullContent ? 900 : 12000;
+      // Online-Always: always wait up to 8s for fresh Firestore document (no 900ms short-circuit)
+      const timeoutMs = 8000;
       const fetchPromise = getDoc(docRef);
       const timeoutPromise = new Promise<null>((resolve) => 
         setTimeout(() => resolve(null), timeoutMs)
@@ -675,12 +660,10 @@ export async function saveSyllabus(syllabus: Syllabus): Promise<Syllabus> {
     } catch (err: any) {
       console.error("Firestore write failed:", err);
       firestoreError = err;
-      queueOfflineSyllabus(updated);
       throw new Error(`Failed to save syllabus to cloud database: ${err?.message || err}`);
     }
   } else {
-    // Offline mode: queue for sync
-    queueOfflineSyllabus(updated);
+    throw new Error("Cloud database is not configured or unavailable.");
   }
 
   return updated;
@@ -833,18 +816,29 @@ export async function getAllUserProfiles(): Promise<UserProfile[]> {
       );
       const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
       if (snapshot && 'forEach' in snapshot) {
+        const firestoreDb = db;
         const items: UserProfile[] = [];
+        const staleMockUserIds: string[] = [];
         snapshot.forEach((docSnap) => {
-          items.push({ uid: docSnap.id, ...docSnap.data() } as UserProfile);
+          const userObj = { uid: docSnap.id, ...docSnap.data() } as UserProfile;
+          if (isUserExcluded(userObj)) {
+            staleMockUserIds.push(docSnap.id);
+          } else {
+            items.push(userObj);
+          }
         });
-        const filtered = items.filter(u => !isUserExcluded(u));
-        if (filtered.length > 0) {
+        if (staleMockUserIds.length > 0) {
+          Promise.allSettled(
+            staleMockUserIds.map((docId) => deleteDoc(doc(firestoreDb, "users", docId)))
+          ).catch(() => {});
+        }
+        if (items.length > 0) {
           if (typeof window !== "undefined") {
             try {
-              localStorage.setItem(USERS_KEY, JSON.stringify(filtered));
+              localStorage.setItem(USERS_KEY, JSON.stringify(items));
             } catch (e) {}
           }
-          return filtered;
+          return items;
         }
       } else if (local.length > 0) {
         // Fire-and-forget background sync if initial timeout was hit
@@ -1102,15 +1096,17 @@ export async function recordStudentUnfocusedIncident(userId: string): Promise<{ 
     }
   }
 
-  // 5. Log activity if suspended
-  if (suspended && user) {
+  // 5. Log security incident for suspension or major strike milestones (3, 5, 8, 10)
+  if (user && (suspended || newCount === 3 || newCount === 5 || newCount === 8)) {
     logActivity({
       userId: user.uid,
       userName: user.fullName,
-      userEmail: user.email,
+      userEmail: user.email || `${user.username} (No Email)`,
       userLevel: user.level,
-      action: "REJECT_STUDENT",
-      details: `Account auto-suspended: Student ${user.fullName} exceeded 10 side-window/unfocused violations. Requires teacher approval.`,
+      action: "STUDENT_SUSPENDED_FOCUS",
+      details: suspended
+        ? `Account auto-suspended: Student ${user.fullName} reached ${newCount}/10 side-window/unfocused violations. Requires teacher approval.`
+        : `Security focus warning: Student ${user.fullName} reached focus strike ${newCount}/10 (side-window/tab switch detected).`,
     }).catch(() => {});
   }
 
@@ -1194,14 +1190,14 @@ export async function suspendStudentForUnfocusedTimeout(userId: string): Promise
     }
   }
 
-  // 4. Log to teacher audit log
+  // 4. Log to teacher security audit log
   if (user) {
     logActivity({
       userId: user.uid,
       userName: user.fullName,
-      userEmail: user.email,
+      userEmail: user.email || `${user.username} (No Email)`,
       userLevel: user.level,
-      action: "REJECT_STUDENT",
+      action: "STUDENT_SUSPENDED_FOCUS",
       details: `Disciplinary lockdown: Student ${user.fullName} remained in a side window for over 3 minutes continuously without focus.`,
     }).catch(() => {});
   }
@@ -1356,87 +1352,63 @@ export function subscribeToUserProfile(
 const TRADES_INIT_KEY = "syllabus_platform_trades_init_v1";
 
 export function getLocalTrades(): Trade[] {
-  if (typeof window === "undefined") return DEFAULT_TRADES;
+  if (typeof window === "undefined") return [];
   try {
     const saved = localStorage.getItem(TRADES_KEY);
     if (saved) {
       const parsed = JSON.parse(saved);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+      if (Array.isArray(parsed)) {
+        const cleaned = parsed.filter((t: Trade) => t && t.id && !MOCK_TRADE_IDS.has(t.id));
+        if (cleaned.length !== parsed.length) {
+          localStorage.setItem(TRADES_KEY, JSON.stringify(cleaned));
+        }
+        return cleaned;
       }
     }
   } catch (e) {}
-  return DEFAULT_TRADES;
+  return [];
 }
 
 export async function getAllTrades(): Promise<Trade[]> {
   const localList = getLocalTrades();
-  const hasLocal = localList && localList.length > 0;
 
   if (isFirebaseConfigured && db) {
     try {
-      const fetchPromise = getDocs(collection(db, "trades"));
-      // Fast race: if local trades are cached, allow 1200ms max. IndexedDB returns in <20ms.
-      const timeoutMs = hasLocal ? 1200 : 5000;
+      const firestoreDb = db;
+      const fetchPromise = getDocs(collection(firestoreDb, "trades"));
       const timeoutPromise = new Promise<null>((resolve) =>
-        setTimeout(() => resolve(null), timeoutMs)
+        setTimeout(() => resolve(null), 8000)
       );
       const snapshot = await Promise.race([fetchPromise, timeoutPromise]);
       if (snapshot && 'forEach' in snapshot) {
         const items: Trade[] = [];
+        const staleMockDocIds: string[] = [];
+
         snapshot.forEach((docSnap) => {
           if (docSnap.id === "_meta") return;
           const data = docSnap.data();
-          items.push({ ...data, id: data.id || docSnap.id } as Trade);
+          const resolvedId = data.id || docSnap.id;
+          if (MOCK_TRADE_IDS.has(docSnap.id) || MOCK_TRADE_IDS.has(resolvedId)) {
+            staleMockDocIds.push(docSnap.id);
+            return;
+          }
+          items.push({ ...data, id: resolvedId } as Trade);
         });
 
-        if (items.length > 0) {
-          if (typeof window !== "undefined") {
-            try {
-              localStorage.setItem(TRADES_KEY, JSON.stringify(items));
-            } catch (e) {}
-          }
-          return items;
+        // Clean up any legacy auto-seeded mock trades from Firestore in the background
+        if (staleMockDocIds.length > 0) {
+          Promise.allSettled(
+            staleMockDocIds.map((docId) => deleteDoc(doc(firestoreDb, "trades", docId)))
+          ).catch(() => {});
         }
 
-        const metaDocRef = doc(db, "trades", "_meta");
-        const metaSnap = await Promise.race([
-          getDoc(metaDocRef),
-          new Promise<null>((resolve) => setTimeout(() => resolve(null), 1500))
-        ]);
-        const isInitLocal = typeof window !== "undefined" && localStorage.getItem(TRADES_INIT_KEY);
-
-        if ((metaSnap && 'exists' in metaSnap && metaSnap.exists()) || isInitLocal) {
-          return items.length > 0 ? items : localList;
-        }
-
-        // First-time initialization ONLY: set _meta doc and seed default trades
-        await setDoc(doc(db, "trades", "_meta"), { initialized: true });
-        for (const trade of DEFAULT_TRADES) {
-          await setDoc(doc(db, "trades", trade.id), trade);
-        }
         if (typeof window !== "undefined") {
-          localStorage.setItem(TRADES_INIT_KEY, "true");
-          localStorage.setItem(TRADES_KEY, JSON.stringify(DEFAULT_TRADES));
+          try {
+            localStorage.setItem(TRADES_KEY, JSON.stringify(items));
+            localStorage.setItem(TRADES_INIT_KEY, "true");
+          } catch (e) {}
         }
-        return DEFAULT_TRADES;
-      } else if (hasLocal) {
-        // Fire-and-forget background sync if timeout was hit
-        fetchPromise.then((snap) => {
-          if (snap && 'forEach' in snap) {
-            const bgTrades: Trade[] = [];
-            snap.forEach((docSnap) => {
-              if (docSnap.id === "_meta") return;
-              const data = docSnap.data();
-              bgTrades.push({ ...data, id: data.id || docSnap.id } as Trade);
-            });
-            if (bgTrades.length > 0 && typeof window !== "undefined") {
-              try {
-                localStorage.setItem(TRADES_KEY, JSON.stringify(bgTrades));
-              } catch (e) {}
-            }
-          }
-        }).catch(() => {});
+        return items;
       }
     } catch (err) {
       console.warn("Firestore fetch trades error:", err);
@@ -1473,6 +1445,7 @@ export async function saveTrade(trade: Trade): Promise<Trade> {
   }
   if (typeof window !== "undefined") {
     localStorage.setItem(TRADES_KEY, JSON.stringify(list));
+    window.dispatchEvent(new CustomEvent("syllabus_trades_updated"));
   }
   return trade;
 }
@@ -1506,6 +1479,7 @@ export async function deleteTrade(id: string): Promise<boolean> {
       try {
         const list = JSON.parse(saved).filter((t: Trade) => t.id !== id);
         localStorage.setItem(TRADES_KEY, JSON.stringify(list));
+        window.dispatchEvent(new CustomEvent("syllabus_trades_updated"));
       } catch (e) {}
     }
   }
@@ -1535,14 +1509,11 @@ export async function getStudentProgressMap(userId: string): Promise<Record<stri
 }
 
 export async function saveStudentProgressMap(userId: string, progressMap: Record<string, boolean>): Promise<void> {
-  if (typeof navigator !== "undefined" && !navigator.onLine) {
-    queueOfflineProgress({ userId, syllabusId: "", progressMap });
-  } else if (isFirebaseConfigured && db) {
+  if (isFirebaseConfigured && db) {
     try {
       await setDoc(doc(db, "userProgress", userId), { progressMap, updatedAt: new Date().toISOString() }, { merge: true });
     } catch (err) {
-      console.warn("Firestore progress save error, queueing offline:", err);
-      queueOfflineProgress({ userId, syllabusId: "", progressMap });
+      console.warn("Firestore progress save error:", err);
     }
   }
 
@@ -2016,6 +1987,30 @@ export async function clearAllReadStudentNotifications(studentUid: string): Prom
   }
 }
 
+function normalizeActivityLog(raw: ActivityLog, docId?: string): ActivityLog {
+  return {
+    ...raw,
+    id: docId || raw.id,
+    userName: raw.userName === "Teacher Admin" ? "Josef Marie" : (raw.userName || "Unknown User"),
+    userEmail: raw.userEmail || "",
+    details: (raw.details || "").replace(/Teacher Admin/g, "Josef Marie"),
+  };
+}
+
+export function getLocalActivityLogs(): ActivityLog[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const saved = localStorage.getItem(ACTIVITIES_KEY);
+    if (!saved) return [];
+    const rawList: ActivityLog[] = JSON.parse(saved);
+    return rawList
+      .map(l => normalizeActivityLog(l))
+      .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+  } catch (e) {
+    return [];
+  }
+}
+
 export async function logActivity(entry: Omit<ActivityLog, 'id' | 'timestamp'>): Promise<ActivityLog> {
   const cleanUserName = entry.userName === "Teacher Admin" ? "Josef Marie" : entry.userName;
   const cleanDetails = (entry.details || "").replace(/Teacher Admin/g, "Josef Marie");
@@ -2028,6 +2023,18 @@ export async function logActivity(entry: Omit<ActivityLog, 'id' | 'timestamp'>):
     timestamp: new Date().toISOString()
   };
 
+  if (typeof window !== "undefined") {
+    try {
+      const saved = localStorage.getItem(ACTIVITIES_KEY);
+      const list: ActivityLog[] = saved ? JSON.parse(saved) : [];
+      list.unshift(newLog);
+      localStorage.setItem(ACTIVITIES_KEY, JSON.stringify(list.slice(0, 200)));
+      window.dispatchEvent(new CustomEvent("syllabus_activities_updated"));
+    } catch (e) {
+      console.error("Local activity log error:", e);
+    }
+  }
+
   const sanitized = sanitizeForFirestore(newLog);
 
   if (isFirebaseConfigured && db) {
@@ -2038,62 +2045,97 @@ export async function logActivity(entry: Omit<ActivityLog, 'id' | 'timestamp'>):
     }
   }
 
+  return newLog;
+}
+
+export function subscribeToActivityLogs(
+  limitCount: number = 100,
+  callback: (logs: ActivityLog[]) => void
+): () => void {
+  const local = getLocalActivityLogs();
+  if (local.length > 0) {
+    callback(local.slice(0, limitCount));
+  }
+
+  const handleLocalUpdate = () => {
+    callback(getLocalActivityLogs().slice(0, limitCount));
+  };
+
   if (typeof window !== "undefined") {
+    window.addEventListener("syllabus_activities_updated", handleLocalUpdate);
+  }
+
+  let unsubFirestore: (() => void) | null = null;
+  if (isFirebaseConfigured && db) {
     try {
-      const saved = localStorage.getItem(ACTIVITIES_KEY);
-      const list: ActivityLog[] = saved ? JSON.parse(saved) : [];
-      list.unshift(newLog);
-      localStorage.setItem(ACTIVITIES_KEY, JSON.stringify(list.slice(0, 200)));
+      const q = query(
+        collection(db, "activityLogs"),
+        orderBy("timestamp", "desc"),
+        limit(limitCount)
+      );
+      unsubFirestore = onSnapshot(
+        q,
+        (snap) => {
+          const items = snap.docs.map(d => normalizeActivityLog(d.data() as ActivityLog, d.id));
+          items.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
+
+          if (items.length > 0) {
+            if (typeof window !== "undefined") {
+              try {
+                localStorage.setItem(ACTIVITIES_KEY, JSON.stringify(items.slice(0, 200)));
+              } catch (e) {}
+            }
+            callback(items);
+          } else {
+            callback(getLocalActivityLogs().slice(0, limitCount));
+          }
+        },
+        (err) => {
+          console.warn("Firestore subscribeToActivityLogs error:", err);
+          callback(getLocalActivityLogs().slice(0, limitCount));
+        }
+      );
     } catch (e) {
-      console.error("Local activity log error:", e);
+      console.warn("Failed to attach subscribeToActivityLogs:", e);
     }
   }
 
-  return newLog;
+  return () => {
+    if (unsubFirestore) unsubFirestore();
+    if (typeof window !== "undefined") {
+      window.removeEventListener("syllabus_activities_updated", handleLocalUpdate);
+    }
+  };
 }
 
 export async function getAllActivityLogs(limitCount?: number): Promise<ActivityLog[]> {
   // 1. Fast local cache retrieval
-  let localItems: ActivityLog[] = [];
-  if (typeof window !== "undefined") {
-    try {
-      const saved = localStorage.getItem(ACTIVITIES_KEY);
-      if (saved) {
-        const rawList: ActivityLog[] = JSON.parse(saved);
-        localItems = rawList.map(l => ({
-          ...l,
-          userName: l.userName === "Teacher Admin" ? "Josef Marie" : l.userName,
-          details: (l.details || "").replace(/Teacher Admin/g, "Josef Marie")
-        }));
-      }
-    } catch (e) {}
-  }
+  const localItems = getLocalActivityLogs();
 
-  // 2. Fetch from Firestore with timeout
+  // 2. Indexed query from Firestore (downloads only the newest N documents instead of full collection)
   if (isFirebaseConfigured && db) {
     try {
-      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3500));
-      const fetchPromise = getDocs(collection(db, "activityLogs"));
+      const targetLimit = limitCount || 100;
+      const orderedQuery = query(
+        collection(db, "activityLogs"),
+        orderBy("timestamp", "desc"),
+        limit(targetLimit)
+      );
+      const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 9000));
+      const fetchPromise = getDocs(orderedQuery);
       const snapshot: any = await Promise.race([fetchPromise, timeoutPromise]);
 
       if (snapshot && !snapshot.empty) {
         const items: ActivityLog[] = [];
         snapshot.forEach((docSnap: any) => {
-          const d = docSnap.data() as ActivityLog;
-          items.push({
-            ...d,
-            id: docSnap.id,
-            userName: d.userName === "Teacher Admin" ? "Josef Marie" : d.userName,
-            details: (d.details || "").replace(/Teacher Admin/g, "Josef Marie")
-          });
+          items.push(normalizeActivityLog(docSnap.data() as ActivityLog, docSnap.id));
         });
 
-        // Sort descending by timestamp in JS
         items.sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime());
 
         if (typeof window !== "undefined") {
           try {
-            localStorage.setItem(ACTIVITIES_KEY, JSON.stringify(items));
+            localStorage.setItem(ACTIVITIES_KEY, JSON.stringify(items.slice(0, 200)));
           } catch (e) {}
         }
         return limitCount ? items.slice(0, limitCount) : items;
@@ -2165,27 +2207,14 @@ export async function saveLastReadSubtopic(syllabusId: string, subtopicId: strin
     } catch (e) {}
   }
 
-  if (typeof navigator !== "undefined" && !navigator.onLine) {
-    queueOfflineProgress({ 
-      userId: uid, 
-      syllabusId, 
-      progressMap: getSubtopicProgress(uid), 
-      lastReadSubtopicId: subtopicId 
-    });
-  } else if (isFirebaseConfigured && db && uid !== "guest") {
+  if (isFirebaseConfigured && db && uid !== "guest") {
     try {
       await setDoc(doc(db, "userProgress", uid), {
         lastReadSubtopics: { [syllabusId]: subtopicId },
         updatedAt: new Date().toISOString()
       }, { merge: true });
     } catch (err) {
-      console.warn("Firestore last-read save error, queueing offline:", err);
-      queueOfflineProgress({ 
-        userId: uid, 
-        syllabusId, 
-        progressMap: getSubtopicProgress(uid), 
-        lastReadSubtopicId: subtopicId 
-      });
+      console.warn("Firestore last-read save error:", err);
     }
   }
 }
@@ -2412,7 +2441,7 @@ export function subscribeToStudentTopicTimeRecords(
 export function purgeStaleMockDataOnce() {
   if (typeof window === "undefined") return;
   try {
-    const PURGE_FLAG = "syllabus_mock_data_purged_v4";
+    const PURGE_FLAG = "syllabus_mock_data_purged_v5";
     if (!localStorage.getItem(PURGE_FLAG)) {
       // 1. Clear fake seeded topic time records from browser
       localStorage.removeItem(TOPIC_TIME_KEY);
@@ -2420,7 +2449,10 @@ export function purgeStaleMockDataOnce() {
       localStorage.removeItem(ACTIVITIES_KEY);
       // 3. Clear old mock notifications from browser
       localStorage.removeItem(NOTIFICATIONS_KEY);
-      // 4. Remove mock students from localStorage
+      // 4. Clear any auto-seeded developer tips & coding challenges caches
+      localStorage.removeItem("syllabus_platform_developer_tips_v1");
+      localStorage.removeItem("syllabus_platform_challenges_v1");
+      // 5. Remove mock students from localStorage
       const savedUsers = localStorage.getItem(USERS_KEY);
       if (savedUsers) {
         const users: UserProfile[] = JSON.parse(savedUsers);
@@ -2468,6 +2500,7 @@ export async function clearAllActivityLogs(): Promise<void> {
   if (typeof window !== "undefined") {
     try {
       localStorage.removeItem(ACTIVITIES_KEY);
+      window.dispatchEvent(new CustomEvent("syllabus_activities_updated"));
     } catch (e) {
       console.error("Error clearing local activity logs:", e);
     }
@@ -2475,10 +2508,9 @@ export async function clearAllActivityLogs(): Promise<void> {
 
   if (isFirebaseConfigured && db) {
     try {
-      const snap = await getDocs(collection(db, "activities"));
-      for (const d of snap.docs) {
-        await deleteDoc(doc(db, "activities", d.id));
-      }
+      const firestoreDb = db;
+      const snap = await getDocs(collection(firestoreDb, "activityLogs"));
+      await Promise.allSettled(snap.docs.map(d => deleteDoc(doc(firestoreDb, "activityLogs", d.id))));
     } catch (e) {
       console.warn("Error clearing Firestore activity logs:", e);
     }
@@ -2533,7 +2565,7 @@ export async function seedInitialTopicTimeRecordsIfEmpty(): Promise<StudentTopic
 // ==========================================
 // ASSIGNMENTS & STUDENT SUBMISSIONS
 // ==========================================
-import { Assignment, AssignmentSubmission } from "@/types/assignment";
+import { Assignment, AssignmentSubmission, StudentDeadlineExtension } from "@/types/assignment";
 
 const ASSIGNMENTS_KEY = "syllabus_platform_assignments_v1";
 const DELETED_ASSIGNMENTS_KEY = "syllabus_platform_deleted_assignments_v1";
@@ -2545,108 +2577,7 @@ const SUBMISSIONS_KEY = "syllabus_platform_submissions_v1";
  * or Firestore is temporarily throttled on slow school Wi-Fi, all published assignments
  * (including newly published tasks like UI ReactJS) are immediately available.
  */
-export const PUBLISHED_ASSIGNMENTS_BASELINE: Assignment[] = [
-  {
-    id: "asg_1793792103950",
-    title: "UI ReactJS",
-    courseCode: "SWDFA501",
-    courseTitle: "FRONTEND APPLICATION DEVELOPMENT WITH REACTJS",
-    tradeId: "trade-1785861602651",
-    level: "Level 5",
-    totalPoints: 100,
-    dueDate: "2026-11-05",
-    allowFileUpload: true,
-    allowTextSubmission: true,
-    submissionType: "individual",
-    status: "published",
-    createdBy: "layjoe0001@gmail.com",
-    createdAt: "2026-11-04T11:35:03.950Z",
-    updatedAt: "2026-11-04T11:35:03.950Z",
-    description:
-      "In this assignment, you will design and build a static user interface for StockFlow, an inventory tracking system. The purpose of this project is to practice setting up multi-page client-side routing, structuring functional components, and designing clean data tables and forms using plain React (JavaScript) and standard CSS.",
-    instructionsMarkdown:
-      'Assignment: Frontend UI Layout & Routing (Stateless Version)\nProject Title: StockFlow - Inventory UI Layout (Static Mock)\n\nModule: Frontend Web Application Development (React.js)\n\nTarget Architecture: Multi-Page UI Application (React Router v6 + Standard CSS, No State & No Backend)\n\n1. Assignment Overview\nIn this assignment, you will design and build a static user interface for StockFlow, an inventory tracking system. The purpose of this project is to practice setting up multi-page client-side routing, structuring functional components, and designing clean data tables and forms using plain React (JavaScript) and standard CSS.\nBecause this is a layout and routing exercise, no state management (useState) or backend database is required. All data will be displayed statically from mock arrays.\n\n2. Learning Objectives\nBy completing this assignment, you will demonstrate the ability to:\n1.\tImplement Client-Side Routing: Set up multi-page navigation using react-router-dom (BrowserRouter, Routes, Route, Link).\n2.\tStructure React Components: Break down a multi-page layout into clean, reusable functional components (Navbar, Dashboard, Inventory Table, Transaction Form).\n3.\tDesign Responsive Tables & Badges: Style data tables, conditional status labels ("In Stock" / "Low Stock"), and summary cards using standard CSS.\n4.\tBuild Static Form Layouts: Construct professional UI form layouts with dropdowns and input fields for user data entry.\n\n3. Required Pages & Scope Breakdown\nYour application must include 3 static views/pages accessible via navigation links:\nRoute Path\tPage Name\tCore Required Features\n/\tDashboard\tSummary metric cards showing static placeholder numbers for Total Stock Units, Low Stock Alerts, and Recent Transactions.\n/inventory\tInventory Table\tStatic data table displaying SKU, Item Name, Category, Quantity, and status badges (In Stock or Low Stock).\n/transactions\tStock In / Out Form\tStatic form layout for recording stock movements + a static history log table tracking past actions.'
-  },
-  {
-    id: "asg_1792761223594",
-    title: "Applying Logic Gates and Laws of Boolean Algebra",
-    courseCode: "SWDDA401",
-    courseTitle: "Data Structure And Algorithm Fundamental using JavaScript",
-    tradeId: "trade-1785861602651",
-    level: "Level 4",
-    totalPoints: 100,
-    dueDate: "2026-10-24",
-    allowFileUpload: true,
-    allowTextSubmission: true,
-    submissionType: "individual",
-    status: "published",
-    createdBy: "layjoe0001@gmail.com",
-    createdAt: "2026-10-23T13:13:43.594Z",
-    updatedAt: "2026-10-23T13:13:43.594Z",
-    description: "This is Individual Assignment",
-    instructionsMarkdown:
-      "1) Primary Building Blocks and Application for \n==> a. Basic Gates\n==> b. Universal Gates\n==> c. Exclusive Gates\n\n2. Laws of Boolean Algebra\nI) Identity and Fundamental Rules \n\nDo on Mathematical Expression and Meaning/ Explanation\n\n==> a. Identity Law\n==> b. Null/ Annulment Law\n==> c. Idempotent Law\n==> d. Complement Law\n==> e. Double Negation/ Involution Law\n\nII)Structure and Algebraic Laws\n\n==> a. Commutative Law\n==> b. Associative Law\n==> c. Distributive Law\n\nIII) Advanced Simplification and Theorems\n\n==> a. Absorption Law\n==> b. De Morgan's Theorems"
-  },
-  {
-    id: "asg_1790773090397",
-    title: "Encapsulation",
-    courseCode: "SWDMA501",
-    courseTitle: "Mobile Application Development using Flutter ",
-    tradeId: "trade-1785861602651",
-    level: "Level 5",
-    totalPoints: 100,
-    dueDate: "2026-10-01",
-    allowFileUpload: true,
-    allowTextSubmission: true,
-    submissionType: "group",
-    targetGroupId: "grp_1790587989073_71de",
-    status: "published",
-    createdBy: "layjoe0001@gmail.com",
-    createdAt: "2026-09-30T12:58:10.397Z",
-    updatedAt: "2026-09-30T12:58:10.397Z",
-    description: "Do the work",
-    instructionsMarkdown: "Do the Encapsulation"
-  },
-  {
-    id: "asg_1790342514073",
-    title: "Application of Number base arithmetic operations",
-    courseCode: "SWDDA401",
-    courseTitle: "Data Structure And Algorithm Fundamental using JavaScript",
-    tradeId: "trade-1785861602651",
-    level: "Level 4",
-    totalPoints: 50,
-    dueDate: "2026-09-28",
-    allowFileUpload: true,
-    allowTextSubmission: true,
-    status: "published",
-    createdBy: "layjoe0001@gmail.com",
-    createdAt: "2026-09-25T13:21:54.073Z",
-    updatedAt: "2026-09-25T13:21:54.073Z",
-    description: "Number Base Arithmetic Operations",
-    instructionsMarkdown:
-      "1. Binary Arithmetic (Base 2)\n- Addition\n- Subtraction\n\n2. Octal Arithmetic (Base 8)\n- Addition\n- Subtraction\n\n3. Hexadecimal Arithmetic (Base 16)\n- Addition\n- Subtraction"
-  },
-  {
-    id: "asg_1790341901857",
-    title: "Dart Practical Exercises",
-    courseCode: "SWDMA501",
-    courseTitle: "Mobile Application Development using Flutter ",
-    tradeId: "trade-1785861602651",
-    level: "Level 5",
-    totalPoints: 80,
-    dueDate: "2026-09-29",
-    allowFileUpload: true,
-    allowTextSubmission: true,
-    submissionType: "individual",
-    status: "published",
-    createdBy: "layjoe0001@gmail.com",
-    createdAt: "2026-09-25T13:11:41.857Z",
-    updatedAt: "2026-09-28T08:24:00.214Z",
-    description: "Questions on Dart Variables, Control Statement, Iterative Statement and Functions",
-    instructionsMarkdown:
-      '1: Number Multiplier Table (Loops & Formatting) \n\nTask: Write a function printMultiplicationTable(int baseNumber, {int limit = 10}) that generates and prints a clean multiplication table. \n\nRequirements:  \n\n–   The function should accept a required baseNumber and an optional named parameter limit that defaults to 10.  \n–   Use a standard for loop from 1 up to limit.  \n–   Print each line in the format: [baseNumber] x [i] = [product].  \n–   In main(), test the function with:  \no   baseNumber = 7 (using default limit)  \no   baseNumber = 4 with limit = 5 \n\n2: Find Highest and Lowest (Lists & Iteration) \n\nTask: Create a function named findExtremes(List<int> numbers) that scans a list of numbers without using built-in helper functions like .reduce(). \n\nRequirements:  \n–   If the list is empty, print "List is empty." and exit the function.  \n–   Initialize two variables, highest and lowest, with the first element of the list (numbers[0]).  –   Iterate through the rest of the list using a loop:  \no   If the current number is greater than highest, update highest.  \no   If the current number is smaller than lowest, update lowest.  \n–   Return a String summarizing the result (e.g., \'Highest: X, Lowest: Y\').  \n–   In main(), test with: [42, 17, 89, 5, 23, 99, 12]. \n\n3: String Palindrome Checker (Loops & Strings) \n\nTask: Write a function isPalindrome(String word) that checks whether a word reads the same forwards and backwards (ignoring letter casing). \n\nRequirements:  \n\n–   Convert the input string to lowercase first using .toLowerCase().  \n–   Use a reverse for loop starting from word.length - 1 down to 0 to build a new reversed string.  –   Compare the reversed string to the lowercased original string.  \n–   Return true if they match, false otherwise.\n\n–   In main(), test it against:  \no   \'Racecar\' (should be true)  \no   \'Dart\' (should be false)  \no   \'Madam\' (should be true) \n\n4: Bank Account Transaction Processor (break & continue) \n\nTask: Simulate a wallet/account ledger processing a queue of transactions. \n\nRequirements:  \n\n–   Create a function processLedger(double startingBalance, List<double> transactions).  \n–   Loop through each transaction in the list:  \no   If a transaction is 0.0, use continue to skip it (print: \'Skipped empty transaction\').  \no   If applying a withdrawal would drop the balance below 0.0, print \'Transaction rejected: Insufficient funds for $[amount]\' and use break to stop processing further transactions.  \no   Otherwise, update the balance and print \'Processed $[amount] | Current Balance: $[balance]\'.  –   After the loop, print the final remaining balance.  \n–   In main(), test with a starting balance of 100.0 and the transaction list:  \n–   [-20.0, 50.0, 0.0, -150.0, 30.0]. \n\n5: Temperature Analyzer (Variables & Conditionals) \n\nTask: Create a function named analyzeTemperature(double celsius) that prints the Fahrenheit equivalent and an advisory note. \n\nRequirements:  \n–   Formula: Fahrenheit = (Celsius * 9 / 5) + 32.  \n–   Use an if-else block to check the Fahrenheit value:  \no   If Fahrenheit is 86°F or higher: print "Advisory: Hot weather, stay hydrated."  \no   If Fahrenheit is between 50°F and 85°F (inclusive): print "Advisory: Moderate weather."  \no   If Fahrenheit is below 50°F: print "Advisory: Cold weather, bundle up."  \n–   In your main() function, call analyzeTemperature with at least three different temperatures (e.g., 0.0, 22.5, and 35.0). \n\n6: FizzBuzz Cart (Loops & Conditionals) \n\nTask: \nWrite a Dart program that loops through numbers from 1 to 30 (inclusive). \n\nRequirements:  \n–   For numbers divisible by both 3 and 5, print: [Number] -> FizzBuzz  \n–   For numbers divisible by only 3, print: [Number] -> Fizz  \n–   For numbers divisible by only 5, print: [Number] -> Buzz  \n–   For all other numbers, print: [Number] -> Normal (Hint: Use the modulo operator % to test divisibility). \n\n7: Grocery Cart Calculator (Functions & Lists) \n\nTask: Create a function that calculates the final bill for a shopping list with an optional discount. \n\nRequirements:  \n–   Create a function named calculateTotal:  \no   It takes a List<double> prices (required positional parameter).  \no   It takes an optional named parameter {double discountPercent = 0.0}.  \n–   Inside the function:  \no   Use a for-in loop to calculate the sum of all item prices.  \no   If discountPercent is greater than 0, deduct that percentage from the subtotal.  \no   Return the final total as a double.  \n–   In main(), define a list of prices [12.50, 4.99, 25.00, 8.75]:  \no   Print the subtotal with no discount.  \no   Print the discounted total using a 10% discount (discountPercent: 10.0). \n\n8: Simple User Validator (Loops, Conditionals, and Named Parameters) \n\nTask: Build a user access checker that processes a list of ages. \n\nRequirements:  \n–   Write a function checkAccess({required String username, required int age}) that returns a bool:  o   Returns true if age >= 18.  \no   Returns false otherwise.  \n–   In main():  o   Create a List<int> candidateAges = [16, 21, 14, 18, 29];  \no   Loop through the list using a loop of your choice.  \no   For each person, call checkAccess(username: \'User_$index\', age: candidateAges[index]).  \no   Print: "User_[index] (Age [age]): ACCESS GRANTED" or "ACCESS DENIED".\no   Count how many users were granted access and print the total at the end: "Total eligible users: [count]".'
-  }
-];
+export const PUBLISHED_ASSIGNMENTS_BASELINE: Assignment[] = [];
 
 function getDeletedAssignmentIds(): Set<string> {
   if (typeof window === "undefined") return new Set();
@@ -2702,10 +2633,28 @@ export function mergeAssignmentsLists(...lists: Assignment[][]): Assignment[] {
           ])
         );
 
+        // Preserve and merge per-student deadline extensions (newer grantedAt wins per student)
+        const mergedExtensions: Record<string, StudentDeadlineExtension> = {
+          ...(other.studentExtensions || {}),
+          ...(base.studentExtensions || {})
+        };
+        if (other.studentExtensions && base.studentExtensions) {
+          for (const uid of Object.keys(other.studentExtensions)) {
+            const eOther = other.studentExtensions[uid];
+            const eBase = base.studentExtensions[uid];
+            if (eOther && eBase) {
+              const tOther = new Date(eOther.grantedAt || 0).getTime();
+              const tBase = new Date(eBase.grantedAt || 0).getTime();
+              mergedExtensions[uid] = tBase >= tOther ? eBase : eOther;
+            }
+          }
+        }
+
         map.set(item.id, {
           ...base,
           studentReceipts: Object.keys(mergedReceipts).length > 0 ? mergedReceipts : undefined,
-          forceAssignedStudentUids: mergedForceUids.length > 0 ? mergedForceUids : undefined
+          forceAssignedStudentUids: mergedForceUids.length > 0 ? mergedForceUids : undefined,
+          studentExtensions: Object.keys(mergedExtensions).length > 0 ? mergedExtensions : undefined
         });
       }
     }
@@ -2985,6 +2934,99 @@ export async function forceAssignAssignmentToStudents(
   return updatedAssignment;
 }
 
+/**
+ * Grants a deadline extension to a specific student for an assignment, allowing them
+ * to upload a new submission or edit an existing ungraded submission until extendedDueDate.
+ */
+export async function grantAssignmentStudentExtension(
+  assignment: Assignment,
+  student: UserProfile,
+  extendedDueDate: string,
+  reason?: string,
+  instructorName: string = "Josef Marie"
+): Promise<Assignment> {
+  const extension: StudentDeadlineExtension = {
+    studentUid: student.uid,
+    studentName: student.fullName,
+    extendedDueDate,
+    reason: reason?.trim() || undefined,
+    grantedAt: new Date().toISOString(),
+    grantedBy: instructorName
+  };
+
+  const nextExtensions: Record<string, StudentDeadlineExtension> = {
+    ...(assignment.studentExtensions || {}),
+    [student.uid]: extension
+  };
+
+  const updatedAssignment: Assignment = {
+    ...assignment,
+    studentExtensions: nextExtensions,
+    updatedAt: new Date().toISOString()
+  };
+
+  await saveAssignment(updatedAssignment);
+
+  // Notify student so they know their extension was approved
+  try {
+    await sendStudentNotification(
+      student.uid,
+      instructorName,
+      `⏳ Deadline Extension Approved for "${assignment.title}": Your submission/edit window is now open until ${extendedDueDate}${extension.reason ? ` (${extension.reason})` : ""}.`
+    );
+  } catch {}
+
+  return updatedAssignment;
+}
+
+/**
+ * Revokes a previously granted deadline extension for a specific student.
+ */
+export async function revokeAssignmentStudentExtension(
+  assignment: Assignment,
+  studentUid: string
+): Promise<Assignment> {
+  const nextExtensions: Record<string, StudentDeadlineExtension> = {
+    ...(assignment.studentExtensions || {})
+  };
+  delete nextExtensions[studentUid];
+
+  const updatedAssignment: Assignment = {
+    ...assignment,
+    studentExtensions: Object.keys(nextExtensions).length > 0 ? nextExtensions : undefined,
+    updatedAt: new Date().toISOString()
+  };
+
+  if (isFirebaseConfigured && db) {
+    try {
+      await setDoc(
+        doc(db, "assignments", assignment.id),
+        sanitizeForFirestore({
+          studentExtensions: nextExtensions,
+          updatedAt: updatedAssignment.updatedAt
+        }),
+        { merge: true }
+      );
+    } catch (e) {
+      console.warn("Firestore revokeAssignmentStudentExtension error:", e);
+    }
+  }
+
+  if (typeof window !== "undefined") {
+    try {
+      const existing = getLocalAssignments();
+      const idx = existing.findIndex(a => a.id === assignment.id);
+      if (idx >= 0) {
+        existing[idx] = updatedAssignment;
+        localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(existing));
+        window.dispatchEvent(new CustomEvent("syllabus_assignments_updated"));
+      }
+    } catch {}
+  }
+
+  return updatedAssignment;
+}
+
 export async function deleteAssignment(assignmentId: string): Promise<void> {
   // 1. LocalStorage
   if (typeof window !== "undefined") {
@@ -3166,6 +3208,48 @@ export function subscribeToSubmissions(callback: (submissions: AssignmentSubmiss
       return unsubscribe;
     } catch (e) {
       console.warn("subscribeToSubmissions error:", e);
+    }
+  }
+
+  callback(local);
+  return () => {};
+}
+
+/**
+ * Student-scoped submissions listener: ONLY queries documents where studentUid matches.
+ * Prevents reading hundreds of submissions across all other students in Firestore.
+ */
+export function subscribeToStudentSubmissions(
+  studentUid: string,
+  callback: (submissions: AssignmentSubmission[]) => void
+): () => void {
+  if (!studentUid) {
+    callback([]);
+    return () => {};
+  }
+
+  // 1. Instant local cache emission (filtered to this student only)
+  const local = getLocalSubmissions().filter(s => s.studentUid === studentUid);
+  if (local && local.length > 0) callback(local);
+
+  // 2. Scoped Firestore listener with where("studentUid", "==", studentUid)
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(
+        collection(db, "submissions"),
+        where("studentUid", "==", studentUid)
+      );
+      const unsubscribe = onSnapshot(q, (snap) => {
+        const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as AssignmentSubmission));
+        list.sort((a, b) => new Date(b.submittedAt || 0).getTime() - new Date(a.submittedAt || 0).getTime());
+        callback(list);
+      }, (err) => {
+        console.warn("Firestore student submissions subscription failed:", err);
+        callback(local);
+      });
+      return unsubscribe;
+    } catch (e) {
+      console.warn("subscribeToStudentSubmissions error:", e);
     }
   }
 
@@ -4073,6 +4157,56 @@ export function subscribeToAllExamAttempts(callback: (attempts: ExamAttempt[]) =
   }
 }
 
+/**
+ * Student-scoped exam attempts listener: ONLY queries documents where studentUid matches.
+ * Prevents reading hundreds of exam attempts across all other students in Firestore.
+ */
+export function subscribeToStudentExamAttempts(
+  studentUid: string,
+  callback: (attempts: ExamAttempt[]) => void
+): () => void {
+  if (!studentUid) {
+    callback([]);
+    return () => {};
+  }
+
+  // 1. Instant local cache emission (filtered to this student only)
+  let localAttempts: ExamAttempt[] = [];
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(EXAM_ATTEMPTS_KEY);
+      if (raw) {
+        localAttempts = (JSON.parse(raw) as ExamAttempt[]).filter(a => a.studentUid === studentUid);
+        if (localAttempts.length > 0) callback(localAttempts);
+      }
+    } catch {}
+  }
+
+  if (!isFirebaseConfigured || !db) {
+    getStudentExamAttempts(studentUid).then(callback);
+    return () => {};
+  }
+
+  try {
+    const q = query(
+      collection(db, "exam_attempts"),
+      where("studentUid", "==", studentUid)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+      const list = snap.docs.map(d => ({ ...d.data(), id: d.id } as ExamAttempt));
+      callback(list);
+    }, (err) => {
+      console.warn("subscribeToStudentExamAttempts error:", err);
+      callback(localAttempts);
+    });
+    return unsub;
+  } catch (e) {
+    console.warn("subscribeToStudentExamAttempts failed:", e);
+    callback(localAttempts);
+    return () => {};
+  }
+}
+
 // AUTO-GRADING ENGINE
 export function calculateAutoGrade(exam: Exam, answers: Record<string, any>): {
   score: number;
@@ -4623,16 +4757,6 @@ export async function getDeveloperTips(includeDrafts = false): Promise<Developer
     } catch (e) {}
   }
 
-  // If still empty, seed with initial tips and save to localStorage
-  if (tips.length === 0) {
-    tips = [...INITIAL_DEVELOPER_TIPS];
-    if (typeof window !== "undefined") {
-      try {
-        localStorage.setItem(TIPS_STORAGE_KEY, JSON.stringify(tips));
-      } catch (e) {}
-    }
-  }
-
   if (!includeDrafts) {
     tips = tips.filter(t => t.status === "published");
   }
@@ -4716,9 +4840,6 @@ export function subscribeToDeveloperTips(callback: (tips: DeveloperTip[]) => voi
   try {
     const unsub = onSnapshot(collection(db, "developer_tips"), (snap) => {
       let list = snap.docs.map(d => ({ ...d.data(), id: d.id } as DeveloperTip));
-      if (list.length === 0) {
-        list = [...INITIAL_DEVELOPER_TIPS];
-      }
       if (typeof window !== "undefined") {
         localStorage.setItem(TIPS_STORAGE_KEY, JSON.stringify(list));
       }
@@ -5005,8 +5126,26 @@ export function subscribeToSuggestions(callback: (suggestions: StudentSuggestion
 }
 
 export async function getStudentSuggestions(studentUid: string): Promise<StudentSuggestion[]> {
-  const all = await getSuggestions();
-  return all.filter(s => s.studentUid === studentUid);
+  if (!studentUid) return [];
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(collection(db, "suggestions"), where("studentUid", "==", studentUid));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ ...d.data(), id: d.id } as StudentSuggestion));
+    } catch (e) {
+      console.warn("Firestore getStudentSuggestions error:", e);
+    }
+  }
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(SUGGESTIONS_STORAGE_KEY);
+      if (raw) {
+        const list: StudentSuggestion[] = JSON.parse(raw);
+        return list.filter(s => s.studentUid === studentUid);
+      }
+    } catch (e) {}
+  }
+  return [];
 }
 
 // ============================================================================
@@ -5187,197 +5326,7 @@ export async function deleteBulletin(bulletinId: string): Promise<void> {
 const CHALLENGES_STORAGE_KEY = "syllabus_platform_challenges_v1";
 const CHALLENGE_SUBS_STORAGE_KEY = "syllabus_platform_challenge_submissions_v1";
 
-export const INITIAL_CODING_CHALLENGES: CodingChallenge[] = [
-  {
-    id: "ch-two-sum",
-    title: "Two-Sum Array Indices",
-    slug: "two-sum",
-    difficulty: "easy",
-    language: "javascript",
-    tradeId: "all",
-    level: "all",
-    points: 50,
-    weekNumber: 1,
-    active: true,
-    createdByName: "Platform Instructor",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    descriptionMarkdown: `### Two Sum Challenge
-Given an array of integers \`nums\` and an integer \`target\`, return the **indices** of the two numbers such that they add up to \`target\`.
-
-- Each input will have exactly one solution.
-- You may not use the same element twice.
-- Return the indices as an array \`[index1, index2]\`.
-
-**Example:**
-\`\`\`javascript
-twoSum([2, 7, 11, 15], 9) // returns [0, 1]
-twoSum([3, 2, 4], 6)       // returns [1, 2]
-\`\`\``,
-    functionName: "twoSum",
-    starterCode: `function twoSum(nums, target) {
-  // Write your code here
-  const map = new Map();
-  for (let i = 0; i < nums.length; i++) {
-    const complement = target - nums[i];
-    if (map.has(complement)) {
-      return [map.get(complement), i];
-    }
-    map.set(nums[i], i);
-  }
-  return [];
-}`,
-    testCases: [
-      {
-        id: "tc-1",
-        input: "[[2, 7, 11, 15], 9]",
-        expectedOutput: "[0,1]",
-        description: "Basic array with target 9"
-      },
-      {
-        id: "tc-2",
-        input: "[[3, 2, 4], 6]",
-        expectedOutput: "[1,2]",
-        description: "Middle elements adding up to 6"
-      },
-      {
-        id: "tc-3",
-        input: "[[3, 3], 6]",
-        expectedOutput: "[0,1]",
-        description: "Duplicate numbers"
-      },
-      {
-        id: "tc-4",
-        input: "[[1, 5, 8, 12, 19], 20]",
-        expectedOutput: "[0,4]",
-        description: "First and last elements",
-        isHidden: true
-      }
-    ]
-  },
-  {
-    id: "ch-palindrome",
-    title: "Alphanumeric Palindrome Validator",
-    slug: "palindrome-validator",
-    difficulty: "easy",
-    language: "javascript",
-    tradeId: "all",
-    level: "all",
-    points: 40,
-    weekNumber: 2,
-    active: true,
-    createdByName: "Platform Instructor",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    descriptionMarkdown: `### Palindrome Validator
-A phrase is a **palindrome** if, after converting all uppercase letters into lowercase letters and removing all non-alphanumeric characters, it reads the same forward and backward.
-
-Alphanumeric characters include letters and numbers.
-
-**Examples:**
-\`\`\`javascript
-isPalindrome("A man, a plan, a canal: Panama") // true
-isPalindrome("race a car")                     // false
-isPalindrome(" ")                              // true
-\`\`\``,
-    functionName: "isPalindrome",
-    starterCode: `function isPalindrome(str) {
-  // Clean alphanumeric characters and lowercase
-  const clean = str.toLowerCase().replace(/[^a-z0-9]/g, '');
-  return clean === clean.split('').reverse().join('');
-}`,
-    testCases: [
-      {
-        id: "tc-p1",
-        input: '"A man, a plan, a canal: Panama"',
-        expectedOutput: "true",
-        description: "Famous Panama palindrome phrase"
-      },
-      {
-        id: "tc-p2",
-        input: '"race a car"',
-        expectedOutput: "false",
-        description: "Standard non-palindrome string"
-      },
-      {
-        id: "tc-p3",
-        input: '"Was it a car or a cat I saw?"',
-        expectedOutput: "true",
-        description: "Punctuation and question mark phrase"
-      },
-      {
-        id: "tc-p4",
-        input: '"12321"',
-        expectedOutput: "true",
-        description: "Numeric palindrome",
-        isHidden: true
-      }
-    ]
-  },
-  {
-    id: "ch-flatten-obj",
-    title: "Deep Nested Object Flattener",
-    slug: "flatten-object",
-    difficulty: "medium",
-    language: "javascript",
-    tradeId: "all",
-    level: "all",
-    points: 80,
-    weekNumber: 3,
-    active: true,
-    createdByName: "Platform Instructor",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-    descriptionMarkdown: `### Deep Object Flattener
-Write a function \`flattenObject(obj)\` that takes a deeply nested object and returns a flat single-level object with dot-separated key paths.
-
-**Example:**
-\`\`\`javascript
-const input = {
-  user: {
-    name: "John",
-    address: { city: "Nairobi" }
-  }
-};
-flattenObject(input);
-// Returns: { "user.name": "John", "user.address.city": "Nairobi" }
-\`\`\``,
-    functionName: "flattenObject",
-    starterCode: `function flattenObject(obj, prefix = '', res = {}) {
-  for (const key of Object.keys(obj)) {
-    const val = obj[key];
-    const newKey = prefix ? prefix + '.' + key : key;
-    if (val !== null && typeof val === 'object' && !Array.isArray(val)) {
-      flattenObject(val, newKey, res);
-    } else {
-      res[newKey] = val;
-    }
-  }
-  return res;
-}`,
-    testCases: [
-      {
-        id: "tc-f1",
-        input: '{"user":{"name":"John","address":{"city":"Nairobi"}}}',
-        expectedOutput: '{"user.name":"John","user.address.city":"Nairobi"}',
-        description: "Two-level nested object"
-      },
-      {
-        id: "tc-f2",
-        input: '{"a":1,"b":{"c":2}}',
-        expectedOutput: '{"a":1,"b.c":2}',
-        description: "Mixed primitive and nested"
-      },
-      {
-        id: "tc-f3",
-        input: '{"theme":{"colors":{"primary":"#06B6D4"}}}',
-        expectedOutput: '{"theme.colors.primary":"#06B6D4"}',
-        description: "Three-level UI theme config",
-        isHidden: true
-      }
-    ]
-  }
-];
+export const INITIAL_CODING_CHALLENGES: CodingChallenge[] = [];
 
 export async function saveChallenge(challenge: CodingChallenge): Promise<void> {
   if (isFirebaseConfigured && db) {
@@ -5565,8 +5514,26 @@ export async function getChallengeSubmissions(challengeId?: string): Promise<Cha
 }
 
 export async function getStudentChallengeSubmissions(studentUid: string): Promise<ChallengeSubmission[]> {
-  const all = await getChallengeSubmissions();
-  return all.filter(s => s.studentUid === studentUid);
+  if (!studentUid) return [];
+  if (isFirebaseConfigured && db) {
+    try {
+      const q = query(collection(db, "challenge_submissions"), where("studentUid", "==", studentUid));
+      const snap = await getDocs(q);
+      return snap.docs.map(d => ({ ...d.data(), id: d.id } as ChallengeSubmission));
+    } catch (e) {
+      console.warn("Firestore getStudentChallengeSubmissions error:", e);
+    }
+  }
+  if (typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(CHALLENGE_SUBS_STORAGE_KEY);
+      if (raw) {
+        const list: ChallengeSubmission[] = JSON.parse(raw);
+        return list.filter(s => s.studentUid === studentUid);
+      }
+    } catch (e) {}
+  }
+  return [];
 }
 
 export function subscribeToChallengeSubmissions(callback: (subs: ChallengeSubmission[]) => void): () => void {

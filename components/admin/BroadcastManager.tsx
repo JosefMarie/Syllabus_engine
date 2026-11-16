@@ -484,8 +484,6 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
                     className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] p-2.5 text-xs text-white focus:border-cyan-400 focus:outline-none cursor-pointer"
                   >
                     <option value="all">🌐 All Academic Levels</option>
-                    <option value="Level 1">Level 1</option>
-                    <option value="Level 2">Level 2</option>
                     <option value="Level 3">Level 3</option>
                     <option value="Level 4">Level 4</option>
                     <option value="Level 5">Level 5</option>

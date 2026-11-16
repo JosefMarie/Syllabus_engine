@@ -774,7 +774,6 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
               <option value="Level 3">Level 3</option>
               <option value="Level 4">Level 4</option>
               <option value="Level 5">Level 5</option>
-              <option value="Level 6">Level 6</option>
             </select>
           </div>
 
@@ -1322,7 +1321,6 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                     <option value="Level 3">Level 3</option>
                     <option value="Level 4">Level 4</option>
                     <option value="Level 5">Level 5</option>
-                    <option value="Level 6">Level 6</option>
                   </select>
                 </div>
               </div>
@@ -1496,7 +1494,6 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                     <option value="Level 3">Level 3</option>
                     <option value="Level 4">Level 4</option>
                     <option value="Level 5">Level 5</option>
-                    <option value="Level 6">Level 6</option>
                   </select>
                 </div>
 

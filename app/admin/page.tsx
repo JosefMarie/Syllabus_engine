@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { Syllabus } from "@/types/syllabus";
 import { UserProfile } from "@/types/auth";
-import { getAllSyllabi, deleteSyllabus, getAllUserProfiles, getLocalSyllabi, getLocalTrades, getAllTrades, subscribeToAllUserProfiles, getLocalUserProfiles, subscribeToSuggestions, subscribeToLiveProctoringSessions } from "@/lib/db";
-import { getAdminSession, logoutAdmin, getStoredSession, subscribeToAdminSessionRevocation, revokeAllAdminSessions } from "@/lib/auth";
+import { getAllSyllabi, deleteSyllabus, getAllUserProfiles, getLocalSyllabi, getLocalTrades, getAllTrades, getLocalUserProfiles, getSuggestions, getLiveProctoringSessions } from "@/lib/db";
+import { getAdminSession, logoutAdmin, getStoredSession, subscribeToAdminSessionRevocation, revokeAllAdminSessions, triggerGlobalClientRefresh } from "@/lib/auth";
 import dynamic from "next/dynamic";
 import { Trade } from "@/types/auth";
 import { useRouter } from "next/navigation";
@@ -58,7 +58,14 @@ import {
   Radio,
   Megaphone,
   GraduationCap,
-  Code2
+  Code2,
+  Menu,
+  X,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ChevronDown,
+  TrendingUp,
+  RefreshCw
 } from "lucide-react";
 import Link from "next/link";
 
@@ -80,6 +87,35 @@ export default function AdminDashboardPage() {
   const [loading, setLoading] = useState(false);
 
   const [studentSession, setStudentSession] = useState<UserProfile | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    try {
+      return localStorage.getItem("syllabus_admin_sidebar_collapsed") === "1";
+    } catch { return false; }
+  });
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const toggleSidebarCollapsed = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem("syllabus_admin_sidebar_collapsed", next ? "1" : "0");
+      } catch {}
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -89,30 +125,6 @@ export default function AdminDashboardPage() {
       if (isMounted) {
         setAdminUser(null);
         router.push("/admin/login");
-      }
-    });
-
-    // Real-time listener: keep pending approvals count live
-    const unsubProfiles = subscribeToAllUserProfiles((userProfiles) => {
-      if (isMounted) {
-        const pending = userProfiles.filter(u => u.status === 'pending_approval').length;
-        setPendingCount(pending);
-      }
-    });
-
-    // Real-time listener: keep suggestions count live
-    const unsubSuggestions = subscribeToSuggestions((allSuggestions) => {
-      if (isMounted) {
-        const unread = allSuggestions.filter(s => s.status === 'new').length;
-        setNewSuggestionsCount(unread);
-      }
-    });
-
-    // Real-time listener: keep live active exams count live
-    const unsubProctoring = subscribeToLiveProctoringSessions((allLive) => {
-      if (isMounted) {
-        const liveCount = allLive.filter(s => s.status === 'active' || s.status === 'flagged').length;
-        setActiveExamsCount(liveCount);
       }
     });
 
@@ -131,26 +143,40 @@ export default function AdminDashboardPage() {
         }
         if (isMounted) setAdminUser(currentAdmin);
 
-        // Fetch syllabi safely
-        try {
-          const data = await getAllSyllabi();
-          if (isMounted) setSyllabi(data);
-        } catch (e) {
-          console.warn("Error fetching syllabi for admin:", e);
-        }
+        // Fetch syllabi, trades, and initial sidebar badge counts in one-time queries
+        // (avoids keeping 3 collection-wide onSnapshot listeners open continuously)
+        const [syllabiRes, tradesRes, profilesRes, suggestionsRes, proctoringRes] = await Promise.allSettled([
+          getAllSyllabi(),
+          getAllTrades(),
+          getAllUserProfiles(),
+          getSuggestions(),
+          getLiveProctoringSessions(),
+        ]);
 
-        // Fetch trades safely
-        try {
-          const tradeList = await getAllTrades();
-          if (isMounted) setTrades(tradeList);
-        } catch (e) {
-          console.warn("Error fetching trades for admin:", e);
+        if (!isMounted) return;
+        if (syllabiRes.status === "fulfilled") setSyllabi(syllabiRes.value);
+        if (tradesRes.status === "fulfilled") setTrades(tradesRes.value);
+        if (profilesRes.status === "fulfilled") {
+          setPendingCount(profilesRes.value.filter(u => u.status === 'pending_approval').length);
+        }
+        if (suggestionsRes.status === "fulfilled") {
+          setNewSuggestionsCount(suggestionsRes.value.filter(s => s.status === 'new').length);
+        }
+        if (proctoringRes.status === "fulfilled") {
+          setActiveExamsCount(proctoringRes.value.filter(s => s.status === 'active' || s.status === 'flagged').length);
         }
       } catch (globalErr) {
         console.error("Admin dashboard initialization error:", globalErr);
       } finally {
         if (isMounted) setLoading(false);
       }
+    }
+
+    const handleTradesUpdated = () => {
+      if (isMounted) setTrades(getLocalTrades());
+    };
+    if (typeof window !== "undefined") {
+      window.addEventListener("syllabus_trades_updated", handleTradesUpdated);
     }
 
     init();
@@ -163,9 +189,10 @@ export default function AdminDashboardPage() {
     return () => {
       isMounted = false;
       unsubRevocation();
-      unsubProfiles();
-      unsubSuggestions();
       clearTimeout(safetyTimer);
+      if (typeof window !== "undefined") {
+        window.removeEventListener("syllabus_trades_updated", handleTradesUpdated);
+      }
     };
   }, [router]);
 
@@ -177,6 +204,17 @@ export default function AdminDashboardPage() {
   const handleRevokeAll = async () => {
     if (confirm("Are you sure you want to log out all other devices? This will instantly disconnect all phones, tablets, and student computers currently holding an admin session.")) {
       await revokeAllAdminSessions("Instructor requested all devices log out");
+    }
+  };
+
+  const handleForceRefreshAll = async () => {
+    if (confirm("Force refresh all student and admin browsers? This will clear old cached chunks and local data caches for everyone currently online or when they next open the app (without logging them out).")) {
+      try {
+        await triggerGlobalClientRefresh("Instructor triggered global cache & content refresh");
+      } catch (err) {
+        console.error("Failed to trigger global client refresh:", err);
+        alert("Failed to send global refresh signal. Please try again.");
+      }
     }
   };
 
@@ -251,474 +289,539 @@ export default function AdminDashboardPage() {
     );
   }
 
-  return (
-    <div className="min-h-screen bg-transparent text-[#CBD5E1]">
-      {/* Admin Top Header */}
-      <header className="sticky top-0 z-30 border-b border-[#334155]/60 bg-[#0B0F19]/80 px-3 sm:px-6 py-2.5 sm:py-4 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2">
-          {/* Left Brand & Navigation */}
-          <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
-            <Link
-              href="/"
-              className="inline-flex items-center space-x-1 sm:space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors bg-[#1E293B] px-2.5 sm:px-3 py-1.5 rounded-lg border border-[#334155] shrink-0"
-              title="Return to Public Course Catalog"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              <span className="hidden xs:inline">Catalog</span>
-            </Link>
-            <span className="text-[#334155] shrink-0">/</span>
-            <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0">
-              <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 text-[#06B6D4] shrink-0" />
-              <h1 className="text-xs sm:text-base md:text-lg font-extrabold text-white tracking-tight truncate whitespace-nowrap">
-                <span className="hidden sm:inline">Teacher </span>Admin<span className="hidden xs:inline"> Portal</span>
-              </h1>
+  type AdminTabId = 'syllabi' | 'trades' | 'students' | 'progress' | 'assignments' | 'groups' | 'activity' | 'exams' | 'tips' | 'suggestions' | 'proctoring' | 'broadcasts' | 'gradebook' | 'challenges';
+
+  const navSections: Array<{
+    title: string;
+    items: Array<{
+      id: AdminTabId;
+      label: string;
+      icon: React.ComponentType<{ className?: string }>;
+      iconClass?: string;
+      badgeText?: string;
+      badgeTone?: "cyan" | "amber" | "rose";
+      pulse?: boolean;
+    }>;
+  }> = [
+    {
+      title: "Curriculum",
+      items: [
+        {
+          id: "syllabi",
+          label: "Course Syllabi",
+          icon: BookOpen,
+          badgeText: String(syllabi.length),
+          badgeTone: "cyan"
+        },
+        { id: "trades", label: "Academic Trades", icon: Briefcase },
+        { id: "challenges", label: "Coding Challenges", icon: Code2, iconClass: "text-amber-400" },
+        { id: "tips", label: "Dev Tips Studio", icon: Sparkles, iconClass: "text-cyan-400" }
+      ]
+    },
+    {
+      title: "Students & Grading",
+      items: [
+        { id: "assignments", label: "Class Assignments", icon: Award },
+        { id: "exams", label: "Exams & Quizzes", icon: FileQuestion },
+        { id: "gradebook", label: "Master Gradebook", icon: GraduationCap, iconClass: "text-emerald-400" },
+        { id: "groups", label: "Student Groups", icon: Users },
+        {
+          id: "students",
+          label: "Student Approvals",
+          icon: UserCheck,
+          badgeText: pendingCount > 0 ? `${pendingCount} Pending` : undefined,
+          badgeTone: "amber"
+        }
+      ]
+    },
+    {
+      title: "Live Security & Audit",
+      items: [
+        {
+          id: "proctoring",
+          label: "Live Proctoring",
+          icon: Radio,
+          iconClass: "text-rose-400",
+          badgeText: activeExamsCount > 0 ? `${activeExamsCount} Live` : undefined,
+          badgeTone: "rose",
+          pulse: activeExamsCount > 0
+        },
+        { id: "progress", label: "Progress & Messaging", icon: TrendingUp },
+        { id: "activity", label: "Activity Logs & Audit", icon: Activity }
+      ]
+    },
+    {
+      title: "Communication",
+      items: [
+        { id: "broadcasts", label: "Broadcasts", icon: Megaphone, iconClass: "text-cyan-400" },
+        {
+          id: "suggestions",
+          label: "Suggestions",
+          icon: Inbox,
+          iconClass: "text-amber-400",
+          badgeText: newSuggestionsCount > 0 ? `${newSuggestionsCount} New` : undefined,
+          badgeTone: "amber",
+          pulse: newSuggestionsCount > 0
+        }
+      ]
+    }
+  ];
+
+  const activeNavItem =
+    navSections.flatMap((sec) => sec.items).find((item) => item.id === activeTab) ||
+    navSections[0].items[0];
+
+  const renderSidebarContent = (collapsed: boolean, isMobileDrawer: boolean = false) => (
+    <nav className="flex flex-col gap-5 py-4 px-3">
+      {navSections.map((section) => (
+        <div key={section.title} className="space-y-1">
+          {!collapsed && (
+            <div className="px-3 pb-1 text-[10px] font-mono font-bold uppercase tracking-wider text-[#64748B]">
+              {section.title}
             </div>
-          </div>
+          )}
+          {section.items.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            const badgeClasses =
+              item.badgeTone === "rose"
+                ? "bg-rose-500 text-white"
+                : item.badgeTone === "amber"
+                ? "bg-amber-400 text-slate-950"
+                : "bg-[#06B6D4]/20 text-[#06B6D4] border border-[#06B6D4]/30";
 
-          {/* Right Action Items */}
-          <div className="flex items-center space-x-1.5 sm:space-x-3 shrink-0">
-            <span className="hidden xl:inline text-xs font-mono text-[#94A3B8]">
-              Instructor: <strong className="text-white">Josef Marie</strong> <span className="text-[#64748B]">({adminUser?.email})</span>
+            return (
+              <button
+                key={item.id}
+                type="button"
+                title={collapsed ? item.label : undefined}
+                onClick={() => {
+                  setActiveTab(item.id);
+                  if (isMobileDrawer) setMobileNavOpen(false);
+                }}
+                className={`relative w-full flex items-center ${
+                  collapsed ? "justify-center px-2 py-2.5" : "justify-between px-3 py-2.5"
+                } rounded-xl text-xs font-bold transition-all ${
+                  isActive
+                    ? "bg-gradient-to-r from-[#06B6D4]/20 to-[#3B82F6]/10 text-white border border-[#06B6D4]/40 shadow-sm"
+                    : "text-[#94A3B8] hover:text-white hover:bg-[#1E293B]/70 border border-transparent"
+                }`}
+              >
+                <div className="flex items-center space-x-2.5 min-w-0">
+                  <Icon
+                    className={`h-4 w-4 shrink-0 ${
+                      isActive ? "text-[#06B6D4]" : item.iconClass || "text-[#94A3B8]"
+                    } ${item.pulse ? "animate-pulse" : ""}`}
+                  />
+                  {!collapsed && <span className="truncate">{item.label}</span>}
+                </div>
+
+                {!collapsed && item.badgeText && (
+                  <span
+                    className={`ml-2 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-mono font-extrabold ${badgeClasses} ${
+                      item.pulse ? "animate-pulse" : ""
+                    }`}
+                  >
+                    {item.badgeText}
+                  </span>
+                )}
+
+                {collapsed && item.badgeText && item.badgeTone !== "cyan" && (
+                  <span
+                    className={`absolute top-1.5 right-1.5 h-2 w-2 rounded-full ${
+                      item.badgeTone === "rose" ? "bg-rose-500" : "bg-amber-400"
+                    } ${item.pulse ? "animate-ping" : ""}`}
+                  />
+                )}
+              </button>
+            );
+          })}
+        </div>
+      ))}
+    </nav>
+  );
+
+  return (
+    <div className="min-h-screen bg-transparent text-[#CBD5E1] flex flex-col">
+      {/* Slim Sticky Admin Top Header */}
+      <header className="sticky top-0 z-30 h-16 border-b border-[#334155]/70 bg-[#0B0F19]/85 px-3 sm:px-6 backdrop-blur-xl flex items-center justify-between gap-3">
+        {/* Left: Sidebar Toggle, Brand & Active Section Breadcrumb */}
+        <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
+          {/* Mobile Drawer Trigger */}
+          <button
+            type="button"
+            onClick={() => setMobileNavOpen(true)}
+            className="lg:hidden inline-flex items-center justify-center h-9 w-9 rounded-xl border border-[#334155] bg-[#1E293B] text-[#CBD5E1] hover:text-white hover:border-[#06B6D4] transition-all shrink-0"
+            title="Open navigation menu"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+
+          {/* Desktop Sidebar Collapse Toggle */}
+          <button
+            type="button"
+            onClick={toggleSidebarCollapsed}
+            className="hidden lg:inline-flex items-center justify-center h-9 w-9 rounded-xl border border-[#334155] bg-[#1E293B] text-[#94A3B8] hover:text-white hover:border-[#06B6D4] transition-all shrink-0"
+            title={sidebarCollapsed ? "Expand sidebar menu" : "Collapse sidebar to icons"}
+          >
+            {sidebarCollapsed ? (
+              <PanelLeftOpen className="h-4 w-4 text-[#06B6D4]" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </button>
+
+          <Link
+            href="/"
+            className="hidden sm:inline-flex items-center space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors bg-[#1E293B] px-2.5 py-1.5 rounded-lg border border-[#334155] shrink-0"
+            title="Return to Public Course Catalog"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            <span>Catalog</span>
+          </Link>
+
+          <div className="flex items-center space-x-2 min-w-0">
+            <ShieldCheck className="h-5 w-5 text-[#06B6D4] shrink-0" />
+            <h1 className="text-sm sm:text-base font-extrabold text-white tracking-tight whitespace-nowrap">
+              Teacher Admin Portal
+            </h1>
+            <span className="hidden md:inline text-[#475569]">/</span>
+            <span className="hidden md:inline text-xs font-semibold text-[#06B6D4] truncate">
+              {activeNavItem.label}
             </span>
+          </div>
+        </div>
 
-            {/* Real-time Focus Restrictions Control (10 Strikes & 3-Min Timeout Toggle) */}
-            <RestrictionsControl adminUser={adminUser} compact={true} />
+        {/* Right: Classroom Controls, Primary CTA & Instructor Menu */}
+        <div className="flex items-center space-x-2 shrink-0">
+          <RestrictionsControl adminUser={adminUser} compact={true} />
 
-            {/* Real-time Student Attention & Side Window Alert System */}
-            <AdminPresenceAlert adminUser={adminUser} />
+          <AdminPresenceAlert adminUser={adminUser} />
 
-            <Link
-              href="/admin/builder"
-              title="Create New Syllabus"
-              className="inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4] p-2 sm:px-3.5 sm:py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg shrink-0"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">New Syllabus</span>
-            </Link>
+          <Link
+            href="/admin/builder"
+            title="Create New Syllabus"
+            className="inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4] p-2 sm:px-3.5 sm:py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg shrink-0"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">New Syllabus</span>
+          </Link>
 
+          {/* Instructor Account Dropdown */}
+          <div className="relative" ref={accountMenuRef}>
             <button
-              onClick={handleRevokeAll}
-              title="Instantly disconnects all phones, tablets, and computers across the school"
-              className="hidden sm:inline-flex items-center space-x-1.5 rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 hover:text-white transition-all shrink-0"
+              type="button"
+              onClick={() => setAccountMenuOpen((prev) => !prev)}
+              className="inline-flex items-center space-x-2 rounded-xl border border-[#334155] bg-[#1E293B] px-2.5 py-1.5 text-xs font-semibold text-white hover:border-[#06B6D4] transition-all shrink-0"
+              title="Instructor account & security actions"
             >
-              <Smartphone className="h-3.5 w-3.5 text-rose-400" />
-              <span className="hidden md:inline">Log Out All Devices</span>
+              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#06B6D4]/20 text-[10px] font-mono font-extrabold text-[#06B6D4] border border-[#06B6D4]/30">
+                JM
+              </span>
+              <span className="hidden md:inline max-w-[110px] truncate">Josef Marie</span>
+              <ChevronDown className={`h-3.5 w-3.5 text-[#94A3B8] transition-transform ${accountMenuOpen ? "rotate-180" : ""}`} />
             </button>
 
-            <button
-              onClick={handleLogout}
-              title="Logout from Admin Portal"
-              className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] p-2 sm:px-3.5 sm:py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-rose-500/50 transition-all shrink-0"
-            >
-              <LogOut className="h-3.5 w-3.5 text-rose-400" />
-              <span className="hidden sm:inline">Logout</span>
-            </button>
+            {accountMenuOpen && (
+              <div className="absolute right-0 mt-2 w-64 rounded-2xl border border-[#334155] bg-[#0F172A]/95 backdrop-blur-xl p-2 shadow-2xl z-50 space-y-1">
+                <div className="px-3 py-2 border-b border-[#334155]/70">
+                  <p className="text-xs font-extrabold text-white">Josef Marie</p>
+                  <p className="text-[11px] font-mono text-[#94A3B8] truncate">
+                    {adminUser?.email || "Instructor Admin"}
+                  </p>
+                </div>
+
+                <Link
+                  href="/"
+                  onClick={() => setAccountMenuOpen(false)}
+                  className="sm:hidden flex items-center space-x-2 rounded-xl px-3 py-2 text-xs font-semibold text-[#CBD5E1] hover:bg-[#1E293B] hover:text-white transition-colors"
+                >
+                  <ArrowLeft className="h-3.5 w-3.5 text-[#06B6D4]" />
+                  <span>Back to Course Catalog</span>
+                </Link>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    handleForceRefreshAll();
+                  }}
+                  className="w-full flex items-center space-x-2 rounded-xl px-3 py-2 text-xs font-semibold text-cyan-300 hover:bg-cyan-500/15 hover:text-cyan-200 transition-colors text-left"
+                >
+                  <RefreshCw className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
+                  <span>Force Refresh All Accounts</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    handleRevokeAll();
+                  }}
+                  className="w-full flex items-center space-x-2 rounded-xl px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/15 hover:text-rose-200 transition-colors text-left"
+                >
+                  <Smartphone className="h-3.5 w-3.5 text-rose-400 shrink-0" />
+                  <span>Log Out All Devices</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccountMenuOpen(false);
+                    handleLogout();
+                  }}
+                  className="w-full flex items-center space-x-2 rounded-xl px-3 py-2 text-xs font-semibold text-[#CBD5E1] hover:bg-[#1E293B] hover:text-white transition-colors text-left"
+                >
+                  <LogOut className="h-3.5 w-3.5 text-rose-400 shrink-0" />
+                  <span>Logout</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-3 sm:px-6 py-4 sm:py-8">
-        {/* Navigation Tabs - Clean Swipeable Horizontal Scroll on Mobile */}
-        <div className="mb-6 sm:mb-8 flex overflow-x-auto no-scrollbar gap-2 sm:gap-4 border-b border-[#334155] pb-px -mx-3 px-3 sm:mx-0 sm:px-0">
-          <button
-            onClick={() => setActiveTab('syllabi')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
-              activeTab === 'syllabi'
-                ? 'border-[#06B6D4] text-[#06B6D4]'
-                : 'border-transparent text-[#94A3B8] hover:text-white'
-            }`}
-          >
-            <BookOpen className="h-4 w-4 shrink-0" />
-            <span>Course Syllabi ({syllabi.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('trades')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
-              activeTab === 'trades'
-                ? 'border-[#06B6D4] text-[#06B6D4]'
-                : 'border-transparent text-[#94A3B8] hover:text-white'
-            }`}
-          >
-            <Briefcase className="h-4 w-4 shrink-0" />
-            <span>Academic Trades</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('students')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
-              activeTab === 'students'
-                ? 'border-[#06B6D4] text-[#06B6D4]'
-                : 'border-transparent text-[#94A3B8] hover:text-white'
-            }`}
-          >
-            <UserCheck className="h-4 w-4 shrink-0" />
-            <span>Student Approvals</span>
-            {pendingCount > 0 && (
-              <span className="ml-1 rounded-full bg-[#F59E0B] px-2 py-0.5 text-[10px] font-mono font-extrabold text-slate-950 shadow-md">
-                {pendingCount} Pending
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('progress')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
-              activeTab === 'progress'
-                ? 'border-[#06B6D4] text-[#06B6D4]'
-                : 'border-transparent text-[#94A3B8] hover:text-white'
-            }`}
-          >
-            <Users className="h-4 w-4 shrink-0" />
-            <span>Progress & Messaging</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('assignments')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
-              activeTab === 'assignments'
-                ? 'border-[#06B6D4] text-[#06B6D4]'
-                : 'border-transparent text-[#94A3B8] hover:text-white'
-            }`}
-          >
-            <Award className="h-4 w-4 shrink-0" />
-            <span>Class Assignments</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('exams')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
-              activeTab === 'exams'
-                ? 'border-[#06B6D4] text-[#06B6D4]'
-                : 'border-transparent text-[#94A3B8] hover:text-white'
-            }`}
-          >
-            <FileQuestion className="h-4 w-4 shrink-0" />
-            <span>Exams &amp; Quizzes</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('groups')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
-              activeTab === 'groups'
-                ? 'border-[#06B6D4] text-[#06B6D4]'
-                : 'border-transparent text-[#94A3B8] hover:text-white'
-            }`}
-          >
-            <Users className="h-4 w-4 shrink-0" />
-            <span>Student Groups</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('activity')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
-              activeTab === 'activity'
-                ? 'border-[#06B6D4] text-[#06B6D4]'
-                : 'border-transparent text-[#94A3B8] hover:text-white'
-            }`}
-          >
-            <Activity className="h-4 w-4 shrink-0" />
-            <span>Activity Logs & Audit</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('tips')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
-              activeTab === 'tips'
-                ? 'border-[#06B6D4] text-[#06B6D4]'
-                : 'border-transparent text-[#94A3B8] hover:text-white'
-            }`}
-          >
-            <Sparkles className="h-4 w-4 shrink-0 text-cyan-400" />
-            <span>Dev Tips Studio 💡</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('suggestions')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
-              activeTab === 'suggestions'
-                ? 'border-[#06B6D4] text-[#06B6D4]'
-                : 'border-transparent text-[#94A3B8] hover:text-white'
-            }`}
-          >
-            <Inbox className="h-4 w-4 shrink-0 text-amber-400" />
-            <span>Suggestions 📬</span>
-            {newSuggestionsCount > 0 && (
-              <span className="ml-1 rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-mono font-extrabold text-slate-950 shadow-md animate-pulse">
-                {newSuggestionsCount} New
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('proctoring')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
-              activeTab === 'proctoring'
-                ? 'border-rose-500 text-rose-400'
-                : 'border-transparent text-[#94A3B8] hover:text-white'
-            }`}
-          >
-            <Radio className={`h-4 w-4 shrink-0 text-rose-400 ${activeExamsCount > 0 ? "animate-pulse" : ""}`} />
-            <span>Live Proctoring 🚨</span>
-            {activeExamsCount > 0 && (
-              <span className="ml-1 rounded-full bg-rose-500 px-2 py-0.5 text-[10px] font-mono font-extrabold text-white shadow-md animate-pulse">
-                {activeExamsCount} Live
-              </span>
-            )}
-          </button>
-
-          <button
-            onClick={() => setActiveTab('broadcasts')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
-              activeTab === 'broadcasts'
-                ? 'border-cyan-400 text-cyan-300'
-                : 'border-transparent text-[#94A3B8] hover:text-white'
-            }`}
-          >
-            <Megaphone className="h-4 w-4 shrink-0 text-cyan-400" />
-            <span>Broadcasts 📢</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('gradebook')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
-              activeTab === 'gradebook'
-                ? 'border-emerald-400 text-emerald-300'
-                : 'border-transparent text-[#94A3B8] hover:text-white'
-            }`}
-          >
-            <GraduationCap className="h-4 w-4 shrink-0 text-emerald-400" />
-            <span>Master Gradebook 📊</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('challenges')}
-            className={`flex items-center space-x-2 border-b-2 pb-3 text-xs sm:text-sm font-bold whitespace-nowrap shrink-0 transition-all ${
-              activeTab === 'challenges'
-                ? 'border-amber-400 text-amber-300'
-                : 'border-transparent text-[#94A3B8] hover:text-white'
-            }`}
-          >
-            <Code2 className="h-4 w-4 shrink-0 text-amber-400" />
-            <span>Coding Challenges ⚡</span>
-          </button>
+      {/* Mobile Slide-Over Sidebar Drawer */}
+      {mobileNavOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden flex">
+          <div
+            className="fixed inset-0 bg-slate-950/75 backdrop-blur-sm"
+            onClick={() => setMobileNavOpen(false)}
+          />
+          <aside className="relative z-10 w-72 max-w-[85vw] h-full bg-[#0F172A] border-r border-[#334155] flex flex-col shadow-2xl">
+            <div className="flex items-center justify-between px-4 h-16 border-b border-[#334155]">
+              <div className="flex items-center space-x-2">
+                <ShieldCheck className="h-5 w-5 text-[#06B6D4]" />
+                <span className="text-sm font-extrabold text-white">Admin Navigation</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setMobileNavOpen(false)}
+                className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white hover:bg-[#1E293B]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              {renderSidebarContent(false, true)}
+            </div>
+          </aside>
         </div>
+      )}
+
+      {/* Workspace Body: Collapsible Left Sidebar + Main Content */}
+      <div className="flex flex-1 min-w-0">
+        {/* Desktop Collapsible Sidebar */}
+        <aside
+          className={`hidden lg:flex flex-col shrink-0 border-r border-[#334155]/60 bg-[#0B0F19]/60 backdrop-blur-md sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto transition-all duration-200 ${
+            sidebarCollapsed ? "w-[72px]" : "w-64"
+          }`}
+        >
+          {renderSidebarContent(sidebarCollapsed, false)}
+        </aside>
+
+        {/* Main Content */}
+        <main className="flex-1 min-w-0 px-3 sm:px-6 lg:px-8 py-5 sm:py-7">
+          <div className="mx-auto max-w-7xl">
 
         {/* TAB 1: SYLLABI MANAGEMENT */}
-        <div className={activeTab === 'syllabi' ? 'block' : 'hidden'}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#334155] pb-4 sm:pb-6 gap-3 sm:gap-4">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-white">Course Syllabi Management</h2>
-              <p className="mt-1 text-xs text-[#94A3B8]">
-                Manage published student syllabi or parse new course documents with Gemini 2.5 Pro.
-              </p>
-            </div>
+        {activeTab === 'syllabi' && (
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#334155] pb-4 sm:pb-6 gap-3 sm:gap-4">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white">Course Syllabi Management</h2>
+                <p className="mt-1 text-xs text-[#94A3B8]">
+                  Manage published student syllabi or parse new course documents with Gemini 2.5 Pro.
+                </p>
+              </div>
 
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs font-mono">
-              <button
-                onClick={() => downloadAllSyllabiAsJSON(syllabi)}
-                className="inline-flex items-center space-x-1.5 rounded-lg border border-[#06B6D4]/40 bg-[#06B6D4]/10 px-2.5 sm:px-3 py-1 font-sans text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4]/20 transition-all shrink-0"
-                title="Export all course syllabi as a single JSON backup"
-              >
-                <Download className="h-3.5 w-3.5" />
-                <span>Export All (JSON)</span>
-              </button>
-              <span className="rounded-lg bg-[#10B981]/15 px-2.5 sm:px-3 py-1 text-[#10B981] border border-[#10B981]/30 shrink-0">
-                Published: {syllabi.filter(s => s.status === 'published').length}
-              </span>
-              <span className="rounded-lg bg-[#F59E0B]/15 px-2.5 sm:px-3 py-1 text-[#F59E0B] border border-[#F59E0B]/30 shrink-0">
-                Drafts: {syllabi.filter(s => s.status === 'draft').length}
-              </span>
-            </div>
-          </div>
-
-          {loading ? (
-            <div className="py-20 text-center text-[#94A3B8]">
-              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-3" />
-              Loading Course Syllabi...
-            </div>
-          ) : syllabi.length === 0 ? (
-            <div className="py-20 text-center text-[#94A3B8]">
-              <BookOpen className="mx-auto h-12 w-12 text-[#334155] mb-3" />
-              <p className="font-semibold text-white">No Syllabi Found</p>
-              <p className="text-xs mt-1 mb-4">Get started by creating your first syllabus.</p>
-              <Link
-                href="/admin/builder"
-                className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-4 py-2.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Create First Syllabus</span>
-              </Link>
-            </div>
-          ) : (
-            <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {syllabi.map((syllabus) => (
-                <div
-                  key={syllabus.id}
-                  className="flex flex-col justify-between rounded-2xl border border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-md p-6 shadow-xl hover:bg-[#1E293B]/90 hover:border-[#06B6D4]/50 transition-all"
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-xs font-mono">
+                <button
+                  onClick={() => downloadAllSyllabiAsJSON(syllabi)}
+                  className="inline-flex items-center space-x-1.5 rounded-lg border border-[#06B6D4]/40 bg-[#06B6D4]/10 px-2.5 sm:px-3 py-1 font-sans text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4]/20 transition-all shrink-0"
+                  title="Export all course syllabi as a single JSON backup"
                 >
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="rounded-lg bg-[#0B0F19] px-2.5 py-1 font-mono text-xs font-bold text-[#06B6D4] border border-[#334155]">
-                        {syllabus.courseCode}
-                      </span>
-                      <span
-                        className={`rounded-md px-2 py-0.5 text-[10px] font-bold font-mono uppercase ${
-                          syllabus.status === "published"
-                            ? "bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30"
-                            : "bg-[#F59E0B]/15 text-[#F59E0B] border border-[#F59E0B]/30"
-                        }`}
-                      >
-                        {syllabus.status}
-                      </span>
-                    </div>
-
-                    <h3 className="text-base font-bold text-white line-clamp-1">{syllabus.title}</h3>
-                    <p className="mt-2 text-xs text-[#94A3B8] line-clamp-2 leading-relaxed">
-                      {syllabus.description}
-                    </p>
-
-                    <div className="mt-4 flex flex-wrap gap-2 font-mono text-[10px]">
-                      <span className="rounded bg-[#0B0F19] px-2 py-1 text-[#94A3B8]">
-                        {syllabus.learningOutcomes?.length || 0} Outcomes
-                      </span>
-                      {syllabus.level && (
-                        <span className="rounded bg-[#06B6D4]/15 px-2 py-1 text-[#06B6D4] font-bold">
-                          {syllabus.level}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-[#334155] pt-4">
-                    <button
-                      onClick={() => downloadSyllabusAsText(syllabus)}
-                      className="inline-flex items-center space-x-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-2.5 py-1.5 text-xs font-semibold text-[#06B6D4] hover:border-[#06B6D4]"
-                      title="Download Formatted Text Document (.txt)"
-                    >
-                      <FileText className="h-3.5 w-3.5" />
-                      <span>Doc</span>
-                    </button>
-
-                    <button
-                      onClick={() => downloadSyllabusAsJSON(syllabus)}
-                      className="inline-flex items-center space-x-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-2.5 py-1.5 text-xs font-semibold text-[#10B981] hover:border-[#10B981]"
-                      title="Download Raw JSON Data (.json)"
-                    >
-                      <FileCode className="h-3.5 w-3.5" />
-                      <span>JSON</span>
-                    </button>
-
-                    <Link
-                      href={`/syllabus/view?id=${syllabus.id}`}
-                      target="_blank"
-                      className="inline-flex items-center space-x-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-2.5 py-1.5 text-xs font-semibold text-[#CBD5E1] hover:text-white"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      <span>View</span>
-                    </Link>
-
-                    <Link
-                      href={`/admin/builder?id=${syllabus.id}`}
-                      className="inline-flex items-center space-x-1 rounded-xl bg-[#06B6D4]/10 px-2.5 py-1.5 text-xs font-semibold text-[#06B6D4] hover:bg-[#06B6D4]/20 border border-[#06B6D4]/30"
-                    >
-                      <Edit3 className="h-3.5 w-3.5" />
-                      <span>Edit</span>
-                    </Link>
-
-                    <button
-                      onClick={() => handleDelete(syllabus.id, syllabus.title)}
-                      className="rounded-xl bg-rose-500/10 p-2 text-rose-400 hover:bg-rose-500/20 transition-colors"
-                      title="Permanently Delete Syllabus"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
+                  <Download className="h-3.5 w-3.5" />
+                  <span>Export All (JSON)</span>
+                </button>
+                <span className="rounded-lg bg-[#10B981]/15 px-2.5 sm:px-3 py-1 text-[#10B981] border border-[#10B981]/30 shrink-0">
+                  Published: {syllabi.filter(s => s.status === 'published').length}
+                </span>
+                <span className="rounded-lg bg-[#F59E0B]/15 px-2.5 sm:px-3 py-1 text-[#F59E0B] border border-[#F59E0B]/30 shrink-0">
+                  Drafts: {syllabi.filter(s => s.status === 'draft').length}
+                </span>
+              </div>
             </div>
-          )}
-        </div>
+
+            {loading ? (
+              <div className="py-20 text-center text-[#94A3B8]">
+                <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-3" />
+                Loading Course Syllabi...
+              </div>
+            ) : syllabi.length === 0 ? (
+              <div className="py-20 text-center text-[#94A3B8]">
+                <BookOpen className="mx-auto h-12 w-12 text-[#334155] mb-3" />
+                <p className="font-semibold text-white">No Syllabi Found</p>
+                <p className="text-xs mt-1 mb-4">Get started by creating your first syllabus.</p>
+                <Link
+                  href="/admin/builder"
+                  className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-4 py-2.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Create First Syllabus</span>
+                </Link>
+              </div>
+            ) : (
+              <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {syllabi.map((syllabus) => (
+                  <div
+                    key={syllabus.id}
+                    className="flex flex-col justify-between rounded-2xl border border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-md p-6 shadow-xl hover:bg-[#1E293B]/90 hover:border-[#06B6D4]/50 transition-all"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="rounded-lg bg-[#0B0F19] px-2.5 py-1 font-mono text-xs font-bold text-[#06B6D4] border border-[#334155]">
+                          {syllabus.courseCode}
+                        </span>
+                        <span
+                          className={`rounded-md px-2 py-0.5 text-[10px] font-bold font-mono uppercase ${
+                            syllabus.status === "published"
+                              ? "bg-[#10B981]/15 text-[#10B981] border border-[#10B981]/30"
+                              : "bg-[#F59E0B]/15 text-[#F59E0B] border border-[#F59E0B]/30"
+                          }`}
+                        >
+                          {syllabus.status}
+                        </span>
+                      </div>
+
+                      <h3 className="text-base font-bold text-white line-clamp-1">{syllabus.title}</h3>
+                      <p className="mt-2 text-xs text-[#94A3B8] line-clamp-2 leading-relaxed">
+                        {syllabus.description}
+                      </p>
+
+                      <div className="mt-4 flex flex-wrap gap-2 font-mono text-[10px]">
+                        <span className="rounded bg-[#0B0F19] px-2 py-1 text-[#94A3B8]">
+                          {syllabus.learningOutcomes?.length || 0} Outcomes
+                        </span>
+                        {syllabus.level && (
+                          <span className="rounded bg-[#06B6D4]/15 px-2 py-1 text-[#06B6D4] font-bold">
+                            {syllabus.level}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="mt-6 flex flex-wrap items-center justify-end gap-2 border-t border-[#334155] pt-4">
+                      <button
+                        onClick={() => downloadSyllabusAsText(syllabus)}
+                        className="inline-flex items-center space-x-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-2.5 py-1.5 text-xs font-semibold text-[#06B6D4] hover:border-[#06B6D4]"
+                        title="Download Formatted Text Document (.txt)"
+                      >
+                        <FileText className="h-3.5 w-3.5" />
+                        <span>Doc</span>
+                      </button>
+
+                      <button
+                        onClick={() => downloadSyllabusAsJSON(syllabus)}
+                        className="inline-flex items-center space-x-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-2.5 py-1.5 text-xs font-semibold text-[#10B981] hover:border-[#10B981]"
+                        title="Download Raw JSON Data (.json)"
+                      >
+                        <FileCode className="h-3.5 w-3.5" />
+                        <span>JSON</span>
+                      </button>
+
+                      <Link
+                        href={`/syllabus/view?id=${syllabus.id}`}
+                        target="_blank"
+                        className="inline-flex items-center space-x-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-2.5 py-1.5 text-xs font-semibold text-[#CBD5E1] hover:text-white"
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>View</span>
+                      </Link>
+
+                      <Link
+                        href={`/admin/builder?id=${syllabus.id}`}
+                        className="inline-flex items-center space-x-1 rounded-xl bg-[#06B6D4]/10 px-2.5 py-1.5 text-xs font-semibold text-[#06B6D4] hover:bg-[#06B6D4]/20 border border-[#06B6D4]/30"
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                        <span>Edit</span>
+                      </Link>
+
+                      <button
+                        onClick={() => handleDelete(syllabus.id, syllabus.title)}
+                        className="rounded-xl bg-rose-500/10 p-2 text-rose-400 hover:bg-rose-500/20 transition-colors"
+                        title="Permanently Delete Syllabus"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* TAB 2: ACADEMIC TRADES MANAGER */}
-        <div className={activeTab === 'trades' ? 'block' : 'hidden'}>
-          <TradesManager />
-        </div>
+        {activeTab === 'trades' && <TradesManager />}
 
         {/* TAB 3: STUDENT REGISTRATION APPROVALS */}
-        <div className={activeTab === 'students' ? 'block' : 'hidden'}>
-          <StudentApprovals />
-        </div>
+        {activeTab === 'students' && <StudentApprovals />}
 
         {/* TAB 4: STUDENT PROGRESS & MESSAGING */}
-        <div className={activeTab === 'progress' ? 'block' : 'hidden'}>
-          <StudentProgressManager />
-        </div>
+        {activeTab === 'progress' && <StudentProgressManager />}
 
         {/* TAB 5: CLASS ASSIGNMENTS */}
-        <div className={activeTab === 'assignments' ? 'block' : 'hidden'}>
+        {activeTab === 'assignments' && (
           <AssignmentManager 
             syllabi={syllabi} 
             trades={trades} 
             adminEmail={adminUser?.email} 
           />
-        </div>
+        )}
 
         {/* TAB: EXAMS & QUIZZES */}
-        <div className={activeTab === 'exams' ? 'block' : 'hidden'}>
+        {activeTab === 'exams' && (
           <ExamManager
             syllabi={syllabi}
             trades={trades}
             adminUser={adminUser}
           />
-        </div>
+        )}
 
         {/* TAB 6: STUDENT STUDY & PROJECT GROUPS */}
-        <div className={activeTab === 'groups' ? 'block' : 'hidden'}>
+        {activeTab === 'groups' && (
           <GroupManager
             syllabi={syllabi}
             trades={trades}
             adminEmail={adminUser?.email}
             adminUser={adminUser}
           />
-        </div>
+        )}
 
         {/* TAB 7: ACTIVITY LOGS & AUDIT */}
-        <div className={activeTab === 'activity' ? 'block' : 'hidden'}>
-          <ActivityLogger />
-        </div>
+        {activeTab === 'activity' && <ActivityLogger />}
 
         {/* TAB 8: DEVELOPER TIPS & INSIGHTS STUDIO */}
-        <div className={activeTab === 'tips' ? 'block' : 'hidden'}>
-          <TipsManager adminUser={adminUser} />
-        </div>
+        {activeTab === 'tips' && <TipsManager adminUser={adminUser} />}
 
         {/* TAB 9: SUGGESTIONS & FEEDBACK INBOX */}
-        <div className={activeTab === 'suggestions' ? 'block' : 'hidden'}>
-          <SuggestionsInbox adminUser={adminUser} />
-        </div>
+        {activeTab === 'suggestions' && <SuggestionsInbox adminUser={adminUser} />}
 
         {/* TAB 10: LIVE EXAM PROCTORING HALL */}
-        <div className={activeTab === 'proctoring' ? 'block' : 'hidden'}>
-          <LiveExamProctoring adminUser={adminUser} />
-        </div>
+        {activeTab === 'proctoring' && <LiveExamProctoring adminUser={adminUser} />}
 
         {/* TAB 11: CAMPUS BROADCAST BULLETIN STUDIO */}
-        <div className={activeTab === 'broadcasts' ? 'block' : 'hidden'}>
-          <BroadcastManager adminUser={adminUser} trades={trades} />
-        </div>
+        {activeTab === 'broadcasts' && <BroadcastManager adminUser={adminUser} trades={trades} />}
 
         {/* TAB 12: ACADEMIC MASTER GRADEBOOK & EXPORTER */}
-        <div className={activeTab === 'gradebook' ? 'block' : 'hidden'}>
-          <MasterGradebook adminUser={adminUser} trades={trades} />
-        </div>
+        {activeTab === 'gradebook' && <MasterGradebook adminUser={adminUser} trades={trades} />}
 
         {/* TAB 13: WEEKLY CODING CHALLENGES STUDIO */}
-        <div className={activeTab === 'challenges' ? 'block' : 'hidden'}>
-          <ChallengeStudio adminUser={adminUser} />
-        </div>
-      </main>
+        {activeTab === 'challenges' && <ChallengeStudio adminUser={adminUser} />}
+          </div>
+        </main>
+      </div>
     </div>
   );
 }

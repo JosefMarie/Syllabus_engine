@@ -10,7 +10,7 @@ import {
   getStudentExamAttempts, 
   getStudentSubmissions,
   getSubtopicProgressAsync,
-  subscribeToSubmissions
+  subscribeToStudentSubmissions
 } from "@/lib/db";
 import { 
   Award, 
@@ -160,9 +160,8 @@ export default function StudentAcademicStanding({
       }
     };
 
-    const unsubSubs = subscribeToSubmissions((allSubs) => {
-      if (isMounted && currentUser?.uid) {
-        const mine = allSubs.filter((s) => s.studentUid === currentUser.uid);
+    const unsubSubs = subscribeToStudentSubmissions(currentUser?.uid || "", (mine) => {
+      if (isMounted) {
         applyStudentSubs(mine);
       }
     });

@@ -13,13 +13,7 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: "Digital Syllabus Platform - Modern Mobile-First Course Viewer & AI Builder",
-  description: "An interactive digital syllabus platform for software engineering and design students, powered by Next.js 15, Gemini 2.5 Pro, and Sandpack.",
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Syllabus",
-  },
+  description: "An interactive digital syllabus platform for software engineering and design students, powered by Next.js, Gemini AI, and Sandpack.",
   icons: {
     icon: "/icons/icon-192.png",
     shortcut: "/icons/icon-192.png",
@@ -35,11 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
-        <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#0B0F19" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        <meta name="apple-mobile-web-app-title" content="Syllabus" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />

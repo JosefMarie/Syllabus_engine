@@ -19,9 +19,14 @@ export default function TradesManager() {
 
   useEffect(() => {
     async function load() {
-      const list = await getAllTrades();
-      setTrades(list);
-      setLoading(false);
+      try {
+        const list = await getAllTrades();
+        setTrades(list);
+      } catch (err) {
+        console.warn("Error loading trades:", err);
+      } finally {
+        setLoading(false);
+      }
     }
     load();
   }, []);
@@ -31,18 +36,24 @@ export default function TradesManager() {
     if (!name.trim()) return;
 
     setSaving(true);
-    const newTrade: Trade = {
-      id: `trade-${Date.now()}`,
-      name: name.trim(),
-      description: description.trim(),
-      createdAt: new Date().toISOString()
-    };
+    try {
+      const newTrade: Trade = {
+        id: `trade-${Date.now()}`,
+        name: name.trim(),
+        description: description.trim(),
+        createdAt: new Date().toISOString()
+      };
 
-    await saveTrade(newTrade);
-    setTrades([newTrade, ...trades]);
-    setName("");
-    setDescription("");
-    setSaving(false);
+      await saveTrade(newTrade);
+      setTrades(prev => [newTrade, ...prev]);
+      setName("");
+      setDescription("");
+    } catch (err: any) {
+      console.error("Failed to save trade:", err);
+      alert("Failed to add trade: " + (err?.message || "Please try again."));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const executeDelete = async (id: string) => {
