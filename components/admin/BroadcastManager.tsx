@@ -42,7 +42,7 @@ interface BroadcastManagerProps {
 export const PRIORITY_METADATA: Record<BulletinPriority, { label: string; badge: string; border: string; bg: string; icon: string }> = {
   critical: { label: "Critical Urgent", badge: "bg-rose-500/15 text-rose-300 border-rose-500/30", border: "border-rose-500/50", bg: "bg-rose-950/20", icon: "🚨" },
   important: { label: "Important Notice", badge: "bg-amber-500/15 text-amber-300 border-amber-500/30", border: "border-amber-500/40", bg: "bg-amber-950/20", icon: "⚠️" },
-  info: { label: "General Info", badge: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30", border: "border-cyan-500/40", bg: "bg-cyan-950/20", icon: "ℹ️" },
+  info: { label: "General Info", badge: "bg-[#EAEAE6]/15 text-[#EAEAE6] border-[#EAEAE6]/30", border: "border-[#EAEAE6]/40", bg: "bg-cyan-950/20", icon: "ℹ️" },
   celebration: { label: "Celebration & Event", badge: "bg-purple-500/15 text-purple-300 border-purple-500/30", border: "border-purple-500/40", bg: "bg-purple-950/20", icon: "🎉" }
 };
 
@@ -161,19 +161,19 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Top Banner */}
-      <div className="rounded-3xl border border-[#334155] bg-gradient-to-r from-[#1E293B] via-[#0F172A] to-[#1E293B] p-6 shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="rounded-3xl border border-[#2E2E34] bg-gradient-to-r from-[#1C1C1F] via-[#141416] to-[#1C1C1F] p-6 shadow-2xl relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-80 h-80 bg-[#EAEAE6]/10 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
           <div>
-            <div className="flex items-center space-x-2 text-cyan-400 font-mono text-xs font-semibold uppercase tracking-wider mb-1">
+            <div className="flex items-center space-x-2 text-[#EAEAE6] font-mono text-xs font-semibold uppercase tracking-wider mb-1">
               <Megaphone className="h-4 w-4" />
               <span>Campus Announcement Dispatch</span>
             </div>
             <h2 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center space-x-2">
               <span>School &amp; Class Broadcast Bulletin</span>
             </h2>
-            <p className="text-xs sm:text-sm text-[#94A3B8] mt-1 max-w-xl">
+            <p className="text-xs sm:text-sm text-[#A1A1AA] mt-1 max-w-xl">
               Post urgent notices, deadline extensions, and campus alerts targeted by trade, level, or school-wide with live read receipts.
             </p>
           </div>
@@ -181,7 +181,7 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
           <button
             onClick={() => setIsComposerOpen(true)}
             type="button"
-            className="inline-flex items-center space-x-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-cyan-400 to-cyan-500 hover:from-cyan-300 hover:to-cyan-400 text-slate-950 font-mono font-black text-xs shadow-lg shadow-cyan-500/20 active:scale-95 transition-all self-start md:self-auto"
+            className="inline-flex items-center space-x-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-cyan-400 to-cyan-500 hover:from-cyan-300 hover:to-white text-[#141416] font-mono font-black text-xs shadow-lg shadow-black/25 active:scale-95 transition-all self-start md:self-auto"
           >
             <Plus className="h-4 w-4 stroke-[3]" />
             <span>Compose Announcement</span>
@@ -189,13 +189,13 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mt-6 pt-5 border-t border-[#334155]/60">
-          <div className="rounded-2xl bg-[#0B0F19]/60 border border-cyan-500/30 p-3.5">
-            <span className="text-xs font-mono text-cyan-300 block">Active Broadcasts</span>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 mt-6 pt-5 border-t border-[#2E2E34]/60">
+          <div className="rounded-2xl bg-[#141416]/60 border border-[#EAEAE6]/30 p-3.5">
+            <span className="text-xs font-mono text-[#EAEAE6] block">Active Broadcasts</span>
             <span className="text-2xl font-black text-white font-mono mt-1 block">{activeCount}</span>
           </div>
 
-          <div className="rounded-2xl bg-[#0B0F19]/60 border border-rose-500/30 p-3.5">
+          <div className="rounded-2xl bg-[#141416]/60 border border-rose-500/30 p-3.5">
             <span className="text-xs font-mono text-rose-300 block flex items-center space-x-1.5">
               <span className="h-2 w-2 rounded-full bg-rose-400 animate-ping" />
               <span>Critical Alerts</span>
@@ -203,12 +203,12 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
             <span className="text-2xl font-black text-rose-400 font-mono mt-1 block">{criticalCount}</span>
           </div>
 
-          <div className="rounded-2xl bg-[#0B0F19]/60 border border-[#334155] p-3.5">
-            <span className="text-xs font-mono text-[#94A3B8] block">Total Dispatched</span>
+          <div className="rounded-2xl bg-[#141416]/60 border border-[#2E2E34] p-3.5">
+            <span className="text-xs font-mono text-[#A1A1AA] block">Total Dispatched</span>
             <span className="text-2xl font-black text-white font-mono mt-1 block">{bulletins.length}</span>
           </div>
 
-          <div className="rounded-2xl bg-[#0B0F19]/60 border border-purple-500/30 p-3.5">
+          <div className="rounded-2xl bg-[#141416]/60 border border-purple-500/30 p-3.5">
             <span className="text-xs font-mono text-purple-300 block">Total Read Receipts</span>
             <span className="text-2xl font-black text-purple-300 font-mono mt-1 block">
               {bulletins.reduce((acc, b) => acc + (b.readReceipts?.length || 0), 0)}
@@ -218,27 +218,27 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#1E293B] p-3.5 rounded-2xl border border-[#334155]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#1C1C1F] p-3.5 rounded-2xl border border-[#2E2E34]">
         <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#64748B]" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#71717A]" />
           <input
             type="text"
             placeholder="Search announcements by title or content..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-[#0B0F19] border border-[#334155] rounded-xl text-xs text-white placeholder-[#64748B] focus:outline-none focus:border-cyan-400 font-mono"
+            className="w-full pl-9 pr-4 py-2 bg-[#141416] border border-[#2E2E34] rounded-xl text-xs text-white placeholder-[#71717A] focus:outline-none focus:border-[#EAEAE6] font-mono"
           />
         </div>
 
         <div className="flex items-center space-x-2 overflow-x-auto pb-1 sm:pb-0">
-          <span className="text-xs font-mono text-[#94A3B8] flex items-center space-x-1 shrink-0">
+          <span className="text-xs font-mono text-[#A1A1AA] flex items-center space-x-1 shrink-0">
             <Filter className="h-3.5 w-3.5" />
             <span>Priority:</span>
           </span>
           <button
             onClick={() => setPriorityFilter("all")}
             className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all shrink-0 ${
-              priorityFilter === "all" ? "bg-cyan-500 text-slate-950" : "bg-[#0B0F19] text-[#94A3B8] hover:text-white"
+              priorityFilter === "all" ? "bg-[#EAEAE6] text-[#141416]" : "bg-[#141416] text-[#A1A1AA] hover:text-white"
             }`}
           >
             All
@@ -248,7 +248,7 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
               key={key}
               onClick={() => setPriorityFilter(key)}
               className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all shrink-0 ${
-                priorityFilter === key ? "bg-cyan-500 text-slate-950" : "bg-[#0B0F19] text-[#94A3B8] hover:text-white"
+                priorityFilter === key ? "bg-[#EAEAE6] text-[#141416]" : "bg-[#141416] text-[#A1A1AA] hover:text-white"
               }`}
             >
               {meta.icon} {meta.label}
@@ -259,17 +259,17 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
 
       {/* Bulletins List */}
       {loading ? (
-        <div className="p-16 text-center text-xs font-mono text-[#94A3B8]">
-          <div className="h-8 w-8 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin mx-auto mb-3" />
+        <div className="p-16 text-center text-xs font-mono text-[#A1A1AA]">
+          <div className="h-8 w-8 rounded-full border-2 border-[#EAEAE6] border-t-transparent animate-spin mx-auto mb-3" />
           Loading announcements...
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-[#334155] bg-[#1E293B]/40 p-16 text-center space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-[#0B0F19] border border-[#334155] flex items-center justify-center mx-auto text-xl">
+        <div className="rounded-3xl border border-dashed border-[#2E2E34] bg-[#1C1C1F]/40 p-16 text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-[#141416] border border-[#2E2E34] flex items-center justify-center mx-auto text-xl">
             📢
           </div>
           <h4 className="text-sm font-bold text-white">No announcements found</h4>
-          <p className="text-xs text-[#94A3B8] max-w-sm mx-auto">
+          <p className="text-xs text-[#A1A1AA] max-w-sm mx-auto">
             Click "Compose Announcement" above to dispatch a new notice to students.
           </p>
         </div>
@@ -285,7 +285,7 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
                 key={item.id}
                 className={`rounded-2xl border transition-all p-5 space-y-4 ${
                   !item.active || isExpired
-                    ? "border-[#334155]/60 bg-[#1E293B]/40 opacity-70"
+                    ? "border-[#2E2E34]/60 bg-[#1C1C1F]/40 opacity-70"
                     : `${prio.border} ${prio.bg} shadow-lg`
                 }`}
               >
@@ -298,8 +298,8 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
                     </span>
 
                     {/* Target Audience Badge */}
-                    <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold bg-[#0B0F19] text-[#94A3B8] border border-[#334155]">
-                      <Users className="h-3 w-3 text-cyan-400" />
+                    <span className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-xl text-[11px] font-mono font-bold bg-[#141416] text-[#A1A1AA] border border-[#2E2E34]">
+                      <Users className="h-3 w-3 text-[#EAEAE6]" />
                       <span>
                         {item.targetAudience === "all" ? "Campus Wide (All Students)" : 
                          item.targetLevel ? `Level ${item.targetLevel}` : "Targeted Class"}
@@ -312,7 +312,7 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
                       </span>
                     )}
 
-                    <span className="text-[11px] font-mono text-[#64748B]">
+                    <span className="text-[11px] font-mono text-[#71717A]">
                       {new Date(item.createdAt).toLocaleDateString()} by {item.createdByName}
                     </span>
                   </div>
@@ -337,7 +337,7 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
                     <button
                       type="button"
                       onClick={() => setViewingReceiptsBulletin(item)}
-                      className="inline-flex items-center space-x-1 px-3 py-1 rounded-xl text-[11px] font-mono font-bold bg-[#0B0F19] text-cyan-300 border border-cyan-500/30 hover:border-cyan-400 transition-all"
+                      className="inline-flex items-center space-x-1 px-3 py-1 rounded-xl text-[11px] font-mono font-bold bg-[#141416] text-[#EAEAE6] border border-[#EAEAE6]/30 hover:border-[#EAEAE6] transition-all"
                       title="View students who read this announcement"
                     >
                       <Users className="h-3 w-3" />
@@ -347,7 +347,7 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
                     <button
                       type="button"
                       onClick={() => handleDelete(item.id, item.title)}
-                      className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-[#0B0F19] transition-all"
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-[#141416] transition-all"
                       title="Delete announcement"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -360,20 +360,20 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
                   <h3 className="text-base font-extrabold text-white tracking-tight">
                     {item.title}
                   </h3>
-                  <p className="text-xs sm:text-sm text-[#CBD5E1] mt-1.5 leading-relaxed whitespace-pre-wrap">
+                  <p className="text-xs sm:text-sm text-[#EAEAE6] mt-1.5 leading-relaxed whitespace-pre-wrap">
                     {item.message}
                   </p>
                 </div>
 
                 {/* Action Link & Expiry Footer */}
                 {(item.actionUrl || item.expiresAt) && (
-                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#334155]/60 text-xs font-mono">
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-[#2E2E34]/60 text-xs font-mono">
                     {item.actionUrl ? (
                       <a
                         href={item.actionUrl}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center space-x-1 text-cyan-400 hover:underline"
+                        className="inline-flex items-center space-x-1 text-[#EAEAE6] hover:underline"
                       >
                         <span>{item.actionLabel || "View Attached Link"}</span>
                         <ExternalLink className="h-3 w-3" />
@@ -381,7 +381,7 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
                     ) : <div />}
 
                     {item.expiresAt && (
-                      <span className={`text-[11px] ${isExpired ? "text-rose-400 font-bold" : "text-[#64748B]"}`}>
+                      <span className={`text-[11px] ${isExpired ? "text-rose-400 font-bold" : "text-[#71717A]"}`}>
                         {isExpired ? "⚠️ Expired on " : "Expires: "} {new Date(item.expiresAt).toLocaleDateString()}
                       </span>
                     )}
@@ -396,17 +396,17 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
       {/* MODAL 1: Compose Announcement */}
       {isComposerOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in">
-          <div className="relative max-h-[92vh] w-full max-w-xl overflow-hidden rounded-3xl border border-[#334155] bg-[#0F172A] shadow-2xl flex flex-col">
+          <div className="relative max-h-[92vh] w-full max-w-xl overflow-hidden rounded-3xl border border-[#2E2E34] bg-[#141416] shadow-2xl flex flex-col">
             <div className="h-1.5 w-full bg-gradient-to-r from-cyan-400 via-indigo-500 to-rose-500" />
             
-            <div className="flex items-center justify-between border-b border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/70 shrink-0">
               <div className="flex items-center space-x-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-500/20 text-cyan-400">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EAEAE6]/20 text-[#EAEAE6]">
                   <Megaphone className="h-5 w-5" />
                 </div>
                 <div>
                   <h3 className="text-base font-bold text-white">Compose Campus Broadcast</h3>
-                  <p className="text-xs text-[#94A3B8]">Dispatch an announcement to students</p>
+                  <p className="text-xs text-[#A1A1AA]">Dispatch an announcement to students</p>
                 </div>
               </div>
               <button
@@ -431,8 +431,8 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
                       onClick={() => setFormPriority(key as BulletinPriority)}
                       className={`p-2.5 rounded-xl border text-left transition-all flex items-center space-x-2 ${
                         formPriority === key
-                          ? "border-cyan-400 bg-cyan-500/15 text-white"
-                          : "border-[#334155] bg-[#0B0F19] text-[#94A3B8] hover:text-white"
+                          ? "border-[#EAEAE6] bg-[#EAEAE6]/15 text-white"
+                          : "border-[#2E2E34] bg-[#141416] text-[#A1A1AA] hover:text-white"
                       }`}
                     >
                       <span className="text-base">{meta.icon}</span>
@@ -453,7 +453,7 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
                   placeholder="e.g. Level 4 Lab Deadline Extended to Sunday Midnight"
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
-                  className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] p-2.5 text-xs text-white placeholder-[#64748B] focus:border-cyan-400 focus:outline-none"
+                  className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] p-2.5 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
                 />
               </div>
 
@@ -468,7 +468,7 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
                   placeholder="Provide comprehensive instructions, rationale, or event details..."
                   value={formMessage}
                   onChange={(e) => setFormMessage(e.target.value)}
-                  className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] p-2.5 text-xs text-white placeholder-[#64748B] focus:border-cyan-400 focus:outline-none resize-none leading-relaxed font-sans"
+                  className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] p-2.5 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none resize-none leading-relaxed font-sans"
                 />
               </div>
 
@@ -481,7 +481,7 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
                   <select
                     value={formTargetLevel}
                     onChange={(e) => setFormTargetLevel(e.target.value as any)}
-                    className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] p-2.5 text-xs text-white focus:border-cyan-400 focus:outline-none cursor-pointer"
+                    className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] p-2.5 text-xs text-white focus:border-[#EAEAE6] focus:outline-none cursor-pointer"
                   >
                     <option value="all">🌐 All Academic Levels</option>
                     <option value="Level 3">Level 3</option>
@@ -497,7 +497,7 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
                   <select
                     value={formTargetTradeId}
                     onChange={(e) => setFormTargetTradeId(e.target.value)}
-                    className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] p-2.5 text-xs text-white focus:border-cyan-400 focus:outline-none cursor-pointer"
+                    className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] p-2.5 text-xs text-white focus:border-[#EAEAE6] focus:outline-none cursor-pointer"
                   >
                     <option value="all">🌐 All Trades</option>
                     {trades.map(t => (
@@ -517,7 +517,7 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
                     type="date"
                     value={formExpiresAt}
                     onChange={(e) => setFormExpiresAt(e.target.value)}
-                    className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] p-2.5 text-xs text-white focus:border-cyan-400 focus:outline-none"
+                    className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] p-2.5 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   />
                 </div>
 
@@ -530,18 +530,18 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
                     placeholder="e.g. /tips or https://..."
                     value={formActionUrl}
                     onChange={(e) => setFormActionUrl(e.target.value)}
-                    className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] p-2.5 text-xs text-white placeholder-[#64748B] focus:border-cyan-400 focus:outline-none"
+                    className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] p-2.5 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
                   />
                 </div>
               </div>
 
               {/* Imperative Modal Checkbox */}
-              <label className="flex items-center space-x-2.5 p-3 rounded-xl bg-[#0B0F19] border border-rose-500/30 cursor-pointer">
+              <label className="flex items-center space-x-2.5 p-3 rounded-xl bg-[#141416] border border-rose-500/30 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={formRequireAck}
                   onChange={(e) => setFormRequireAck(e.target.checked)}
-                  className="rounded border-[#334155] text-rose-500 focus:ring-rose-500"
+                  className="rounded border-[#2E2E34] text-rose-500 focus:ring-rose-500"
                 />
                 <span className="text-xs text-rose-300 font-sans">
                   <strong>Require Imperative Acknowledgment:</strong> Shows an un-dismissible popup modal on student login until they click "I Acknowledge".
@@ -549,18 +549,18 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
               </label>
 
               {/* Submit Buttons */}
-              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-[#334155]">
+              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-[#2E2E34]">
                 <button
                   type="button"
                   onClick={() => setIsComposerOpen(false)}
-                  className="px-4 py-2.5 rounded-xl border border-[#334155] text-[#94A3B8] hover:text-white"
+                  className="px-4 py-2.5 rounded-xl border border-[#2E2E34] text-[#A1A1AA] hover:text-white"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2.5 rounded-xl bg-cyan-400 hover:bg-cyan-300 text-slate-950 font-bold active:scale-95 transition-all flex items-center space-x-1.5"
+                  className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-cyan-300 text-[#141416] font-bold active:scale-95 transition-all flex items-center space-x-1.5"
                 >
                   <Send className="h-3.5 w-3.5" />
                   <span>{submitting ? "Publishing..." : "Broadcast Notice"}</span>
@@ -574,14 +574,14 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
       {/* MODAL 2: Read Receipts Inspector */}
       {viewingReceiptsBulletin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in">
-          <div className="relative max-h-[85vh] w-full max-w-md overflow-hidden rounded-3xl border border-[#334155] bg-[#0F172A] shadow-2xl flex flex-col">
-            <div className="flex items-center justify-between border-b border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
+          <div className="relative max-h-[85vh] w-full max-w-md overflow-hidden rounded-3xl border border-[#2E2E34] bg-[#141416] shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/70 shrink-0">
               <div>
                 <h3 className="text-sm font-bold text-white flex items-center space-x-1.5">
-                  <Users className="h-4 w-4 text-cyan-400" />
+                  <Users className="h-4 w-4 text-[#EAEAE6]" />
                   <span>Read Receipts ({viewingReceiptsBulletin.readReceipts?.length || 0})</span>
                 </h3>
-                <p className="text-[11px] font-mono text-[#94A3B8] truncate max-w-xs mt-0.5">
+                <p className="text-[11px] font-mono text-[#A1A1AA] truncate max-w-xs mt-0.5">
                   {viewingReceiptsBulletin.title}
                 </p>
               </div>
@@ -595,14 +595,14 @@ export default function BroadcastManager({ adminUser, trades = [] }: BroadcastMa
 
             <div className="p-6 overflow-y-auto space-y-2">
               {(viewingReceiptsBulletin.readReceipts || []).length === 0 ? (
-                <div className="py-8 text-center text-xs font-mono text-[#94A3B8]">
+                <div className="py-8 text-center text-xs font-mono text-[#A1A1AA]">
                   No students have acknowledged or opened this announcement yet.
                 </div>
               ) : (
                 viewingReceiptsBulletin.readReceipts?.map((rec, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between p-3 rounded-xl bg-[#1E293B] border border-[#334155] text-xs font-mono"
+                    className="flex items-center justify-between p-3 rounded-xl bg-[#1C1C1F] border border-[#2E2E34] text-xs font-mono"
                   >
                     <span className="font-bold text-white">{rec.studentName}</span>
                     <span className="text-[10px] text-emerald-400 flex items-center space-x-1">

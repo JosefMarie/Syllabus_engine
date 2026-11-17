@@ -63,6 +63,7 @@ interface ActiveExamSessionBackup {
   startedAt: string;
   lastSavedAt: string;
   tabSwitchViolations: number;
+  drawnQuestionIds?: string[];
 }
 
 const getExamSessionKey = (studentUid: string) => `active_exam_session_${studentUid}`;
@@ -245,6 +246,18 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
   const [submittingAttempt, setSubmittingAttempt] = useState(false);
   const [completedAttempt, setCompletedAttempt] = useState<ExamAttempt | null>(null);
   const [violationToast, setViolationToast] = useState<string | null>(null);
+  const [drawnQuestionIds, setDrawnQuestionIds] = useState<string[] | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isScreenShielded, setIsScreenShielded] = useState(false);
+
+  const activeQuestions: ExamQuestion[] = useMemo(() => {
+    if (!activeExam) return [];
+    if (drawnQuestionIds && drawnQuestionIds.length > 0) {
+      const map = new Map(activeExam.questions.map((q) => [q.id, q]));
+      return drawnQuestionIds.map((id) => map.get(id)).filter(Boolean) as ExamQuestion[];
+    }
+    return activeExam.questions;
+  }, [activeExam, drawnQuestionIds]);
 
   // Interrupted Session Recovery State
   const [recoveredSession, setRecoveredSession] = useState<ActiveExamSessionBackup | null>(null);
@@ -261,6 +274,9 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
   const tabSwitchViolationsRef = useRef(tabSwitchViolations);
   tabSwitchViolationsRef.current = tabSwitchViolations;
+
+  const drawnQuestionIdsRef = useRef(drawnQuestionIds);
+  drawnQuestionIdsRef.current = drawnQuestionIds;
 
   const currentQuestionIdxRef = useRef(currentQuestionIdx);
   currentQuestionIdxRef.current = currentQuestionIdx;
@@ -577,7 +593,8 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
       timeRemainingSeconds,
       startedAt: examStartedAtRef.current || new Date().toISOString(),
       lastSavedAt: new Date().toISOString(),
-      tabSwitchViolations
+      tabSwitchViolations,
+      drawnQuestionIds: drawnQuestionIds || undefined
     };
     saveActiveSession(backup);
   }, [
@@ -588,6 +605,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
     currentQuestionIdx,
     timeRemainingSeconds,
     tabSwitchViolations,
+    drawnQuestionIds,
     currentUser?.uid
   ]);
 
@@ -646,6 +664,14 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
             currentQuestionIndex: currentQuestionIdxRef.current
           };
           saveLiveProctoringSession(livePayload).catch(() => {});
+        }
+
+        // Auto-submit if maxTabSwitches limit is configured and reached
+        if (activeExam?.enableAntiCheating && activeExam?.maxTabSwitches && activeExam.maxTabSwitches > 0 && next >= activeExam.maxTabSwitches) {
+          setViolationToast(`🚨 Maximum tab-switch limit (${activeExam.maxTabSwitches}) reached! Auto-submitting exam...`);
+          setTimeout(() => {
+            finalizeSubmission(true, "tab_switch_limit");
+          }, 300);
         }
 
         return next;
@@ -762,6 +788,22 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
         return false;
       }
 
+      // Block Screenshot & Snipping Shortcuts (PrintScreen, Win+Shift+S, Cmd+Shift+3/4/5)
+      if (
+        e.key === "PrintScreen" ||
+        (e.metaKey && e.shiftKey && (key === "s" || key === "3" || key === "4" || key === "5"))
+      ) {
+        e.preventDefault();
+        setIsScreenShielded(true);
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText("Screenshots are disabled during exams.").catch(() => {});
+        }
+        setViolationToast("🚫 Screenshots & screen snipping are strictly blocked during exams!");
+        setTimeout(() => setViolationToast(null), 4000);
+        setTimeout(() => setIsScreenShielded(false), 3000);
+        return false;
+      }
+
       // Block Copy (Ctrl+C / Cmd+C) outside answer inputs
       if (isCtrlOrMeta && key === "c") {
         const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
@@ -774,11 +816,30 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
       }
     };
 
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === "PrintScreen") {
+        setIsScreenShielded(true);
+        if (navigator.clipboard?.writeText) {
+          navigator.clipboard.writeText("Screenshots are disabled during exams.").catch(() => {});
+        }
+        setViolationToast("🚫 PrintScreen detected! Clipboard cleared & incident logged.");
+        setTimeout(() => setViolationToast(null), 4000);
+        setTimeout(() => setIsScreenShielded(false), 3000);
+      }
+    };
+
+    // Instant Privacy Shield on window blur / OS snipping overlay
+    const handleShieldBlur = () => setIsScreenShielded(true);
+    const handleShieldFocus = () => setIsScreenShielded(false);
+
     document.addEventListener("contextmenu", handleContextMenu);
     document.addEventListener("copy", handleCopyCut);
     document.addEventListener("cut", handleCopyCut);
     document.addEventListener("selectstart", handleSelectStart);
     window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("blur", handleShieldBlur);
+    window.addEventListener("focus", handleShieldFocus);
 
     return () => {
       document.removeEventListener("contextmenu", handleContextMenu);
@@ -786,6 +847,10 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
       document.removeEventListener("cut", handleCopyCut);
       document.removeEventListener("selectstart", handleSelectStart);
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("blur", handleShieldBlur);
+      window.removeEventListener("focus", handleShieldFocus);
+      setIsScreenShielded(false);
     };
   }, [examStarted]);
 
@@ -826,44 +891,8 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
       }
     });
 
-    const sendHeartbeat = () => {
-      const answers = studentAnswersRef.current;
-      const answeredCount = Object.keys(answers).filter(k => isQuestionAnswered(answers[k])).length;
-      const livePayload: LiveProctoringSession = {
-        id: `${activeExam.id}_${currentUser.uid}`,
-        examId: activeExam.id,
-        examTitle: activeExam.title,
-        courseCode: activeExam.courseCode,
-        studentUid: currentUser.uid,
-        studentName: currentUser.fullName,
-        studentUsername: currentUser.username,
-        studentLevel: currentUser.level,
-        studentTradeId: currentUser.tradeId,
-        status: currentProctorStatusRef.current,
-        flagReason: currentFlagReasonRef.current,
-        startedAt: examStartedAtRef.current || new Date().toISOString(),
-        lastHeartbeat: new Date().toISOString(),
-        timeLimitMinutes: activeExam.timeLimitMinutes,
-        timeRemainingSeconds: timeRemainingSecondsRef.current,
-        extraTimeGrantedMinutes: extraTimeGrantedMinutesRef.current,
-        tabSwitchViolations: tabSwitchViolationsRef.current,
-        answeredQuestionsCount: answeredCount,
-        totalQuestions: activeExam.questions.length,
-        currentQuestionIndex: currentQuestionIdxRef.current
-      };
-
-      saveLiveProctoringSession(livePayload);
-    };
-
-    // Send immediate initial ping
-    sendHeartbeat();
-
-    // 2. Periodic Heartbeat sync (every 25 seconds to preserve Firestore quotas without flooding writes)
-    const heartbeatTimer = setInterval(sendHeartbeat, 25000);
-
     return () => {
       unsub();
-      clearInterval(heartbeatTimer);
     };
   }, [examStarted, activeExam?.id, currentUser?.uid]);
 
@@ -876,11 +905,13 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
     setCurrentQuestionIdx(recoveredSession.currentQuestionIdx || 0);
     setTimeRemainingSeconds(recoveredSession.timeRemainingSeconds);
     setTabSwitchViolations(recoveredSession.tabSwitchViolations || 0);
+    setDrawnQuestionIds(recoveredSession.drawnQuestionIds || null);
+    setSubmitError(null);
     examStartedAtRef.current = recoveredSession.startedAt;
     setExamStarted(true);
     setRecoveredSession(null);
     setRecoveredExam(null);
-    enterFullscreen();
+    if (recoveredExam.requireFullscreen !== false) enterFullscreen();
   };
 
   const handleDiscardRecoveredSession = () => {
@@ -893,22 +924,48 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
   // Start Exam Flow
   const handleOpenExamPreScreen = (exam: Exam) => {
+    const override = exam.studentOverrides?.[currentUser.uid];
+    const extraMins = override?.extraMinutes || 0;
+    const effectiveTimeMins = exam.timeLimitMinutes > 0 ? exam.timeLimitMinutes + extraMins : 0;
+
     setActiveExam(exam);
     setExamStarted(false);
     setCurrentQuestionIdx(0);
     setStudentAnswers({});
     setFlaggedQuestions({});
     setTabSwitchViolations(0);
+    setDrawnQuestionIds(null);
+    setSubmitError(null);
     setCompletedAttempt(null);
-    setTimeRemainingSeconds(exam.timeLimitMinutes * 60);
+    setTimeRemainingSeconds(effectiveTimeMins * 60);
     examStartedAtRef.current = null;
   };
 
   const handleStartExamConfirmed = () => {
     const startedAt = new Date().toISOString();
     examStartedAtRef.current = startedAt;
+    setSubmitError(null);
+
+    // Question Bank Random Subset Draw + Shuffling
+    let chosenIds: string[] | null = null;
+    if (activeExam) {
+      let pool = [...activeExam.questions];
+      if (activeExam.shuffleQuestions || (activeExam.questionDrawCount && activeExam.questionDrawCount > 0)) {
+        for (let i = pool.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+      }
+      if (activeExam.questionDrawCount && activeExam.questionDrawCount > 0 && activeExam.questionDrawCount < pool.length) {
+        pool = pool.slice(0, activeExam.questionDrawCount);
+      }
+      if (pool.length !== activeExam.questions.length || activeExam.shuffleQuestions) {
+        chosenIds = pool.map((q) => q.id);
+      }
+    }
+    setDrawnQuestionIds(chosenIds);
     setExamStarted(true);
-    enterFullscreen();
+    if (activeExam?.requireFullscreen !== false) enterFullscreen();
 
     if (activeExam) {
       const initialLiveSession: LiveProctoringSession = {
@@ -962,7 +1019,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
   const handleManualSubmit = () => {
     if (!activeExam) return;
     const answeredCount = Object.keys(studentAnswers).filter(k => isQuestionAnswered(studentAnswers[k])).length;
-    const unansweredCount = activeExam.questions.length - answeredCount;
+    const unansweredCount = activeQuestions.length - answeredCount;
 
     let confirmMsg = `Are you sure you want to submit your assessment?`;
     if (unansweredCount > 0) {
@@ -974,9 +1031,10 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
     }
   };
 
-  const finalizeSubmission = async (forcedTimeUp = false) => {
+  const finalizeSubmission = async (forcedTimeUp = false, autoReason?: string) => {
     if (!activeExam) return;
     setSubmittingAttempt(true);
+    setSubmitError(null);
 
     if (timerRef.current) clearInterval(timerRef.current);
 
@@ -985,10 +1043,17 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
       const attemptNum = pastAttemptsForExam.length + 1;
       const attemptId = `${activeExam.id}_${currentUser.uid}_${attemptNum}`;
 
-      // Calculate automated score
-      const autoRes = calculateAutoGrade(activeExam, studentAnswers);
-      const timeSpentSeconds = activeExam.timeLimitMinutes > 0 
-        ? Math.max(1, (activeExam.timeLimitMinutes * 60) - timeRemainingSeconds)
+      const latestAnswers = studentAnswersRef.current;
+      const latestDrawnIds = drawnQuestionIdsRef.current || undefined;
+      const latestRemainingSec = timeRemainingSecondsRef.current;
+      const latestViolations = tabSwitchViolationsRef.current;
+
+      // Calculate automated score against drawn subset (or full pool)
+      const autoRes = calculateAutoGrade(activeExam, latestAnswers, latestDrawnIds);
+      const overrideExtraMins = activeExam.studentOverrides?.[currentUser.uid]?.extraMinutes || 0;
+      const effectiveTimeLimit = activeExam.timeLimitMinutes > 0 ? activeExam.timeLimitMinutes + overrideExtraMins : 0;
+      const timeSpentSeconds = effectiveTimeLimit > 0
+        ? Math.max(1, (effectiveTimeLimit * 60) - latestRemainingSec)
         : 60;
 
       const attemptPayload: ExamAttempt = {
@@ -1002,7 +1067,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
         studentTradeId: currentUser.tradeId,
         studentLevel: currentUser.level,
         attemptNumber: attemptNum,
-        answers: studentAnswers,
+        answers: latestAnswers,
         score: autoRes.score,
         maxScore: autoRes.maxScore,
         percentage: autoRes.percentage,
@@ -1011,7 +1076,9 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
         startedAt: examStartedAtRef.current || new Date(Date.now() - (timeSpentSeconds * 1000)).toISOString(),
         submittedAt: new Date().toISOString(),
         timeSpentSeconds,
-        tabSwitchCount: tabSwitchViolations,
+        tabSwitchCount: latestViolations,
+        drawnQuestionIds: latestDrawnIds,
+        autoSubmittedReason: autoReason || (forcedTimeUp ? "time_expired" : undefined),
         questionGrades: autoRes.questionGrades,
         gradedAt: autoRes.hasSubjectiveQuestions ? undefined : new Date().toISOString(),
         gradedBy: autoRes.hasSubjectiveQuestions ? undefined : "Automated Engine"
@@ -1051,7 +1118,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
       } catch (e) {}
     } catch (e) {
       console.error("Failed to submit exam attempt:", e);
-      alert("Error submitting answers. Please try again.");
+      setSubmitError("Submission failed due to a connection issue. Your answers are safely backed up locally — please check your internet and click Retry Submit.");
     } finally {
       setSubmittingAttempt(false);
     }
@@ -1075,8 +1142,8 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-[#334155] bg-[#1E293B]/60 p-12 text-center text-xs font-mono text-[#94A3B8]">
-        <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-3" />
+      <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F]/60 p-12 text-center text-xs font-mono text-[#A1A1AA]">
+        <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent mb-3" />
         Loading your class examinations &amp; practice quizzes...
       </div>
     );
@@ -1085,13 +1152,13 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#334155] pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#2E2E34] pb-5">
         <div>
           <h2 className="text-base font-extrabold text-white flex items-center space-x-2">
-            <FileQuestion className="h-5 w-5 text-[#06B6D4]" />
+            <FileQuestion className="h-5 w-5 text-[#EAEAE6]" />
             <span>Examinations &amp; Knowledge Checks</span>
           </h2>
-          <p className="text-xs text-[#94A3B8] mt-0.5">
+          <p className="text-xs text-[#A1A1AA] mt-0.5">
             Take official timed course exams, complete self-paced practice quizzes, and review your scores.
           </p>
         </div>
@@ -1102,7 +1169,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
             type="button"
             onClick={handleManualSync}
             disabled={syncing}
-            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#0B0F19] hover:bg-slate-800 border border-[#334155] text-cyan-400 hover:text-cyan-300 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-[#141416] hover:bg-slate-800 border border-[#2E2E34] text-[#EAEAE6] hover:text-[#EAEAE6] transition-all shadow-sm active:scale-95 disabled:opacity-50"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
             <span>Sync Latest</span>
@@ -1111,18 +1178,18 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
       </div>
 
       {/* Filters & Cohort Tabs */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-[#1E293B]/50 p-3 rounded-2xl border border-[#334155]">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-[#1C1C1F]/50 p-3 rounded-2xl border border-[#2E2E34]">
         {/* Cohort Level Filter Pills */}
         <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-[11px] font-mono text-[#94A3B8] uppercase font-bold mr-1">Class:</span>
-          <div className="flex items-center rounded-xl bg-[#0B0F19] p-0.5 border border-[#334155]">
+          <span className="text-[11px] font-mono text-[#A1A1AA] uppercase font-bold mr-1">Class:</span>
+          <div className="flex items-center rounded-xl bg-[#141416] p-0.5 border border-[#2E2E34]">
             <button
               type="button"
               onClick={() => setSelectedLevelFilter("my_level")}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all ${
                 effectiveLevelFilter === "my_level"
-                  ? "bg-[#06B6D4] text-slate-950"
-                  : "text-[#94A3B8] hover:text-white"
+                  ? "bg-[#EAEAE6] text-[#141416]"
+                  : "text-[#A1A1AA] hover:text-white"
               }`}
             >
               My Class ({currentUser.level || "All"}) ({myLevelExams.length})
@@ -1132,8 +1199,8 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
               onClick={() => setSelectedLevelFilter("all")}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all ${
                 effectiveLevelFilter === "all"
-                  ? "bg-[#06B6D4] text-slate-950"
-                  : "text-[#94A3B8] hover:text-white"
+                  ? "bg-[#EAEAE6] text-[#141416]"
+                  : "text-[#A1A1AA] hover:text-white"
               }`}
             >
               All Levels ({tradeMatchedExams.length})
@@ -1143,8 +1210,8 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
               onClick={() => setSelectedLevelFilter("Level 5")}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all ${
                 effectiveLevelFilter === "Level 5"
-                  ? "bg-[#06B6D4] text-slate-950"
-                  : "text-[#94A3B8] hover:text-white"
+                  ? "bg-[#EAEAE6] text-[#141416]"
+                  : "text-[#A1A1AA] hover:text-white"
               }`}
             >
               Level 5
@@ -1154,8 +1221,8 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
               onClick={() => setSelectedLevelFilter("Level 4")}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold transition-all ${
                 effectiveLevelFilter === "Level 4"
-                  ? "bg-[#06B6D4] text-slate-950"
-                  : "text-[#94A3B8] hover:text-white"
+                  ? "bg-[#EAEAE6] text-[#141416]"
+                  : "text-[#A1A1AA] hover:text-white"
               }`}
             >
               Level 4
@@ -1165,11 +1232,11 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
         {/* Assessment Type & Subject Filter */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="flex items-center rounded-xl bg-[#0B0F19] p-0.5 border border-[#334155]">
+          <div className="flex items-center rounded-xl bg-[#141416] p-0.5 border border-[#2E2E34]">
             <button
               onClick={() => setFilterType("all")}
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                filterType === "all" ? "bg-[#06B6D4] text-slate-950 font-bold" : "text-[#94A3B8] hover:text-white"
+                filterType === "all" ? "bg-[#EAEAE6] text-[#141416] font-bold" : "text-[#A1A1AA] hover:text-white"
               }`}
             >
               All Tests
@@ -1177,7 +1244,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
             <button
               onClick={() => setFilterType("quiz")}
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                filterType === "quiz" ? "bg-[#06B6D4] text-slate-950 font-bold" : "text-[#94A3B8] hover:text-white"
+                filterType === "quiz" ? "bg-[#EAEAE6] text-[#141416] font-bold" : "text-[#A1A1AA] hover:text-white"
               }`}
             >
               Quizzes
@@ -1185,7 +1252,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
             <button
               onClick={() => setFilterType("exam")}
               className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                filterType === "exam" ? "bg-[#06B6D4] text-slate-950 font-bold" : "text-[#94A3B8] hover:text-white"
+                filterType === "exam" ? "bg-[#EAEAE6] text-[#141416] font-bold" : "text-[#A1A1AA] hover:text-white"
               }`}
             >
               Exams
@@ -1195,7 +1262,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
           <select
             value={filterCourse}
             onChange={(e) => setFilterCourse(e.target.value)}
-            className="rounded-xl bg-[#0B0F19] border border-[#334155] px-3 py-1.5 text-xs font-semibold text-[#CBD5E1] focus:border-[#06B6D4] focus:outline-none"
+            className="rounded-xl bg-[#141416] border border-[#2E2E34] px-3 py-1.5 text-xs font-semibold text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
           >
             <option value="all">All Courses</option>
             {availableCourses.map((c: { code: string; label: string }) => (
@@ -1207,10 +1274,10 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
       {/* Interrupted Session Recovery Alert Banner */}
       {recoveredSession && recoveredExam && !activeExam && (
-        <div className="rounded-3xl border-2 border-cyan-500/50 bg-gradient-to-r from-cyan-950/70 via-[#0F172A] to-slate-900/90 p-5 sm:p-6 shadow-2xl backdrop-blur-md animate-in slide-in-from-top-4 space-y-4">
+        <div className="rounded-3xl border-2 border-[#EAEAE6]/50 bg-gradient-to-r from-cyan-950/70 via-[#141416] to-slate-900/90 p-5 sm:p-6 shadow-2xl backdrop-blur-md animate-in slide-in-from-top-4 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-start space-x-3.5">
-              <div className="p-3 rounded-2xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/40 shrink-0 shadow-lg">
+              <div className="p-3 rounded-2xl bg-[#EAEAE6]/20 text-[#EAEAE6] border border-[#EAEAE6]/40 shrink-0 shadow-lg">
                 <RotateCcw className="h-6 w-6 animate-spin" style={{ animationDuration: '6s' }} />
               </div>
               <div className="space-y-1">
@@ -1218,15 +1285,15 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                   <span className="inline-flex items-center rounded-md bg-amber-500/20 text-amber-300 border border-amber-500/40 px-2 py-0.5 text-[10px] font-mono font-bold uppercase">
                     Interrupted Session Detected
                   </span>
-                  <span className="text-xs font-mono text-cyan-400 font-bold">{recoveredExam.courseCode}</span>
+                  <span className="text-xs font-mono text-[#EAEAE6] font-bold">{recoveredExam.courseCode}</span>
                 </div>
                 <h3 className="text-sm sm:text-base font-extrabold text-white">
                   Unfinished Assessment: {recoveredExam.title}
                 </h3>
-                <p className="text-xs text-[#94A3B8] leading-relaxed">
+                <p className="text-xs text-[#A1A1AA] leading-relaxed">
                   We automatically preserved your test session, answers, and remaining time from an unexpected interruption (power cut, battery loss, or restart).
                   {recoveredExam.timeLimitMinutes > 0 && (
-                    <span className="ml-1 text-cyan-300 font-mono font-semibold">
+                    <span className="ml-1 text-[#EAEAE6] font-mono font-semibold">
                       Time Remaining: {Math.floor(recoveredSession.timeRemainingSeconds / 60)}m {recoveredSession.timeRemainingSeconds % 60}s.
                     </span>
                   )}
@@ -1237,13 +1304,13 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
             <div className="flex items-center space-x-2.5 shrink-0 self-end sm:self-center">
               <button
                 onClick={handleDiscardRecoveredSession}
-                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-[#94A3B8] hover:text-rose-400 bg-[#0B0F19] border border-[#334155] hover:border-rose-500/40 transition-all"
+                className="px-4 py-2.5 rounded-xl text-xs font-semibold text-[#A1A1AA] hover:text-rose-400 bg-[#141416] border border-[#2E2E34] hover:border-rose-500/40 transition-all"
               >
                 Discard
               </button>
               <button
                 onClick={handleResumeRecoveredSession}
-                className="inline-flex items-center space-x-2 px-6 py-2.5 rounded-xl text-xs font-black text-slate-950 bg-cyan-400 hover:bg-cyan-500 transition-all shadow-xl active:scale-95"
+                className="inline-flex items-center space-x-2 px-6 py-2.5 rounded-xl text-xs font-black text-[#141416] bg-emerald-500 hover:bg-emerald-500 transition-all shadow-xl active:scale-95"
               >
                 <Play className="h-4 w-4 fill-current" />
                 <span>Resume in Fullscreen</span>
@@ -1255,10 +1322,10 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
       {/* Tests Grid */}
       {filteredExams.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-[#334155] bg-[#1E293B]/30 p-10 text-center">
-          <FileQuestion className="mx-auto h-12 w-12 text-[#64748B] mb-3" />
+        <div className="rounded-3xl border border-dashed border-[#2E2E34] bg-[#1C1C1F]/30 p-10 text-center">
+          <FileQuestion className="mx-auto h-12 w-12 text-[#71717A] mb-3" />
           <h3 className="text-base font-bold text-white">No Assessments Posted Yet</h3>
-          <p className="text-xs text-[#94A3B8] max-w-md mx-auto mt-1">
+          <p className="text-xs text-[#A1A1AA] max-w-md mx-auto mt-1">
             {effectiveLevelFilter === "my_level" 
               ? `Your instructor hasn't scheduled any formal exams or quizzes for your level (${currentUser.level || "your class"}) yet. Switch to "All Levels" above to see all published tests.`
               : `No assessments found matching the selected filter criteria.`}
@@ -1270,13 +1337,21 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
             const isExam = exam.type === "exam";
             const examAttempts = myAttempts.filter(a => a.examId === exam.id);
             const latestAttempt = examAttempts[0]; // sorted newest first
-            const hasAttemptsRemaining = exam.maxAttempts === 0 || examAttempts.length < exam.maxAttempts;
+            const override = exam.studentOverrides?.[currentUser.uid];
+            const effectiveMaxAttempts = exam.maxAttempts > 0 ? exam.maxAttempts + (override?.extraAttempts || 0) : 0;
+            const hasAttemptsRemaining = effectiveMaxAttempts === 0 || examAttempts.length < effectiveMaxAttempts;
+            const nowMs = Date.now();
+            const opensAtMs = exam.availableFrom ? new Date(exam.availableFrom).getTime() : null;
+            const effectiveDueStr = override?.extendedDueDate || exam.dueDate;
+            const closesAtMs = effectiveDueStr ? new Date(effectiveDueStr).getTime() : null;
+            const isNotOpenYet = Boolean(opensAtMs && nowMs < opensAtMs);
+            const isWindowClosed = Boolean(closesAtMs && nowMs > closesAtMs);
             const isPassed = latestAttempt?.passed;
 
             return (
               <div
                 key={exam.id}
-                className="flex flex-col justify-between rounded-3xl border border-[#334155] bg-[#1E293B] p-5 shadow-xl hover:border-[#06B6D4]/50 transition-all group relative overflow-hidden"
+                className="flex flex-col justify-between rounded-3xl border border-[#2E2E34] bg-[#1C1C1F] p-5 shadow-xl hover:border-[#EAEAE6]/50 transition-all group relative overflow-hidden"
               >
                 {/* Accent top stripe */}
                 <div className={`absolute top-0 left-0 right-0 h-1.5 ${
@@ -1292,42 +1367,42 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                       <span className={`inline-flex items-center space-x-1 rounded-md px-2 py-0.5 text-[10px] font-mono font-bold border ${
                         isExam 
                           ? "bg-purple-500/15 border-purple-500/30 text-purple-300"
-                          : "bg-cyan-500/15 border-cyan-500/30 text-cyan-300"
+                          : "bg-[#EAEAE6]/15 border-[#EAEAE6]/30 text-[#EAEAE6]"
                       }`}>
                         {isExam ? <Award className="h-3 w-3" /> : <HelpCircle className="h-3 w-3" />}
                         <span className="uppercase">{exam.type}</span>
                       </span>
 
-                      <span className="rounded-md bg-[#0B0F19]/60 backdrop-blur-sm border border-[#334155]/60 px-2 py-0.5 text-[10px] font-mono text-[#CBD5E1]">
+                      <span className="rounded-md bg-[#141416]/60 backdrop-blur-sm border border-[#2E2E34]/60 px-2 py-0.5 text-[10px] font-mono text-[#EAEAE6]">
                         {exam.courseCode}
                       </span>
                     </div>
 
-                    <span className="rounded-md bg-[#0B0F19]/60 backdrop-blur-sm border border-[#334155]/60 px-2 py-0.5 text-[10px] font-mono text-emerald-400">
+                    <span className="rounded-md bg-[#141416]/60 backdrop-blur-sm border border-[#2E2E34]/60 px-2 py-0.5 text-[10px] font-mono text-emerald-400">
                       {exam.totalPoints} Pts
                     </span>
                   </div>
 
-                  <h3 className="text-base font-extrabold text-white group-hover:text-[#06B6D4] transition-colors line-clamp-1 mb-1.5">
+                  <h3 className="text-base font-extrabold text-white group-hover:text-[#EAEAE6] transition-colors line-clamp-1 mb-1.5">
                     {exam.title}
                   </h3>
 
-                  <p className="text-xs text-[#94A3B8] line-clamp-2 leading-relaxed mb-4">
+                  <p className="text-xs text-[#A1A1AA] line-clamp-2 leading-relaxed mb-4">
                     {exam.description || (exam.courseTitle ? `Assessment covering ${exam.courseTitle}` : "Interactive assessment")}
                   </p>
 
                   {/* Metadata Chips */}
                   <div className="grid grid-cols-2 gap-2 text-[11px] font-mono mb-4">
-                    <div className="rounded-xl bg-[#0B0F19]/50 backdrop-blur-md p-2 border border-[#334155]/60">
-                      <span className="text-[#64748B] block text-[10px]">TIME ALLOWED</span>
+                    <div className="rounded-xl bg-[#141416]/50 backdrop-blur-md p-2 border border-[#2E2E34]/60">
+                      <span className="text-[#71717A] block text-[10px]">TIME ALLOWED</span>
                       <span className="text-white font-bold flex items-center space-x-1 mt-0.5">
-                        <Clock className="h-3 w-3 text-cyan-400" />
+                        <Clock className="h-3 w-3 text-[#EAEAE6]" />
                         <span>{exam.timeLimitMinutes > 0 ? `${exam.timeLimitMinutes} Mins` : "Untimed"}</span>
                       </span>
                     </div>
 
-                    <div className="rounded-xl bg-[#0B0F19]/50 backdrop-blur-md p-2 border border-[#334155]/60">
-                      <span className="text-[#64748B] block text-[10px]">QUESTIONS</span>
+                    <div className="rounded-xl bg-[#141416]/50 backdrop-blur-md p-2 border border-[#2E2E34]/60">
+                      <span className="text-[#71717A] block text-[10px]">QUESTIONS</span>
                       <span className="text-white font-bold flex items-center space-x-1 mt-0.5">
                         <FileQuestion className="h-3 w-3 text-emerald-400" />
                         <span>{exam.questions.length} Items</span>
@@ -1361,7 +1436,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                 </div>
 
                 {/* Footer Actions */}
-                <div className="pt-3 border-t border-[#334155] flex items-center justify-between gap-2">
+                <div className="pt-3 border-t border-[#2E2E34] flex items-center justify-between gap-2">
                   {latestAttempt ? (() => {
                     const unlockInfo = getReviewUnlockStatus(latestAttempt, exam);
                     if (unlockInfo.isLocked) {
@@ -1382,22 +1457,32 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                     return (
                       <button
                         onClick={() => handleOpenReview(latestAttempt)}
-                        className="inline-flex items-center space-x-1 text-xs font-mono text-[#06B6D4] hover:underline"
+                        className="inline-flex items-center space-x-1 text-xs font-mono text-[#EAEAE6] hover:underline"
                       >
                         <Eye className="h-3.5 w-3.5" />
                         <span>Review &amp; Explanations</span>
                       </button>
                     );
                   })() : (
-                    <span className="text-[11px] font-mono text-[#64748B]">
+                    <span className="text-[11px] font-mono text-[#71717A]">
                       {exam.maxAttempts === 1 ? "1 Attempt Only" : "Multiple Attempts"}
                     </span>
                   )}
 
-                  {hasAttemptsRemaining ? (
+                  {isNotOpenYet ? (
+                    <span className="inline-flex items-center space-x-1 rounded-lg bg-amber-500/15 border border-amber-500/30 px-3 py-1.5 text-xs font-mono text-amber-300">
+                      <Clock className="h-3 w-3" />
+                      <span>Opens {new Date(exam.availableFrom!).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                    </span>
+                  ) : isWindowClosed ? (
+                    <span className="inline-flex items-center space-x-1 rounded-lg bg-rose-500/15 border border-rose-500/30 px-3 py-1.5 text-xs font-mono text-rose-300">
+                      <Lock className="h-3 w-3" />
+                      <span>Window Closed</span>
+                    </span>
+                  ) : hasAttemptsRemaining ? (
                     <button
                       onClick={() => handleOpenExamPreScreen(exam)}
-                      className="inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4] px-4 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md active:scale-95"
+                      className="inline-flex items-center space-x-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-[#141416] hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-md active:scale-95"
                     >
                       <span>{latestAttempt ? "Retake Test" : "Start Test"}</span>
                       <ChevronRight className="h-3.5 w-3.5" />
@@ -1424,9 +1509,42 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
         } backdrop-blur-md animate-in fade-in`}>
           <div className={`h-full w-full ${
             examStarted
-              ? "h-[100dvh] max-h-screen w-screen max-w-none rounded-none border-0 select-none"
-              : "max-h-[96vh] max-w-4xl rounded-3xl border border-[#334155]"
-          } overflow-hidden bg-[#0F172A] shadow-2xl flex flex-col relative transition-all duration-300`}>
+              ? "h-[100dvh] max-h-screen w-screen max-w-none rounded-none border-0 select-none print:hidden"
+              : "max-h-[96vh] max-w-4xl rounded-3xl border border-[#2E2E34]"
+          } overflow-hidden bg-[#141416] shadow-2xl flex flex-col relative transition-all duration-300`}>
+            {/* Anti-Screenshot Blackout Curtain (triggers on PrintScreen, Snipping Tool, or window blur) */}
+            {examStarted && isScreenShielded && (
+              <div className="fixed inset-0 z-[100] bg-[#141416] flex flex-col items-center justify-center p-6 text-center select-none">
+                <div className="rounded-3xl border border-rose-500/40 bg-[#1C1C1F] p-8 max-w-md space-y-3 shadow-2xl">
+                  <ShieldAlert className="mx-auto h-10 w-10 text-rose-400" />
+                  <h3 className="text-base font-extrabold text-white">Screen Capture &amp; Focus Shield Active</h3>
+                  <p className="text-xs text-[#A1A1AA]">
+                    Exam content is hidden whenever screen capture keys are pressed or window focus is lost. Click inside the exam window to resume.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsScreenShielded(false)}
+                    className="mt-2 rounded-full bg-emerald-500 px-5 py-2 text-xs font-bold text-[#141416] hover:bg-emerald-400 transition-all"
+                  >
+                    Return to Exam
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Dynamic Student Watermark Overlay (deters phone/camera photos) */}
+            {examStarted && (
+              <div
+                aria-hidden="true"
+                className="pointer-events-none fixed inset-0 z-[45] overflow-hidden opacity-[0.04] select-none flex flex-wrap items-center justify-around gap-12 -rotate-12 scale-110"
+              >
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <span key={i} className="font-mono text-xs font-bold uppercase tracking-widest text-white whitespace-nowrap">
+                    {currentUser.fullName} &bull; @{currentUser.username} &bull; {activeExam.courseCode}
+                  </span>
+                ))}
+              </div>
+            )}
             
             {/* Anti-Cheat: Suppress Printing, Downloading & Force Non-Selectable Questions */}
             {examStarted && (
@@ -1462,21 +1580,21 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
             {/* Strict Fullscreen Required Security Curtain (Blocks exam viewing if fullscreen lost) */}
             {examStarted && !completedAttempt && !isFullscreen && (
               <div className="fixed inset-0 z-[99999] bg-[#070B14]/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center animate-in fade-in">
-                <div className="max-w-md w-full rounded-3xl border border-cyan-500/40 bg-[#0F172A] p-8 shadow-2xl space-y-5 text-center">
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 shadow-lg">
-                    <Maximize2 className="h-8 w-8 animate-pulse text-cyan-400" />
+                <div className="max-w-md w-full rounded-3xl border border-[#EAEAE6]/40 bg-[#141416] p-8 shadow-2xl space-y-5 text-center">
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#EAEAE6]/10 text-[#EAEAE6] border border-[#EAEAE6]/30 shadow-lg">
+                    <Maximize2 className="h-8 w-8 animate-pulse text-[#EAEAE6]" />
                   </div>
                   <div>
                     <h3 className="text-xl font-extrabold text-white tracking-tight">
                       Fullscreen Required
                     </h3>
-                    <p className="text-xs text-[#94A3B8] mt-2 leading-relaxed">
+                    <p className="text-xs text-[#A1A1AA] mt-2 leading-relaxed">
                       To preserve academic integrity and prevent distractions, this assessment requires uninterrupted full-screen display.
                     </p>
                   </div>
 
-                  <div className="rounded-2xl bg-[#1E293B] border border-[#334155] p-3.5 text-[11px] text-[#CBD5E1] text-left space-y-2">
-                    <div className="flex items-center space-x-1.5 text-cyan-400 font-semibold font-mono">
+                  <div className="rounded-2xl bg-[#1C1C1F] border border-[#2E2E34] p-3.5 text-[11px] text-[#EAEAE6] text-left space-y-2">
+                    <div className="flex items-center space-x-1.5 text-[#EAEAE6] font-semibold font-mono">
                       <Lock className="h-3.5 w-3.5" />
                       <span>Security &amp; Progress Guard Active</span>
                     </div>
@@ -1488,7 +1606,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                   <button
                     onClick={enterFullscreen}
                     type="button"
-                    className="w-full inline-flex items-center justify-center space-x-2 rounded-xl bg-cyan-400 hover:bg-cyan-500 px-6 py-3 text-xs font-black text-slate-950 transition-all shadow-xl active:scale-95"
+                    className="w-full inline-flex items-center justify-center space-x-2 rounded-xl bg-emerald-500 hover:bg-emerald-500 px-6 py-3 text-xs font-black text-[#141416] transition-all shadow-xl active:scale-95"
                   >
                     <Maximize2 className="h-4 w-4" />
                     <span>Return to Fullscreen &amp; Continue</span>
@@ -1510,26 +1628,26 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                     {activeExam.title}
                   </h2>
 
-                  <p className="text-xs text-[#94A3B8] leading-relaxed">
+                  <p className="text-xs text-[#A1A1AA] leading-relaxed">
                     {activeExam.description || "Please read the following examination instructions and integrity protocols carefully before beginning."}
                   </p>
 
                   {/* Rules Box */}
-                  <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5 space-y-3 text-left">
-                    <span className="text-xs font-mono font-bold text-white uppercase tracking-wider block border-b border-[#334155] pb-2">
+                  <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-5 space-y-3 text-left">
+                    <span className="text-xs font-mono font-bold text-white uppercase tracking-wider block border-b border-[#2E2E34] pb-2">
                       Exam Guidelines &amp; Anti-Cheating Protocol
                     </span>
 
-                    <div className="space-y-2.5 text-xs text-[#CBD5E1]">
+                    <div className="space-y-2.5 text-xs text-[#EAEAE6]">
                       <div className="flex items-start space-x-2.5">
-                        <Clock className="h-4 w-4 text-cyan-400 shrink-0 mt-0.5" />
+                        <Clock className="h-4 w-4 text-[#EAEAE6] shrink-0 mt-0.5" />
                         <div>
                           <strong>Time Limit:</strong> {activeExam.timeLimitMinutes > 0 ? `${activeExam.timeLimitMinutes} minutes` : "Untimed"}. The countdown starts immediately when you click Begin.
                         </div>
                       </div>
 
-                      <div className="flex items-start space-x-2.5 text-cyan-300">
-                        <Lock className="h-4 w-4 text-cyan-400 shrink-0 mt-0.5" />
+                      <div className="flex items-start space-x-2.5 text-[#EAEAE6]">
+                        <Lock className="h-4 w-4 text-[#EAEAE6] shrink-0 mt-0.5" />
                         <div>
                           <strong>Mandatory Fullscreen &amp; Power-Loss Guard:</strong> Once started, fullscreen is locked until you submit. All your answers and remaining time are continuously backed up in real time, so your work is safe even if your computer restarts or power dies.
                         </div>
@@ -1554,17 +1672,17 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between pt-6 border-t border-[#334155]">
+                <div className="flex items-center justify-between pt-6 border-t border-[#2E2E34]">
                   <button
                     onClick={handleCloseExamHall}
-                    className="px-5 py-2.5 rounded-xl text-xs font-bold text-[#94A3B8] hover:text-white bg-[#0B0F19] border border-[#334155]"
+                    className="px-5 py-2.5 rounded-xl text-xs font-bold text-[#A1A1AA] hover:text-white bg-[#141416] border border-[#2E2E34]"
                   >
                     Cancel
                   </button>
 
                   <button
                     onClick={handleStartExamConfirmed}
-                    className="inline-flex items-center space-x-2 rounded-xl bg-cyan-400 hover:bg-cyan-500 px-6 py-2.5 text-xs font-extrabold text-slate-950 transition-all shadow-xl active:scale-95"
+                    className="inline-flex items-center space-x-2 rounded-xl bg-emerald-500 hover:bg-emerald-500 px-6 py-2.5 text-xs font-extrabold text-[#141416] transition-all shadow-xl active:scale-95"
                   >
                     <span>I Understand &amp; Begin Assessment</span>
                     <ChevronRight className="h-4 w-4" />
@@ -1583,14 +1701,14 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                     <h2 className="text-2xl font-extrabold text-white tracking-tight">
                       Assessment Submitted!
                     </h2>
-                    <p className="text-xs text-[#94A3B8] mt-1">
+                    <p className="text-xs text-[#A1A1AA] mt-1">
                       {activeExam.title} &bull; Time Spent: {Math.floor(completedAttempt.timeSpentSeconds / 60)}m {completedAttempt.timeSpentSeconds % 60}s
                     </p>
                   </div>
 
                   {/* Score Card */}
-                  <div className="rounded-3xl border border-[#334155] bg-[#1E293B] p-6 space-y-3">
-                    <span className="text-xs font-mono text-[#94A3B8] uppercase tracking-wider block">
+                  <div className="rounded-3xl border border-[#2E2E34] bg-[#1C1C1F] p-6 space-y-3">
+                    <span className="text-xs font-mono text-[#A1A1AA] uppercase tracking-wider block">
                       Evaluation Result
                     </span>
 
@@ -1635,7 +1753,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                             <Lock className="h-4 w-4 text-amber-400 shrink-0" />
                             <span>Exam Review &amp; Answers Locked</span>
                           </div>
-                          <p className="text-xs text-[#CBD5E1] leading-relaxed">
+                          <p className="text-xs text-[#EAEAE6] leading-relaxed">
                             {unlockInfo.reason}
                           </p>
                           {!unlockInfo.isManualLock && unlockInfo.unlockTime && unlockInfo.remainingMs > 0 && (
@@ -1661,7 +1779,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                           <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
                           <span>Exam Review &amp; Explanations Available</span>
                         </div>
-                        <p className="text-xs text-[#CBD5E1] leading-relaxed">
+                        <p className="text-xs text-[#EAEAE6] leading-relaxed">
                           Official solutions and question explanations are released. You may now review question-by-question rationales.
                         </p>
                       </div>
@@ -1669,10 +1787,10 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                   })()}
                 </div>
 
-                <div className="flex flex-wrap items-center justify-center gap-3 pt-6 border-t border-[#334155]">
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-6 border-t border-[#2E2E34]">
                   <button
                     onClick={handleCloseExamHall}
-                    className="rounded-xl bg-slate-800 border border-[#334155] px-6 py-2.5 text-xs font-bold text-white hover:bg-slate-700 transition-all shadow-md"
+                    className="rounded-xl bg-slate-800 border border-[#2E2E34] px-6 py-2.5 text-xs font-bold text-white hover:bg-slate-700 transition-all shadow-md"
                   >
                     Return to Exam Portal
                   </button>
@@ -1698,7 +1816,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                           handleCloseExamHall();
                           handleOpenReview(att);
                         }}
-                        className="inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4] px-6 py-2.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+                        className="inline-flex items-center space-x-1.5 rounded-xl bg-emerald-500 px-6 py-2.5 text-xs font-bold text-[#141416] hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-md"
                       >
                         <Eye className="h-4 w-4" />
                         <span>View Exam Review</span>
@@ -1711,9 +1829,9 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
               /* ACTIVE TEST TAKING WORKSPACE */
               <>
                 {/* Header with Countdown & Controls */}
-                <div className="flex items-center justify-between border-b border-[#334155] px-4 sm:px-6 py-3.5 bg-[#1E293B]/90 shrink-0">
+                <div className="flex items-center justify-between border-b border-[#2E2E34] px-4 sm:px-6 py-3.5 bg-[#1C1C1F]/90 shrink-0">
                   <div className="flex items-center space-x-3">
-                    <span className="text-xs font-mono font-bold text-[#06B6D4] uppercase">
+                    <span className="text-xs font-mono font-bold text-[#EAEAE6] uppercase">
                       {activeExam.courseCode}
                     </span>
                     <span className="text-xs text-white font-bold truncate max-w-[160px] sm:max-w-md">
@@ -1732,7 +1850,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                           ? "bg-rose-500/20 border-rose-500/40 text-rose-300 animate-pulse"
                           : timeRemainingSeconds < 600
                           ? "bg-amber-500/20 border-amber-500/40 text-amber-300"
-                          : "bg-[#0B0F19] border-[#334155] text-cyan-400"
+                          : "bg-[#141416] border-[#2E2E34] text-[#EAEAE6]"
                       }`}>
                         <Clock className="h-3.5 w-3.5" />
                         <span>
@@ -1743,15 +1861,15 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                     )}
 
                     {/* Fullscreen Mode Locked Indicator */}
-                    <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#0B0F19] border border-[#334155] text-cyan-400 text-xs font-mono shadow-inner">
-                      <Lock className="h-3.5 w-3.5 text-cyan-400" />
+                    <div className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-[#141416] border border-[#2E2E34] text-[#EAEAE6] text-xs font-mono shadow-inner">
+                      <Lock className="h-3.5 w-3.5 text-[#EAEAE6]" />
                       <span className="hidden sm:inline text-[11px] font-bold">Fullscreen Locked</span>
                     </div>
 
                     <button
                       onClick={handleManualSubmit}
                       disabled={submittingAttempt}
-                      className="inline-flex items-center space-x-1.5 rounded-xl bg-emerald-400 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-emerald-500 hover:text-white transition-all shadow-md disabled:opacity-50"
+                      className="inline-flex items-center space-x-1.5 rounded-xl bg-emerald-400 px-4 py-2 text-xs font-bold text-[#141416] hover:bg-emerald-500 hover:text-white transition-all shadow-md disabled:opacity-50"
                     >
                       <Send className="h-3.5 w-3.5" />
                       <span>{submittingAttempt ? "Submitting..." : "Finish & Submit"}</span>
@@ -1759,9 +1877,28 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                   </div>
                 </div>
 
+                {/* Offline / Retry Submit Guard Banner */}
+                {submitError && (
+                  <div className="bg-rose-500/20 border-b border-rose-500/50 px-6 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shrink-0">
+                    <div className="flex items-center space-x-2 text-xs text-rose-200 font-semibold">
+                      <AlertTriangle className="h-4 w-4 text-rose-400 shrink-0" />
+                      <span>{submitError}</span>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={submittingAttempt}
+                      onClick={() => finalizeSubmission(false)}
+                      className="inline-flex items-center space-x-1.5 rounded-xl bg-emerald-500 px-4 py-1.5 text-xs font-bold text-[#141416] hover:bg-emerald-400 transition-all shrink-0"
+                    >
+                      <RefreshCw className={`h-3.5 w-3.5 ${submittingAttempt ? "animate-spin" : ""}`} />
+                      <span>{submittingAttempt ? "Retrying..." : "Retry Submit"}</span>
+                    </button>
+                  </div>
+                )}
+
                 {/* Question Palette Strip */}
-                <div className="border-b border-[#334155] bg-[#0B0F19] px-6 py-2 flex items-center overflow-x-auto space-x-2 shrink-0">
-                  {activeExam.questions.map((q, idx) => {
+                <div className="border-b border-[#2E2E34] bg-[#141416] px-6 py-2 flex items-center overflow-x-auto space-x-2 shrink-0">
+                  {activeQuestions.map((q, idx) => {
                     const hasAnswer = isQuestionAnswered(studentAnswers[q.id]);
                     const isFlagged = flaggedQuestions[q.id];
                     const isCurrent = currentQuestionIdx === idx;
@@ -1772,12 +1909,12 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                         onClick={() => setCurrentQuestionIdx(idx)}
                         className={`h-7 w-7 rounded-lg text-xs font-mono font-bold transition-all relative shrink-0 ${
                           isCurrent
-                            ? "bg-cyan-500 text-slate-950 ring-2 ring-cyan-300 shadow-md"
+                            ? "bg-[#EAEAE6] text-[#141416] ring-2 ring-cyan-300 shadow-md"
                             : isFlagged
                             ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
                             : hasAnswer
                             ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-                            : "bg-[#1E293B] text-[#94A3B8] hover:text-white"
+                            : "bg-[#1C1C1F] text-[#A1A1AA] hover:text-white"
                         }`}
                       >
                         {idx + 1}
@@ -1790,18 +1927,18 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                 </div>
 
                 {/* Active Question Workspace */}
-                {activeExam.questions[currentQuestionIdx] && (
+                {activeQuestions[currentQuestionIdx] && (
                   <div className="flex-1 overflow-y-auto p-6 sm:p-10 space-y-6">
                     {(() => {
-                      const q = activeExam.questions[currentQuestionIdx];
+                      const q = activeQuestions[currentQuestionIdx];
                       const currentVal = studentAnswers[q.id];
                       const isFlagged = flaggedQuestions[q.id];
 
                       return (
                         <div className="space-y-6 max-w-4xl mx-auto">
                           {/* Question Prompt Header */}
-                          <div className="flex items-center justify-between border-b border-[#334155] pb-3">
-                            <span className="text-xs font-mono font-bold text-[#06B6D4] uppercase">
+                          <div className="flex items-center justify-between border-b border-[#2E2E34] pb-3">
+                            <span className="text-xs font-mono font-bold text-[#EAEAE6] uppercase">
                               Question {currentQuestionIdx + 1} of {activeExam.questions.length} &bull; {q.points} {q.points === 1 ? "Point" : "Points"}
                             </span>
 
@@ -1810,7 +1947,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                               className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-lg text-xs font-mono transition-all ${
                                 isFlagged
                                   ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                                  : "text-[#94A3B8] hover:text-white bg-[#1E293B]"
+                                  : "text-[#A1A1AA] hover:text-white bg-[#1C1C1F]"
                               }`}
                             >
                               <Flag className="h-3 w-3" />
@@ -1837,12 +1974,12 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                                       onClick={() => handleAnswerChange(q.id, String(oIdx))}
                                       className={`flex items-center space-x-3 p-4 rounded-2xl border transition-all cursor-pointer ${
                                         isSelected
-                                          ? "border-cyan-400 bg-cyan-500/10 shadow-lg text-white"
-                                          : "border-[#334155] bg-[#1E293B] text-[#CBD5E1] hover:border-slate-500 hover:text-white"
+                                          ? "border-[#EAEAE6] bg-[#EAEAE6]/10 shadow-lg text-white"
+                                          : "border-[#2E2E34] bg-[#1C1C1F] text-[#EAEAE6] hover:border-slate-500 hover:text-white"
                                       }`}
                                     >
                                       <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                                        isSelected ? "border-cyan-400 bg-cyan-400" : "border-[#64748B]"
+                                        isSelected ? "border-[#EAEAE6] bg-[#EAEAE6]" : "border-[#71717A]"
                                       }`}>
                                         {isSelected && <div className="h-2 w-2 rounded-full bg-slate-950" />}
                                       </div>
@@ -1870,12 +2007,12 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                                       }}
                                       className={`flex items-center space-x-3 p-4 rounded-2xl border transition-all cursor-pointer ${
                                         isSelected
-                                          ? "border-cyan-400 bg-cyan-500/10 shadow-lg text-white"
-                                          : "border-[#334155] bg-[#1E293B] text-[#CBD5E1] hover:border-slate-500 hover:text-white"
+                                          ? "border-[#EAEAE6] bg-[#EAEAE6]/10 shadow-lg text-white"
+                                          : "border-[#2E2E34] bg-[#1C1C1F] text-[#EAEAE6] hover:border-slate-500 hover:text-white"
                                       }`}
                                     >
                                       <div className={`h-5 w-5 rounded-md border-2 flex items-center justify-center shrink-0 ${
-                                        isSelected ? "border-cyan-400 bg-cyan-400 text-slate-950" : "border-[#64748B]"
+                                        isSelected ? "border-[#EAEAE6] bg-emerald-500 text-[#141416]" : "border-[#71717A]"
                                       }`}>
                                         {isSelected && <Check className="h-3.5 w-3.5 font-bold" />}
                                       </div>
@@ -1894,7 +2031,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                                   className={`p-5 rounded-2xl border text-center transition-all ${
                                     currentVal === true
                                       ? "border-emerald-400 bg-emerald-500/15 text-emerald-400 font-extrabold shadow-lg"
-                                      : "border-[#334155] bg-[#1E293B] text-white hover:border-slate-500"
+                                      : "border-[#2E2E34] bg-[#1C1C1F] text-white hover:border-slate-500"
                                   }`}
                                 >
                                   <span className="text-base font-bold">True</span>
@@ -1906,7 +2043,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                                   className={`p-5 rounded-2xl border text-center transition-all ${
                                     currentVal === false
                                       ? "border-rose-400 bg-rose-500/15 text-rose-400 font-extrabold shadow-lg"
-                                      : "border-[#334155] bg-[#1E293B] text-white hover:border-slate-500"
+                                      : "border-[#2E2E34] bg-[#1C1C1F] text-white hover:border-slate-500"
                                   }`}
                                 >
                                   <span className="text-base font-bold">False</span>
@@ -1916,20 +2053,20 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
                             {q.type === "short_answer" && (
                               <div>
-                                <label className="block text-xs font-bold text-[#CBD5E1] mb-1">Your Answer:</label>
+                                <label className="block text-xs font-bold text-[#EAEAE6] mb-1">Your Answer:</label>
                                 <input
                                   type="text"
                                   value={currentVal || ""}
                                   onChange={(e) => handleAnswerChange(q.id, e.target.value)}
                                   placeholder="Type your answer here..."
-                                  className="w-full rounded-2xl border border-[#334155] bg-[#0B0F19] p-3.5 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none font-mono"
+                                  className="w-full rounded-2xl border border-[#2E2E34] bg-[#141416] p-3.5 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none font-mono"
                                 />
                               </div>
                             )}
 
                             {q.type === "essay" && (
                               <div>
-                                <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                                <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                                   Your Solution / Detailed Explanation (Markdown &amp; Code Supported):
                                 </label>
                                 <textarea
@@ -1937,7 +2074,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                                   value={currentVal || ""}
                                   onChange={(e) => handleAnswerChange(q.id, e.target.value)}
                                   placeholder="Type your full answer or code implementation here..."
-                                  className="w-full rounded-2xl border border-[#334155] bg-[#0B0F19] p-4 text-xs font-mono text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none leading-relaxed"
+                                  className="w-full rounded-2xl border border-[#2E2E34] bg-[#141416] p-4 text-xs font-mono text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none leading-relaxed"
                                 />
                               </div>
                             )}
@@ -1958,24 +2095,24 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                 )}
 
                 {/* Footer Navigation */}
-                <div className="flex items-center justify-between border-t border-[#334155] px-6 py-4 bg-[#1E293B]/80 shrink-0">
+                <div className="flex items-center justify-between border-t border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/80 shrink-0">
                   <button
                     disabled={currentQuestionIdx === 0}
                     onClick={() => setCurrentQuestionIdx(prev => Math.max(0, prev - 1))}
-                    className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold text-[#CBD5E1] hover:text-white bg-[#0B0F19] border border-[#334155] disabled:opacity-40"
+                    className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold text-[#EAEAE6] hover:text-white bg-[#141416] border border-[#2E2E34] disabled:opacity-40"
                   >
                     <ChevronLeft className="h-4 w-4" />
                     <span>Previous</span>
                   </button>
 
-                  <span className="text-xs font-mono text-[#94A3B8]">
-                    {Object.keys(studentAnswers).filter(k => isQuestionAnswered(studentAnswers[k])).length} of {activeExam.questions.length} Answered
+                  <span className="text-xs font-mono text-[#A1A1AA]">
+                    {Object.keys(studentAnswers).filter(k => isQuestionAnswered(studentAnswers[k])).length} of {activeQuestions.length} Answered
                   </span>
 
                   <button
-                    disabled={currentQuestionIdx === activeExam.questions.length - 1}
-                    onClick={() => setCurrentQuestionIdx(prev => Math.min(activeExam.questions.length - 1, prev + 1))}
-                    className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold text-[#CBD5E1] hover:text-white bg-[#0B0F19] border border-[#334155] disabled:opacity-40"
+                    disabled={currentQuestionIdx === activeQuestions.length - 1}
+                    onClick={() => setCurrentQuestionIdx(prev => Math.min(activeQuestions.length - 1, prev + 1))}
+                    className="inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl text-xs font-bold text-[#EAEAE6] hover:text-white bg-[#141416] border border-[#2E2E34] disabled:opacity-40"
                   >
                     <span>Next</span>
                     <ChevronRight className="h-4 w-4" />
@@ -1992,20 +2129,20 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
       {/* ========================================================================= */}
       {reviewAttempt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-6 backdrop-blur-md animate-in fade-in">
-          <div className="max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-3xl border border-[#334155] bg-[#0F172A] shadow-2xl flex flex-col">
-            <div className="flex items-center justify-between border-b border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-3xl border border-[#2E2E34] bg-[#141416] shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/70 shrink-0">
               <div>
                 <h3 className="text-base font-extrabold text-white">
                   Exam Review: {reviewAttempt.examTitle}
                 </h3>
-                <p className="text-xs text-[#94A3B8]">
+                <p className="text-xs text-[#A1A1AA]">
                   Score: <strong className={reviewAttempt.passed ? "text-emerald-400" : "text-rose-400"}>{reviewAttempt.score} / {reviewAttempt.maxScore} ({reviewAttempt.percentage}%)</strong> &bull; Completed {new Date(reviewAttempt.submittedAt || reviewAttempt.startedAt).toLocaleDateString()}
                 </p>
               </div>
 
               <button
                 onClick={() => setReviewAttempt(null)}
-                className="rounded-xl p-1.5 text-[#94A3B8] hover:text-white hover:bg-slate-800"
+                className="rounded-xl p-1.5 text-[#A1A1AA] hover:text-white hover:bg-slate-800"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -2028,22 +2165,22 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                           <span>Academic Integrity Protocol</span>
                         </span>
                         <h4 className="text-xl font-extrabold text-white">Review &amp; Explanations Locked</h4>
-                        <p className="text-xs text-[#94A3B8] leading-relaxed">
+                        <p className="text-xs text-[#A1A1AA] leading-relaxed">
                           {unlockInfo.reason}
                         </p>
                       </div>
 
                       {/* If deadline countdown exists */}
                       {!unlockInfo.isManualLock && unlockInfo.unlockTime && unlockInfo.remainingMs > 0 && (
-                        <div className="rounded-2xl border border-amber-500/30 bg-[#0B0F19] p-5 w-full max-w-sm space-y-2.5 shadow-inner text-left">
-                          <div className="flex items-center justify-between text-xs font-mono text-[#94A3B8]">
+                        <div className="rounded-2xl border border-amber-500/30 bg-[#141416] p-5 w-full max-w-sm space-y-2.5 shadow-inner text-left">
+                          <div className="flex items-center justify-between text-xs font-mono text-[#A1A1AA]">
                             <span>Unlocks For All In:</span>
                             <span className="text-amber-400 font-bold flex items-center space-x-1.5">
                               <Clock className="h-3.5 w-3.5 animate-pulse" />
                               <span>{formatRemainingTime(unlockInfo.remainingMs)}</span>
                             </span>
                           </div>
-                          <div className="flex items-center justify-between text-[10px] font-mono text-[#64748B] pt-1 border-t border-[#1E293B]">
+                          <div className="flex items-center justify-between text-[10px] font-mono text-[#71717A] pt-1 border-t border-[#1C1C1F]">
                             <span>Class Deadline: {unlockInfo.unlockTime.toLocaleDateString()} {unlockInfo.unlockTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                         </div>
@@ -2056,7 +2193,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                         </div>
                       )}
 
-                      <div className="text-xs text-[#94A3B8]">
+                      <div className="text-xs text-[#A1A1AA]">
                         Evaluation score: <strong className={reviewAttempt.passed ? "text-emerald-400" : "text-rose-400"}>{reviewAttempt.score} / {reviewAttempt.maxScore} ({reviewAttempt.percentage}%)</strong>
                       </div>
                     </div>
@@ -2071,19 +2208,19 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                         <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
                         <div>
                           <div className="text-xs font-bold text-emerald-300 font-mono">Exam Session Concluded — Review Unlocked</div>
-                          <p className="text-[11px] text-[#94A3B8]">You can now view official answers, instructor rationales, and detailed explanations.</p>
+                          <p className="text-[11px] text-[#A1A1AA]">You can now view official answers, instructor rationales, and detailed explanations.</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Teacher Feedback if graded */}
                     {reviewAttempt.teacherFeedback && (
-                      <div className="rounded-2xl border border-cyan-500/30 bg-cyan-500/10 p-4 space-y-1">
-                        <span className="text-xs font-bold text-cyan-300 font-mono flex items-center space-x-1.5">
+                      <div className="rounded-2xl border border-[#EAEAE6]/30 bg-[#EAEAE6]/10 p-4 space-y-1">
+                        <span className="text-xs font-bold text-[#EAEAE6] font-mono flex items-center space-x-1.5">
                           <Sparkles className="h-3.5 w-3.5" />
                           <span>Teacher Remarks &amp; Feedback:</span>
                         </span>
-                        <p className="text-xs text-[#CBD5E1] italic">"{reviewAttempt.teacherFeedback}"</p>
+                        <p className="text-xs text-[#EAEAE6] italic">"{reviewAttempt.teacherFeedback}"</p>
                       </div>
                     )}
 
@@ -2094,10 +2231,10 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                       const isFullPoints = (grade?.awardedPoints ?? 0) === q.points;
 
                       return (
-                        <div key={q.id} className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4 space-y-3">
-                          <div className="flex items-center justify-between border-b border-[#334155]/60 pb-2">
-                            <span className="text-xs font-mono font-bold text-[#06B6D4]">
-                              Question #{idx + 1} &bull; <span className="uppercase text-[10px] text-[#94A3B8]">{q.type.replace('_', ' ')}</span>
+                        <div key={q.id} className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-4 space-y-3">
+                          <div className="flex items-center justify-between border-b border-[#2E2E34]/60 pb-2">
+                            <span className="text-xs font-mono font-bold text-[#EAEAE6]">
+                              Question #{idx + 1} &bull; <span className="uppercase text-[10px] text-[#A1A1AA]">{q.type.replace('_', ' ')}</span>
                             </span>
                             <span className={`text-xs font-mono font-bold ${
                               isFullPoints ? "text-emerald-400" : "text-amber-400"
@@ -2118,7 +2255,7 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                             />
                           ) : q.options && (q.type === "multiple_choice" || q.type === "true_false" || q.type === "multiple_select") ? (
                             <div className="space-y-1.5 pt-1">
-                              <span className="text-[10px] font-mono text-[#94A3B8] uppercase block">Choices &amp; Answers:</span>
+                              <span className="text-[10px] font-mono text-[#A1A1AA] uppercase block">Choices &amp; Answers:</span>
                               {q.options.map((opt, optIdx) => {
                                 const isUserSelected = Array.isArray(ans) ? ans.includes(opt) : ans === opt;
                                 const isOfficialCorrect = Array.isArray(q.correctAnswer)
@@ -2133,11 +2270,11 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                                         ? "bg-emerald-500/15 border-emerald-500/40 text-emerald-200"
                                         : isUserSelected && !isOfficialCorrect
                                         ? "bg-rose-500/15 border-rose-500/40 text-rose-200"
-                                        : "bg-[#0B0F19] border-[#334155]/60 text-[#CBD5E1]"
+                                        : "bg-[#141416] border-[#2E2E34]/60 text-[#EAEAE6]"
                                     }`}
                                   >
                                     <div className="flex items-center space-x-2">
-                                      <span className="font-mono text-[10px] text-[#64748B]">
+                                      <span className="font-mono text-[10px] text-[#71717A]">
                                         {String.fromCharCode(65 + optIdx)}.
                                       </span>
                                       <span>{opt}</span>
@@ -2164,8 +2301,8 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
                             </div>
                           ) : (
                             <div className="space-y-2">
-                              <div className="rounded-xl bg-[#0B0F19] p-3 text-xs border border-[#334155]">
-                                <span className="text-[10px] font-mono text-[#94A3B8] uppercase block mb-1">Your Submitted Answer:</span>
+                              <div className="rounded-xl bg-[#141416] p-3 text-xs border border-[#2E2E34]">
+                                <span className="text-[10px] font-mono text-[#A1A1AA] uppercase block mb-1">Your Submitted Answer:</span>
                                 <div className="font-mono text-white whitespace-pre-wrap">
                                   {ans !== undefined && ans !== null
                                     ? (Array.isArray(ans) ? ans.join(", ") : String(ans))
@@ -2187,9 +2324,9 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
 
                           {/* Question Explanation */}
                           {q.explanation && (
-                            <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/25 p-3.5 text-xs text-cyan-200 space-y-1">
-                              <strong className="flex items-center space-x-1.5 text-[10px] font-mono uppercase text-cyan-300">
-                                <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+                            <div className="rounded-xl bg-[#EAEAE6]/10 border border-[#EAEAE6]/25 p-3.5 text-xs text-[#EAEAE6] space-y-1">
+                              <strong className="flex items-center space-x-1.5 text-[10px] font-mono uppercase text-[#EAEAE6]">
+                                <Sparkles className="h-3.5 w-3.5 text-[#EAEAE6]" />
                                 <span>Explanation &amp; Solution Rationale:</span>
                               </strong>
                               <p className="leading-relaxed text-[#E2E8F0]">{q.explanation}</p>
@@ -2203,10 +2340,10 @@ export default function StudentExamsView({ currentUser, syllabi = [] }: StudentE
               })()}
             </div>
 
-            <div className="flex justify-end border-t border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
+            <div className="flex justify-end border-t border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/70 shrink-0">
               <button
                 onClick={() => setReviewAttempt(null)}
-                className="rounded-xl bg-[#334155] px-6 py-2 text-xs font-bold text-white hover:bg-slate-600 transition-all"
+                className="rounded-xl bg-[#2E2E34] px-6 py-2 text-xs font-bold text-white hover:bg-slate-600 transition-all"
               >
                 Close Review
               </button>

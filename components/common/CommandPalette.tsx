@@ -202,12 +202,12 @@ export default function CommandPalette() {
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/80 backdrop-blur-md pt-[12vh] px-4 animate-in fade-in duration-150">
       <div 
-        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-cyan-500/40 bg-[#1E293B]/85 backdrop-blur-2xl shadow-2xl shadow-cyan-950/40"
+        className="w-full max-w-2xl overflow-hidden rounded-2xl border border-[#EAEAE6]/40 bg-[#1C1C1F]/85 backdrop-blur-2xl shadow-2xl shadow-cyan-950/40"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Search Input Bar */}
-        <div className="flex items-center px-4 py-3.5 border-b border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md">
-          <Search className="h-5 w-5 text-cyan-400 shrink-0 mr-3" />
+        <div className="flex items-center px-4 py-3.5 border-b border-[#2E2E34]/70 bg-[#141416]/50 backdrop-blur-md">
+          <Search className="h-5 w-5 text-[#EAEAE6] shrink-0 mr-3" />
           <input
             ref={inputRef}
             type="text"
@@ -218,17 +218,17 @@ export default function CommandPalette() {
             }}
             onKeyDown={handleInputKeyDown}
             placeholder="Type a command, course code, topic, or destination..."
-            className="w-full bg-transparent text-sm text-white placeholder-[#64748B] focus:outline-none"
+            className="w-full bg-transparent text-sm text-white placeholder-[#71717A] focus:outline-none"
           />
           {query ? (
             <button
               onClick={() => setQuery("")}
-              className="text-[#64748B] hover:text-white p-1 rounded-md"
+              className="text-[#71717A] hover:text-white p-1 rounded-md"
             >
               <X className="h-4 w-4" />
             </button>
           ) : (
-            <kbd className="hidden sm:inline-flex items-center gap-1 rounded bg-[#1E293B]/80 px-2 py-0.5 text-[10px] font-mono text-[#94A3B8] border border-[#334155]/70">
+            <kbd className="hidden sm:inline-flex items-center gap-1 rounded bg-[#1C1C1F]/80 px-2 py-0.5 text-[10px] font-mono text-[#A1A1AA] border border-[#2E2E34]/70">
               ESC
             </kbd>
           )}
@@ -237,7 +237,7 @@ export default function CommandPalette() {
         {/* Results List */}
         <div className="max-h-[60vh] overflow-y-auto p-2 space-y-1 custom-scrollbar">
           {filteredItems.length === 0 ? (
-            <div className="py-12 text-center text-xs text-[#94A3B8]">
+            <div className="py-12 text-center text-xs text-[#A1A1AA]">
               No results found for <strong className="text-white">&quot;{query}&quot;</strong>
             </div>
           ) : (
@@ -252,13 +252,13 @@ export default function CommandPalette() {
                   onMouseEnter={() => setSelectedIndex(idx)}
                   className={`flex items-center justify-between rounded-xl px-3.5 py-2.5 cursor-pointer transition-all ${
                     isSelected
-                      ? "bg-gradient-to-r from-cyan-500/20 to-teal-500/20 text-white border border-cyan-500/40"
-                      : "text-[#CBD5E1] hover:bg-[#1E293B]/70 border border-transparent"
+                      ? "bg-gradient-to-r from-cyan-500/20 to-teal-500/20 text-white border border-[#EAEAE6]/40"
+                      : "text-[#EAEAE6] hover:bg-[#1C1C1F]/70 border border-transparent"
                   }`}
                 >
                   <div className="flex items-center space-x-3 overflow-hidden">
                     <div className={`flex h-8 w-8 items-center justify-center rounded-lg shrink-0 ${
-                      isSelected ? "bg-cyan-500/30 text-cyan-300" : "bg-[#1E293B] text-[#94A3B8]"
+                      isSelected ? "bg-[#EAEAE6]/30 text-[#EAEAE6]" : "bg-[#1C1C1F] text-[#A1A1AA]"
                     }`}>
                       <Icon className="h-4 w-4" />
                     </div>
@@ -273,14 +273,14 @@ export default function CommandPalette() {
                               ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
                               : item.badge === "Defense"
                               ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                              : "bg-cyan-500/20 text-cyan-300 border-cyan-500/30"
+                              : "bg-[#EAEAE6]/20 text-[#EAEAE6] border-[#EAEAE6]/30"
                           }`}>
                             {item.badge}
                           </span>
                         )}
                       </div>
                       {item.subtitle && (
-                        <p className="text-[11px] text-[#94A3B8] truncate">
+                        <p className="text-[11px] text-[#A1A1AA] truncate">
                           {item.subtitle}
                         </p>
                       )}
@@ -288,7 +288,7 @@ export default function CommandPalette() {
                   </div>
 
                   {isSelected && (
-                    <div className="flex items-center space-x-1 text-[10px] text-cyan-300 font-mono shrink-0 ml-2">
+                    <div className="flex items-center space-x-1 text-[10px] text-[#EAEAE6] font-mono shrink-0 ml-2">
                       <span>Jump</span>
                       <CornerDownLeft className="h-3 w-3" />
                     </div>
@@ -300,7 +300,7 @@ export default function CommandPalette() {
         </div>
 
         {/* Footer Helper */}
-        <div className="flex items-center justify-between px-4 py-2 border-t border-[#334155]/60 bg-[#0B0F19]/50 backdrop-blur-md text-[10px] text-[#64748B]">
+        <div className="flex items-center justify-between px-4 py-2 border-t border-[#2E2E34]/60 bg-[#141416]/50 backdrop-blur-md text-[10px] text-[#71717A]">
           <div className="flex items-center space-x-3">
             <span>&uarr;&darr; Navigate</span>
             <span>&crarr; Select</span>

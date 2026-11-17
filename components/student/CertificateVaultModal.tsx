@@ -67,7 +67,7 @@ export default function CertificateVaultModal({
               <button
                 type="button"
                 onClick={handlePrint}
-                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow-md transition-all flex items-center gap-1.5"
+                className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-400 text-[#141416] shadow-md transition-all flex items-center gap-1.5"
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span>Print Certificate</span>
@@ -94,7 +94,7 @@ export default function CertificateVaultModal({
                 onClick={() => setActiveCert(c)}
                 className={`px-3 py-1 rounded-xl text-xs font-bold transition-all shrink-0 ${
                   current?.id === c.id
-                    ? "bg-amber-500 text-slate-950 shadow-sm"
+                    ? "bg-amber-500 text-[#141416] shadow-sm"
                     : "bg-slate-800/80 text-slate-300 hover:text-white"
                 }`}
               >
@@ -115,10 +115,10 @@ export default function CertificateVaultModal({
               </p>
             </div>
           ) : (
-            <div className="w-full max-w-3xl bg-gradient-to-br from-[#0F172A] via-[#1E293B] to-[#0B0F19] border-4 border-amber-500/60 rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden text-center text-slate-200 certificate-print-area">
+            <div className="w-full max-w-3xl bg-gradient-to-br from-[#141416] via-[#1C1C1F] to-[#141416] border-4 border-amber-500/60 rounded-3xl p-8 sm:p-12 shadow-2xl relative overflow-hidden text-center text-slate-200 certificate-print-area">
               {/* Inner Decorative Golden Border */}
               <div className="absolute inset-2 sm:inset-3 border-2 border-amber-500/30 rounded-2xl pointer-events-none" />
-              <div className="absolute inset-3 sm:inset-4 border border-cyan-500/20 rounded-xl pointer-events-none" />
+              <div className="absolute inset-3 sm:inset-4 border border-[#EAEAE6]/20 rounded-xl pointer-events-none" />
 
               {/* Watermark Logo */}
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5">
@@ -145,7 +145,7 @@ export default function CertificateVaultModal({
                   {current.studentName}
                 </h2>
                 <span className="text-xs text-slate-400 font-mono block mt-1">
-                  Academic Trade: <strong className="text-cyan-300">{current.tradeName}</strong> ({current.studentLevel})
+                  Academic Trade: <strong className="text-[#EAEAE6]">{current.tradeName}</strong> ({current.studentLevel})
                 </span>
               </div>
 
@@ -206,7 +206,7 @@ export default function CertificateVaultModal({
               {/* Verification Hash Footer */}
               <div className="relative z-10 mt-6 pt-3 border-t border-slate-800 text-[10px] text-slate-500 font-mono flex flex-col sm:flex-row items-center justify-between gap-2">
                 <span>Cryptographic Proof: {current.certificateHash}</span>
-                <span className="text-cyan-400">syllabus-ad688.web.app/verify</span>
+                <span className="text-[#EAEAE6]">syllabus-ad688.web.app/verify</span>
               </div>
             </div>
           )}

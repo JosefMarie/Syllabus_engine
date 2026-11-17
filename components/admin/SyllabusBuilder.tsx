@@ -12,10 +12,10 @@ import { useRouter } from "next/navigation";
 const SandpackPlayground = dynamic(() => import("@/components/viewer/SandpackPlayground"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-48 w-full items-center justify-center rounded-2xl border border-[#334155] bg-[#0F172A] p-4 text-center">
+    <div className="flex h-48 w-full items-center justify-center rounded-2xl border border-[#2E2E34] bg-[#141416] p-4 text-center">
       <div className="space-y-2">
-        <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent" />
-        <p className="text-xs font-mono text-[#94A3B8]">Loading Code Sandbox Preview...</p>
+        <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent" />
+        <p className="text-xs font-mono text-[#A1A1AA]">Loading Code Sandbox Preview...</p>
       </div>
     </div>
   ),
@@ -520,9 +520,9 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
       {/* Top Creation Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#334155] pb-6 gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#2E2E34] pb-6 gap-4">
         <div>
-          <span className="text-xs font-mono text-[#06B6D4] uppercase tracking-wider font-bold">
+          <span className="text-xs font-mono text-[#EAEAE6] uppercase tracking-wider font-bold">
             Teacher Admin Portal
           </span>
           <h1 className="text-2xl font-extrabold text-white tracking-tight">
@@ -533,7 +533,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
         <div className="flex flex-wrap items-center gap-3">
           <button
             onClick={() => downloadSyllabusAsText(syllabus)}
-            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3.5 py-2.5 text-xs font-bold text-[#06B6D4] hover:bg-[#334155] transition-all shadow-md"
+            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#2E2E34] bg-[#1C1C1F] px-3.5 py-2.5 text-xs font-bold text-[#EAEAE6] hover:bg-[#2E2E34] transition-all shadow-md"
             title="Download Formatted Text Document (.txt)"
           >
             <Download className="h-4 w-4" />
@@ -542,7 +542,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
 
           <button
             onClick={() => downloadSyllabusAsJSON(syllabus)}
-            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3.5 py-2.5 text-xs font-bold text-[#10B981] hover:bg-[#334155] transition-all shadow-md"
+            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#2E2E34] bg-[#1C1C1F] px-3.5 py-2.5 text-xs font-bold text-[#10B981] hover:bg-[#2E2E34] transition-all shadow-md"
             title="Download Raw JSON Data (.json)"
           >
             <FileCode className="h-4 w-4" />
@@ -552,7 +552,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
           <button
             onClick={() => handleSave('draft')}
             disabled={saving}
-            className="inline-flex items-center space-x-2 rounded-xl border border-[#334155] bg-[#1E293B] px-4 py-2.5 text-xs font-bold text-[#CBD5E1] hover:bg-[#334155] hover:text-white transition-all shadow-md disabled:opacity-50"
+            className="inline-flex items-center space-x-2 rounded-xl border border-[#2E2E34] bg-[#1C1C1F] px-4 py-2.5 text-xs font-bold text-[#EAEAE6] hover:bg-[#2E2E34] hover:text-white transition-all shadow-md disabled:opacity-50"
           >
             <FileText className="h-4 w-4 text-[#F59E0B]" />
             <span>{saving ? 'Saving...' : 'Save Draft'}</span>
@@ -561,7 +561,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
           <button
             onClick={() => handleSave('published')}
             disabled={saving}
-            className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-5 py-2.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg disabled:opacity-50"
+            className="inline-flex items-center space-x-2 rounded-xl bg-emerald-500 px-5 py-2.5 text-xs font-bold text-[#141416] hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-lg disabled:opacity-50"
           >
             <Save className="h-4 w-4" />
             <span>{saving ? 'Saving...' : 'Save & Publish'}</span>
@@ -570,13 +570,13 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
       </div>
 
       {/* Creation Mode Tabs */}
-      <div className="mt-6 flex space-x-4 border-b border-[#334155]">
+      <div className="mt-6 flex space-x-4 border-b border-[#2E2E34]">
         <button
           onClick={() => setActiveTab('scratch')}
           className={`flex items-center space-x-2 border-b-2 pb-3 text-sm font-bold transition-all ${
             activeTab === 'scratch'
-              ? 'border-[#06B6D4] text-[#06B6D4]'
-              : 'border-transparent text-[#94A3B8] hover:text-white'
+              ? 'border-[#EAEAE6] text-[#EAEAE6]'
+              : 'border-transparent text-[#A1A1AA] hover:text-white'
           }`}
         >
           <Sliders className="h-4 w-4" />
@@ -587,8 +587,8 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
           onClick={() => setActiveTab('ai')}
           className={`flex items-center space-x-2 border-b-2 pb-3 text-sm font-bold transition-all ${
             activeTab === 'ai'
-              ? 'border-[#06B6D4] text-[#06B6D4]'
-              : 'border-transparent text-[#94A3B8] hover:text-white'
+              ? 'border-[#EAEAE6] text-[#EAEAE6]'
+              : 'border-transparent text-[#A1A1AA] hover:text-white'
           }`}
         >
           <Sparkles className="h-4 w-4" />
@@ -599,51 +599,51 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
       {/* TAB 2: AI SYLLABUS EXTRACTOR */}
       {activeTab === 'ai' && (
         <div className="mt-6 space-y-6">
-          <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-6 shadow-xl">
-            <div className="flex items-center space-x-2 text-xs font-mono text-[#06B6D4] mb-2">
-              <Sparkles className="h-4 w-4 text-[#06B6D4]" />
+          <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-6 shadow-xl">
+            <div className="flex items-center space-x-2 text-xs font-mono text-[#EAEAE6] mb-2">
+              <Sparkles className="h-4 w-4 text-[#EAEAE6]" />
               <span>Automated 5-Level Document Extractor</span>
             </div>
             <h3 className="text-lg font-bold text-white">
               Upload or Paste Course Syllabus Document
             </h3>
-            <p className="mt-1 text-xs text-[#94A3B8]">
+            <p className="mt-1 text-xs text-[#A1A1AA]">
               Gemini 2.5 Pro will parse raw document text into the 5-level hierarchy, auto-extract technical terms into citations, and generate code runner snippets.
             </p>
 
             {/* AI Metadata Inputs */}
-            <div className="mt-6 border-t border-[#334155] pt-6">
+            <div className="mt-6 border-t border-[#2E2E34] pt-6">
               <h4 className="text-xs font-bold text-white uppercase tracking-wider font-mono mb-4">
                 Target Syllabus Metadata
               </h4>
               <div className="grid gap-4 sm:grid-cols-2 mb-4">
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8]">Course Title</label>
+                  <label className="text-xs font-mono text-[#A1A1AA]">Course Title</label>
                   <input
                     type="text"
                     value={syllabus.title}
                     onChange={(e) => setSyllabus({ ...syllabus, title: e.target.value })}
-                    className="mt-1 w-full rounded-lg border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                    className="mt-1 w-full rounded-lg border border-[#2E2E34] bg-[#141416] p-2.5 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8]">Course Code</label>
+                  <label className="text-xs font-mono text-[#A1A1AA]">Course Code</label>
                   <input
                     type="text"
                     value={syllabus.courseCode}
                     onChange={(e) => setSyllabus({ ...syllabus, courseCode: e.target.value })}
-                    className="mt-1 w-full rounded-lg border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                    className="mt-1 w-full rounded-lg border border-[#2E2E34] bg-[#141416] p-2.5 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   />
                 </div>
               </div>
               
               <div className="grid gap-4 sm:grid-cols-2 mb-6">
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8]">Assigned Trade</label>
+                  <label className="text-xs font-mono text-[#A1A1AA]">Assigned Trade</label>
                   <select
                     value={syllabus.tradeId || ''}
                     onChange={(e) => setSyllabus({ ...syllabus, tradeId: e.target.value })}
-                    className="mt-1 w-full rounded-lg border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                    className="mt-1 w-full rounded-lg border border-[#2E2E34] bg-[#141416] p-2.5 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   >
                     <option value="">Select Trade...</option>
                     {tradesList.map((t) => (
@@ -654,11 +654,11 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8]">Assigned Level</label>
+                  <label className="text-xs font-mono text-[#A1A1AA]">Assigned Level</label>
                   <select
                     value={syllabus.level || 'Level 4'}
                     onChange={(e) => setSyllabus({ ...syllabus, level: e.target.value as StudentLevel })}
-                    className="mt-1 w-full rounded-lg border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                    className="mt-1 w-full rounded-lg border border-[#2E2E34] bg-[#141416] p-2.5 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   >
                     <option value="Level 3">Level 3</option>
                     <option value="Level 4">Level 4</option>
@@ -684,15 +684,15 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                 }}
                 className={`relative mb-4 flex flex-col items-center justify-center rounded-2xl border-2 border-dashed p-8 text-center transition-colors ${
                   isDragging 
-                    ? "border-[#06B6D4] bg-[#06B6D4]/10" 
-                    : "border-[#334155] bg-[#0B0F19]/50 hover:border-[#06B6D4]/50"
+                    ? "border-[#EAEAE6] bg-[#EAEAE6]/10" 
+                    : "border-[#2E2E34] bg-[#141416]/50 hover:border-[#EAEAE6]/50"
                 }`}
               >
-                <Upload className="mx-auto h-8 w-8 text-[#06B6D4] mb-2" />
+                <Upload className="mx-auto h-8 w-8 text-[#EAEAE6] mb-2" />
                 <p className="text-xs font-semibold text-white">
                   {extractingFile ? "Reading Document File..." : "Drag and drop your Syllabus PDF or Text file here"}
                 </p>
-                <span className="text-[10px] text-[#94A3B8] mt-1">Supports .pdf, .txt, .md formats</span>
+                <span className="text-[10px] text-[#A1A1AA] mt-1">Supports .pdf, .txt, .md formats</span>
 
                 <input
                   type="file"
@@ -707,17 +707,17 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                 value={rawText}
                 onChange={(e) => setRawText(e.target.value)}
                 placeholder="Or paste course syllabus document text here manually..."
-                className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-4 text-xs font-mono text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-4 text-xs font-mono text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
               />
             </div>
 
             <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center space-x-3">
-                <span className="text-xs font-mono text-[#94A3B8]">
+                <span className="text-xs font-mono text-[#A1A1AA]">
                   Length: {rawText.length} characters
                 </span>
                 {extractionStatusStep && (
-                  <span className="text-xs font-mono text-[#06B6D4] animate-pulse font-bold bg-[#06B6D4]/10 px-2.5 py-1 rounded-lg border border-[#06B6D4]/30">
+                  <span className="text-xs font-mono text-[#EAEAE6] animate-pulse font-bold bg-[#EAEAE6]/10 px-2.5 py-1 rounded-lg border border-[#EAEAE6]/30">
                     ⚡ {extractionStatusStep}
                   </span>
                 )}
@@ -726,7 +726,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
               <button
                 onClick={() => handleExtractAI()}
                 disabled={extracting || !rawText.trim()}
-                className="inline-flex items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-[#06B6D4] to-[#10B981] px-6 py-3 text-xs font-bold text-slate-950 hover:opacity-90 transition-all shadow-xl disabled:opacity-50"
+                className="inline-flex items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-[#EAEAE6] to-[#10B981] px-6 py-3 text-xs font-bold text-[#141416] hover:opacity-90 transition-all shadow-xl disabled:opacity-50"
               >
                 <Sparkles className="h-4 w-4" />
                 <span>{extracting ? 'Processing 300+ Page Document...' : 'Extract 5-Level Syllabus'}</span>
@@ -747,24 +747,24 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
       {activeTab === 'scratch' && (
         <div className="mt-6 flex flex-col lg:flex-row gap-6 min-h-[700px] items-start">
           {/* LEFT COLUMN: 5-LEVEL TREE NAVIGATION PANEL (Master - 320px) */}
-          <div className="w-full lg:w-80 rounded-2xl border border-[#334155] bg-[#1E293B] p-4 flex flex-col shrink-0 shadow-xl self-stretch">
-            <div className="border-b border-[#334155] pb-3 mb-3 space-y-2">
+          <div className="w-full lg:w-80 rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-4 flex flex-col shrink-0 shadow-xl self-stretch">
+            <div className="border-b border-[#2E2E34] pb-3 mb-3 space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center gap-1.5">
-                  <Folder className="h-4 w-4 text-[#06B6D4]" />
+                  <Folder className="h-4 w-4 text-[#EAEAE6]" />
                   <span>Syllabus Hierarchy</span>
                 </span>
                 <div className="flex items-center space-x-1">
                   <button
                     onClick={expandAllTree}
-                    className="rounded px-2 py-1 text-[10px] font-mono text-[#06B6D4] hover:bg-[#06B6D4]/10 transition-colors"
+                    className="rounded px-2 py-1 text-[10px] font-mono text-[#EAEAE6] hover:bg-[#EAEAE6]/10 transition-colors"
                     title="Expand All Nodes"
                   >
                     Expand
                   </button>
                   <button
                     onClick={collapseAllTree}
-                    className="rounded px-2 py-1 text-[10px] font-mono text-[#94A3B8] hover:bg-[#334155] transition-colors"
+                    className="rounded px-2 py-1 text-[10px] font-mono text-[#A1A1AA] hover:bg-[#2E2E34] transition-colors"
                     title="Collapse All Nodes"
                   >
                     Collapse
@@ -778,7 +778,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                 value={treeSearchQuery}
                 onChange={(e) => setTreeSearchQuery(e.target.value)}
                 placeholder="🔍 Search LOs, ICs, Topics..."
-                className="w-full rounded-lg border border-[#334155] bg-[#0B0F19] px-2.5 py-1.5 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                className="w-full rounded-lg border border-[#2E2E34] bg-[#141416] px-2.5 py-1.5 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
               />
             </div>
 
@@ -789,23 +789,23 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                 onClick={() => setSelectedKey("course")}
                 className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-xs cursor-pointer transition-all border ${
                   selectedKey === "course"
-                    ? "border-[#06B6D4] bg-[#06B6D4]/15 font-bold text-white shadow-md"
-                    : "border-transparent text-[#CBD5E1] hover:bg-[#0B0F19]/60 hover:text-white"
+                    ? "border-[#EAEAE6] bg-[#EAEAE6]/15 font-bold text-white shadow-md"
+                    : "border-transparent text-[#EAEAE6] hover:bg-[#141416]/60 hover:text-white"
                 }`}
               >
                 <div className="flex items-center space-x-2 truncate">
-                  <BookOpen className="h-4 w-4 text-[#06B6D4] shrink-0" />
+                  <BookOpen className="h-4 w-4 text-[#EAEAE6] shrink-0" />
                   <span className="truncate">
                     {syllabus.courseCode || "General"} - {syllabus.title || "Untitled Course"}
                   </span>
                 </div>
-                <span className="text-[10px] font-mono text-[#06B6D4] font-bold shrink-0">L1</span>
+                <span className="text-[10px] font-mono text-[#EAEAE6] font-bold shrink-0">L1</span>
               </div>
 
               {/* Add LO Quick Action */}
               <button
                 onClick={addLO}
-                className="w-full flex items-center justify-center space-x-1.5 rounded-xl border border-dashed border-[#06B6D4]/40 bg-[#06B6D4]/5 py-2 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4]/15 transition-all my-2"
+                className="w-full flex items-center justify-center space-x-1.5 rounded-xl border border-dashed border-[#EAEAE6]/40 bg-[#EAEAE6]/5 py-2 text-xs font-bold text-[#EAEAE6] hover:bg-[#EAEAE6]/15 transition-all my-2"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span>Add Learning Outcome (LO)</span>
@@ -833,22 +833,22 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                       onClick={() => setSelectedKey(loKey)}
                       className={`group flex items-center justify-between rounded-xl px-2.5 py-2 text-xs cursor-pointer transition-all border ${
                         isLoSelected
-                          ? "border-[#06B6D4] bg-[#06B6D4]/15 font-bold text-white"
-                          : "border-transparent text-[#CBD5E1] hover:bg-[#0B0F19]/50"
+                          ? "border-[#EAEAE6] bg-[#EAEAE6]/15 font-bold text-white"
+                          : "border-transparent text-[#EAEAE6] hover:bg-[#141416]/50"
                       }`}
                     >
                       <div className="flex items-center space-x-1.5 truncate flex-1 min-w-0">
                         <button
                           onClick={(e) => toggleExpandKey(loKey, e)}
-                          className="p-0.5 hover:text-white text-[#94A3B8]"
+                          className="p-0.5 hover:text-white text-[#A1A1AA]"
                         >
                           {isLoExpanded ? (
-                            <ChevronDown className="h-3.5 w-3.5 text-[#06B6D4]" />
+                            <ChevronDown className="h-3.5 w-3.5 text-[#EAEAE6]" />
                           ) : (
-                            <ChevronRight className="h-3.5 w-3.5 text-[#94A3B8]" />
+                            <ChevronRight className="h-3.5 w-3.5 text-[#A1A1AA]" />
                           )}
                         </button>
-                        <Award className="h-3.5 w-3.5 text-[#06B6D4] shrink-0" />
+                        <Award className="h-3.5 w-3.5 text-[#EAEAE6] shrink-0" />
                         <span className="truncate font-semibold">{lo.code || 'LO'}: {lo.title || 'Untitled LO'}</span>
                       </div>
 
@@ -872,7 +872,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
 
                     {/* Level 3: Indicative Contents */}
                     {isLoExpanded && (
-                      <div className="pl-4 space-y-1 border-l border-[#334155]/60 ml-3">
+                      <div className="pl-4 space-y-1 border-l border-[#2E2E34]/60 ml-3">
                         {lo.indicativeContents.map((ic) => {
                           const icKey = `ic-${ic.id}`;
                           const isIcExpanded = Boolean(expandedKeys[icKey]);
@@ -886,18 +886,18 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                                 className={`group flex items-center justify-between rounded-lg px-2 py-1.5 text-xs cursor-pointer transition-all border ${
                                   isIcSelected
                                     ? "border-[#F59E0B] bg-[#F59E0B]/15 font-bold text-white"
-                                    : "border-transparent text-[#CBD5E1] hover:bg-[#0B0F19]/40"
+                                    : "border-transparent text-[#EAEAE6] hover:bg-[#141416]/40"
                                 }`}
                               >
                                 <div className="flex items-center space-x-1.5 truncate flex-1 min-w-0">
                                   <button
                                     onClick={(e) => toggleExpandKey(icKey, e)}
-                                    className="p-0.5 text-[#94A3B8]"
+                                    className="p-0.5 text-[#A1A1AA]"
                                   >
                                     {isIcExpanded ? (
                                       <ChevronDown className="h-3 w-3 text-[#F59E0B]" />
                                     ) : (
-                                      <ChevronRight className="h-3 w-3 text-[#94A3B8]" />
+                                      <ChevronRight className="h-3 w-3 text-[#A1A1AA]" />
                                     )}
                                   </button>
                                   <FolderGit2 className="h-3.5 w-3.5 text-[#F59E0B] shrink-0" />
@@ -907,7 +907,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                                 <div className="flex items-center space-x-1 opacity-80 group-hover:opacity-100 shrink-0">
                                   <button
                                     onClick={(e) => addTopic(lo.id, ic.id, e)}
-                                    className="rounded bg-[#06B6D4]/10 px-1.5 py-0.5 text-[10px] font-bold text-[#06B6D4] hover:bg-[#06B6D4]/20"
+                                    className="rounded bg-[#EAEAE6]/10 px-1.5 py-0.5 text-[10px] font-bold text-[#EAEAE6] hover:bg-[#EAEAE6]/20"
                                     title="Add Topic"
                                   >
                                     +Top
@@ -924,7 +924,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
 
                               {/* Level 4: Topics */}
                               {isIcExpanded && (
-                                <div className="pl-3 space-y-1 border-l border-[#334155]/40 ml-2">
+                                <div className="pl-3 space-y-1 border-l border-[#2E2E34]/40 ml-2">
                                   {ic.topics.map((top) => {
                                     const topKey = `topic-${top.id}`;
                                     const isTopExpanded = Boolean(expandedKeys[topKey]);
@@ -938,18 +938,18 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                                           className={`group flex items-center justify-between rounded-md px-2 py-1 text-xs cursor-pointer transition-all border ${
                                             isTopSelected
                                               ? "border-[#10B981] bg-[#10B981]/15 font-bold text-white"
-                                              : "border-transparent text-[#CBD5E1] hover:bg-[#0B0F19]/30"
+                                              : "border-transparent text-[#EAEAE6] hover:bg-[#141416]/30"
                                           }`}
                                         >
                                           <div className="flex items-center space-x-1.5 truncate flex-1 min-w-0">
                                             <button
                                               onClick={(e) => toggleExpandKey(topKey, e)}
-                                              className="p-0.5 text-[#94A3B8]"
+                                              className="p-0.5 text-[#A1A1AA]"
                                             >
                                               {isTopExpanded ? (
                                                 <ChevronDown className="h-3 w-3 text-[#10B981]" />
                                               ) : (
-                                                <ChevronRight className="h-3 w-3 text-[#94A3B8]" />
+                                                <ChevronRight className="h-3 w-3 text-[#A1A1AA]" />
                                               )}
                                             </button>
                                             <Layers className="h-3 w-3 text-[#10B981] shrink-0" />
@@ -976,7 +976,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
 
                                         {/* Level 5: Subtopics */}
                                         {isTopExpanded && (
-                                          <div className="pl-3 space-y-0.5 border-l border-[#334155]/30 ml-2">
+                                          <div className="pl-3 space-y-0.5 border-l border-[#2E2E34]/30 ml-2">
                                             {top.subtopics.map((sub) => {
                                               const subKey = `sub-${sub.id}`;
                                               const isSubSelected = selectedKey === subKey;
@@ -987,18 +987,18 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                                                   onClick={() => setSelectedKey(subKey)}
                                                   className={`group flex items-center justify-between rounded px-2 py-1 text-[11px] cursor-pointer transition-all border ${
                                                     isSubSelected
-                                                      ? "border-[#06B6D4] bg-[#06B6D4]/20 font-bold text-white shadow"
-                                                      : "border-transparent text-[#94A3B8] hover:bg-[#0B0F19] hover:text-white"
+                                                      ? "border-[#EAEAE6] bg-[#EAEAE6]/20 font-bold text-white shadow"
+                                                      : "border-transparent text-[#A1A1AA] hover:bg-[#141416] hover:text-white"
                                                   }`}
                                                 >
                                                   <div className="flex items-center space-x-1.5 truncate flex-1 min-w-0">
-                                                    <FileCode className="h-3 w-3 text-[#06B6D4] shrink-0" />
+                                                    <FileCode className="h-3 w-3 text-[#EAEAE6] shrink-0" />
                                                     <span className="truncate">{sub.title || 'Untitled Subtopic'}</span>
                                                   </div>
 
                                                   <div className="flex items-center space-x-1 shrink-0">
                                                     {sub.codeSnippet && (
-                                                      <span className="rounded bg-[#06B6D4]/20 px-1 text-[9px] text-[#06B6D4] font-bold" title="Has JS Terminal">
+                                                      <span className="rounded bg-[#EAEAE6]/20 px-1 text-[9px] text-[#EAEAE6] font-bold" title="Has JS Terminal">
                                                         ⚡
                                                       </span>
                                                     )}
@@ -1032,38 +1032,38 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
           </div>
 
           {/* RIGHT COLUMN: FOCUSED DETAIL WORKBENCH PANEL (Detail - flex-1) */}
-          <div className="flex-1 w-full rounded-2xl border border-[#334155] bg-[#1E293B] p-6 shadow-xl space-y-6 self-stretch">
+          <div className="flex-1 w-full rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-6 shadow-xl space-y-6 self-stretch">
             {/* Header Breadcrumb Navigation */}
-            <div className="flex flex-wrap items-center justify-between border-b border-[#334155] pb-4 gap-2">
+            <div className="flex flex-wrap items-center justify-between border-b border-[#2E2E34] pb-4 gap-2">
               <div className="flex flex-wrap items-center space-x-1.5 text-xs font-mono">
-                <span className="text-[#06B6D4] font-bold">{syllabus.courseCode || "Course"}</span>
+                <span className="text-[#EAEAE6] font-bold">{syllabus.courseCode || "Course"}</span>
                 {selectedCtx.type !== 'course' && (
                   <>
-                    <span className="text-[#64748B]">&gt;</span>
-                    <span className="text-[#CBD5E1]">{selectedCtx.lo?.code || 'LO'}</span>
+                    <span className="text-[#71717A]">&gt;</span>
+                    <span className="text-[#EAEAE6]">{selectedCtx.lo?.code || 'LO'}</span>
                   </>
                 )}
                 {(selectedCtx.type === 'ic' || selectedCtx.type === 'topic' || selectedCtx.type === 'subtopic') && (
                   <>
-                    <span className="text-[#64748B]">&gt;</span>
+                    <span className="text-[#71717A]">&gt;</span>
                     <span className="text-[#F59E0B]">{selectedCtx.ic?.code || 'IC'}</span>
                   </>
                 )}
                 {(selectedCtx.type === 'topic' || selectedCtx.type === 'subtopic') && (
                   <>
-                    <span className="text-[#64748B]">&gt;</span>
+                    <span className="text-[#71717A]">&gt;</span>
                     <span className="text-[#10B981]">{selectedCtx.topic?.title || 'Topic'}</span>
                   </>
                 )}
                 {selectedCtx.type === 'subtopic' && (
                   <>
-                    <span className="text-[#64748B]">&gt;</span>
+                    <span className="text-[#71717A]">&gt;</span>
                     <span className="text-white font-bold">{selectedCtx.subtopic?.title || 'Subtopic'}</span>
                   </>
                 )}
               </div>
 
-              <span className="rounded-lg bg-[#0B0F19] px-2.5 py-1 text-[10px] font-mono text-[#06B6D4] uppercase font-bold border border-[#334155]">
+              <span className="rounded-lg bg-[#141416] px-2.5 py-1 text-[10px] font-mono text-[#EAEAE6] uppercase font-bold border border-[#2E2E34]">
                 {selectedCtx.type.toUpperCase()} EDITOR
               </span>
             </div>
@@ -1071,42 +1071,42 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
             {/* DETAIL EDITOR CONTENT: LEVEL 1 (COURSE) */}
             {selectedCtx.type === 'course' && (
               <div className="space-y-4 animate-fadeIn">
-                <div className="flex items-center space-x-2 text-xs font-mono text-[#06B6D4]">
+                <div className="flex items-center space-x-2 text-xs font-mono text-[#EAEAE6]">
                   <BookOpen className="h-4 w-4" />
                   <span>Level 1: Course General Metadata</span>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="text-xs font-mono text-[#94A3B8]">Course Title</label>
+                    <label className="text-xs font-mono text-[#A1A1AA]">Course Title</label>
                     <input
                       type="text"
                       value={syllabus.title}
                       onChange={(e) => setSyllabus({ ...syllabus, title: e.target.value })}
                       placeholder="e.g. Modern Software Engineering & Web Architecture"
-                      className="mt-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                      className="mt-1 w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="text-xs font-mono text-[#94A3B8]">Course Code</label>
+                    <label className="text-xs font-mono text-[#A1A1AA]">Course Code</label>
                     <input
                       type="text"
                       value={syllabus.courseCode}
                       onChange={(e) => setSyllabus({ ...syllabus, courseCode: e.target.value })}
                       placeholder="e.g. CS202"
-                      className="mt-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                      className="mt-1 w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                     />
                   </div>
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="text-xs font-mono text-[#94A3B8]">Assigned Academic Trade</label>
+                    <label className="text-xs font-mono text-[#A1A1AA]">Assigned Academic Trade</label>
                     <select
                       value={syllabus.tradeId || ''}
                       onChange={(e) => setSyllabus({ ...syllabus, tradeId: e.target.value })}
-                      className="mt-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                      className="mt-1 w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                     >
                       <option value="">Select Trade...</option>
                       {tradesList.map((t) => (
@@ -1118,11 +1118,11 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                   </div>
 
                   <div>
-                    <label className="text-xs font-mono text-[#94A3B8]">Assigned Academic Level</label>
+                    <label className="text-xs font-mono text-[#A1A1AA]">Assigned Academic Level</label>
                     <select
                       value={syllabus.level || 'Level 4'}
                       onChange={(e) => setSyllabus({ ...syllabus, level: e.target.value as StudentLevel })}
-                      className="mt-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                      className="mt-1 w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                     >
                       <option value="Level 3">Level 3</option>
                       <option value="Level 4">Level 4</option>
@@ -1132,13 +1132,13 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                 </div>
 
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8]">Course Overview & Objectives</label>
+                  <label className="text-xs font-mono text-[#A1A1AA]">Course Overview & Objectives</label>
                   <textarea
                     rows={4}
                     value={syllabus.description}
                     onChange={(e) => setSyllabus({ ...syllabus, description: e.target.value })}
                     placeholder="Describe the main objectives and scope of this syllabus..."
-                    className="mt-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   />
                 </div>
               </div>
@@ -1148,7 +1148,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
             {selectedCtx.type === 'lo' && selectedCtx.lo && (
               <div className="space-y-4 animate-fadeIn">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2 text-xs font-mono text-[#06B6D4]">
+                  <div className="flex items-center space-x-2 text-xs font-mono text-[#EAEAE6]">
                     <Award className="h-4 w-4" />
                     <span>Level 2: Learning Outcome Editor</span>
                   </div>
@@ -1162,7 +1162,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
 
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
-                    <label className="text-xs font-mono text-[#94A3B8]">LO Code</label>
+                    <label className="text-xs font-mono text-[#A1A1AA]">LO Code</label>
                     <input
                       type="text"
                       value={selectedCtx.lo.code}
@@ -1174,12 +1174,12 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                         });
                       }}
                       placeholder="e.g. LO1"
-                      className="mt-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs font-mono font-bold text-[#06B6D4] focus:border-[#06B6D4] focus:outline-none"
+                      className="mt-1 w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs font-mono font-bold text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
                     />
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="text-xs font-mono text-[#94A3B8]">LO Title</label>
+                    <label className="text-xs font-mono text-[#A1A1AA]">LO Title</label>
                     <input
                       type="text"
                       value={selectedCtx.lo.title}
@@ -1191,13 +1191,13 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                         });
                       }}
                       placeholder="e.g. Understand Relational Database Architecture"
-                      className="mt-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs font-bold text-white focus:border-[#06B6D4] focus:outline-none"
+                      className="mt-1 w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs font-bold text-white focus:border-[#EAEAE6] focus:outline-none"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8]">LO Detailed Description</label>
+                  <label className="text-xs font-mono text-[#A1A1AA]">LO Detailed Description</label>
                   <textarea
                     rows={3}
                     value={selectedCtx.lo.description || ""}
@@ -1209,7 +1209,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                       });
                     }}
                     placeholder="Describe specific learning goals for this outcome..."
-                    className="mt-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   />
                 </div>
               </div>
@@ -1225,7 +1225,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                   </div>
                   <button
                     onClick={() => addTopic(selectedCtx.lo!.id, selectedCtx.ic!.id)}
-                    className="rounded-lg bg-[#06B6D4]/10 px-3 py-1.5 text-xs font-bold text-[#06B6D4] border border-[#06B6D4]/30"
+                    className="rounded-lg bg-[#EAEAE6]/10 px-3 py-1.5 text-xs font-bold text-[#EAEAE6] border border-[#EAEAE6]/30"
                   >
                     + Add Topic
                   </button>
@@ -1233,7 +1233,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
 
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
-                    <label className="text-xs font-mono text-[#94A3B8]">IC Code</label>
+                    <label className="text-xs font-mono text-[#A1A1AA]">IC Code</label>
                     <input
                       type="text"
                       value={selectedCtx.ic.code}
@@ -1250,12 +1250,12 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                         });
                       }}
                       placeholder="e.g. IC1.1"
-                      className="mt-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs font-mono font-bold text-[#F59E0B] focus:border-[#F59E0B] focus:outline-none"
+                      className="mt-1 w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs font-mono font-bold text-[#F59E0B] focus:border-[#F59E0B] focus:outline-none"
                     />
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="text-xs font-mono text-[#94A3B8]">IC Title</label>
+                    <label className="text-xs font-mono text-[#A1A1AA]">IC Title</label>
                     <input
                       type="text"
                       value={selectedCtx.ic.title}
@@ -1272,7 +1272,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                         });
                       }}
                       placeholder="e.g. Core Database Normalization & Indexing"
-                      className="mt-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs font-bold text-white focus:border-[#F59E0B] focus:outline-none"
+                      className="mt-1 w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs font-bold text-white focus:border-[#F59E0B] focus:outline-none"
                     />
                   </div>
                 </div>
@@ -1296,7 +1296,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                 </div>
 
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8]">Topic Title</label>
+                  <label className="text-xs font-mono text-[#A1A1AA]">Topic Title</label>
                   <input
                     type="text"
                     value={selectedCtx.topic.title}
@@ -1318,7 +1318,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                       });
                     }}
                     placeholder="e.g. Topic 1: B-Tree Indexing Strategies"
-                    className="mt-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs font-bold text-white focus:border-[#10B981] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs font-bold text-white focus:border-[#10B981] focus:outline-none"
                   />
                 </div>
               </div>
@@ -1327,20 +1327,20 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
             {/* DETAIL EDITOR CONTENT: LEVEL 5 (SUBTOPIC) */}
             {selectedCtx.type === 'subtopic' && selectedCtx.subtopic && selectedCtx.lo && selectedCtx.ic && selectedCtx.topic && (
               <div className="space-y-6 animate-fadeIn">
-                <div className="flex items-center justify-between border-b border-[#334155] pb-3">
-                  <div className="flex items-center space-x-2 text-xs font-mono text-[#06B6D4]">
+                <div className="flex items-center justify-between border-b border-[#2E2E34] pb-3">
+                  <div className="flex items-center space-x-2 text-xs font-mono text-[#EAEAE6]">
                     <FileCode className="h-4 w-4" />
                     <span>Level 5: Focused Subtopic & Code Workbench</span>
                   </div>
 
-                  <span className="text-[11px] font-mono text-[#94A3B8]">
+                  <span className="text-[11px] font-mono text-[#A1A1AA]">
                     Index Order #{selectedCtx.subtopic.order}
                   </span>
                 </div>
 
                 {/* Subtopic Title */}
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8]">Subtopic Title</label>
+                  <label className="text-xs font-mono text-[#A1A1AA]">Subtopic Title</label>
                   <input
                     type="text"
                     value={selectedCtx.subtopic.title}
@@ -1367,13 +1367,13 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                       });
                     }}
                     placeholder="e.g. Subtopic 1: Logic Gates & Binary Conversions"
-                    className="mt-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-sm font-bold text-white focus:border-[#06B6D4] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-sm font-bold text-white focus:border-[#EAEAE6] focus:outline-none"
                   />
                 </div>
 
                 {/* Markdown Editor */}
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8] block mb-1">
+                  <label className="text-xs font-mono text-[#A1A1AA] block mb-1">
                     Detailed Educational Text Content (Markdown + Media)
                   </label>
                   <MarkdownEditor
@@ -1468,16 +1468,16 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                           )
                         });
                       }}
-                      className="w-full py-3 px-4 border border-dashed border-[#06B6D4]/40 hover:border-[#06B6D4] bg-[#06B6D4]/5 hover:bg-[#06B6D4]/10 rounded-xl text-xs font-bold text-[#06B6D4] transition-all flex items-center justify-center space-x-2"
+                      className="w-full py-3 px-4 border border-dashed border-[#EAEAE6]/40 hover:border-[#EAEAE6] bg-[#EAEAE6]/5 hover:bg-[#EAEAE6]/10 rounded-xl text-xs font-bold text-[#EAEAE6] transition-all flex items-center justify-center space-x-2"
                     >
                       <Terminal className="w-4 h-4" />
                       <span>+ Attach Interactive JavaScript Coding Terminal Playground</span>
                     </button>
                   ) : (
-                    <div className="p-4 rounded-xl border border-[#334155] bg-[#0B0F19]/80 space-y-4">
-                      <div className="flex items-center justify-between border-b border-[#334155] pb-2">
+                    <div className="p-4 rounded-xl border border-[#2E2E34] bg-[#141416]/80 space-y-4">
+                      <div className="flex items-center justify-between border-b border-[#2E2E34] pb-2">
                         <div className="flex items-center space-x-2">
-                          <Terminal className="w-4 h-4 text-[#06B6D4]" />
+                          <Terminal className="w-4 h-4 text-[#EAEAE6]" />
                           <span className="text-xs font-bold text-white uppercase tracking-wider">
                             Interactive JS Coding Terminal Playground
                           </span>
@@ -1515,7 +1515,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                       </div>
 
                       <div>
-                        <label className="text-[10px] uppercase font-bold text-[#94A3B8] block mb-1">
+                        <label className="text-[10px] uppercase font-bold text-[#A1A1AA] block mb-1">
                           Playground Title
                         </label>
                         <input 
@@ -1549,12 +1549,12 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                             });
                           }}
                           placeholder="e.g. Logic Gates & Binary Conversions"
-                          className="w-full rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-2 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                          className="w-full rounded-lg border border-[#2E2E34] bg-[#1C1C1F] px-3 py-2 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                         />
                       </div>
 
                       <div>
-                        <label className="text-[10px] uppercase font-bold text-[#94A3B8] block mb-1">
+                        <label className="text-[10px] uppercase font-bold text-[#A1A1AA] block mb-1">
                           Initial Starter Code (JavaScript Only)
                         </label>
                         <textarea 
@@ -1588,7 +1588,7 @@ export default function SyllabusBuilder({ initialSyllabus }: Props) {
                             });
                           }}
                           placeholder="// Write starter JavaScript code here..."
-                          className="w-full rounded-lg border border-[#334155] bg-[#0F172A] p-3 text-xs font-mono text-[#06B6D4] focus:border-[#06B6D4] focus:outline-none"
+                          className="w-full rounded-lg border border-[#2E2E34] bg-[#141416] p-3 text-xs font-mono text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
                         />
                       </div>
 

@@ -5,24 +5,24 @@
   --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
 
-  /* Color Palette Tokens */
-  --color-slate-base: #0B0F19;      /* Deep Slate/Navy background */
-  --color-slate-surface: #1E293B;   /* Secondary containers, cards, sidebar */
-  --color-slate-border: #334155;    /* Subtle dividers and grid borders */
-  --color-brand-cyan: #06B6D4;      /* Active LOs, CTAs, highlight borders */
+  /* Color Palette Tokens (Monochrome Bento Theme) */
+  --color-slate-base: #141416;      /* Deep Charcoal outer background */
+  --color-slate-surface: #1C1C1F;   /* Bento container surface */
+  --color-slate-border: #2E2E34;    /* Subtle charcoal borders */
+  --color-brand-cyan: #EAEAE6;      /* Crisp Off-White primary accent */
   --color-brand-emerald: #10B981;   /* Code run status, completion checks */
   --color-accent-citation: #F59E0B; /* Dotted underline for deep-dive terms */
   --color-accent-bold: #FACC15;     /* Vibrant yellow for bold key educational concepts */
 
   /* Text Contrast Tokens */
   --color-text-main: #FFFFFF;       /* Headers, Titles, Code highlights */
-  --color-text-body: #CBD5E1;       /* Paragraph content, markdown text */
-  --color-text-muted: #94A3B8;      /* Metadata labels, level 4 subtopic indicators */
+  --color-text-body: #EAEAE6;       /* Off-white primary body text */
+  --color-text-muted: #A1A1AA;      /* Zinc muted metadata labels */
 }
 
 :root {
-  --background: #0B0F19;
-  --foreground: #CBD5E1;
+  --background: #141416;
+  --foreground: #EAEAE6;
 }
 
 body {
@@ -45,16 +45,16 @@ code, pre, .font-mono {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0B0F19;
+  background: #141416;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #334155;
+  background: #323238;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #06B6D4;
+  background: #EAEAE6;
 }
 
 /* Citation Underline styling */

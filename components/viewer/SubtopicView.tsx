@@ -13,10 +13,10 @@ import { explainSubtopicConcept } from "@/lib/gemini";
 const SandpackPlayground = dynamic(() => import("./SandpackPlayground"), {
   ssr: false,
   loading: () => (
-    <div className="flex h-64 w-full items-center justify-center rounded-2xl border border-[#334155] bg-[#0F172A] p-6 text-center shadow-inner my-4">
+    <div className="flex h-64 w-full items-center justify-center rounded-2xl border border-[#2E2E34] bg-[#141416] p-6 text-center shadow-inner my-4">
       <div className="space-y-3">
-        <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent" />
-        <p className="text-xs font-mono text-[#94A3B8]">Loading interactive code environment...</p>
+        <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent" />
+        <p className="text-xs font-mono text-[#A1A1AA]">Loading interactive code environment...</p>
       </div>
     </div>
   ),
@@ -153,25 +153,25 @@ export default function SubtopicView({
         );
       } else if (tagLower === "blockquote") {
         parts.push(
-          <blockquote key={matchIndex} className="my-3 pl-4 border-l-2 border-[#06B6D4]/50 bg-[#06B6D4]/5 p-2 rounded-r-lg text-sm text-[#CBD5E1]">
+          <blockquote key={matchIndex} className="my-3 pl-4 border-l-2 border-[#EAEAE6]/50 bg-[#EAEAE6]/5 p-2 rounded-r-lg text-sm text-[#EAEAE6]">
             {parsedInner}
           </blockquote>
         );
       } else if (tagLower === "u" || tagLower === "ins") {
         parts.push(
-          <u key={matchIndex} className="underline underline-offset-4 decoration-[#06B6D4] decoration-2 text-white font-medium">
+          <u key={matchIndex} className="underline underline-offset-4 decoration-[#EAEAE6] decoration-2 text-white font-medium">
             {parsedInner}
           </u>
         );
       } else if (tagLower === "sup") {
         parts.push(
-          <sup key={matchIndex} className="text-[0.75em] leading-none align-super font-mono text-[#06B6D4] font-bold px-0.5">
+          <sup key={matchIndex} className="text-[0.75em] leading-none align-super font-mono text-[#EAEAE6] font-bold px-0.5">
             {parsedInner}
           </sup>
         );
       } else if (tagLower === "sub") {
         parts.push(
-          <sub key={matchIndex} className="text-[0.75em] leading-none align-sub font-mono text-[#06B6D4] font-bold px-0.5">
+          <sub key={matchIndex} className="text-[0.75em] leading-none align-sub font-mono text-[#EAEAE6] font-bold px-0.5">
             {parsedInner}
           </sub>
         );
@@ -190,7 +190,7 @@ export default function SubtopicView({
 
         let indentClass = "";
         if (/margin-left|padding-left|indent/i.test(attrString)) {
-          indentClass = "pl-6 border-l-2 border-[#06B6D4]/40 bg-[#06B6D4]/5 p-3 rounded-r-xl my-3";
+          indentClass = "pl-6 border-l-2 border-[#EAEAE6]/40 bg-[#EAEAE6]/5 p-3 rounded-r-xl my-3";
         }
 
         const Component = isBlock ? 'div' : 'span';
@@ -332,10 +332,10 @@ export default function SubtopicView({
         {recursivelyRenderCitations(children)}
       </strong>
     ),
-    u: ({ children }: any) => <u className="underline underline-offset-4 decoration-[#06B6D4] decoration-2 text-black font-medium">{recursivelyRenderCitations(children)}</u>,
-    ins: ({ children }: any) => <u className="underline underline-offset-4 decoration-[#06B6D4] decoration-2 text-black font-medium">{recursivelyRenderCitations(children)}</u>,
-    sup: ({ children }: any) => <sup className="text-[0.75em] leading-none align-super font-mono text-[#06B6D4] font-bold px-0.5">{recursivelyRenderCitations(children)}</sup>,
-    sub: ({ children }: any) => <sub className="text-[0.75em] leading-none align-sub font-mono text-[#06B6D4] font-bold px-0.5">{recursivelyRenderCitations(children)}</sub>,
+    u: ({ children }: any) => <u className="underline underline-offset-4 decoration-[#EAEAE6] decoration-2 text-black font-medium">{recursivelyRenderCitations(children)}</u>,
+    ins: ({ children }: any) => <u className="underline underline-offset-4 decoration-[#EAEAE6] decoration-2 text-black font-medium">{recursivelyRenderCitations(children)}</u>,
+    sup: ({ children }: any) => <sup className="text-[0.75em] leading-none align-super font-mono text-[#EAEAE6] font-bold px-0.5">{recursivelyRenderCitations(children)}</sup>,
+    sub: ({ children }: any) => <sub className="text-[0.75em] leading-none align-sub font-mono text-[#EAEAE6] font-bold px-0.5">{recursivelyRenderCitations(children)}</sub>,
     div: ({ align, style, children, className }: any) => {
       let alignClass = "";
       if (align === "center" || style?.textAlign === "center") alignClass = "text-center my-2 w-full block";
@@ -345,7 +345,7 @@ export default function SubtopicView({
 
       let indentClass = "";
       if (style?.marginLeft || style?.paddingLeft || className?.includes("indent") || className?.includes("visual-indent")) {
-        indentClass = "pl-6 border-l-2 border-[#06B6D4]/40 bg-[#06B6D4]/5 p-3 rounded-r-xl my-3";
+        indentClass = "pl-6 border-l-2 border-[#EAEAE6]/40 bg-[#EAEAE6]/5 p-3 rounded-r-xl my-3";
       }
 
       return (
@@ -367,16 +367,16 @@ export default function SubtopicView({
       );
     },
     h3: ({ children }: any) => (
-      <div className="mt-8 mb-4 border-l-4 border-[#06B6D4] bg-[#06B6D4]/10 p-3 rounded-r-xl">
+      <div className="mt-8 mb-4 border-l-4 border-[#EAEAE6] bg-[#EAEAE6]/10 p-3 rounded-r-xl">
         <h3 className="text-lg md:text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#06B6D4]" />
+          <Sparkles className="w-4 h-4 text-[#EAEAE6]" />
           <span>{recursivelyRenderCitations(children)}</span>
         </h3>
       </div>
     ),
     blockquote: ({ children }: any) => (
-      <div className="my-6 rounded-2xl border border-[#06B6D4]/40 bg-gradient-to-r from-[#06B6D4]/10 to-[#10B981]/10 p-5 shadow-xs">
-        <div className="flex items-center space-x-2 text-xs font-mono font-bold text-[#06B6D4] uppercase tracking-wider mb-2">
+      <div className="my-6 rounded-2xl border border-[#EAEAE6]/40 bg-gradient-to-r from-[#EAEAE6]/10 to-[#10B981]/10 p-5 shadow-xs">
+        <div className="flex items-center space-x-2 text-xs font-mono font-bold text-[#EAEAE6] uppercase tracking-wider mb-2">
           <Lightbulb className="w-4 h-4 text-[#EA580C]" />
           <span>Key Curriculum Insight</span>
         </div>
@@ -399,20 +399,20 @@ export default function SubtopicView({
     <div className="mx-auto max-w-5xl px-2.5 sm:px-6 py-4 sm:py-6 md:px-8 relative w-full min-w-0 overflow-x-hidden">
 
       {/* Presentation View Mode Switcher Header */}
-      <div className="flex flex-col xs:flex-row sm:items-center justify-between gap-3 bg-[#1E293B]/75 backdrop-blur-md p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-[#334155]/70 shadow-xl mb-4 sm:mb-6">
-        <div className="flex items-center space-x-2 text-xs font-mono text-[#94A3B8]">
-          <Sparkles className="h-4 w-4 text-[#06B6D4] shrink-0" />
+      <div className="flex flex-col xs:flex-row sm:items-center justify-between gap-3 bg-[#1C1C1F]/75 backdrop-blur-md p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-[#2E2E34]/70 shadow-xl mb-4 sm:mb-6">
+        <div className="flex items-center space-x-2 text-xs font-mono text-[#A1A1AA]">
+          <Sparkles className="h-4 w-4 text-[#EAEAE6] shrink-0" />
           <span className="hidden xs:inline">Mode:</span>
           <span className="text-white font-bold">{viewMode === 'slide' ? 'Slide Deck' : 'Continuous'}</span>
         </div>
 
-        <div className="flex items-center space-x-1.5 sm:space-x-2 bg-[#0B0F19]/50 backdrop-blur-md p-1 rounded-xl border border-[#334155]/60 self-stretch xs:self-auto justify-center">
+        <div className="flex items-center space-x-1.5 sm:space-x-2 bg-[#141416]/50 backdrop-blur-md p-1 rounded-xl border border-[#2E2E34]/60 self-stretch xs:self-auto justify-center">
           <button
             onClick={() => setViewMode('slide')}
             className={`flex-1 xs:flex-initial inline-flex items-center justify-center space-x-1.5 rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-bold transition-all ${
               viewMode === 'slide'
-                ? "bg-[#06B6D4] text-slate-950 shadow-md"
-                : "text-[#94A3B8] hover:text-white"
+                ? "bg-[#EAEAE6] text-[#141416] shadow-md"
+                : "text-[#A1A1AA] hover:text-white"
             }`}
           >
             <Monitor className="h-3.5 w-3.5 shrink-0" />
@@ -423,8 +423,8 @@ export default function SubtopicView({
             onClick={() => setViewMode('continuous')}
             className={`flex-1 xs:flex-initial inline-flex items-center justify-center space-x-1.5 rounded-lg px-2.5 sm:px-3 py-1.5 text-xs font-bold transition-all ${
               viewMode === 'continuous'
-                ? "bg-[#06B6D4] text-slate-950 shadow-md"
-                : "text-[#94A3B8] hover:text-white"
+                ? "bg-[#EAEAE6] text-[#141416] shadow-md"
+                : "text-[#A1A1AA] hover:text-white"
             }`}
           >
             <AlignLeft className="h-3.5 w-3.5 shrink-0" />
@@ -437,15 +437,15 @@ export default function SubtopicView({
       {viewMode === 'slide' ? (
         <div className="relative space-y-4 sm:space-y-6 w-full min-w-0">
           {/* Main Presentation Slide Canvas Card */}
-          <div className="relative rounded-2xl sm:rounded-3xl border border-[#06B6D4]/40 bg-gradient-to-b from-[#1E293B] via-[#0F172A] to-[#0B0F19] p-3.5 sm:p-6 md:p-10 shadow-2xl overflow-hidden min-h-[350px] w-full min-w-0">
+          <div className="relative rounded-2xl sm:rounded-3xl border border-[#EAEAE6]/40 bg-gradient-to-b from-[#1C1C1F] via-[#141416] to-[#141416] p-3.5 sm:p-6 md:p-10 shadow-2xl overflow-hidden min-h-[350px] w-full min-w-0">
             {/* Slide Header & Progress */}
-            <div className="flex items-center justify-between border-b border-[#334155] pb-3 sm:pb-4 mb-4 sm:mb-6 gap-2">
-              <div className="flex items-center space-x-2 text-xs font-mono text-[#06B6D4] min-w-0 truncate">
-                <span className="bg-[#06B6D4]/15 px-2 sm:px-2.5 py-1 rounded-md border border-[#06B6D4]/30 font-bold uppercase tracking-wider text-[10px] sm:text-xs shrink-0">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] pb-3 sm:pb-4 mb-4 sm:mb-6 gap-2">
+              <div className="flex items-center space-x-2 text-xs font-mono text-[#EAEAE6] min-w-0 truncate">
+                <span className="bg-[#EAEAE6]/15 px-2 sm:px-2.5 py-1 rounded-md border border-[#EAEAE6]/30 font-bold uppercase tracking-wider text-[10px] sm:text-xs shrink-0">
                   Slide {currentIndex}/{totalSubtopics}
                 </span>
-                <span className="text-[#94A3B8] hidden sm:inline">•</span>
-                <span className="text-[#94A3B8] hidden sm:inline truncate">Use ← → Arrow Keys</span>
+                <span className="text-[#A1A1AA] hidden sm:inline">•</span>
+                <span className="text-[#A1A1AA] hidden sm:inline truncate">Use ← → Arrow Keys</span>
               </div>
 
               <div className="flex items-center space-x-2">
@@ -463,11 +463,11 @@ export default function SubtopicView({
                   onClick={onToggleComplete}
                   className={`inline-flex items-center space-x-1.5 rounded-xl px-2.5 sm:px-3.5 py-1.5 sm:py-2 text-xs font-bold transition-all shrink-0 ${
                     isCompleted
-                      ? "bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40"
-                      : "bg-[#1E293B]/70 backdrop-blur-md text-[#CBD5E1] border border-[#334155]/70 hover:border-[#06B6D4]"
+                      ? "bg-emerald-500 text-[#141416] border border-emerald-400 shadow-sm"
+                      : "bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-[#141416]"
                   }`}
                 >
-                  {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#10B981]" /> : <Circle className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#94A3B8]" />}
+                  {isCompleted ? <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#141416]" /> : <Circle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
                   <span>{isCompleted ? "Completed" : "Mark Complete"}</span>
                 </button>
               </div>
@@ -475,7 +475,7 @@ export default function SubtopicView({
 
             {/* Slide Subtopic Title */}
             <div className="mb-4 sm:mb-6">
-              <span className="text-[10px] sm:text-xs font-mono text-[#94A3B8] uppercase tracking-wider">
+              <span className="text-[10px] sm:text-xs font-mono text-[#A1A1AA] uppercase tracking-wider">
                 Level 5 Subtopic
               </span>
               <h1 className="text-xl sm:text-2xl md:text-4xl font-extrabold text-white tracking-tight mt-1 leading-tight break-words">
@@ -485,7 +485,7 @@ export default function SubtopicView({
 
             {/* AI Concept Explainer Card */}
             {showExplanation && (
-              <div className="mb-4 sm:mb-6 rounded-2xl border border-indigo-500/40 bg-gradient-to-br from-indigo-950/70 via-[#0F172A] to-purple-950/40 p-4 sm:p-6 shadow-xl backdrop-blur-md">
+              <div className="mb-4 sm:mb-6 rounded-2xl border border-indigo-500/40 bg-gradient-to-br from-indigo-950/70 via-[#141416] to-purple-950/40 p-4 sm:p-6 shadow-xl backdrop-blur-md">
                 <div className="flex items-center justify-between border-b border-indigo-500/20 pb-3 mb-3">
                   <div className="flex items-center space-x-2">
                     <Sparkles className="h-4 w-4 text-indigo-400" />
@@ -580,10 +580,10 @@ export default function SubtopicView({
                     <button
                       key={cit.id}
                       onClick={() => onSelectCitation(cit)}
-                      className="inline-flex items-center rounded-lg bg-[#1E293B] px-3 py-1.5 text-xs text-[#CBD5E1] border border-[#334155] hover:border-[#F59E0B] hover:text-[#F59E0B] transition-colors"
+                      className="inline-flex items-center rounded-lg bg-[#1C1C1F] px-3 py-1.5 text-xs text-[#EAEAE6] border border-[#2E2E34] hover:border-[#F59E0B] hover:text-[#F59E0B] transition-colors"
                     >
                       <span className="font-semibold mr-1.5">{cit.term}:</span>
-                      <span className="text-[#94A3B8] truncate max-w-[200px]">{cit.explanation}</span>
+                      <span className="text-[#A1A1AA] truncate max-w-[200px]">{cit.explanation}</span>
                     </button>
                   ))}
                 </div>
@@ -592,26 +592,26 @@ export default function SubtopicView({
           </div>
 
           {/* Floating Slide Deck Controls Bar */}
-          <div className="flex items-center justify-between gap-1.5 sm:gap-2 bg-[#1E293B]/75 backdrop-blur-md p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-[#334155]/70 shadow-xl">
+          <div className="flex items-center justify-between gap-1.5 sm:gap-2 bg-[#1C1C1F]/75 backdrop-blur-md p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border border-[#2E2E34]/70 shadow-xl">
             {onPrevSubtopic ? (
               <button
                 onClick={onPrevSubtopic}
-                className="inline-flex items-center space-x-1 sm:space-x-2 rounded-xl bg-[#0B0F19]/60 backdrop-blur-sm px-3 sm:px-5 py-2.5 sm:py-3 text-xs font-bold text-white border border-[#334155]/70 hover:border-[#06B6D4] hover:bg-[#334155]/50 transition-all shadow-md shrink-0"
+                className="inline-flex items-center space-x-1 sm:space-x-2 rounded-xl bg-[#141416]/60 backdrop-blur-sm px-3 sm:px-5 py-2.5 sm:py-3 text-xs font-bold text-white border border-[#2E2E34]/70 hover:border-[#EAEAE6] hover:bg-[#2E2E34]/50 transition-all shadow-md shrink-0"
               >
-                <ChevronLeft className="w-4 h-4 text-[#06B6D4] shrink-0" />
+                <ChevronLeft className="w-4 h-4 text-[#EAEAE6] shrink-0" />
                 <span className="hidden xs:inline">Prev</span>
                 <span className="hidden sm:inline">Slide</span>
               </button>
             ) : <div />}
 
-            <div className="text-center font-mono text-[11px] sm:text-xs text-[#06B6D4] font-bold bg-[#06B6D4]/10 backdrop-blur-sm px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-[#06B6D4]/30 shrink-0">
+            <div className="text-center font-mono text-[11px] sm:text-xs text-[#EAEAE6] font-bold bg-[#EAEAE6]/10 backdrop-blur-sm px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl border border-[#EAEAE6]/30 shrink-0">
               {currentIndex} / {totalSubtopics}
             </div>
 
             {onNextSubtopic ? (
               <button
                 onClick={onNextSubtopic}
-                className="inline-flex items-center space-x-1 sm:space-x-2 rounded-xl bg-gradient-to-r from-[#06B6D4] to-[#10B981] px-3 sm:px-5 py-2.5 sm:py-3 text-xs font-bold text-slate-950 hover:opacity-90 transition-all shadow-xl shrink-0"
+                className="inline-flex items-center space-x-1 sm:space-x-2 rounded-xl bg-gradient-to-r from-[#EAEAE6] to-[#10B981] px-3 sm:px-5 py-2.5 sm:py-3 text-xs font-bold text-[#141416] hover:opacity-90 transition-all shadow-xl shrink-0"
               >
                 <span className="hidden xs:inline">Next</span>
                 <span className="hidden sm:inline">Slide</span>
@@ -624,12 +624,12 @@ export default function SubtopicView({
 
         /* RENDER MODE 2: CONTINUOUS DOCUMENT PAGE VIEW */
         <div className="space-y-4 sm:space-y-6 w-full min-w-0">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#334155] pb-4 sm:pb-6 gap-3 sm:gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#2E2E34] pb-4 sm:pb-6 gap-3 sm:gap-4">
             <div>
-              <div className="flex items-center space-x-2 text-xs font-mono text-[#94A3B8] uppercase tracking-wider">
+              <div className="flex items-center space-x-2 text-xs font-mono text-[#A1A1AA] uppercase tracking-wider">
                 <span>Level 5 Subtopic</span>
                 <span>•</span>
-                <span className="text-[#06B6D4]">Index #{subtopic.order}</span>
+                <span className="text-[#EAEAE6]">Index #{subtopic.order}</span>
               </div>
               <h1 className="mt-1 text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight break-words">
                 {subtopic.title}
@@ -641,7 +641,7 @@ export default function SubtopicView({
               className={`inline-flex items-center space-x-2 rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs font-semibold shadow-md transition-all self-start sm:self-auto shrink-0 ${
                 isCompleted
                   ? "bg-[#10B981]/20 text-[#10B981] border border-[#10B981]/40"
-                  : "bg-[#1E293B]/70 backdrop-blur-md text-[#CBD5E1] border border-[#334155]/70 hover:border-[#06B6D4] hover:text-white"
+                  : "bg-[#1C1C1F]/70 backdrop-blur-md text-[#EAEAE6] border border-[#2E2E34]/70 hover:border-[#EAEAE6] hover:text-white"
               }`}
             >
               {isCompleted ? (
@@ -651,7 +651,7 @@ export default function SubtopicView({
                 </>
               ) : (
                 <>
-                  <Circle className="w-4 h-4 text-[#94A3B8]" />
+                  <Circle className="w-4 h-4 text-[#A1A1AA]" />
                   <span>Mark as Complete</span>
                 </>
               )}
@@ -693,15 +693,15 @@ export default function SubtopicView({
                 <BookOpen className="w-4 h-4" />
                 <span>Extracted Technical Citations ({subtopic.citations.length})</span>
               </div>
-              <div className="flex flex-[#94A3B8] gap-2">
+              <div className="flex flex-[#A1A1AA] gap-2">
                 {subtopic.citations.map((cit) => (
                   <button
                     key={cit.id}
                     onClick={() => onSelectCitation(cit)}
-                    className="inline-flex items-center rounded-lg bg-[#1E293B] px-3 py-1.5 text-xs text-[#CBD5E1] border border-[#334155] hover:border-[#F59E0B] hover:text-[#F59E0B] transition-colors"
+                    className="inline-flex items-center rounded-lg bg-[#1C1C1F] px-3 py-1.5 text-xs text-[#EAEAE6] border border-[#2E2E34] hover:border-[#F59E0B] hover:text-[#F59E0B] transition-colors"
                   >
                     <span className="font-semibold mr-1.5">{cit.term}:</span>
-                    <span className="text-[#94A3B8] truncate max-w-[200px]">{cit.explanation}</span>
+                    <span className="text-[#A1A1AA] truncate max-w-[200px]">{cit.explanation}</span>
                   </button>
                 ))}
               </div>

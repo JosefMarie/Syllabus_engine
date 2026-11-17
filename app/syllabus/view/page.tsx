@@ -11,7 +11,7 @@ function SyllabusViewerInner() {
 
   if (!id) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] text-[#94A3B8] font-mono text-sm p-4 text-center">
+      <div className="flex min-h-screen items-center justify-center bg-[#141416] text-[#A1A1AA] font-mono text-sm p-4 text-center">
         No syllabus ID provided in URL. Please access this page through a valid syllabus link.
       </div>
     );
@@ -28,8 +28,8 @@ export default function SyllabusViewPage() {
   return (
     <ErrorBoundary fallbackTitle="Application Error">
       <Suspense fallback={
-        <div className="flex min-h-screen items-center justify-center bg-[#0B0F19]">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent"></div>
+        <div className="flex min-h-screen items-center justify-center bg-[#141416]">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent"></div>
         </div>
       }>
         <SyllabusViewerInner />

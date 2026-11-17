@@ -215,10 +215,10 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
   return (
     <div className="space-y-6">
       {/* Top Banner Card */}
-      <div className="rounded-2xl border border-[#334155]/80 bg-[#1E293B]/75 backdrop-blur-xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
+      <div className="rounded-2xl border border-[#2E2E34]/80 bg-[#1C1C1F]/75 backdrop-blur-xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 h-44 w-44 bg-gradient-to-bl from-amber-500/15 via-rose-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#334155]/80 pb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2E2E34]/80 pb-5">
           <div className="flex items-center space-x-3.5">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-500/20 to-rose-500/20 border border-amber-500/40 text-amber-400 shadow-inner shrink-0">
               <Code2 className="h-6 w-6" />
@@ -232,7 +232,7 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
                   ⚡ Live Sandbox
                 </span>
               </div>
-              <p className="mt-1 text-xs text-[#94A3B8]">
+              <p className="mt-1 text-xs text-[#A1A1AA]">
                 Solve weekly algorithm puzzles, run automated test suites in-browser, and rank on the campus leaderboard.
               </p>
             </div>
@@ -241,7 +241,7 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
           {/* Student Arena Score Pill */}
           {currentUser && (
             <div className="flex items-center gap-3">
-              <div className="px-4 py-2 rounded-xl bg-[#0B0F19]/80 border border-amber-500/30 flex items-center gap-2.5 shadow-inner">
+              <div className="px-4 py-2 rounded-xl bg-[#141416]/80 border border-amber-500/30 flex items-center gap-2.5 shadow-inner">
                 <Flame className="w-5 h-5 text-amber-400 animate-pulse" />
                 <div>
                   <span className="text-[10px] uppercase font-mono text-slate-400 block">Your Arena XP</span>
@@ -251,11 +251,11 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
                 </div>
               </div>
 
-              <div className="px-4 py-2 rounded-xl bg-[#0B0F19]/80 border border-cyan-500/30 flex items-center gap-2.5 shadow-inner">
-                <Trophy className="w-5 h-5 text-cyan-400" />
+              <div className="px-4 py-2 rounded-xl bg-[#141416]/80 border border-[#EAEAE6]/30 flex items-center gap-2.5 shadow-inner">
+                <Trophy className="w-5 h-5 text-[#EAEAE6]" />
                 <div>
                   <span className="text-[10px] uppercase font-mono text-slate-400 block">Solved</span>
-                  <span className="text-lg font-extrabold font-mono text-cyan-300">
+                  <span className="text-lg font-extrabold font-mono text-[#EAEAE6]">
                     {solvedChallengeIds.size}/{challenges.length}
                   </span>
                 </div>
@@ -271,8 +271,8 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
             onClick={() => setActiveTab("arena")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               activeTab === "arena"
-                ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-950/40"
-                : "bg-[#0B0F19]/60 text-slate-400 hover:text-white"
+                ? "bg-amber-500 text-[#141416] shadow-md shadow-amber-950/40"
+                : "bg-[#141416]/60 text-slate-400 hover:text-white"
             }`}
           >
             <Code2 className="w-4 h-4" />
@@ -283,8 +283,8 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
             onClick={() => setActiveTab("leaderboard")}
             className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 ${
               activeTab === "leaderboard"
-                ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-950/40"
-                : "bg-[#0B0F19]/60 text-slate-400 hover:text-white"
+                ? "bg-amber-500 text-[#141416] shadow-md shadow-amber-950/40"
+                : "bg-[#141416]/60 text-slate-400 hover:text-white"
             }`}
           >
             <Trophy className="w-4 h-4" />
@@ -298,7 +298,7 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Column: Challenge List Picker */}
           <div className="lg:col-span-4 space-y-4">
-            <div className="rounded-2xl border border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-xl p-4 shadow-xl space-y-3">
+            <div className="rounded-2xl border border-[#2E2E34]/70 bg-[#1C1C1F]/75 backdrop-blur-xl p-4 shadow-xl space-y-3">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
                   Weekly Challenges
@@ -306,7 +306,7 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
                 <select
                   value={filterDifficulty}
                   onChange={(e) => setFilterDifficulty(e.target.value)}
-                  className="rounded-lg border border-[#334155]/80 bg-[#0B0F19]/70 py-1 px-2.5 text-xs text-white focus:outline-none"
+                  className="rounded-lg border border-[#2E2E34]/80 bg-[#141416]/70 py-1 px-2.5 text-xs text-white focus:outline-none"
                 >
                   <option value="all">All Levels</option>
                   <option value="easy">Easy</option>
@@ -332,7 +332,7 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
                         className={`w-full text-left p-3.5 rounded-xl border transition-all flex items-start justify-between gap-2.5 ${
                           isSelected
                             ? "bg-amber-500/10 border-amber-500/50 shadow-lg shadow-amber-950/20"
-                            : "bg-[#0B0F19]/50 border-[#334155]/60 hover:border-[#334155] hover:bg-[#0B0F19]/80"
+                            : "bg-[#141416]/50 border-[#2E2E34]/60 hover:border-[#2E2E34] hover:bg-[#141416]/80"
                         }`}
                       >
                         <div className="min-w-0 flex-1">
@@ -379,8 +379,8 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
             {selectedChallenge ? (
               <>
                 {/* Challenge Details Card */}
-                <div className="rounded-2xl border border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-xl p-5 shadow-xl space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#334155]/70 pb-3">
+                <div className="rounded-2xl border border-[#2E2E34]/70 bg-[#1C1C1F]/75 backdrop-blur-xl p-5 shadow-xl space-y-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#2E2E34]/70 pb-3">
                     <div>
                       <div className="flex items-center gap-2">
                         <span
@@ -395,7 +395,7 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
                         </h3>
                       </div>
                       <span className="text-xs text-slate-400 mt-0.5 block">
-                        Target Function: <code className="text-cyan-400 font-mono font-bold">{selectedChallenge.functionName}(...)</code> • Reward: <strong className="text-amber-400 font-mono">+{selectedChallenge.points} XP</strong>
+                        Target Function: <code className="text-[#EAEAE6] font-mono font-bold">{selectedChallenge.functionName}(...)</code> • Reward: <strong className="text-amber-400 font-mono">+{selectedChallenge.points} XP</strong>
                       </span>
                     </div>
 
@@ -408,15 +408,15 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
                   </div>
 
                   {/* Problem Description */}
-                  <div className="bg-[#0B0F19]/70 border border-[#334155]/60 rounded-xl p-4 text-xs text-slate-300 leading-relaxed whitespace-pre-wrap font-sans">
+                  <div className="bg-[#141416]/70 border border-[#2E2E34]/60 rounded-xl p-4 text-xs text-slate-300 leading-relaxed whitespace-pre-wrap font-sans">
                     {selectedChallenge.descriptionMarkdown}
                   </div>
                 </div>
 
                 {/* In-Browser Code Editor & Terminal */}
-                <div className="rounded-2xl border border-[#334155]/70 bg-[#0B0F19] shadow-2xl overflow-hidden">
+                <div className="rounded-2xl border border-[#2E2E34]/70 bg-[#141416] shadow-2xl overflow-hidden">
                   {/* Editor Header Bar */}
-                  <div className="bg-[#1E293B]/90 border-b border-[#334155]/80 px-4 py-2.5 flex items-center justify-between">
+                  <div className="bg-[#1C1C1F]/90 border-b border-[#2E2E34]/80 px-4 py-2.5 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <div className="flex space-x-1.5">
                         <div className="w-2.5 h-2.5 rounded-full bg-rose-500/70" />
@@ -445,7 +445,7 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
                         disabled={running || submitting}
                         className="px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white border border-slate-700 transition-all flex items-center gap-1.5 disabled:opacity-50"
                       >
-                        <Play className={`w-3.5 h-3.5 text-cyan-400 ${running ? "animate-spin" : ""}`} />
+                        <Play className={`w-3.5 h-3.5 text-[#EAEAE6] ${running ? "animate-spin" : ""}`} />
                         <span>{running ? "Testing..." : "Run Tests"}</span>
                       </button>
 
@@ -480,17 +480,17 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
                       }}
                       rows={14}
                       spellCheck={false}
-                      className="w-full bg-[#0B0F19] text-cyan-300 font-mono text-xs p-4 leading-relaxed focus:outline-none resize-y border-none"
+                      className="w-full bg-[#141416] text-[#EAEAE6] font-mono text-xs p-4 leading-relaxed focus:outline-none resize-y border-none"
                       placeholder="Write your JavaScript function here..."
                     />
                   </div>
 
                   {/* Terminal / Test Execution Results */}
                   {runResults && (
-                    <div className="border-t border-[#334155]/80 bg-slate-950 p-4 space-y-3">
+                    <div className="border-t border-[#2E2E34]/80 bg-slate-950 p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <Terminal className="w-4 h-4 text-cyan-400" />
+                          <Terminal className="w-4 h-4 text-[#EAEAE6]" />
                           <span className="text-xs font-bold text-white font-mono">
                             Test Suite Execution ({runResults.executionTimeMs}ms)
                           </span>
@@ -562,7 +562,7 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
                 </div>
               </>
             ) : (
-              <div className="p-12 text-center text-slate-500 bg-[#1E293B]/40 rounded-2xl border border-slate-800">
+              <div className="p-12 text-center text-slate-500 bg-[#1C1C1F]/40 rounded-2xl border border-slate-800">
                 Select a weekly challenge to start coding.
               </div>
             )}
@@ -572,8 +572,8 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
 
       {/* VIEW 2: ARENA LEADERBOARD */}
       {activeTab === "leaderboard" && (
-        <div className="rounded-2xl border border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-xl shadow-2xl overflow-hidden">
-          <div className="p-5 border-b border-[#334155]/80 flex items-center justify-between">
+        <div className="rounded-2xl border border-[#2E2E34]/70 bg-[#1C1C1F]/75 backdrop-blur-xl shadow-2xl overflow-hidden">
+          <div className="p-5 border-b border-[#2E2E34]/80 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
                 <Trophy className="w-5 h-5" />
@@ -588,14 +588,14 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
-                <tr className="border-b border-[#334155]/80 bg-[#0B0F19]/80 text-[#94A3B8] font-mono">
+                <tr className="border-b border-[#2E2E34]/80 bg-[#141416]/80 text-[#A1A1AA] font-mono">
                   <th className="py-3.5 px-4 w-16 text-center">Rank</th>
                   <th className="py-3.5 px-4">Student</th>
                   <th className="py-3.5 px-4 text-center">Puzzles Solved</th>
                   <th className="py-3.5 px-4 text-right">Coding Points</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#334155]/60 text-slate-300">
+              <tbody className="divide-y divide-[#2E2E34]/60 text-slate-300">
                 {leaderboard.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="py-12 text-center text-slate-500">
@@ -608,7 +608,7 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
                     return (
                       <tr
                         key={item.uid}
-                        className={`hover:bg-[#0B0F19]/40 transition-colors ${
+                        className={`hover:bg-[#141416]/40 transition-colors ${
                           isCurrentStudent ? "bg-amber-500/10 font-bold" : ""
                         }`}
                       >
@@ -673,7 +673,7 @@ export default function StudentChallengeArena({ currentUser }: StudentChallengeA
             <button
               type="button"
               onClick={() => setShowCelebration(false)}
-              className="w-full py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-slate-950 shadow-lg shadow-amber-950/50 transition-all"
+              className="w-full py-2.5 rounded-xl text-sm font-bold bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-[#141416] shadow-lg shadow-amber-950/50 transition-all"
             >
               Claim XP & Keep Coding!
             </button>

@@ -56,10 +56,10 @@ function BuilderContent() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center bg-[#0B0F19] text-[#CBD5E1]">
+      <div className="flex min-h-[60vh] items-center justify-center bg-[#141416] text-[#EAEAE6]">
         <div className="text-center">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-3" />
-          <p className="text-xs font-mono text-[#94A3B8]">Verifying Instructor Permissions...</p>
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent mb-3" />
+          <p className="text-xs font-mono text-[#A1A1AA]">Verifying Instructor Permissions...</p>
         </div>
       </div>
     );
@@ -68,8 +68,8 @@ function BuilderContent() {
   // Access Denied / Student Guard
   if (isAuthorized === false) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0B0F19] p-4 text-[#CBD5E1]">
-        <div className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#1E293B] p-8 text-center shadow-2xl space-y-6 animate-in fade-in zoom-in duration-200">
+      <div className="flex min-h-screen items-center justify-center bg-[#141416] p-4 text-[#EAEAE6]">
+        <div className="w-full max-w-md rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-8 text-center shadow-2xl space-y-6 animate-in fade-in zoom-in duration-200">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/30">
             <Lock className="h-8 w-8" />
           </div>
@@ -82,7 +82,7 @@ function BuilderContent() {
             <h2 className="text-xl font-extrabold text-white tracking-tight">
               Teacher Portal Only
             </h2>
-            <p className="mt-2 text-xs text-[#94A3B8] leading-relaxed">
+            <p className="mt-2 text-xs text-[#A1A1AA] leading-relaxed">
               {studentSession
                 ? `You are signed in as student "${studentSession.fullName}". The syllabus structure editor is strictly reserved for course instructors.`
                 : "This syllabus creation and editing portal is reserved for authorized instructors and teachers."}
@@ -92,7 +92,7 @@ function BuilderContent() {
           <div className="space-y-3 pt-2">
             <Link
               href="/"
-              className="inline-flex w-full items-center justify-center space-x-2 rounded-xl bg-[#06B6D4] py-3 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg"
+              className="inline-flex w-full items-center justify-center space-x-2 rounded-xl bg-emerald-500 py-3 text-xs font-bold text-[#141416] hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-lg"
             >
               <ArrowLeft className="h-4 w-4" />
               <span>Back to Course Catalog</span>
@@ -101,9 +101,9 @@ function BuilderContent() {
             {!studentSession && (
               <Link
                 href="/admin/login"
-                className="inline-flex w-full items-center justify-center space-x-2 rounded-xl border border-[#334155] bg-[#0B0F19] py-3 text-xs font-semibold text-white hover:border-[#06B6D4] transition-all"
+                className="inline-flex w-full items-center justify-center space-x-2 rounded-xl border border-[#2E2E34] bg-[#141416] py-3 text-xs font-semibold text-white hover:border-[#EAEAE6] transition-all"
               >
-                <ShieldCheck className="h-4 w-4 text-[#06B6D4]" />
+                <ShieldCheck className="h-4 w-4 text-[#EAEAE6]" />
                 <span>Teacher Admin Login</span>
               </Link>
             )}
@@ -115,12 +115,12 @@ function BuilderContent() {
 
   return (
     <>
-      <header className="sticky top-0 z-30 border-b border-[#334155] bg-[#0B0F19]/90 px-3 sm:px-6 py-2.5 sm:py-4 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-[#2E2E34] bg-[#141416]/90 px-3 sm:px-6 py-2.5 sm:py-4 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-2">
           <div className="flex items-center space-x-1.5 sm:space-x-3 min-w-0">
             <Link
               href="/admin"
-              className="inline-flex items-center space-x-1 text-xs text-[#94A3B8] hover:text-white transition-colors bg-[#1E293B] px-2.5 sm:px-3 py-1.5 rounded-lg border border-[#334155] shrink-0"
+              className="inline-flex items-center space-x-1 text-xs text-[#A1A1AA] hover:text-white transition-colors bg-[#1C1C1F] px-2.5 sm:px-3 py-1.5 rounded-lg border border-[#2E2E34] shrink-0"
               title="Return to Admin Dashboard"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
@@ -128,13 +128,13 @@ function BuilderContent() {
             </Link>
             <Link
               href="/"
-              className="hidden sm:inline-flex items-center space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors bg-[#1E293B] px-3 py-1.5 rounded-lg border border-[#334155] shrink-0"
+              className="hidden sm:inline-flex items-center space-x-1.5 text-xs text-[#A1A1AA] hover:text-white transition-colors bg-[#1C1C1F] px-3 py-1.5 rounded-lg border border-[#2E2E34] shrink-0"
             >
               <span>Catalog</span>
             </Link>
-            <span className="text-[#334155] shrink-0">/</span>
+            <span className="text-[#2E2E34] shrink-0">/</span>
             <div className="flex items-center space-x-1.5 min-w-0">
-              <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 text-[#06B6D4] shrink-0" />
+              <ShieldCheck className="h-4 w-4 sm:h-5 sm:w-5 text-[#EAEAE6] shrink-0" />
               <span className="text-xs sm:text-sm font-bold text-white font-mono truncate">
                 {id ? `Edit #${id}` : "Create Syllabus Hub"}
               </span>
@@ -152,13 +152,13 @@ function BuilderContent() {
 
 export default function BuilderPage() {
   return (
-    <div className="min-h-screen bg-[#0B0F19] text-[#CBD5E1]">
+    <div className="min-h-screen bg-[#141416] text-[#EAEAE6]">
       <Suspense
         fallback={
-          <div className="flex h-screen items-center justify-center bg-[#0B0F19] text-[#CBD5E1]">
+          <div className="flex h-screen items-center justify-center bg-[#141416] text-[#EAEAE6]">
             <div className="text-center">
-              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-3" />
-              <p className="text-xs font-mono text-[#94A3B8]">Initializing Builder...</p>
+              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent mb-3" />
+              <p className="text-xs font-mono text-[#A1A1AA]">Initializing Builder...</p>
             </div>
           </div>
         }

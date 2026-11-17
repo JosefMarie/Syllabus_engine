@@ -137,21 +137,21 @@ export default function NotificationAlert({ userId }: { userId: string }) {
       aria-label="Teacher Announcement"
       className="fixed top-20 right-4 sm:right-6 z-[9999] w-[calc(100vw-2rem)] sm:w-full max-w-md animate-in slide-in-from-top-4 fade-in-50 duration-300 pointer-events-auto"
     >
-      <div className="relative rounded-2xl border-2 border-[#06B6D4]/50 bg-[#1E293B]/85 p-5 shadow-[0_20px_60px_-15px_rgba(6,182,212,0.35)] backdrop-blur-2xl text-white border-l-4 border-l-[#06B6D4]">
+      <div className="relative rounded-2xl border-2 border-[#EAEAE6]/50 bg-[#1C1C1F]/85 p-5 shadow-[0_20px_60px_-15px_rgba(6,182,212,0.35)] backdrop-blur-2xl text-white border-l-4 border-l-[#EAEAE6]">
         {/* Glow halo */}
         <div className="absolute -top-1 -right-1 flex h-3 w-3">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#06B6D4] opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-3 w-3 bg-[#06B6D4]"></span>
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#EAEAE6] opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-3 w-3 bg-[#EAEAE6]"></span>
         </div>
 
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center space-x-3">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-[#06B6D4]/30 to-[#3B82F6]/30 text-[#06B6D4] border border-[#06B6D4]/40 shadow-inner">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-tr from-[#EAEAE6]/30 to-[#3B82F6]/30 text-[#EAEAE6] border border-[#EAEAE6]/40 shadow-inner">
               <Bell className="h-5 w-5 animate-pulse" />
             </div>
             <div>
               <div className="flex items-center space-x-2">
-                <span className="text-xs font-mono font-bold text-[#06B6D4] uppercase tracking-wider">
+                <span className="text-xs font-mono font-bold text-[#EAEAE6] uppercase tracking-wider">
                   Teacher Message
                 </span>
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"></span>
@@ -169,7 +169,7 @@ export default function NotificationAlert({ userId }: { userId: string }) {
             <button
               onClick={handleClose}
               title="Close alert"
-              className="rounded-lg p-1 text-[#94A3B8] hover:text-white hover:bg-[#1E293B] transition-colors"
+              className="rounded-lg p-1 text-[#A1A1AA] hover:text-white hover:bg-[#1C1C1F] transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -177,16 +177,16 @@ export default function NotificationAlert({ userId }: { userId: string }) {
         </div>
 
         {/* Message Content */}
-        <div className="mt-3.5 rounded-xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 shadow-inner">
+        <div className="mt-3.5 rounded-xl border border-[#2E2E34]/70 bg-[#141416]/50 backdrop-blur-md p-3.5 shadow-inner">
           <p className="text-xs text-slate-100 leading-relaxed font-sans select-text">
             &ldquo;{activeNotif.message}&rdquo;
           </p>
-          <div className="mt-2 text-[10px] text-[#94A3B8] font-mono flex items-center justify-between border-t border-[#334155]/50 pt-1.5">
+          <div className="mt-2 text-[10px] text-[#A1A1AA] font-mono flex items-center justify-between border-t border-[#2E2E34]/50 pt-1.5">
             <span>
               Sent: {new Date(activeNotif.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
             {notifications.length > 1 && (
-              <span className="font-bold text-cyan-400">
+              <span className="font-bold text-[#EAEAE6]">
                 Message {currentIndex + 1} of {notifications.length}
               </span>
             )}
@@ -200,26 +200,26 @@ export default function NotificationAlert({ userId }: { userId: string }) {
               <button
                 disabled={currentIndex === 0}
                 onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
-                className="rounded-lg p-1.5 text-xs text-[#94A3B8] hover:text-white disabled:opacity-30 disabled:hover:text-[#94A3B8] transition-all"
+                className="rounded-lg p-1.5 text-xs text-[#A1A1AA] hover:text-white disabled:opacity-30 disabled:hover:text-[#A1A1AA] transition-all"
                 title="Previous message"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="text-[11px] font-mono text-[#94A3B8] px-1">
+              <span className="text-[11px] font-mono text-[#A1A1AA] px-1">
                 {currentIndex + 1} / {notifications.length}
               </span>
               <button
                 disabled={currentIndex === notifications.length - 1}
                 onClick={() => setCurrentIndex((prev) => Math.min(notifications.length - 1, prev + 1))}
-                className="rounded-lg p-1.5 text-xs text-[#94A3B8] hover:text-white disabled:opacity-30 disabled:hover:text-[#94A3B8] transition-all"
+                className="rounded-lg p-1.5 text-xs text-[#A1A1AA] hover:text-white disabled:opacity-30 disabled:hover:text-[#A1A1AA] transition-all"
                 title="Next message"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
           ) : (
-            <span className="text-[11px] font-mono text-cyan-400/90 flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-cyan-400 animate-ping"></span>
+            <span className="text-[11px] font-mono text-[#EAEAE6]/90 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#EAEAE6] animate-ping"></span>
               Real-time teacher notification
             </span>
           )}
@@ -227,13 +227,13 @@ export default function NotificationAlert({ userId }: { userId: string }) {
           <div className="flex items-center space-x-2">
             <button
               onClick={handleClose}
-              className="rounded-xl border border-[#334155]/70 bg-[#1E293B]/60 backdrop-blur-sm px-2.5 py-1.5 text-xs font-semibold text-[#94A3B8] hover:text-white hover:bg-[#1E293B] transition-all"
+              className="rounded-xl border border-[#2E2E34]/70 bg-[#1C1C1F]/60 backdrop-blur-sm px-2.5 py-1.5 text-xs font-semibold text-[#A1A1AA] hover:text-white hover:bg-[#1C1C1F] transition-all"
             >
               Later
             </button>
             <button
               onClick={handleMarkAsRead}
-              className="inline-flex items-center space-x-1.5 rounded-xl bg-gradient-to-r from-[#06B6D4] to-[#10B981] px-3.5 py-1.5 text-xs font-bold text-slate-950 hover:brightness-110 transition-all shadow-md active:scale-95"
+              className="inline-flex items-center space-x-1.5 rounded-xl bg-gradient-to-r from-[#EAEAE6] to-[#10B981] px-3.5 py-1.5 text-xs font-bold text-[#141416] hover:brightness-110 transition-all shadow-md active:scale-95"
             >
               <Check className="h-3.5 w-3.5" />
               <span>Mark as Read</span>

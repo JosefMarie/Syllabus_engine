@@ -436,19 +436,19 @@ export default function MarkdownEditor({
       </strong>
     ),
     u: ({ children }: any) => (
-      <u className="underline underline-offset-4 decoration-[#06B6D4] decoration-2 text-black font-medium">
+      <u className="underline underline-offset-4 decoration-[#EAEAE6] decoration-2 text-black font-medium">
         {children}
       </u>
     ),
     blockquote: ({ children }: any) => (
-      <div className="my-2 pl-4 border-l-3 border-[#06B6D4] bg-[#06B6D4]/10 p-2 rounded-r-lg text-black">
+      <div className="my-2 pl-4 border-l-3 border-[#EAEAE6] bg-[#EAEAE6]/10 p-2 rounded-r-lg text-black">
         {children}
       </div>
     ),
     h3: ({ children }: any) => (
-      <div className="mt-3 mb-2 border-l-3 border-[#06B6D4] bg-[#06B6D4]/10 p-2 rounded-r-lg">
+      <div className="mt-3 mb-2 border-l-3 border-[#EAEAE6] bg-[#EAEAE6]/10 p-2 rounded-r-lg">
         <h3 className="text-xs font-bold text-black tracking-tight flex items-center gap-1.5">
-          <Sparkles className="w-3.5 h-3.5 text-[#06B6D4]" />
+          <Sparkles className="w-3.5 h-3.5 text-[#EAEAE6]" />
           <span>{children}</span>
         </h3>
       </div>
@@ -490,9 +490,9 @@ export default function MarkdownEditor({
   };
 
   return (
-    <div className="visual-editor flex flex-col w-full rounded-xl border border-[#334155] bg-[#0B0F19] overflow-hidden relative shadow-lg">
+    <div className="visual-editor flex flex-col w-full rounded-xl border border-[#2E2E34] bg-[#141416] overflow-hidden relative shadow-lg">
       {/* Top Header & Formatting Controls */}
-      <div className="flex flex-wrap items-center justify-between border-b border-[#334155] bg-[#1E293B] px-3 py-2 gap-2">
+      <div className="flex flex-wrap items-center justify-between border-b border-[#2E2E34] bg-[#1C1C1F] px-3 py-2 gap-2">
         {/* Formatting Toolbar */}
         <div className="flex flex-wrap items-center gap-1">
           {/* Instant Yellow Bold Button */}
@@ -516,7 +516,7 @@ export default function MarkdownEditor({
               if (editorMode === 'visual') execVisual("italic");
               else applySourceFormat("*", "*");
             }} 
-            className="p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155] rounded transition-colors" 
+            className="p-1.5 text-[#A1A1AA] hover:text-white hover:bg-[#2E2E34] rounded transition-colors" 
             title="Italic (Ctrl+I)"
           >
             <Italic className="h-4 w-4" />
@@ -529,13 +529,13 @@ export default function MarkdownEditor({
               if (editorMode === 'visual') execVisual("underline");
               else applySourceFormat("<u>", "</u>");
             }} 
-            className="p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155] rounded transition-colors" 
+            className="p-1.5 text-[#A1A1AA] hover:text-white hover:bg-[#2E2E34] rounded transition-colors" 
             title="Underline (Ctrl+U)"
           >
             <Underline className="h-4 w-4" />
           </button>
 
-          <div className="w-px h-5 bg-[#334155] mx-1"></div>
+          <div className="w-px h-5 bg-[#2E2E34] mx-1"></div>
 
           {/* Indent (Increase Indent) */}
           <button 
@@ -544,10 +544,10 @@ export default function MarkdownEditor({
               if (editorMode === 'visual') execVisual("indent");
               else applySourceFormat('<div style="margin-left: 24px">\n', '\n</div>');
             }} 
-            className="flex items-center space-x-1 px-2 py-1 text-[#06B6D4] hover:text-white hover:bg-[#06B6D4]/20 rounded border border-[#06B6D4]/30 bg-[#06B6D4]/5 transition-colors" 
+            className="flex items-center space-x-1 px-2 py-1 text-[#EAEAE6] hover:text-white hover:bg-[#EAEAE6]/20 rounded border border-[#EAEAE6]/30 bg-[#EAEAE6]/5 transition-colors" 
             title="Indent Block (Tab) — Indents text visually without adding code tags"
           >
-            <IndentIncrease className="h-3.5 w-3.5 text-[#06B6D4]" />
+            <IndentIncrease className="h-3.5 w-3.5 text-[#EAEAE6]" />
             <span className="text-[10px] font-mono font-bold hidden sm:inline">Indent</span>
           </button>
 
@@ -557,51 +557,51 @@ export default function MarkdownEditor({
             onClick={() => {
               if (editorMode === 'visual') execVisual("outdent");
             }} 
-            className="flex items-center space-x-1 px-2 py-1 text-[#94A3B8] hover:text-white hover:bg-[#334155] rounded border border-[#334155] transition-colors" 
+            className="flex items-center space-x-1 px-2 py-1 text-[#A1A1AA] hover:text-white hover:bg-[#2E2E34] rounded border border-[#2E2E34] transition-colors" 
             title="Outdent (Shift+Tab) — Decreases block indentation"
           >
             <IndentDecrease className="h-3.5 w-3.5" />
             <span className="text-[10px] font-mono font-bold hidden sm:inline">Outdent</span>
           </button>
 
-          <div className="w-px h-5 bg-[#334155] mx-1"></div>
+          <div className="w-px h-5 bg-[#2E2E34] mx-1"></div>
 
           {/* Alignment */}
-          <button type="button" onClick={() => execVisual("justifyLeft")} className="p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155] rounded transition-colors" title="Align Left">
+          <button type="button" onClick={() => execVisual("justifyLeft")} className="p-1.5 text-[#A1A1AA] hover:text-white hover:bg-[#2E2E34] rounded transition-colors" title="Align Left">
             <AlignLeft className="h-4 w-4" />
           </button>
-          <button type="button" onClick={() => execVisual("justifyCenter")} className="p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155] rounded transition-colors" title="Align Center">
+          <button type="button" onClick={() => execVisual("justifyCenter")} className="p-1.5 text-[#A1A1AA] hover:text-white hover:bg-[#2E2E34] rounded transition-colors" title="Align Center">
             <AlignCenter className="h-4 w-4" />
           </button>
-          <button type="button" onClick={() => execVisual("justifyRight")} className="p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155] rounded transition-colors" title="Align Right">
+          <button type="button" onClick={() => execVisual("justifyRight")} className="p-1.5 text-[#A1A1AA] hover:text-white hover:bg-[#2E2E34] rounded transition-colors" title="Align Right">
             <AlignRight className="h-4 w-4" />
           </button>
-          <button type="button" onClick={() => execVisual("justifyFull")} className="p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155] rounded transition-colors" title="Align Justify">
+          <button type="button" onClick={() => execVisual("justifyFull")} className="p-1.5 text-[#A1A1AA] hover:text-white hover:bg-[#2E2E34] rounded transition-colors" title="Align Justify">
             <AlignJustify className="h-4 w-4" />
           </button>
 
-          <div className="w-px h-5 bg-[#334155] mx-1"></div>
+          <div className="w-px h-5 bg-[#2E2E34] mx-1"></div>
 
           {/* Superscript & Subscript */}
-          <button type="button" onClick={() => execVisual("superscript")} className="p-1.5 text-[#94A3B8] hover:text-[#06B6D4] hover:bg-[#334155] rounded transition-colors" title="Superscript">
+          <button type="button" onClick={() => execVisual("superscript")} className="p-1.5 text-[#A1A1AA] hover:text-[#EAEAE6] hover:bg-[#2E2E34] rounded transition-colors" title="Superscript">
             <Superscript className="h-4 w-4" />
           </button>
-          <button type="button" onClick={() => execVisual("subscript")} className="p-1.5 text-[#94A3B8] hover:text-[#06B6D4] hover:bg-[#334155] rounded transition-colors" title="Subscript">
+          <button type="button" onClick={() => execVisual("subscript")} className="p-1.5 text-[#A1A1AA] hover:text-[#EAEAE6] hover:bg-[#2E2E34] rounded transition-colors" title="Subscript">
             <Subscript className="h-4 w-4" />
           </button>
 
-          <div className="w-px h-5 bg-[#334155] mx-1"></div>
+          <div className="w-px h-5 bg-[#2E2E34] mx-1"></div>
 
           {/* Insert Picture / Upload Image */}
           <button 
             type="button" 
             onClick={() => fileInputRef.current?.click()}
             disabled={uploadingImage}
-            className="flex items-center space-x-1 px-2 py-1 text-[11px] font-bold text-[#06B6D4] bg-[#06B6D4]/10 hover:bg-[#06B6D4]/20 rounded-lg border border-[#06B6D4]/30 transition-colors disabled:opacity-50" 
+            className="flex items-center space-x-1 px-2 py-1 text-[11px] font-bold text-[#EAEAE6] bg-[#EAEAE6]/10 hover:bg-[#EAEAE6]/20 rounded-lg border border-[#EAEAE6]/30 transition-colors disabled:opacity-50" 
             title="Insert Picture — Upload image file or paste directly with Ctrl+V"
           >
             {uploadingImage ? (
-              <Loader2 className="h-3 w-3 animate-spin text-[#06B6D4]" />
+              <Loader2 className="h-3 w-3 animate-spin text-[#EAEAE6]" />
             ) : (
               <ImageIcon className="h-3 w-3" />
             )}
@@ -628,14 +628,14 @@ export default function MarkdownEditor({
         </div>
 
         {/* Editor Mode Selector: Visual (Word Processor) vs Source vs Preview */}
-        <div className="flex items-center space-x-1 bg-[#0B0F19] p-1 rounded-lg border border-[#334155] shrink-0">
+        <div className="flex items-center space-x-1 bg-[#141416] p-1 rounded-lg border border-[#2E2E34] shrink-0">
           <button
             type="button"
             onClick={() => handleModeChange('visual')}
             className={`flex items-center space-x-1 px-2.5 py-1 text-[11px] font-bold rounded-md transition-all ${
               editorMode === 'visual'
-                ? "bg-[#06B6D4] text-slate-950 shadow-sm"
-                : "text-[#94A3B8] hover:text-white"
+                ? "bg-[#EAEAE6] text-[#141416] shadow-sm"
+                : "text-[#A1A1AA] hover:text-white"
             }`}
             title="Word Processor Mode — Visual formatting without special characters"
           >
@@ -648,8 +648,8 @@ export default function MarkdownEditor({
             onClick={() => handleModeChange('source')}
             className={`flex items-center space-x-1 px-2.5 py-1 text-[11px] font-bold rounded-md transition-all ${
               editorMode === 'source'
-                ? "bg-[#06B6D4] text-slate-950 shadow-sm"
-                : "text-[#94A3B8] hover:text-white"
+                ? "bg-[#EAEAE6] text-[#141416] shadow-sm"
+                : "text-[#A1A1AA] hover:text-white"
             }`}
             title="Source Code Mode — Edit raw Markdown / HTML tags"
           >
@@ -662,8 +662,8 @@ export default function MarkdownEditor({
             onClick={() => handleModeChange('preview')}
             className={`flex items-center space-x-1 px-2.5 py-1 text-[11px] font-bold rounded-md transition-all ${
               editorMode === 'preview'
-                ? "bg-[#06B6D4] text-slate-950 shadow-sm"
-                : "text-[#94A3B8] hover:text-white"
+                ? "bg-[#EAEAE6] text-[#141416] shadow-sm"
+                : "text-[#A1A1AA] hover:text-white"
             }`}
             title="Student Preview — View how this subtopic appears to students"
           >
@@ -714,9 +714,9 @@ export default function MarkdownEditor({
             onDrop={handleDrop}
             onPaste={handlePaste}
             placeholder={placeholder}
-            className="w-full bg-transparent p-4 text-xs font-mono text-white placeholder-[#64748B] focus:outline-none resize-y"
+            className="w-full bg-transparent p-4 text-xs font-mono text-white placeholder-[#71717A] focus:outline-none resize-y"
           />
-          <div className="flex items-center justify-between border-t border-[#334155]/50 bg-[#0B0F19]/80 px-3 py-1 text-[10px] text-[#64748B] font-mono">
+          <div className="flex items-center justify-between border-t border-[#2E2E34]/50 bg-[#141416]/80 px-3 py-1 text-[10px] text-[#71717A] font-mono">
             <span>Source Code Mode (Raw Markdown & HTML)</span>
           </div>
         </div>
@@ -724,7 +724,7 @@ export default function MarkdownEditor({
         /* MODE 3: STUDENT PREVIEW */
         <div className="p-4 bg-slate-900/60 min-h-[160px] max-h-[460px] overflow-y-auto">
           {/* Visual Legend Bar */}
-          <div className="flex items-center gap-4 text-[11px] font-mono bg-[#1E293B] p-2 rounded-lg border border-[#334155] mb-3 text-[#94A3B8]">
+          <div className="flex items-center gap-4 text-[11px] font-mono bg-[#1C1C1F] p-2 rounded-lg border border-[#2E2E34] mb-3 text-[#A1A1AA]">
             <span className="flex items-center gap-1.5 text-[#CA8A04] font-bold">
               <span className="h-2 w-2 rounded-full bg-[#CA8A04]"></span>
               Bold Text = Yellow
@@ -761,62 +761,62 @@ export default function MarkdownEditor({
 
       {/* Citation Custom Modal */}
       {citationModalOpen && (
-        <div className="fixed inset-0 bg-[#0B0F19]/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-          <div className="bg-[#1E293B] border border-[#334155] rounded-xl p-5 w-full max-w-sm shadow-2xl my-auto max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-[#141416]/80 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-[#1C1C1F] border border-[#2E2E34] rounded-xl p-5 w-full max-w-sm shadow-2xl my-auto max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h4 className="text-sm font-bold text-white flex items-center space-x-1.5">
                 <Quote className="h-4 w-4 text-[#F59E0B]" />
                 <span>Add Contextual Citation</span>
               </h4>
-              <button onClick={() => setCitationModalOpen(false)} className="text-[#94A3B8] hover:text-white">
+              <button onClick={() => setCitationModalOpen(false)} className="text-[#A1A1AA] hover:text-white">
                 <X className="h-4 w-4" />
               </button>
             </div>
             
             <div className="space-y-4">
               <div>
-                <label className="text-[10px] uppercase font-bold tracking-wider text-[#94A3B8] mb-1 block">Term / Highlighted Text</label>
+                <label className="text-[10px] uppercase font-bold tracking-wider text-[#A1A1AA] mb-1 block">Term / Highlighted Text</label>
                 <input 
                   type="text" 
                   value={citationData.term} 
                   disabled
-                  className="w-full rounded-lg border border-[#334155] bg-[#0B0F19] p-2 text-xs font-bold text-[#F59E0B] opacity-90"
+                  className="w-full rounded-lg border border-[#2E2E34] bg-[#141416] p-2 text-xs font-bold text-[#F59E0B] opacity-90"
                 />
               </div>
               
               <div>
-                <label className="text-[10px] uppercase font-bold tracking-wider text-[#94A3B8] mb-1 block">Explanation *</label>
+                <label className="text-[10px] uppercase font-bold tracking-wider text-[#A1A1AA] mb-1 block">Explanation *</label>
                 <textarea 
                   rows={3}
                   value={citationData.explanation} 
                   onChange={e => setCitationData({...citationData, explanation: e.target.value})}
                   placeholder="Explain the concept for students..."
-                  className="w-full rounded-lg border border-[#334155] bg-[#0B0F19] p-2 text-xs text-white focus:border-[#F59E0B] focus:outline-none"
+                  className="w-full rounded-lg border border-[#2E2E34] bg-[#141416] p-2 text-xs text-white focus:border-[#F59E0B] focus:outline-none"
                   autoFocus
                 />
               </div>
 
               <div>
-                <label className="text-[10px] uppercase font-bold tracking-wider text-[#94A3B8] mb-1 block">Source URL (Optional)</label>
+                <label className="text-[10px] uppercase font-bold tracking-wider text-[#A1A1AA] mb-1 block">Source URL (Optional)</label>
                 <input 
                   type="url" 
                   value={citationData.source} 
                   onChange={e => setCitationData({...citationData, source: e.target.value})}
                   placeholder="https://..."
-                  className="w-full rounded-lg border border-[#334155] bg-[#0B0F19] p-2 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                  className="w-full rounded-lg border border-[#2E2E34] bg-[#141416] p-2 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                 />
               </div>
 
               <div className="pt-2 flex gap-2">
                 <button 
                   onClick={() => setCitationModalOpen(false)}
-                  className="flex-1 py-2 text-xs font-bold text-white bg-[#334155] hover:bg-[#475569] rounded-lg transition-colors"
+                  className="flex-1 py-2 text-xs font-bold text-white bg-[#2E2E34] hover:bg-[#3F3F46] rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button 
                   onClick={submitCitation}
-                  className="flex-1 py-2 text-xs font-bold text-slate-950 bg-[#F59E0B] hover:bg-[#D97706] rounded-lg transition-colors shadow-md"
+                  className="flex-1 py-2 text-xs font-bold text-[#141416] bg-[#F59E0B] hover:bg-[#D97706] rounded-lg transition-colors shadow-md"
                 >
                   Save Citation
                 </button>

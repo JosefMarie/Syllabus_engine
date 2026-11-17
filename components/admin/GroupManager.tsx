@@ -630,8 +630,8 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-[#334155] bg-[#1E293B]/60 p-12 text-center text-xs font-mono text-[#94A3B8]">
-        <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-3" />
+      <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F]/60 p-12 text-center text-xs font-mono text-[#A1A1AA]">
+        <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent mb-3" />
         Loading course groups and student rosters...
       </div>
     );
@@ -640,13 +640,13 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
   return (
     <div className="space-y-6">
       {/* Header & Stats Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#334155] pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#2E2E34] pb-5">
         <div>
           <h2 className="text-xl font-extrabold text-white flex items-center space-x-2">
-            <Users className="h-6 w-6 text-[#06B6D4]" />
+            <Users className="h-6 w-6 text-[#EAEAE6]" />
             <span>Course Study &amp; Project Groups</span>
           </h2>
-          <p className="text-xs text-[#94A3B8] mt-1">
+          <p className="text-xs text-[#A1A1AA] mt-1">
             Manage peer project teams, balance rosters automatically, lock memberships, and assign group work.
           </p>
         </div>
@@ -662,7 +662,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-4 py-2.5 text-xs font-bold text-slate-950 shadow-lg hover:bg-[#0891B2] hover:text-white transition-all"
+            className="inline-flex items-center space-x-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-bold text-[#141416] shadow-lg hover:bg-emerald-400 hover:text-[#141416] transition-all"
           >
             <Plus className="h-4 w-4" />
             <span>Create Group Manually</span>
@@ -675,52 +675,52 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
       {/* KPI Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-[#334155] bg-[#1E293B]/80 p-4 backdrop-blur-sm">
+        <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F]/80 p-4 backdrop-blur-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-[#94A3B8]">Active Teams</span>
-            <Layers className="h-4 w-4 text-[#06B6D4]" />
+            <span className="text-xs font-mono text-[#A1A1AA]">Active Teams</span>
+            <Layers className="h-4 w-4 text-[#EAEAE6]" />
           </div>
           <div className="mt-2 text-2xl font-black text-white">{totalGroups}</div>
-          <p className="text-[11px] text-[#64748B] mt-0.5">Across all curriculum courses</p>
+          <p className="text-[11px] text-[#71717A] mt-0.5">Across all curriculum courses</p>
         </div>
 
-        <div className="rounded-2xl border border-[#334155] bg-[#1E293B]/80 p-4 backdrop-blur-sm">
+        <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F]/80 p-4 backdrop-blur-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-[#94A3B8]">Students in Groups</span>
+            <span className="text-xs font-mono text-[#A1A1AA]">Students in Groups</span>
             <Users className="h-4 w-4 text-emerald-400" />
           </div>
           <div className="mt-2 text-2xl font-black text-white">{totalEnrolled}</div>
-          <p className="text-[11px] text-[#64748B] mt-0.5">Registered team members</p>
+          <p className="text-[11px] text-[#71717A] mt-0.5">Registered team members</p>
         </div>
 
-        <div className="rounded-2xl border border-[#334155] bg-[#1E293B]/80 p-4 backdrop-blur-sm">
+        <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F]/80 p-4 backdrop-blur-sm">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono text-[#94A3B8]">Approved Students</span>
-            <Crown className="h-4 w-4 text-cyan-400" />
+            <span className="text-xs font-mono text-[#A1A1AA]">Approved Students</span>
+            <Crown className="h-4 w-4 text-[#EAEAE6]" />
           </div>
           <div className="mt-2 text-2xl font-black text-white">{students.length}</div>
-          <p className="text-[11px] text-[#64748B] mt-0.5">Available for group placement</p>
+          <p className="text-[11px] text-[#71717A] mt-0.5">Available for group placement</p>
         </div>
 
-        <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-950/30 to-[#1E293B]/80 p-4 backdrop-blur-sm">
+        <div className="rounded-2xl border border-amber-500/30 bg-gradient-to-br from-amber-950/30 to-[#1C1C1F]/80 p-4 backdrop-blur-sm">
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono text-amber-300">Graded Presentations</span>
             <Award className="h-4 w-4 text-amber-400" />
           </div>
           <div className="mt-2 text-2xl font-black text-amber-400">{evaluations.length}</div>
-          <p className="text-[11px] text-[#94A3B8] mt-0.5">Group &amp; Individual evaluations</p>
+          <p className="text-[11px] text-[#A1A1AA] mt-0.5">Group &amp; Individual evaluations</p>
         </div>
       </div>
 
       {/* View Mode Tabs */}
-      <div className="flex border-b border-[#334155] space-x-6">
+      <div className="flex border-b border-[#2E2E34] space-x-6">
         <button
           type="button"
           onClick={() => setActiveTab("groups")}
           className={`pb-3 text-sm font-bold transition-all flex items-center space-x-2 border-b-2 ${
             activeTab === "groups"
-              ? "border-[#06B6D4] text-[#06B6D4]"
-              : "border-transparent text-[#94A3B8] hover:text-white"
+              ? "border-[#EAEAE6] text-[#EAEAE6]"
+              : "border-transparent text-[#A1A1AA] hover:text-white"
           }`}
         >
           <Users className="h-4 w-4" />
@@ -732,7 +732,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
           className={`pb-3 text-sm font-bold transition-all flex items-center space-x-2 border-b-2 relative ${
             activeTab === "evaluations"
               ? "border-amber-400 text-amber-400"
-              : "border-transparent text-[#94A3B8] hover:text-white"
+              : "border-transparent text-[#A1A1AA] hover:text-white"
           }`}
         >
           <Award className="h-4 w-4 text-amber-400" />
@@ -747,14 +747,14 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
         <div className="space-y-6">
 
       {/* Filter Toolbar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-2xl border border-[#334155] bg-[#1E293B]/50 p-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-2xl border border-[#2E2E34] bg-[#1C1C1F]/50 p-4">
         <div className="flex flex-wrap items-center gap-2.5 flex-1">
           {/* Course Filter */}
           <div className="w-full sm:w-auto">
             <select
               value={selectedCourse}
               onChange={(e) => setSelectedCourse(e.target.value)}
-              className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-2 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+              className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-2 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
             >
               <option value="all">All Courses</option>
               {syllabi.map(s => (
@@ -768,7 +768,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
             <select
               value={selectedLevel}
               onChange={(e) => setSelectedLevel(e.target.value)}
-              className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-2 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+              className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-2 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
             >
               <option value="all">All Levels</option>
               <option value="Level 3">Level 3</option>
@@ -782,7 +782,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
             <select
               value={selectedTrade}
               onChange={(e) => setSelectedTrade(e.target.value)}
-              className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-2 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+              className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-2 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
             >
               <option value="all">All Trades</option>
               {trades.map(t => (
@@ -794,23 +794,23 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
         {/* Search */}
         <div className="relative w-full md:w-64">
-          <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[#64748B]" />
+          <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-[#71717A]" />
           <input
             type="text"
             placeholder="Search group, member, code..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] py-2 pl-9 pr-3 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+            className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] py-2 pl-9 pr-3 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
           />
         </div>
       </div>
 
       {/* Groups List Grid */}
       {filteredGroups.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-[#334155] bg-[#1E293B]/20 p-12 text-center">
-          <Users className="mx-auto h-10 w-10 text-[#64748B] mb-2" />
+        <div className="rounded-2xl border border-dashed border-[#2E2E34] bg-[#1C1C1F]/20 p-12 text-center">
+          <Users className="mx-auto h-10 w-10 text-[#71717A] mb-2" />
           <h3 className="text-sm font-bold text-white">No Groups Found</h3>
-          <p className="text-xs text-[#94A3B8] mt-1 max-w-sm mx-auto">
+          <p className="text-xs text-[#A1A1AA] mt-1 max-w-sm mx-auto">
             No study groups match your filters. Click &quot;Auto-Generate Teams&quot; to divide your class or create a group manually.
           </p>
         </div>
@@ -823,11 +823,11 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
             return (
               <div 
                 key={group.id}
-                className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5 shadow-lg hover:border-[#475569] transition-all flex flex-col justify-between"
+                className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-5 shadow-lg hover:border-[#3F3F46] transition-all flex flex-col justify-between"
               >
                 <div>
                   {/* Top Header */}
-                  <div className="flex items-start justify-between gap-3 border-b border-[#334155] pb-3 mb-3">
+                  <div className="flex items-start justify-between gap-3 border-b border-[#2E2E34] pb-3 mb-3">
                     <div>
                       <div className="flex items-center space-x-2">
                         <h4 className="text-base font-extrabold text-white">{group.name}</h4>
@@ -843,7 +843,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                           </span>
                         )}
                       </div>
-                      <p className="text-xs font-mono text-[#06B6D4] mt-0.5">
+                      <p className="text-xs font-mono text-[#EAEAE6] mt-0.5">
                         {group.level} Class Group {group.tradeId && group.tradeId !== "all" ? `(${group.tradeId})` : ""} &bull; All Class Assignments
                       </p>
                     </div>
@@ -855,7 +855,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                         className={`p-2 rounded-xl text-xs font-semibold transition-all border ${
                           group.isLocked 
                             ? "bg-rose-500/10 text-rose-400 border-rose-500/30 hover:bg-rose-500/20" 
-                            : "bg-[#0B0F19] text-[#94A3B8] border-[#334155] hover:text-white"
+                            : "bg-[#141416] text-[#A1A1AA] border-[#2E2E34] hover:text-white"
                         }`}
                       >
                         {group.isLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
@@ -864,7 +864,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                       <button
                         onClick={() => handleDeleteGroup(group.id, group.name)}
                         title="Disband Group"
-                        className="p-2 rounded-xl bg-[#0B0F19] text-[#94A3B8] border border-[#334155] hover:text-rose-400 hover:border-rose-500/30 transition-all"
+                        className="p-2 rounded-xl bg-[#141416] text-[#A1A1AA] border border-[#2E2E34] hover:text-rose-400 hover:border-rose-500/30 transition-all"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -872,9 +872,9 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                   </div>
 
                   {/* Join Code Banner */}
-                  <div className="flex items-center justify-between rounded-xl bg-[#0B0F19] px-3.5 py-2 border border-[#334155] mb-3.5">
+                  <div className="flex items-center justify-between rounded-xl bg-[#141416] px-3.5 py-2 border border-[#2E2E34] mb-3.5">
                     <div className="flex items-center space-x-2">
-                      <span className="text-[11px] font-mono text-[#94A3B8]">Student Join Code:</span>
+                      <span className="text-[11px] font-mono text-[#A1A1AA]">Student Join Code:</span>
                       <span className="text-xs font-mono font-bold text-amber-400 tracking-wider">
                         {group.joinCode}
                       </span>
@@ -882,7 +882,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
                     <button
                       onClick={() => handleCopyCode(group.joinCode)}
-                      className="inline-flex items-center space-x-1 text-[11px] font-mono text-[#06B6D4] hover:underline"
+                      className="inline-flex items-center space-x-1 text-[11px] font-mono text-[#EAEAE6] hover:underline"
                     >
                       {copiedCode === group.joinCode ? (
                         <>
@@ -904,7 +904,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                     const latestEval = groupEvals[0];
 
                     return (
-                      <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-amber-950/30 via-[#0B0F19] to-[#1E293B] px-3.5 py-2.5 border border-amber-500/30 mb-3.5">
+                      <div className="flex items-center justify-between rounded-xl bg-gradient-to-r from-amber-950/30 via-[#141416] to-[#1C1C1F] px-3.5 py-2.5 border border-amber-500/30 mb-3.5">
                         <div className="flex items-center space-x-2.5 min-w-0">
                           <div className="h-8 w-8 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0">
                             <Award className="h-4 w-4 text-amber-400" />
@@ -913,7 +913,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                             <span className="text-xs font-bold text-white block truncate">
                               Live Presentation &amp; Defense
                             </span>
-                            <span className="text-[10px] text-[#94A3B8] block truncate">
+                            <span className="text-[10px] text-[#A1A1AA] block truncate">
                               {latestEval 
                                 ? `Latest: ${latestEval.presentationTitle || "Presentation"} (Group: ${latestEval.groupScore}%)` 
                                 : "Score PowerPoint & individual defense"}
@@ -930,7 +930,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                                 setIsHistoryDrawerOpen(true);
                               }}
                               title={`View ${groupEvals.length} past evaluation(s)`}
-                              className="p-1.5 rounded-lg border border-[#334155] bg-[#0B0F19] text-[#94A3B8] hover:text-white hover:border-[#06B6D4] transition-all"
+                              className="p-1.5 rounded-lg border border-[#2E2E34] bg-[#141416] text-[#A1A1AA] hover:text-white hover:border-[#EAEAE6] transition-all"
                             >
                               <History className="h-4 w-4" />
                             </button>
@@ -938,9 +938,9 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                           <button
                             type="button"
                             onClick={() => handleOpenEvaluation(group)}
-                            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-bold text-xs shadow-md transition-all active:scale-95"
+                            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-[#141416] font-bold text-xs shadow-md transition-all active:scale-95"
                           >
-                            <Award className="h-3.5 w-3.5 text-slate-950 font-bold" />
+                            <Award className="h-3.5 w-3.5 text-[#141416] font-bold" />
                             <span>Grade</span>
                           </button>
                         </div>
@@ -950,26 +950,26 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
                   {/* Members List */}
                   <div>
-                    <div className="flex items-center justify-between text-xs font-mono text-[#94A3B8] mb-2">
+                    <div className="flex items-center justify-between text-xs font-mono text-[#A1A1AA] mb-2">
                       <div className="flex items-center space-x-2">
                         <span>Team Members ({group.members.length} / {group.maxMembers})</span>
                         <button
                           type="button"
                           onClick={() => handleUpdateCapacity(group.id, group.maxMembers, group.members.length)}
                           title="Click to adjust group member limit"
-                          className="px-1.5 py-0.5 text-[10px] font-sans font-semibold rounded bg-[#334155]/60 hover:bg-[#334155] text-[#38BDF8] hover:text-white transition-colors border border-[#475569]/40"
+                          className="px-1.5 py-0.5 text-[10px] font-sans font-semibold rounded bg-[#2E2E34]/60 hover:bg-[#2E2E34] text-[#38BDF8] hover:text-white transition-colors border border-[#3F3F46]/40"
                         >
                           Edit Cap
                         </button>
                       </div>
-                      <span className="text-[10px] text-[#64748B]">{group.level}</span>
+                      <span className="text-[10px] text-[#71717A]">{group.level}</span>
                     </div>
 
                     <div className="space-y-1.5 mb-3">
                       {group.members.map((m) => (
                         <div 
                           key={m.uid}
-                          className="flex items-center justify-between rounded-xl bg-[#0B0F19]/70 px-3 py-2 border border-[#334155]"
+                          className="flex items-center justify-between rounded-xl bg-[#141416]/70 px-3 py-2 border border-[#2E2E34]"
                         >
                           <div className="flex items-center space-x-2 min-w-0">
                             {m.isLeader ? (
@@ -977,18 +977,18 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                                 <Crown className="h-4 w-4 text-amber-400" />
                               </span>
                             ) : (
-                              <div className="h-2 w-2 rounded-full bg-[#06B6D4] shrink-0 ml-1 mr-1" />
+                              <div className="h-2 w-2 rounded-full bg-[#EAEAE6] shrink-0 ml-1 mr-1" />
                             )}
                             <div className="truncate">
                               <span className="text-xs font-bold text-white block truncate">{m.fullName}</span>
-                              <span className="text-[10px] font-mono text-[#64748B]">@{m.username}</span>
+                              <span className="text-[10px] font-mono text-[#71717A]">@{m.username}</span>
                             </div>
                           </div>
 
                           <button
                             onClick={() => handleRemoveMember(group.id, m.uid, m.fullName)}
                             title="Remove from group"
-                            className="p-1 rounded-lg text-[#64748B] hover:text-rose-400 hover:bg-rose-500/10 transition-all shrink-0 ml-2"
+                            className="p-1 rounded-lg text-[#71717A] hover:text-rose-400 hover:bg-rose-500/10 transition-all shrink-0 ml-2"
                           >
                             <UserMinus className="h-3.5 w-3.5" />
                           </button>
@@ -1000,9 +1000,9 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
                 {/* Quick Add Student Dropdown (Always available to Admin/Teacher) */}
                 {unassigned.length > 0 && (
-                  <div className="pt-2 border-t border-[#334155]/60 mt-2">
+                  <div className="pt-2 border-t border-[#2E2E34]/60 mt-2">
                     <div className="flex items-center justify-between mb-1">
-                      <label className="block text-[11px] font-mono text-[#94A3B8]">
+                      <label className="block text-[11px] font-mono text-[#A1A1AA]">
                         Add Student to Team:
                       </label>
                       {isFull && (
@@ -1019,7 +1019,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                         }
                       }}
                       defaultValue=""
-                      className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-2 text-xs text-[#CBD5E1] focus:border-[#06B6D4] focus:outline-none"
+                      className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-2 text-xs text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
                     >
                       <option value="" disabled>Select unassigned student...</option>
                       {unassigned.map(s => (
@@ -1040,21 +1040,21 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
       {activeTab === "evaluations" && (
         <div className="space-y-4">
           {/* Evaluations Toolbar */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-2xl border border-[#334155] bg-[#1E293B]/50 p-4">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 rounded-2xl border border-[#2E2E34] bg-[#1C1C1F]/50 p-4">
             <div className="flex items-center space-x-3 flex-1">
               <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#64748B]" />
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#71717A]" />
                 <input
                   type="text"
                   value={evalSearchQuery}
                   onChange={(e) => setEvalSearchQuery(e.target.value)}
                   placeholder="Search evaluations by group name, topic, or student..."
-                  className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] pl-9 pr-3 py-2 text-xs text-white placeholder-[#64748B] focus:border-amber-400 focus:outline-none"
+                  className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] pl-9 pr-3 py-2 text-xs text-white placeholder-[#71717A] focus:border-amber-400 focus:outline-none"
                 />
               </div>
 
               {selectedCourse !== "all" && (
-                <span className="text-xs font-mono text-cyan-300 bg-cyan-950/70 border border-cyan-500/30 px-2.5 py-1 rounded-lg shrink-0">
+                <span className="text-xs font-mono text-[#EAEAE6] bg-cyan-950/70 border border-[#EAEAE6]/30 px-2.5 py-1 rounded-lg shrink-0">
                   Course: {selectedCourse}
                 </span>
               )}
@@ -1065,9 +1065,9 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                 type="button"
                 onClick={() => handleExportEvaluationsCSV()}
                 disabled={evaluations.length === 0}
-                className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl border border-[#334155] bg-[#0B0F19] text-xs font-bold text-[#CBD5E1] hover:text-white hover:border-[#06B6D4] transition-all disabled:opacity-50"
+                className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl border border-[#2E2E34] bg-[#141416] text-xs font-bold text-[#EAEAE6] hover:text-white hover:border-[#EAEAE6] transition-all disabled:opacity-50"
               >
-                <Download className="h-4 w-4 text-[#06B6D4]" />
+                <Download className="h-4 w-4 text-[#EAEAE6]" />
                 <span>Export Gradebook (CSV)</span>
               </button>
             </div>
@@ -1092,16 +1092,16 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
             if (filteredEvaluations.length === 0) {
               return (
-                <div className="rounded-3xl border border-[#334155] bg-[#1E293B]/60 p-12 text-center">
+                <div className="rounded-3xl border border-[#2E2E34] bg-[#1C1C1F]/60 p-12 text-center">
                   <Award className="mx-auto h-12 w-12 text-amber-400/40 mb-3" />
                   <h3 className="text-base font-bold text-white">No Presentation Evaluations Recorded</h3>
-                  <p className="text-xs text-[#94A3B8] mt-1 max-w-md mx-auto">
+                  <p className="text-xs text-[#A1A1AA] mt-1 max-w-md mx-auto">
                     When students present in class, click &quot;Grade&quot; on their group card to record their group score and individual contributions.
                   </p>
                   <button
                     type="button"
                     onClick={() => setActiveTab("groups")}
-                    className="mt-4 inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-[#06B6D4] text-slate-950 font-bold text-xs hover:bg-[#0891B2] hover:text-white transition-all"
+                    className="mt-4 inline-flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-emerald-500 text-[#141416] font-bold text-xs hover:bg-emerald-400 hover:text-[#141416] transition-all"
                   >
                     <span>Switch to Groups &amp; Grade Teams &rarr;</span>
                   </button>
@@ -1118,9 +1118,9 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                   return (
                     <div
                       key={ev.id}
-                      className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5 shadow-lg space-y-4 hover:border-[#475569] transition-all"
+                      className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-5 shadow-lg space-y-4 hover:border-[#3F3F46] transition-all"
                     >
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#334155] pb-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#2E2E34] pb-3">
                         <div>
                           <div className="flex items-center space-x-2">
                             <span className="text-xs font-mono font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
@@ -1128,14 +1128,14 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                             </span>
                             <h4 className="text-base font-bold text-white">{ev.presentationTitle}</h4>
                             {ev.courseCode && (
-                              <span className="text-xs text-[#94A3B8] font-mono">
+                              <span className="text-xs text-[#A1A1AA] font-mono">
                                 ({ev.courseCode})
                               </span>
                             )}
                           </div>
-                          <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#94A3B8] mt-1">
+                          <div className="flex flex-wrap items-center gap-2 text-[11px] text-[#A1A1AA] mt-1">
                             <span className="flex items-center space-x-1">
-                              <Calendar className="h-3.5 w-3.5 text-[#64748B]" />
+                              <Calendar className="h-3.5 w-3.5 text-[#71717A]" />
                               <span>{new Date(ev.evaluatedAt).toLocaleDateString()}</span>
                             </span>
                             <span>&bull;</span>
@@ -1149,7 +1149,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
                         <div className="flex items-center space-x-2">
                           <div className="text-right mr-2">
-                            <span className="text-[10px] text-[#94A3B8] uppercase tracking-wider block font-mono">
+                            <span className="text-[10px] text-[#A1A1AA] uppercase tracking-wider block font-mono">
                               Group Score
                             </span>
                             <span className="text-lg font-black text-amber-400 font-mono">
@@ -1161,7 +1161,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                             <button
                               type="button"
                               onClick={() => handleOpenEvaluation(groupObj, ev)}
-                              className="p-2 rounded-xl border border-[#334155] bg-[#0B0F19] text-[#94A3B8] hover:text-white hover:border-[#06B6D4] transition-all text-xs"
+                              className="p-2 rounded-xl border border-[#2E2E34] bg-[#141416] text-[#A1A1AA] hover:text-white hover:border-[#EAEAE6] transition-all text-xs"
                               title="Edit Evaluation"
                             >
                               <Sliders className="h-4 w-4" />
@@ -1171,7 +1171,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                           <button
                             type="button"
                             onClick={() => handleDeleteEvaluation(ev.id)}
-                            className="p-2 rounded-xl border border-[#334155] bg-[#0B0F19] text-[#94A3B8] hover:text-rose-400 hover:border-rose-500/30 transition-all text-xs"
+                            className="p-2 rounded-xl border border-[#2E2E34] bg-[#141416] text-[#A1A1AA] hover:text-rose-400 hover:border-rose-500/30 transition-all text-xs"
                             title="Delete Record"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -1181,7 +1181,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
                       {/* Member Breakdown Grid */}
                       <div>
-                        <span className="text-[11px] font-mono text-[#94A3B8] uppercase tracking-wider block mb-2">
+                        <span className="text-[11px] font-mono text-[#A1A1AA] uppercase tracking-wider block mb-2">
                           Individual Student Scores &amp; Breakdown:
                         </span>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
@@ -1193,7 +1193,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                                   ? "border-rose-500/30 bg-rose-950/20"
                                   : m.status === "partial"
                                   ? "border-amber-500/30 bg-amber-950/10"
-                                  : "border-[#334155] bg-[#0B0F19]"
+                                  : "border-[#2E2E34] bg-[#141416]"
                               }`}
                             >
                               <div>
@@ -1213,17 +1213,17 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                                     {m.status}
                                   </span>
                                 </div>
-                                <span className="text-[10px] font-mono text-[#64748B] block">
+                                <span className="text-[10px] font-mono text-[#71717A] block">
                                   @{m.username}
                                 </span>
                               </div>
 
-                              <div className="mt-2 pt-2 border-t border-[#334155]/60 flex items-center justify-between">
-                                <span className="text-[11px] text-[#94A3B8]">
+                              <div className="mt-2 pt-2 border-t border-[#2E2E34]/60 flex items-center justify-between">
+                                <span className="text-[11px] text-[#A1A1AA]">
                                   Indiv: <strong className="text-white">{m.individualScore}%</strong>
                                 </span>
                                 <div className="flex items-center space-x-1">
-                                  <span className="text-[10px] text-[#64748B] font-mono">Final:</span>
+                                  <span className="text-[10px] text-[#71717A] font-mono">Final:</span>
                                   <span className={`text-sm font-black font-mono ${
                                     m.finalScore >= 80 ? "text-emerald-400" :
                                     m.finalScore >= 60 ? "text-amber-400" : "text-rose-400"
@@ -1234,7 +1234,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                               </div>
 
                               {m.privateFeedback && (
-                                <p className="mt-1.5 text-[10px] text-[#94A3B8] italic line-clamp-2 border-t border-[#334155]/40 pt-1">
+                                <p className="mt-1.5 text-[10px] text-[#A1A1AA] italic line-clamp-2 border-t border-[#2E2E34]/40 pt-1">
                                   &ldquo;{m.privateFeedback}&rdquo;
                                 </p>
                               )}
@@ -1244,9 +1244,9 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                       </div>
 
                       {ev.groupFeedback && (
-                        <div className="rounded-xl bg-[#0B0F19] p-3 text-xs text-[#CBD5E1] border border-[#334155]">
+                        <div className="rounded-xl bg-[#141416] p-3 text-xs text-[#EAEAE6] border border-[#2E2E34]">
                           <span className="font-bold text-amber-300 block mb-0.5">Team General Feedback:</span>
-                          <p className="text-[#94A3B8]">{ev.groupFeedback}</p>
+                          <p className="text-[#A1A1AA]">{ev.groupFeedback}</p>
                         </div>
                       )}
                     </div>
@@ -1261,25 +1261,25 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
       {/* MODAL: CREATE MANUAL GROUP */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
-          <div className="w-full max-w-lg rounded-3xl border border-[#334155] bg-[#1E293B] p-6 shadow-2xl relative">
+          <div className="w-full max-w-lg rounded-3xl border border-[#2E2E34] bg-[#1C1C1F] p-6 shadow-2xl relative">
             <button
               onClick={() => setIsCreateModalOpen(false)}
-              className="absolute top-5 right-5 text-[#94A3B8] hover:text-white"
+              className="absolute top-5 right-5 text-[#A1A1AA] hover:text-white"
             >
               <X className="h-5 w-5" />
             </button>
 
             <h3 className="text-lg font-extrabold text-white flex items-center space-x-2 mb-1">
-              <UserPlus className="h-5 w-5 text-[#06B6D4]" />
+              <UserPlus className="h-5 w-5 text-[#EAEAE6]" />
               <span>Create New Study &amp; Project Group</span>
             </h3>
-            <p className="text-xs text-[#94A3B8] mb-5">
+            <p className="text-xs text-[#A1A1AA] mb-5">
               Define a new group and assign initial students from your class roster.
             </p>
 
             <form onSubmit={handleCreateManual} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                   Group / Team Name *
                 </label>
                 <input
@@ -1288,19 +1288,19 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                   placeholder="e.g. Cloud Innovators, Team Alpha"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
-                  className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                  className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-2.5 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
                 />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                  <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                     Course Scope
                   </label>
                   <select
                     value={formCourseCode}
                     onChange={(e) => setFormCourseCode(e.target.value)}
-                    className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                    className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-2.5 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   >
                     <option value="all">All Courses in Class (Class-Wide Group - Recommended)</option>
                     {syllabi.map(s => (
@@ -1310,13 +1310,13 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                  <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                     Target Academic Level *
                   </label>
                   <select
                     value={formLevel}
                     onChange={(e) => setFormLevel(e.target.value as StudentLevel)}
-                    className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                    className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-2.5 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   >
                     <option value="Level 3">Level 3</option>
                     <option value="Level 4">Level 4</option>
@@ -1327,13 +1327,13 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                  <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                     Target Academic Trade
                   </label>
                   <select
                     value={formTradeId}
                     onChange={(e) => setFormTradeId(e.target.value)}
-                    className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                    className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-2.5 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   >
                     <option value="all">All Trades in Level</option>
                     {trades.map(t => (
@@ -1344,10 +1344,10 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="block text-xs font-bold text-[#CBD5E1]">
+                    <label className="block text-xs font-bold text-[#EAEAE6]">
                       Max Capacity
                     </label>
-                    <span className="text-[10px] text-[#94A3B8]">Up to 100 members</span>
+                    <span className="text-[10px] text-[#A1A1AA]">Up to 100 members</span>
                   </div>
                   <input
                     type="number"
@@ -1355,7 +1355,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                     max={100}
                     value={formMaxMembers}
                     onChange={(e) => setFormMaxMembers(Number(e.target.value))}
-                    className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                    className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-2.5 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   />
                   <div className="flex flex-wrap gap-1.5 mt-2">
                     {[4, 6, 8, 10, 12, 15, 20].map((preset) => (
@@ -1365,8 +1365,8 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                         onClick={() => setFormMaxMembers(preset)}
                         className={`text-[10px] font-mono px-2 py-0.5 rounded-lg border transition-all ${
                           formMaxMembers === preset
-                            ? "bg-[#06B6D4]/20 border-[#06B6D4] text-[#38BDF8]"
-                            : "bg-[#0B0F19] border-[#334155] text-[#94A3B8] hover:text-white"
+                            ? "bg-[#EAEAE6]/20 border-[#EAEAE6] text-[#38BDF8]"
+                            : "bg-[#141416] border-[#2E2E34] text-[#A1A1AA] hover:text-white"
                         }`}
                       >
                         {preset}
@@ -1378,10 +1378,10 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
               {/* Multi-student selection */}
               <div>
-                <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                   Assign Initial Students (Optional)
                 </label>
-                <div className="max-h-36 overflow-y-auto rounded-xl border border-[#334155] bg-[#0B0F19] p-2 space-y-1">
+                <div className="max-h-36 overflow-y-auto rounded-xl border border-[#2E2E34] bg-[#141416] p-2 space-y-1">
                   {students.map(s => {
                     const isChecked = formSelectedStudentUids.includes(s.uid);
                     const existingG = groups.find(g => g.members.some(m => m.uid === s.uid));
@@ -1392,8 +1392,8 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                         key={s.uid}
                         className={`flex items-center justify-between p-1.5 rounded-lg text-xs ${
                           isAlreadyAssigned 
-                            ? "opacity-50 cursor-not-allowed bg-[#0B0F19]" 
-                            : "hover:bg-[#1E293B] cursor-pointer text-white"
+                            ? "opacity-50 cursor-not-allowed bg-[#141416]" 
+                            : "hover:bg-[#1C1C1F] cursor-pointer text-white"
                         }`}
                       >
                         <div className="flex items-center space-x-2 truncate min-w-0">
@@ -1408,10 +1408,10 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                                 setFormSelectedStudentUids(prev => prev.filter(uid => uid !== s.uid));
                               }
                             }}
-                            className="rounded border-[#334155] text-[#06B6D4] focus:ring-0 disabled:opacity-40"
+                            className="rounded border-[#2E2E34] text-[#EAEAE6] focus:ring-0 disabled:opacity-40"
                           />
                           <span className="truncate">{s.fullName}</span>
-                          <span className="text-[10px] font-mono text-[#64748B]">(@{s.username})</span>
+                          <span className="text-[10px] font-mono text-[#71717A]">(@{s.username})</span>
                         </div>
                         {isAlreadyAssigned && (
                           <span className="text-[10px] text-amber-400/80 shrink-0 font-mono ml-2">
@@ -1424,18 +1424,18 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                 </div>
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-[#334155]">
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-[#2E2E34]">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="rounded-xl px-4 py-2 text-xs font-bold text-[#94A3B8] hover:text-white"
+                  className="rounded-xl px-4 py-2 text-xs font-bold text-[#A1A1AA] hover:text-white"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={savingManual}
-                  className="rounded-xl bg-[#06B6D4] px-5 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md disabled:opacity-50"
+                  className="rounded-xl bg-emerald-500 px-5 py-2 text-xs font-bold text-[#141416] hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-md disabled:opacity-50"
                 >
                   {savingManual ? "Creating Group..." : "Create Group"}
                 </button>
@@ -1448,10 +1448,10 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
       {/* MODAL: AUTO-GENERATE GROUPS */}
       {isAutoModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
-          <div className="w-full max-w-lg rounded-3xl border border-[#334155] bg-[#1E293B] p-6 shadow-2xl relative">
+          <div className="w-full max-w-lg rounded-3xl border border-[#2E2E34] bg-[#1C1C1F] p-6 shadow-2xl relative">
             <button
               onClick={() => setIsAutoModalOpen(false)}
-              className="absolute top-5 right-5 text-[#94A3B8] hover:text-white"
+              className="absolute top-5 right-5 text-[#A1A1AA] hover:text-white"
             >
               <X className="h-5 w-5" />
             </button>
@@ -1460,19 +1460,19 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
               <Sparkles className="h-5 w-5 text-purple-400" />
               <span>Auto-Generate Balanced Teams</span>
             </h3>
-            <p className="text-xs text-[#94A3B8] mb-5">
+            <p className="text-xs text-[#A1A1AA] mb-5">
               Automatically divide all unassigned students in this class level into balanced project groups with instant Join Codes. These groups collaborate on all course assignments.
             </p>
 
             <form onSubmit={handleAutoGenerate} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                   Target Course Scope
                 </label>
                 <select
                   value={autoCourseCode}
                   onChange={(e) => setAutoCourseCode(e.target.value)}
-                  className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                  className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-2.5 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                 >
                   <option value="all">All Courses in Class (Class-Wide Teams - Recommended)</option>
                   {syllabi.map(s => (
@@ -1483,13 +1483,13 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                  <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                     Student Level *
                   </label>
                   <select
                     value={autoLevel}
                     onChange={(e) => setAutoLevel(e.target.value as StudentLevel)}
-                    className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                    className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-2.5 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   >
                     <option value="Level 3">Level 3</option>
                     <option value="Level 4">Level 4</option>
@@ -1498,13 +1498,13 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                  <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                     Target Trade
                   </label>
                   <select
                     value={autoTradeId}
                     onChange={(e) => setAutoTradeId(e.target.value)}
-                    className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                    className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-2.5 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   >
                     <option value="all">All Trades in Class</option>
                     {trades.map(t => (
@@ -1516,7 +1516,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="block text-xs font-bold text-[#CBD5E1]">
+                  <label className="block text-xs font-bold text-[#EAEAE6]">
                     Desired Students Per Team:
                   </label>
                   <span className="text-[10px] font-mono text-purple-300">Selected: {autoGroupSize} members/group</span>
@@ -1530,7 +1530,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                       className={`rounded-xl py-2 text-xs font-bold transition-all border ${
                         autoGroupSize === size
                           ? "bg-purple-600 text-white border-purple-500 shadow-md"
-                          : "bg-[#0B0F19] text-[#94A3B8] border-[#334155] hover:text-white"
+                          : "bg-[#141416] text-[#A1A1AA] border-[#2E2E34] hover:text-white"
                       }`}
                     >
                       {size}
@@ -1538,7 +1538,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                   ))}
                 </div>
                 <div className="flex items-center space-x-2 pt-1">
-                  <label className="text-[11px] text-[#94A3B8] whitespace-nowrap">
+                  <label className="text-[11px] text-[#A1A1AA] whitespace-nowrap">
                     Or custom size:
                   </label>
                   <input
@@ -1547,10 +1547,10 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                     max={50}
                     value={autoGroupSize}
                     onChange={(e) => setAutoGroupSize(Math.max(2, Number(e.target.value) || 2))}
-                    className="w-24 rounded-xl border border-[#334155] bg-[#0B0F19] px-2.5 py-1.5 text-xs text-white focus:border-purple-400 focus:outline-none"
+                    className="w-24 rounded-xl border border-[#2E2E34] bg-[#141416] px-2.5 py-1.5 text-xs text-white focus:border-purple-400 focus:outline-none"
                     placeholder="e.g. 10"
                   />
-                  <span className="text-[10px] text-[#64748B]">
+                  <span className="text-[10px] text-[#71717A]">
                     (e.g., 50 students ÷ 10 = 5 groups)
                   </span>
                 </div>
@@ -1562,11 +1562,11 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                 </p>
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-[#334155]">
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-[#2E2E34]">
                 <button
                   type="button"
                   onClick={() => setIsAutoModalOpen(false)}
-                  className="rounded-xl px-4 py-2 text-xs font-bold text-[#94A3B8] hover:text-white"
+                  className="rounded-xl px-4 py-2 text-xs font-bold text-[#A1A1AA] hover:text-white"
                 >
                   Cancel
                 </button>
@@ -1586,9 +1586,9 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
       {/* 4. Live Presentation & Defense Grader Modal */}
       {isEvalModalOpen && evaluatingGroup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="relative w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-2xl border border-emerald-500/30 bg-[#0F172A] p-6 shadow-2xl custom-scrollbar">
+          <div className="relative w-full max-w-4xl max-h-[92vh] overflow-y-auto rounded-2xl border border-emerald-500/30 bg-[#141416] p-6 shadow-2xl custom-scrollbar">
             {/* Modal Header */}
-            <div className="flex items-start justify-between border-b border-[#334155] pb-4 mb-5">
+            <div className="flex items-start justify-between border-b border-[#2E2E34] pb-4 mb-5">
               <div className="flex items-center space-x-3">
                 <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 text-emerald-400">
                   <Award className="h-6 w-6" />
@@ -1602,7 +1602,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                       Live Classroom Mode
                     </span>
                   </div>
-                  <p className="text-xs text-[#94A3B8]">
+                  <p className="text-xs text-[#A1A1AA]">
                     Team: <strong className="text-white">{evaluatingGroup.name}</strong> • Members: <span className="text-emerald-400 font-bold">{evaluatingGroup.members.length} students</span>
                   </p>
                 </div>
@@ -1614,7 +1614,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                   className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all ${
                     touchHudMode
                       ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-sm shadow-emerald-500/20"
-                      : "bg-[#1E293B] text-[#94A3B8] border-[#334155] hover:text-white"
+                      : "bg-[#1C1C1F] text-[#A1A1AA] border-[#2E2E34] hover:text-white"
                   }`}
                   title="Toggle Quick Touch HUD for tablet/mobile grading"
                 >
@@ -1623,7 +1623,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                 </button>
                 <button
                   onClick={() => setIsEvalModalOpen(false)}
-                  className="rounded-lg p-1.5 text-[#94A3B8] hover:bg-[#1E293B] hover:text-white"
+                  className="rounded-lg p-1.5 text-[#A1A1AA] hover:bg-[#1C1C1F] hover:text-white"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -1641,7 +1641,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
             {/* Step 1: Presentation & Course Metadata */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 mb-5">
               <div className="md:col-span-2">
-                <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                   Presentation Title / Topic *
                 </label>
                 <input
@@ -1649,18 +1649,18 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                   value={evalPresentationTitle}
                   onChange={(e) => setEvalPresentationTitle(e.target.value)}
                   placeholder="e.g. Sprint 1 PowerPoint Defense / Architecture Pitch"
-                  className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-2 text-xs text-white placeholder-[#64748B] focus:border-emerald-500 focus:outline-none"
+                  className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-2 text-xs text-white placeholder-[#71717A] focus:border-emerald-500 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                   Associated Course
                 </label>
                 <select
                   value={evalCourseCode}
                   onChange={(e) => setEvalCourseCode(e.target.value)}
-                  className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                  className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
                 >
                   <option value={evaluatingGroup.courseCode || ""}>
                     {evaluatingGroup.courseCode ? `${evaluatingGroup.courseCode} (Team Default)` : "Select Course..."}
@@ -1675,8 +1675,8 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
             </div>
 
             {/* Step 2: Weight Configuration & Anti-Freeloader Controls */}
-            <div className="rounded-xl border border-[#334155] bg-[#0B0F19]/80 p-4 mb-5 space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#334155]/60 pb-3">
+            <div className="rounded-xl border border-[#2E2E34] bg-[#141416]/80 p-4 mb-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#2E2E34]/60 pb-3">
                 <div className="flex items-center space-x-2">
                   <Sliders className="h-4 w-4 text-emerald-400" />
                   <span className="text-xs font-bold text-white uppercase tracking-wider">
@@ -1685,7 +1685,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                 </div>
                 {/* Weight Presets */}
                 <div className="flex items-center space-x-1.5 flex-wrap gap-1">
-                  <span className="text-[10px] text-[#94A3B8] mr-1">Presets:</span>
+                  <span className="text-[10px] text-[#A1A1AA] mr-1">Presets:</span>
                   {[
                     { label: "50 / 50 Balanced", gw: 50, iw: 50 },
                     { label: "40 / 60 Indiv-Heavy", gw: 40, iw: 60 },
@@ -1703,7 +1703,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                       className={`rounded-lg px-2 py-1 text-[10px] font-bold transition-all border ${
                         evalGroupWeight === p.gw && evalIndividualWeight === p.iw
                           ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/50 shadow-sm"
-                          : "bg-[#1E293B] text-[#94A3B8] border-[#334155] hover:text-white"
+                          : "bg-[#1C1C1F] text-[#A1A1AA] border-[#2E2E34] hover:text-white"
                       }`}
                     >
                       {p.label}
@@ -1716,7 +1716,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-[#CBD5E1] font-semibold">Whole Group Score Weight:</span>
+                    <span className="text-[#EAEAE6] font-semibold">Whole Group Score Weight:</span>
                     <span className="font-mono font-bold text-teal-400">{evalGroupWeight}%</span>
                   </div>
                   <input
@@ -1732,12 +1732,12 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                     }}
                     className="w-full accent-teal-400 cursor-pointer"
                   />
-                  <p className="text-[10px] text-[#64748B] mt-0.5">Slides, structure, team coordination</p>
+                  <p className="text-[10px] text-[#71717A] mt-0.5">Slides, structure, team coordination</p>
                 </div>
 
                 <div>
                   <div className="flex items-center justify-between text-xs mb-1">
-                    <span className="text-[#CBD5E1] font-semibold">Individual Member Defense Weight:</span>
+                    <span className="text-[#EAEAE6] font-semibold">Individual Member Defense Weight:</span>
                     <span className="font-mono font-bold text-emerald-400">{evalIndividualWeight}%</span>
                   </div>
                   <input
@@ -1753,24 +1753,24 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                     }}
                     className="w-full accent-emerald-400 cursor-pointer"
                   />
-                  <p className="text-[10px] text-[#64748B] mt-0.5">Speaking, Q&A mastery, depth of defense</p>
+                  <p className="text-[10px] text-[#71717A] mt-0.5">Speaking, Q&A mastery, depth of defense</p>
                 </div>
               </div>
 
               {/* Strict Zero Penalty Toggle (Anti-Freeloader) */}
-              <div className="flex items-center justify-between pt-2 border-t border-[#334155]/40">
+              <div className="flex items-center justify-between pt-2 border-t border-[#2E2E34]/40">
                 <label className="flex items-center space-x-2.5 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={evalStrictAbsentZero}
                     onChange={(e) => setEvalStrictAbsentZero(e.target.checked)}
-                    className="h-4 w-4 rounded border-[#334155] bg-[#0B0F19] text-emerald-500 focus:ring-emerald-400"
+                    className="h-4 w-4 rounded border-[#2E2E34] bg-[#141416] text-emerald-500 focus:ring-emerald-400"
                   />
                   <div>
                     <span className="text-xs font-bold text-white">
                       Strict Absent Penalty (Anti-Freeloader Engine)
                     </span>
-                    <p className="text-[10px] text-[#94A3B8]">
+                    <p className="text-[10px] text-[#A1A1AA]">
                       If enabled, any member marked as <span className="text-red-400 font-bold uppercase">Absent</span> receives <strong>0%</strong> final mark, preventing free points from the team's presentation score.
                     </p>
                   </div>
@@ -1778,7 +1778,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                   evalStrictAbsentZero 
                     ? "bg-red-500/10 text-red-300 border-red-500/30" 
-                    : "bg-[#1E293B] text-[#64748B] border-[#334155]"
+                    : "bg-[#1C1C1F] text-[#71717A] border-[#2E2E34]"
                 }`}>
                   {evalStrictAbsentZero ? "Strict Active" : "Lenient"}
                 </span>
@@ -1795,7 +1795,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                   </span>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <span className="text-xs text-[#94A3B8]">Score (0-100):</span>
+                  <span className="text-xs text-[#A1A1AA]">Score (0-100):</span>
                   <div className="flex items-center space-x-1">
                     <input
                       type="number"
@@ -1803,7 +1803,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                       max="100"
                       value={evalGroupScore}
                       onChange={(e) => setEvalGroupScore(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
-                      className="w-16 rounded-lg border border-teal-500/40 bg-[#0B0F19] p-1.5 text-center text-sm font-bold text-teal-300 focus:border-teal-400 focus:outline-none"
+                      className="w-16 rounded-lg border border-teal-500/40 bg-[#141416] p-1.5 text-center text-sm font-bold text-teal-300 focus:border-teal-400 focus:outline-none"
                     />
                     <span className="text-xs font-bold text-teal-400">/ 100</span>
                   </div>
@@ -1825,7 +1825,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
               {/* Group Feedback */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <label className="block text-[11px] font-semibold text-[#CBD5E1]">
+                  <label className="block text-[11px] font-semibold text-[#EAEAE6]">
                     General Group Feedback / Teacher Critique (Visible to all team members)
                   </label>
                   <button
@@ -1843,7 +1843,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                   value={evalGroupFeedback}
                   onChange={(e) => setEvalGroupFeedback(e.target.value)}
                   placeholder="e.g. Excellent slide visuals, clear problem statement, good coordination. Next time prepare for deep architecture questions..."
-                  className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white placeholder-[#64748B] focus:border-teal-400 focus:outline-none"
+                  className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-2.5 text-xs text-white placeholder-[#71717A] focus:border-teal-400 focus:outline-none"
                 />
               </div>
             </div>
@@ -1857,13 +1857,13 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                     2. Individual Member Defense & Participation
                   </span>
                 </div>
-                <span className="text-[11px] text-[#94A3B8]">
+                <span className="text-[11px] text-[#A1A1AA]">
                   Formula: ({evalGroupScore} × {evalGroupWeight}%) + (Indiv × {evalIndividualWeight}%)
                 </span>
               </div>
 
               {evaluatingGroup.members.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-[#334155] p-6 text-center text-xs text-[#94A3B8]">
+                <div className="rounded-xl border border-dashed border-[#2E2E34] p-6 text-center text-xs text-[#A1A1AA]">
                   This group currently has no members assigned. Add students before evaluating.
                 </div>
               ) : (
@@ -1889,7 +1889,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                       className={`rounded-xl border p-3.5 transition-all ${
                         mData.status === "absent"
                           ? "border-red-500/30 bg-red-500/5"
-                          : "border-[#334155] bg-[#0B0F19]/70 hover:border-emerald-500/30"
+                          : "border-[#2E2E34] bg-[#141416]/70 hover:border-emerald-500/30"
                       }`}
                     >
                       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
@@ -1916,7 +1916,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                                 </span>
                               )}
                             </div>
-                            <span className="text-[11px] text-[#94A3B8]">
+                            <span className="text-[11px] text-[#A1A1AA]">
                               @{member.username}
                             </span>
                           </div>
@@ -1948,7 +1948,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                               className={`rounded-lg px-2.5 py-1 text-[11px] font-semibold border transition-all ${
                                 mData.status === opt.val
                                   ? `${opt.color} shadow-sm`
-                                  : "border-transparent text-[#64748B] hover:text-white"
+                                  : "border-transparent text-[#71717A] hover:text-white"
                               }`}
                             >
                               {opt.label}
@@ -1960,7 +1960,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                         <div className="flex items-center space-x-3">
                           <div className="flex flex-col space-y-1">
                             <div className="flex items-center space-x-1.5">
-                              <label className="text-[11px] text-[#94A3B8] whitespace-nowrap">
+                              <label className="text-[11px] text-[#A1A1AA] whitespace-nowrap">
                                 Indiv Score:
                               </label>
                               <input
@@ -1979,9 +1979,9 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                                     }
                                   }));
                                 }}
-                                className="w-16 rounded-lg border border-[#334155] bg-[#0B0F19] p-1.5 text-center text-xs font-bold text-white focus:border-emerald-400 focus:outline-none disabled:opacity-40"
+                                className="w-16 rounded-lg border border-[#2E2E34] bg-[#141416] p-1.5 text-center text-xs font-bold text-white focus:border-emerald-400 focus:outline-none disabled:opacity-40"
                               />
-                              <span className="text-xs text-[#64748B]">/100</span>
+                              <span className="text-xs text-[#71717A]">/100</span>
                             </div>
 
                             {/* Touch Scorer Quick Pills (visible on touchHudMode or small devices) */}
@@ -1996,7 +1996,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                                       [member.uid]: { ...mData, individualScore: next }
                                     }));
                                   }}
-                                  className="h-6 w-6 rounded bg-[#1E293B] hover:bg-[#334155] text-xs font-bold text-[#94A3B8] hover:text-white transition-all flex items-center justify-center border border-[#334155]"
+                                  className="h-6 w-6 rounded bg-[#1C1C1F] hover:bg-[#2E2E34] text-xs font-bold text-[#A1A1AA] hover:text-white transition-all flex items-center justify-center border border-[#2E2E34]"
                                   title="Subtract 5"
                                 >
                                   -5
@@ -2014,7 +2014,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                                     className={`px-1.5 py-0.5 rounded text-[10px] font-bold border transition-all ${
                                       mData.individualScore === preset
                                         ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                                        : "bg-[#0B0F19] text-[#94A3B8] border-[#334155] hover:text-white"
+                                        : "bg-[#141416] text-[#A1A1AA] border-[#2E2E34] hover:text-white"
                                     }`}
                                   >
                                     {preset}
@@ -2029,7 +2029,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                                       [member.uid]: { ...mData, individualScore: next }
                                     }));
                                   }}
-                                  className="h-6 w-6 rounded bg-[#1E293B] hover:bg-[#334155] text-xs font-bold text-[#94A3B8] hover:text-white transition-all flex items-center justify-center border border-[#334155]"
+                                  className="h-6 w-6 rounded bg-[#1C1C1F] hover:bg-[#2E2E34] text-xs font-bold text-[#A1A1AA] hover:text-white transition-all flex items-center justify-center border border-[#2E2E34]"
                                   title="Add 5"
                                 >
                                   +5
@@ -2040,7 +2040,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
 
                           {/* Computed Final Score Badge */}
                           <div className="flex flex-col items-end min-w-[90px]">
-                            <span className="text-[10px] text-[#64748B]">Final Mark:</span>
+                            <span className="text-[10px] text-[#71717A]">Final Mark:</span>
                             <span className={`text-base font-extrabold font-mono ${
                               mData.status === "absent" && evalStrictAbsentZero
                                 ? "text-red-400"
@@ -2057,8 +2057,8 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                       </div>
 
                       {/* Individual Private Feedback */}
-                      <div className="mt-2.5 pt-2 border-t border-[#334155]/40 flex items-center space-x-2">
-                        <span className="text-[10px] font-semibold text-[#64748B] whitespace-nowrap">
+                      <div className="mt-2.5 pt-2 border-t border-[#2E2E34]/40 flex items-center space-x-2">
+                        <span className="text-[10px] font-semibold text-[#71717A] whitespace-nowrap">
                           Private Note:
                         </span>
                         <input
@@ -2075,7 +2075,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                             }));
                           }}
                           placeholder={`Private teacher feedback for ${member.fullName.split(" ")[0]} (visible only to this student)...`}
-                          className="w-full rounded-lg border border-[#334155]/60 bg-[#0B0F19]/90 px-2.5 py-1 text-[11px] text-[#CBD5E1] placeholder-[#64748B] focus:border-emerald-400 focus:outline-none"
+                          className="w-full rounded-lg border border-[#2E2E34]/60 bg-[#141416]/90 px-2.5 py-1 text-[11px] text-[#EAEAE6] placeholder-[#71717A] focus:border-emerald-400 focus:outline-none"
                         />
                       </div>
                     </div>
@@ -2085,15 +2085,15 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
             </div>
 
             {/* Modal Footer Actions */}
-            <div className="flex items-center justify-between pt-4 border-t border-[#334155]">
-              <div className="text-xs text-[#94A3B8]">
+            <div className="flex items-center justify-between pt-4 border-t border-[#2E2E34]">
+              <div className="text-xs text-[#A1A1AA]">
                 Marks are saved instantly to database & local cache for students to view.
               </div>
               <div className="flex items-center space-x-3">
                 <button
                   type="button"
                   onClick={() => setIsEvalModalOpen(false)}
-                  className="rounded-xl px-4 py-2 text-xs font-bold text-[#94A3B8] hover:text-white"
+                  className="rounded-xl px-4 py-2 text-xs font-bold text-[#A1A1AA] hover:text-white"
                 >
                   Cancel
                 </button>
@@ -2115,9 +2115,9 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
       {/* 5. Team Presentation History Drawer / Modal */}
       {isHistoryDrawerOpen && historyGroup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="relative w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-2xl border border-[#334155] bg-[#0F172A] p-6 shadow-2xl custom-scrollbar">
+          <div className="relative w-full max-w-3xl max-h-[88vh] overflow-y-auto rounded-2xl border border-[#2E2E34] bg-[#141416] p-6 shadow-2xl custom-scrollbar">
             {/* Drawer Header */}
-            <div className="flex items-start justify-between border-b border-[#334155] pb-4 mb-4">
+            <div className="flex items-start justify-between border-b border-[#2E2E34] pb-4 mb-4">
               <div className="flex items-center space-x-3">
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/20 border border-purple-500/30 text-purple-400">
                   <History className="h-5 w-5" />
@@ -2126,14 +2126,14 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                   <h3 className="text-base font-bold text-white">
                     Presentation Grade History: {historyGroup.name}
                   </h3>
-                  <p className="text-xs text-[#94A3B8]">
+                  <p className="text-xs text-[#A1A1AA]">
                     Past classroom presentations, evaluations, and individual breakdowns
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setIsHistoryDrawerOpen(false)}
-                className="rounded-lg p-1.5 text-[#94A3B8] hover:bg-[#1E293B] hover:text-white"
+                className="rounded-lg p-1.5 text-[#A1A1AA] hover:bg-[#1C1C1F] hover:text-white"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -2145,9 +2145,9 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
               if (groupEvals.length === 0) {
                 return (
                   <div className="py-12 text-center">
-                    <Award className="h-10 w-10 text-[#64748B] mx-auto mb-2 opacity-50" />
+                    <Award className="h-10 w-10 text-[#71717A] mx-auto mb-2 opacity-50" />
                     <p className="text-sm font-semibold text-white mb-1">No presentation evaluations yet</p>
-                    <p className="text-xs text-[#94A3B8] mb-4">
+                    <p className="text-xs text-[#A1A1AA] mb-4">
                       This group has not been graded for any live presentations or slide defenses.
                     </p>
                     <button
@@ -2170,7 +2170,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                   {groupEvals.map((ev) => (
                     <div
                       key={ev.id}
-                      className="rounded-xl border border-[#334155] bg-[#0B0F19] p-4 space-y-3"
+                      className="rounded-xl border border-[#2E2E34] bg-[#141416] p-4 space-y-3"
                     >
                       <div className="flex items-start justify-between">
                         <div>
@@ -2180,7 +2180,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                               {ev.courseCode || "General"}
                             </span>
                           </div>
-                          <p className="text-[11px] text-[#64748B] mt-0.5">
+                          <p className="text-[11px] text-[#71717A] mt-0.5">
                             Evaluated by {ev.evaluatedBy || "Instructor"} on {new Date(ev.evaluatedAt).toLocaleDateString()} at {new Date(ev.evaluatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </p>
                         </div>
@@ -2191,14 +2191,14 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                               setIsHistoryDrawerOpen(false);
                               handleOpenEvaluation(historyGroup, ev);
                             }}
-                            className="rounded-lg bg-[#1E293B] hover:bg-[#334155] text-white px-2.5 py-1 text-xs font-semibold transition-all border border-[#334155]"
+                            className="rounded-lg bg-[#1C1C1F] hover:bg-[#2E2E34] text-white px-2.5 py-1 text-xs font-semibold transition-all border border-[#2E2E34]"
                           >
                             Edit
                           </button>
                           <button
                             type="button"
                             onClick={() => handleDeleteEvaluation(ev.id)}
-                            className="rounded-lg p-1 text-[#94A3B8] hover:text-red-400 transition-all"
+                            className="rounded-lg p-1 text-[#A1A1AA] hover:text-red-400 transition-all"
                             title="Delete this evaluation"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -2207,18 +2207,18 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                       </div>
 
                       {/* Group Deliverable Score & Weightings */}
-                      <div className="grid grid-cols-3 gap-2 rounded-lg bg-[#0F172A] p-2.5 text-center border border-[#334155]/60 text-xs">
+                      <div className="grid grid-cols-3 gap-2 rounded-lg bg-[#141416] p-2.5 text-center border border-[#2E2E34]/60 text-xs">
                         <div>
-                          <span className="text-[10px] text-[#64748B] block">Whole Group Score</span>
+                          <span className="text-[10px] text-[#71717A] block">Whole Group Score</span>
                           <span className="font-bold text-teal-400 text-sm">{ev.groupScore}%</span>
                         </div>
                         <div>
-                          <span className="text-[10px] text-[#64748B] block">Weight Distribution</span>
+                          <span className="text-[10px] text-[#71717A] block">Weight Distribution</span>
                           <span className="font-semibold text-white text-xs">{ev.groupWeight}% Team / {ev.individualWeight}% Indiv</span>
                         </div>
                         <div>
-                          <span className="text-[10px] text-[#64748B] block">Absent Penalty</span>
-                          <span className={`font-semibold text-xs ${ev.strictAbsentZero ? "text-red-400" : "text-[#94A3B8]"}`}>
+                          <span className="text-[10px] text-[#71717A] block">Absent Penalty</span>
+                          <span className={`font-semibold text-xs ${ev.strictAbsentZero ? "text-red-400" : "text-[#A1A1AA]"}`}>
                             {ev.strictAbsentZero ? "Strict 0%" : "Lenient"}
                           </span>
                         </div>
@@ -2232,15 +2232,15 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                       )}
 
                       {/* Members Breakdown Table */}
-                      <div className="border-t border-[#334155]/60 pt-2">
-                        <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block mb-1.5">
+                      <div className="border-t border-[#2E2E34]/60 pt-2">
+                        <span className="text-[10px] font-bold text-[#71717A] uppercase tracking-wider block mb-1.5">
                           Member Individual Defense Marks:
                         </span>
                         <div className="space-y-1">
                           {Object.values(ev.members || {}).map((m) => (
                             <div
                               key={m.uid}
-                              className="flex items-center justify-between rounded-lg bg-[#0F172A] px-2.5 py-1.5 text-xs"
+                              className="flex items-center justify-between rounded-lg bg-[#141416] px-2.5 py-1.5 text-xs"
                             >
                               <div className="flex items-center space-x-2">
                                 <span className="font-semibold text-white">{m.studentName}</span>
@@ -2253,7 +2253,7 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
                                 </span>
                               </div>
                               <div className="flex items-center space-x-3 font-mono">
-                                <span className="text-[11px] text-[#94A3B8]">
+                                <span className="text-[11px] text-[#A1A1AA]">
                                   Defense: {m.individualScore}%
                                 </span>
                                 <span className="text-emerald-400 font-bold">
@@ -2271,11 +2271,11 @@ export default function GroupManager({ syllabi, trades, adminEmail, adminUser }:
             })()}
 
             {/* Drawer Footer */}
-            <div className="flex items-center justify-end pt-4 mt-5 border-t border-[#334155]">
+            <div className="flex items-center justify-end pt-4 mt-5 border-t border-[#2E2E34]">
               <button
                 type="button"
                 onClick={() => setIsHistoryDrawerOpen(false)}
-                className="rounded-xl bg-[#1E293B] px-4 py-2 text-xs font-bold text-white hover:bg-[#334155]"
+                className="rounded-xl bg-[#1C1C1F] px-4 py-2 text-xs font-bold text-white hover:bg-[#2E2E34]"
               >
                 Close
               </button>

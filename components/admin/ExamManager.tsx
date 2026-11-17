@@ -7,7 +7,8 @@ import {
   QuestionType, 
   ExamAttempt, 
   QuestionGrade,
-  ExamType
+  ExamType,
+  StudentExamOverride
 } from "@/types/exam";
 import { Syllabus } from "@/types/syllabus";
 import { Trade, StudentLevel, UserProfile } from "@/types/auth";
@@ -62,7 +63,10 @@ import {
   WifiOff,
   ExternalLink,
   EyeOff,
-  Lock
+  Lock,
+  BarChart3,
+  CalendarClock,
+  UserPlus
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -117,6 +121,12 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
   const [formAntiCheating, setFormAntiCheating] = useState(true);
   const [formShowResultsImmediately, setFormShowResultsImmediately] = useState(false);
   const [formResultsReleaseMode, setFormResultsReleaseMode] = useState<'manual_release' | 'after_due_date' | 'immediate'>('manual_release');
+  const [formAvailableFrom, setFormAvailableFrom] = useState("");
+  const [formDueDate, setFormDueDate] = useState("");
+  const [formQuestionDrawCount, setFormQuestionDrawCount] = useState(0);
+  const [formMaxTabSwitches, setFormMaxTabSwitches] = useState(0);
+  const [formRequireFullscreen, setFormRequireFullscreen] = useState(true);
+  const [formLockCopyPaste, setFormLockCopyPaste] = useState(true);
   const [formQuestions, setFormQuestions] = useState<ExamQuestion[]>([]);
   const [builderTab, setBuilderTab] = useState<"settings" | "questions">("settings");
   const [savingExam, setSavingExam] = useState(false);
@@ -142,6 +152,20 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
   const [examAttempts, setExamAttempts] = useState<ExamAttempt[]>([]);
   const [loadingAttempts, setLoadingAttempts] = useState(false);
   const [attemptsSearchQuery, setAttemptsSearchQuery] = useState("");
+  const [expandedStudentGroups, setExpandedStudentGroups] = useState<Record<string, boolean>>({});
+
+  // Per-Student Override Modal State (Extra Attempts / Extra Time / Extended Deadline)
+  const [overrideTargetStudent, setOverrideTargetStudent] = useState<{ uid: string; name: string; username: string } | null>(null);
+  const [overrideExtraAttempts, setOverrideExtraAttempts] = useState(1);
+  const [overrideExtraMinutes, setOverrideExtraMinutes] = useState(0);
+  const [overrideExtendedDueDate, setOverrideExtendedDueDate] = useState("");
+  const [overrideReason, setOverrideReason] = useState("");
+  const [savingOverride, setSavingOverride] = useState(false);
+
+  // Analytics Modal State
+  const [analyticsExam, setAnalyticsExam] = useState<Exam | null>(null);
+  const [analyticsAttempts, setAnalyticsAttempts] = useState<ExamAttempt[]>([]);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
 
   // Manual Grading Modal State
   const [gradingAttempt, setGradingAttempt] = useState<ExamAttempt | null>(null);
@@ -438,6 +462,12 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
     setFormAntiCheating(true);
     setFormShowResultsImmediately(false);
     setFormResultsReleaseMode("manual_release");
+    setFormAvailableFrom("");
+    setFormDueDate("");
+    setFormQuestionDrawCount(0);
+    setFormMaxTabSwitches(0);
+    setFormRequireFullscreen(true);
+    setFormLockCopyPaste(true);
     setFormQuestions([]);
     setBuilderTab("settings");
     resetQuestionSubForm();
@@ -461,6 +491,12 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
     const releaseMode = exam.resultsReleaseMode || (exam.showResultsImmediately ? "immediate" : "manual_release");
     setFormResultsReleaseMode(releaseMode);
     setFormShowResultsImmediately(exam.showResultsImmediately ?? (releaseMode === "immediate"));
+    setFormAvailableFrom(exam.availableFrom ? exam.availableFrom.slice(0, 16) : "");
+    setFormDueDate(exam.dueDate ? exam.dueDate.slice(0, 16) : "");
+    setFormQuestionDrawCount(exam.questionDrawCount ?? 0);
+    setFormMaxTabSwitches(exam.maxTabSwitches ?? 0);
+    setFormRequireFullscreen(exam.requireFullscreen ?? true);
+    setFormLockCopyPaste(exam.lockCopyPaste ?? true);
     setFormQuestions(exam.questions || []);
     setBuilderTab("settings");
     resetQuestionSubForm();
@@ -661,6 +697,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
       const matchedCourse = syllabi.find(s => s.courseCode === formCourseCode);
       const totalPoints = formQuestions.reduce((sum, q) => sum + (Number(q.points) || 0), 0);
 
+      const existingExam = editingExamId ? exams.find(e => e.id === editingExamId) : undefined;
       const examPayload: Exam = {
         id: editingExamId || `exam_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         title: formTitle.trim(),
@@ -676,13 +713,20 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
         maxAttempts: Number(formMaxAttempts) || 0,
         shuffleQuestions: formShuffleQuestions,
         shuffleOptions: formShuffleQuestions,
+        questionDrawCount: Math.max(0, Number(formQuestionDrawCount) || 0),
         enableAntiCheating: formAntiCheating,
+        maxTabSwitches: Math.max(0, Number(formMaxTabSwitches) || 0),
+        requireFullscreen: formRequireFullscreen,
+        lockCopyPaste: formLockCopyPaste,
         showResultsImmediately: formResultsReleaseMode === "immediate" && formShowResultsImmediately,
         resultsReleaseMode: formResultsReleaseMode,
-        resultsReleased: editingExamId ? (exams.find(e => e.id === editingExamId)?.resultsReleased ?? false) : false,
+        resultsReleased: existingExam?.resultsReleased ?? false,
+        availableFrom: formAvailableFrom ? new Date(formAvailableFrom).toISOString() : undefined,
+        dueDate: formDueDate ? new Date(formDueDate).toISOString() : undefined,
+        studentOverrides: existingExam?.studentOverrides,
         questions: formQuestions,
         totalPoints,
-        createdAt: editingExamId ? (exams.find(e => e.id === editingExamId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+        createdAt: existingExam?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         createdBy: adminUser?.fullName || "Josef Marie"
       };
@@ -695,6 +739,63 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
       alert("Failed to save assessment. Please try again.");
     } finally {
       setSavingExam(false);
+    }
+  };
+
+  // Open Exam Analytics Modal
+  const handleOpenAnalytics = async (exam: Exam) => {
+    setAnalyticsExam(exam);
+    setLoadingAnalytics(true);
+    try {
+      const list = await getExamAttemptsForExam(exam.id);
+      setAnalyticsAttempts(list);
+    } catch (e) {
+      console.error("Failed to load exam analytics:", e);
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
+
+  // Open Per-Student Override Modal (Retakes, Extra Time, Extended Deadline)
+  const handleOpenOverrideModal = (studentUid: string, studentName: string, studentUsername: string) => {
+    if (!selectedExamForSubmissions) return;
+    const existing = selectedExamForSubmissions.studentOverrides?.[studentUid];
+    setOverrideTargetStudent({ uid: studentUid, name: studentName, username: studentUsername });
+    setOverrideExtraAttempts(existing?.extraAttempts ?? 1);
+    setOverrideExtraMinutes(existing?.extraMinutes ?? 0);
+    setOverrideExtendedDueDate(existing?.extendedDueDate ? existing.extendedDueDate.slice(0, 16) : "");
+    setOverrideReason(existing?.reason ?? "");
+  };
+
+  const handleSaveOverride = async () => {
+    if (!selectedExamForSubmissions || !overrideTargetStudent) return;
+    setSavingOverride(true);
+    try {
+      const nextOverride: StudentExamOverride = {
+        extraAttempts: Math.max(0, Number(overrideExtraAttempts) || 0),
+        extraMinutes: Math.max(0, Number(overrideExtraMinutes) || 0),
+        extendedDueDate: overrideExtendedDueDate ? new Date(overrideExtendedDueDate).toISOString() : undefined,
+        reason: overrideReason.trim() || undefined,
+        grantedBy: adminUser?.fullName || "Instructor",
+        grantedAt: new Date().toISOString(),
+      };
+      const updatedExam: Exam = {
+        ...selectedExamForSubmissions,
+        studentOverrides: {
+          ...(selectedExamForSubmissions.studentOverrides || {}),
+          [overrideTargetStudent.uid]: nextOverride,
+        },
+        updatedAt: new Date().toISOString(),
+      };
+      await saveExam(updatedExam);
+      setSelectedExamForSubmissions(updatedExam);
+      setExams((prev) => prev.map((e) => (e.id === updatedExam.id ? updatedExam : e)));
+      setOverrideTargetStudent(null);
+    } catch (e) {
+      console.error("Failed to save student override:", e);
+      alert("Could not save student override. Please try again.");
+    } finally {
+      setSavingOverride(false);
     }
   };
 
@@ -768,8 +869,14 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
     try {
       let totalAwarded = 0;
       const questionGrades: Record<string, QuestionGrade> = {};
+      const activeQuestions =
+        gradingAttempt.drawnQuestionIds && gradingAttempt.drawnQuestionIds.length > 0
+          ? selectedExamForSubmissions.questions.filter((q) => gradingAttempt.drawnQuestionIds!.includes(q.id))
+          : selectedExamForSubmissions.questions;
+      const attemptMaxScore =
+        gradingAttempt.maxScore || activeQuestions.reduce((sum, q) => sum + (q.points || 1), 0);
 
-      selectedExamForSubmissions.questions.forEach((q) => {
+      activeQuestions.forEach((q) => {
         const input = editableGrades[q.id];
         const awarded = Math.min(q.points, Math.max(0, Number(input?.awardedPoints || 0)));
         totalAwarded += awarded;
@@ -781,8 +888,8 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
         };
       });
 
-      const percentage = selectedExamForSubmissions.totalPoints > 0 
-        ? Math.round((totalAwarded / selectedExamForSubmissions.totalPoints) * 100) 
+      const percentage = attemptMaxScore > 0
+        ? Math.round((totalAwarded / attemptMaxScore) * 100)
         : 0;
       const passed = percentage >= (selectedExamForSubmissions.passPercentage || 70);
 
@@ -833,17 +940,17 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
   return (
     <div className="space-y-6">
       {/* Top Header & Stat Cards */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#334155] pb-4 gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#2E2E34] pb-4 gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#06B6D4]/20 text-[#06B6D4]">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#EAEAE6]/20 text-[#EAEAE6]">
               <FileQuestion className="h-4 w-4" />
             </span>
             <h3 className="text-xl font-extrabold text-white tracking-tight">
               Assessment &amp; Examination Studio
             </h3>
           </div>
-          <p className="text-xs text-[#94A3B8] mt-1">
+          <p className="text-xs text-[#A1A1AA] mt-1">
             Build interactive practice quizzes, schedule proctored exams with anti-cheating timers, and review student grades.
           </p>
         </div>
@@ -853,19 +960,19 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
           <div className="relative">
             <button
               onClick={() => setIsTemplateMenuOpen(!isTemplateMenuOpen)}
-              className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white transition-all shadow hover:border-slate-500"
+              className="inline-flex items-center space-x-1.5 rounded-xl border border-[#2E2E34] bg-[#1C1C1F] px-3 py-2 text-xs font-semibold text-[#EAEAE6] hover:text-white transition-all shadow hover:border-slate-500"
             >
-              <Download className="h-3.5 w-3.5 text-[#06B6D4]" />
+              <Download className="h-3.5 w-3.5 text-[#EAEAE6]" />
               <span>Download Template</span>
-              <ChevronDown className="h-3 w-3 text-[#94A3B8]" />
+              <ChevronDown className="h-3 w-3 text-[#A1A1AA]" />
             </button>
 
             {isTemplateMenuOpen && (
               <div 
-                className="absolute right-0 mt-1 w-64 rounded-2xl border border-[#334155] bg-[#0B0F19] p-2 shadow-2xl z-30 space-y-1 animate-in fade-in"
+                className="absolute right-0 mt-1 w-64 rounded-2xl border border-[#2E2E34] bg-[#141416] p-2 shadow-2xl z-30 space-y-1 animate-in fade-in"
                 onMouseLeave={() => setIsTemplateMenuOpen(false)}
               >
-                <div className="px-2.5 py-1 text-[10px] font-mono uppercase font-bold text-[#64748B]">
+                <div className="px-2.5 py-1 text-[10px] font-mono uppercase font-bold text-[#71717A]">
                   Question Starter Templates
                 </div>
 
@@ -875,15 +982,15 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     downloadExamTemplatePlainText();
                     setIsTemplateMenuOpen(false);
                   }}
-                  className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all group"
+                  className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1C1C1F] text-xs text-[#EAEAE6] hover:text-white transition-all group"
                 >
-                  <FileText className="h-4 w-4 text-cyan-400 shrink-0 group-hover:scale-110 transition-transform" />
+                  <FileText className="h-4 w-4 text-[#EAEAE6] shrink-0 group-hover:scale-110 transition-transform" />
                   <div>
                     <span className="font-bold block text-white flex items-center space-x-1.5">
                       <span>Plain Text Template (.txt)</span>
-                      <span className="rounded bg-cyan-500/20 text-cyan-300 text-[9px] px-1.5 py-0.2">AI Friendly</span>
+                      <span className="rounded bg-[#EAEAE6]/20 text-[#EAEAE6] text-[9px] px-1.5 py-0.2">AI Friendly</span>
                     </span>
-                    <span className="text-[10px] text-[#94A3B8] block">Natural text for ChatGPT / Claude / Gemini</span>
+                    <span className="text-[10px] text-[#A1A1AA] block">Natural text for ChatGPT / Claude / Gemini</span>
                   </div>
                 </button>
 
@@ -893,7 +1000,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     handleCopyAIPrompt();
                     setIsTemplateMenuOpen(false);
                   }}
-                  className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all group"
+                  className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1C1C1F] text-xs text-[#EAEAE6] hover:text-white transition-all group"
                 >
                   <Sparkles className="h-4 w-4 text-amber-400 shrink-0 group-hover:scale-110 transition-transform" />
                   <div>
@@ -901,11 +1008,11 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                       <span>Copy AI Prompt</span>
                       <span className="rounded bg-amber-500/20 text-amber-300 text-[9px] px-1.5 py-0.2">Instant</span>
                     </span>
-                    <span className="text-[10px] text-[#94A3B8] block">Paste into any AI to generate full tests</span>
+                    <span className="text-[10px] text-[#A1A1AA] block">Paste into any AI to generate full tests</span>
                   </div>
                 </button>
 
-                <div className="border-t border-[#334155]/60 my-1" />
+                <div className="border-t border-[#2E2E34]/60 my-1" />
 
                 <button
                   type="button"
@@ -913,12 +1020,12 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     downloadExamTemplateCSV();
                     setIsTemplateMenuOpen(false);
                   }}
-                  className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all"
+                  className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1C1C1F] text-xs text-[#EAEAE6] hover:text-white transition-all"
                 >
                   <FileSpreadsheet className="h-4 w-4 text-emerald-400 shrink-0" />
                   <div>
                     <span className="font-bold block text-white">CSV Template</span>
-                    <span className="text-[10px] text-[#94A3B8] block">For Microsoft Excel &amp; Sheets</span>
+                    <span className="text-[10px] text-[#A1A1AA] block">For Microsoft Excel &amp; Sheets</span>
                   </div>
                 </button>
 
@@ -928,12 +1035,12 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     downloadExamTemplateJSON();
                     setIsTemplateMenuOpen(false);
                   }}
-                  className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all"
+                  className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1C1C1F] text-xs text-[#EAEAE6] hover:text-white transition-all"
                 >
                   <FileCode className="h-4 w-4 text-purple-400 shrink-0" />
                   <div>
                     <span className="font-bold block text-white">JSON Template</span>
-                    <span className="text-[10px] text-[#94A3B8] block">For Developers &amp; Data Pipeline</span>
+                    <span className="text-[10px] text-[#A1A1AA] block">For Developers &amp; Data Pipeline</span>
                   </div>
                 </button>
               </div>
@@ -943,7 +1050,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
           <button
             onClick={handleRefresh}
             title="Refresh database records"
-            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white transition-all shadow"
+            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#2E2E34] bg-[#1C1C1F] px-3 py-2 text-xs font-semibold text-[#EAEAE6] hover:text-white transition-all shadow"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
             <span className="hidden sm:inline">Refresh</span>
@@ -951,7 +1058,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
           <button
             onClick={handleOpenNewBuilder}
-            className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-4 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md active:scale-95"
+            className="inline-flex items-center space-x-2 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-[#141416] hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-md active:scale-95"
           >
             <Plus className="h-4 w-4" />
             <span>Create Assessment</span>
@@ -961,15 +1068,15 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
       {/* Summary KPI Cards */}
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
-        <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4 shadow-lg flex items-center justify-between">
+        <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-4 shadow-lg flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-mono font-bold text-[#94A3B8] uppercase tracking-wider block mb-0.5">
+            <span className="text-[11px] font-mono font-bold text-[#A1A1AA] uppercase tracking-wider block mb-0.5">
               Practice Quizzes
             </span>
-            <span className="text-2xl font-extrabold text-cyan-400 font-mono">{totalQuizzes}</span>
-            <span className="text-[10px] text-[#94A3B8] block mt-0.5">Interactive checks</span>
+            <span className="text-2xl font-extrabold text-[#EAEAE6] font-mono">{totalQuizzes}</span>
+            <span className="text-[10px] text-[#A1A1AA] block mt-0.5">Interactive checks</span>
           </div>
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400">
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EAEAE6]/10 text-[#EAEAE6]">
             <HelpCircle className="h-4 w-4" />
           </div>
         </div>
@@ -980,7 +1087,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
               Official Exams
             </span>
             <span className="text-2xl font-extrabold text-purple-300 font-mono">{totalExams}</span>
-            <span className="text-[10px] text-[#94A3B8] block mt-0.5">Timed & proctored</span>
+            <span className="text-[10px] text-[#A1A1AA] block mt-0.5">Timed & proctored</span>
           </div>
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-purple-500/20 text-purple-300">
             <Award className="h-4 w-4" />
@@ -993,7 +1100,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
               Pending Review
             </span>
             <span className="text-2xl font-extrabold text-amber-400 font-mono">{pendingReviewCount}</span>
-            <span className="text-[10px] text-[#94A3B8] block mt-0.5">Needs teacher grade</span>
+            <span className="text-[10px] text-[#A1A1AA] block mt-0.5">Needs teacher grade</span>
           </div>
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
             <Clock className="h-4 w-4" />
@@ -1006,7 +1113,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
               Completed Tests
             </span>
             <span className="text-2xl font-extrabold text-emerald-400 font-mono">{completedAttemptsCount}</span>
-            <span className="text-[10px] text-[#94A3B8] block mt-0.5">Student submissions</span>
+            <span className="text-[10px] text-[#A1A1AA] block mt-0.5">Student submissions</span>
           </div>
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-400">
             <UserCheck className="h-4 w-4" />
@@ -1015,25 +1122,25 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center gap-3 bg-[#1E293B] p-4 rounded-2xl border border-[#334155]">
+      <div className="flex flex-col sm:flex-row items-center gap-3 bg-[#1C1C1F] p-4 rounded-2xl border border-[#2E2E34]">
         <div className="relative flex-1 w-full">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#94A3B8]" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A1A1AA]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search assessments by title, topic, or course code..."
-            className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] pl-10 pr-4 py-2 text-xs text-white placeholder-[#94A3B8] focus:border-[#06B6D4] focus:outline-none"
+            className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] pl-10 pr-4 py-2 text-xs text-white placeholder-[#A1A1AA] focus:border-[#EAEAE6] focus:outline-none"
           />
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
           {/* Type Filter */}
-          <div className="flex items-center rounded-xl bg-[#0B0F19] p-1 border border-[#334155]">
+          <div className="flex items-center rounded-xl bg-[#141416] p-1 border border-[#2E2E34]">
             <button
               onClick={() => setFilterType("all")}
               className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                filterType === "all" ? "bg-[#06B6D4] text-slate-950 font-bold" : "text-[#94A3B8] hover:text-white"
+                filterType === "all" ? "bg-[#EAEAE6] text-[#141416] font-bold" : "text-[#A1A1AA] hover:text-white"
               }`}
             >
               All Types
@@ -1041,7 +1148,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
             <button
               onClick={() => setFilterType("quiz")}
               className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                filterType === "quiz" ? "bg-[#06B6D4] text-slate-950 font-bold" : "text-[#94A3B8] hover:text-white"
+                filterType === "quiz" ? "bg-[#EAEAE6] text-[#141416] font-bold" : "text-[#A1A1AA] hover:text-white"
               }`}
             >
               Quizzes
@@ -1049,7 +1156,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
             <button
               onClick={() => setFilterType("exam")}
               className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
-                filterType === "exam" ? "bg-[#06B6D4] text-slate-950 font-bold" : "text-[#94A3B8] hover:text-white"
+                filterType === "exam" ? "bg-[#EAEAE6] text-[#141416] font-bold" : "text-[#A1A1AA] hover:text-white"
               }`}
             >
               Exams
@@ -1060,7 +1167,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
           <select
             value={filterCourse}
             onChange={(e) => setFilterCourse(e.target.value)}
-            className="rounded-xl bg-[#0B0F19] border border-[#334155] px-3 py-2 text-xs font-semibold text-[#CBD5E1] focus:border-[#06B6D4] focus:outline-none"
+            className="rounded-xl bg-[#141416] border border-[#2E2E34] px-3 py-2 text-xs font-semibold text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
           >
             <option value="all">All Courses</option>
             {syllabi.map((s) => (
@@ -1072,7 +1179,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
           <select
             value={filterLevel}
             onChange={(e) => setFilterLevel(e.target.value)}
-            className="rounded-xl bg-[#0B0F19] border border-[#334155] px-3 py-2 text-xs font-semibold text-[#CBD5E1] focus:border-[#06B6D4] focus:outline-none font-mono"
+            className="rounded-xl bg-[#141416] border border-[#2E2E34] px-3 py-2 text-xs font-semibold text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none font-mono"
           >
             <option value="all">All Levels</option>
             <option value="Level 3">Level 3</option>
@@ -1084,20 +1191,20 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
       {/* Assessments Grid */}
       {loading && exams.length === 0 ? (
-        <div className="py-20 text-center text-[#94A3B8]">
-          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-3" />
+        <div className="py-20 text-center text-[#A1A1AA]">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent mb-3" />
           Loading assessments and proctored exam rooms...
         </div>
       ) : filteredExams.length === 0 ? (
-        <div className="py-16 text-center text-[#94A3B8] bg-[#1E293B]/40 rounded-3xl border border-[#334155] p-8">
-          <FileQuestion className="mx-auto h-12 w-12 text-[#64748B] mb-3" />
+        <div className="py-16 text-center text-[#A1A1AA] bg-[#1C1C1F]/40 rounded-3xl border border-[#2E2E34] p-8">
+          <FileQuestion className="mx-auto h-12 w-12 text-[#71717A] mb-3" />
           <h4 className="text-base font-bold text-white mb-1">No Assessments Found</h4>
-          <p className="text-xs text-[#94A3B8] max-w-md mx-auto mb-5">
+          <p className="text-xs text-[#A1A1AA] max-w-md mx-auto mb-5">
             There are currently no quizzes or exams matching your active filters. Click the button below to build your first quiz or exam.
           </p>
           <button
             onClick={handleOpenNewBuilder}
-            className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-4 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+            className="inline-flex items-center space-x-2 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-[#141416] hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-md"
           >
             <Plus className="h-4 w-4" />
             <span>Create First Assessment</span>
@@ -1113,7 +1220,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
             return (
               <div
                 key={exam.id}
-                className="flex flex-col justify-between rounded-3xl border border-[#334155] bg-[#1E293B] p-5 shadow-xl hover:border-[#06B6D4]/50 transition-all group relative overflow-hidden"
+                className="flex flex-col justify-between rounded-3xl border border-[#2E2E34] bg-[#1C1C1F] p-5 shadow-xl hover:border-[#EAEAE6]/50 transition-all group relative overflow-hidden"
               >
                 {/* Accent top stripe */}
                 <div className={`absolute top-0 left-0 right-0 h-1.5 ${
@@ -1129,17 +1236,17 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                       <span className={`inline-flex items-center space-x-1 rounded-md px-2 py-0.5 text-[10px] font-mono font-bold border ${
                         isExam 
                           ? "bg-purple-500/15 border-purple-500/30 text-purple-300"
-                          : "bg-cyan-500/15 border-cyan-500/30 text-cyan-300"
+                          : "bg-[#EAEAE6]/15 border-[#EAEAE6]/30 text-[#EAEAE6]"
                       }`}>
                         {isExam ? <Award className="h-3 w-3" /> : <HelpCircle className="h-3 w-3" />}
                         <span className="uppercase">{exam.type}</span>
                       </span>
 
-                      <span className="rounded-md bg-[#0B0F19] border border-[#334155] px-2 py-0.5 text-[10px] font-mono text-[#CBD5E1]">
+                      <span className="rounded-md bg-[#141416] border border-[#2E2E34] px-2 py-0.5 text-[10px] font-mono text-[#EAEAE6]">
                         {exam.courseCode}
                       </span>
 
-                      <span className="rounded-md bg-[#0B0F19] border border-[#334155] px-2 py-0.5 text-[10px] font-mono text-emerald-400">
+                      <span className="rounded-md bg-[#141416] border border-[#2E2E34] px-2 py-0.5 text-[10px] font-mono text-emerald-400">
                         {exam.level}
                       </span>
                     </div>
@@ -1153,26 +1260,26 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     </span>
                   </div>
 
-                  <h4 className="text-base font-extrabold text-white group-hover:text-[#06B6D4] transition-colors line-clamp-1 mb-1.5">
+                  <h4 className="text-base font-extrabold text-white group-hover:text-[#EAEAE6] transition-colors line-clamp-1 mb-1.5">
                     {exam.title}
                   </h4>
 
-                  <p className="text-xs text-[#94A3B8] line-clamp-2 leading-relaxed mb-4">
+                  <p className="text-xs text-[#A1A1AA] line-clamp-2 leading-relaxed mb-4">
                     {exam.description || (exam.courseTitle ? `Comprehensive assessment on ${exam.courseTitle}` : "Interactive assessment module")}
                   </p>
 
                   {/* Metadata Chips */}
                   <div className="grid grid-cols-2 gap-2 text-[11px] font-mono mb-4">
-                    <div className="rounded-xl bg-[#0B0F19] p-2 border border-[#334155]">
-                      <span className="text-[#64748B] block text-[10px]">TIME LIMIT</span>
+                    <div className="rounded-xl bg-[#141416] p-2 border border-[#2E2E34]">
+                      <span className="text-[#71717A] block text-[10px]">TIME LIMIT</span>
                       <span className="text-white font-bold flex items-center space-x-1 mt-0.5">
-                        <Clock className="h-3 w-3 text-cyan-400" />
+                        <Clock className="h-3 w-3 text-[#EAEAE6]" />
                         <span>{exam.timeLimitMinutes > 0 ? `${exam.timeLimitMinutes} Mins` : "Untimed"}</span>
                       </span>
                     </div>
 
-                    <div className="rounded-xl bg-[#0B0F19] p-2 border border-[#334155]">
-                      <span className="text-[#64748B] block text-[10px]">PASS / TOTAL</span>
+                    <div className="rounded-xl bg-[#141416] p-2 border border-[#2E2E34]">
+                      <span className="text-[#71717A] block text-[10px]">PASS / TOTAL</span>
                       <span className="text-emerald-400 font-bold flex items-center space-x-1 mt-0.5">
                         <Award className="h-3 w-3 text-emerald-400" />
                         <span>{exam.passPercentage}% &bull; {exam.totalPoints} Pts</span>
@@ -1182,7 +1289,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
                   {/* Anti-cheating & Features tags */}
                   <div className="flex flex-wrap items-center gap-1.5 mb-4">
-                    <span className="rounded-md bg-slate-800/80 px-2 py-0.5 text-[10px] font-mono text-[#94A3B8]">
+                    <span className="rounded-md bg-slate-800/80 px-2 py-0.5 text-[10px] font-mono text-[#A1A1AA]">
                       {exam.questions.length} Questions
                     </span>
 
@@ -1199,20 +1306,33 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                         <span>Shuffled</span>
                       </span>
                     )}
+
+                    {exam.questionDrawCount && exam.questionDrawCount > 0 && (
+                      <span className="inline-flex items-center space-x-1 rounded-md bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-mono text-emerald-300">
+                        <span>Draw {exam.questionDrawCount}/{exam.questions.length}</span>
+                      </span>
+                    )}
+
+                    {(exam.availableFrom || exam.dueDate) && (
+                      <span className="inline-flex items-center space-x-1 rounded-md bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 text-[10px] font-mono text-amber-300">
+                        <CalendarClock className="h-2.5 w-2.5" />
+                        <span>Scheduled</span>
+                      </span>
+                    )}
                   </div>
                 </div>
 
                 {/* Footer Actions */}
-                <div className="pt-3 border-t border-[#334155] flex items-center justify-between gap-2">
-                  <div className="flex items-center space-x-2">
+                <div className="pt-3 border-t border-[#2E2E34] flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <button
                       onClick={() => handleOpenSubmissions(exam)}
-                      className="inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4]/15 border border-[#06B6D4]/30 px-3 py-1.5 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4] hover:text-slate-950 transition-all shadow-sm"
+                      className="inline-flex items-center space-x-1.5 rounded-xl bg-emerald-500/15 border border-[#EAEAE6]/30 px-3 py-1.5 text-xs font-bold text-[#EAEAE6] hover:bg-emerald-500 hover:text-[#141416] transition-all shadow-sm"
                     >
                       <Users className="h-3.5 w-3.5" />
                       <span>Attempts ({examAttemptsCount})</span>
                       {needsReviewCount > 0 && (
-                        <span className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.2 text-[9px] font-extrabold text-slate-950">
+                        <span className="ml-1 rounded-full bg-amber-500 px-1.5 py-0.2 text-[9px] font-extrabold text-[#141416]">
                           {needsReviewCount}
                         </span>
                       )}
@@ -1220,11 +1340,21 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
                     <button
                       type="button"
+                      onClick={() => handleOpenAnalytics(exam)}
+                      className="inline-flex items-center space-x-1 rounded-xl bg-[#141416] border border-[#2E2E34] px-2.5 py-1.5 text-xs font-bold text-[#EAEAE6] hover:border-emerald-500/50 hover:text-emerald-300 transition-all shadow-sm"
+                      title="View Score Analytics & Question Difficulty Breakdown"
+                    >
+                      <BarChart3 className="h-3.5 w-3.5" />
+                      <span>Analytics</span>
+                    </button>
+
+                    <button
+                      type="button"
                       onClick={() => handleToggleReleaseResults(exam)}
                       className={`inline-flex items-center space-x-1 rounded-xl px-2.5 py-1.5 text-xs font-bold transition-all shadow-sm ${
                         exam.resultsReleased
-                          ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500 hover:text-slate-950"
-                          : "bg-[#0B0F19] border border-[#334155] text-[#94A3B8] hover:text-white hover:border-slate-500"
+                          ? "bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 hover:bg-emerald-500 hover:text-[#141416]"
+                          : "bg-[#141416] border border-[#2E2E34] text-[#A1A1AA] hover:text-white hover:border-slate-500"
                       }`}
                       title={
                         exam.resultsReleased
@@ -1241,7 +1371,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     <button
                       onClick={() => handleEditExam(exam)}
                       title="Edit assessment questions & settings"
-                      className="p-1.5 rounded-lg text-[#94A3B8] hover:text-white hover:bg-slate-800 transition-colors"
+                      className="p-1.5 rounded-lg text-[#A1A1AA] hover:text-white hover:bg-slate-800 transition-colors"
                     >
                       <Edit3 className="h-3.5 w-3.5" />
                     </button>
@@ -1266,18 +1396,18 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
       {/* ========================================================================= */}
       {isBuilderOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-6 backdrop-blur-md animate-in fade-in">
-          <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-[#334155] bg-[#0F172A] shadow-2xl flex flex-col">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-[#2E2E34] bg-[#141416] shadow-2xl flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/70 shrink-0">
               <div className="flex items-center space-x-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#06B6D4]/20 text-[#06B6D4]">
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#EAEAE6]/20 text-[#EAEAE6]">
                   <FileQuestion className="h-5 w-5" />
                 </div>
                 <div>
                   <h3 className="text-base font-extrabold text-white">
                     {editingExamId ? "Edit Assessment" : "Build Assessment Studio"}
                   </h3>
-                  <p className="text-xs text-[#94A3B8]">
+                  <p className="text-xs text-[#A1A1AA]">
                     Configure questions, anti-cheating timers, and grading rules.
                   </p>
                 </div>
@@ -1285,11 +1415,11 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
               {/* Navigation Tabs */}
               <div className="flex items-center space-x-2">
-                <div className="flex items-center rounded-xl bg-[#0B0F19] p-1 border border-[#334155]">
+                <div className="flex items-center rounded-xl bg-[#141416] p-1 border border-[#2E2E34]">
                   <button
                     onClick={() => setBuilderTab("settings")}
                     className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      builderTab === "settings" ? "bg-[#06B6D4] text-slate-950" : "text-[#94A3B8] hover:text-white"
+                      builderTab === "settings" ? "bg-[#EAEAE6] text-[#141416]" : "text-[#A1A1AA] hover:text-white"
                     }`}
                   >
                     <Sliders className="h-3.5 w-3.5" />
@@ -1299,7 +1429,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                   <button
                     onClick={() => setBuilderTab("questions")}
                     className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                      builderTab === "questions" ? "bg-[#06B6D4] text-slate-950" : "text-[#94A3B8] hover:text-white"
+                      builderTab === "questions" ? "bg-[#EAEAE6] text-[#141416]" : "text-[#A1A1AA] hover:text-white"
                     }`}
                   >
                     <HelpCircle className="h-3.5 w-3.5" />
@@ -1309,7 +1439,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
                 <button
                   onClick={() => setIsBuilderOpen(false)}
-                  className="rounded-xl p-1.5 text-[#94A3B8] hover:text-white hover:bg-slate-800"
+                  className="rounded-xl p-1.5 text-[#A1A1AA] hover:text-white hover:bg-slate-800"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -1321,7 +1451,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
               {builderTab === "settings" ? (
                 <div className="space-y-5 max-w-2xl mx-auto">
                   {/* Assessment Type Toggle */}
-                  <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4 space-y-3">
+                  <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-4 space-y-3">
                     <span className="block text-xs font-bold text-white uppercase tracking-wider font-mono">
                       Assessment Mode
                     </span>
@@ -1336,15 +1466,15 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                         }}
                         className={`p-3.5 rounded-xl border text-left transition-all ${
                           formType === "quiz"
-                            ? "border-[#06B6D4] bg-[#06B6D4]/10 text-white shadow-md"
-                            : "border-[#334155] bg-[#0B0F19] text-[#94A3B8] hover:border-slate-500"
+                            ? "border-[#EAEAE6] bg-[#EAEAE6]/10 text-white shadow-md"
+                            : "border-[#2E2E34] bg-[#141416] text-[#A1A1AA] hover:border-slate-500"
                         }`}
                       >
-                        <div className="flex items-center space-x-2 font-bold text-sm text-cyan-400 mb-1">
+                        <div className="flex items-center space-x-2 font-bold text-sm text-[#EAEAE6] mb-1">
                           <HelpCircle className="h-4 w-4" />
                           <span>Practice Quiz</span>
                         </div>
-                        <p className="text-[11px] text-[#94A3B8] leading-relaxed">
+                        <p className="text-[11px] text-[#A1A1AA] leading-relaxed">
                           Ideal for learning checks. Students can practice freely with instant feedback.
                         </p>
                       </button>
@@ -1360,14 +1490,14 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                         className={`p-3.5 rounded-xl border text-left transition-all ${
                           formType === "exam"
                             ? "border-purple-500 bg-purple-500/10 text-white shadow-md"
-                            : "border-[#334155] bg-[#0B0F19] text-[#94A3B8] hover:border-slate-500"
+                            : "border-[#2E2E34] bg-[#141416] text-[#A1A1AA] hover:border-slate-500"
                         }`}
                       >
                         <div className="flex items-center space-x-2 font-bold text-sm text-purple-400 mb-1">
                           <Award className="h-4 w-4" />
                           <span>Formal Exam</span>
                         </div>
-                        <p className="text-[11px] text-[#94A3B8] leading-relaxed">
+                        <p className="text-[11px] text-[#A1A1AA] leading-relaxed">
                           Strict proctored test with countdown timer, single attempt, and anti-cheating violation tracking.
                         </p>
                       </button>
@@ -1377,7 +1507,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                   {/* Basic Details */}
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                      <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                         Assessment Title <span className="text-rose-400">*</span>
                       </label>
                       <input
@@ -1385,12 +1515,12 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                         value={formTitle}
                         onChange={(e) => setFormTitle(e.target.value)}
                         placeholder="e.g. Midterm Examination: Data Structures & Algorithms"
-                        className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                        className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                      <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                         Description / Instructions for Students
                       </label>
                       <textarea
@@ -1398,19 +1528,19 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                         value={formDescription}
                         onChange={(e) => setFormDescription(e.target.value)}
                         placeholder="Brief overview of the syllabus modules covered in this test..."
-                        className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                        className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
                       />
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                        <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                           Course / Module <span className="text-rose-400">*</span>
                         </label>
                         <select
                           value={formCourseCode}
                           onChange={(e) => setFormCourseCode(e.target.value)}
-                          className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-2.5 text-xs font-semibold text-white focus:border-[#06B6D4] focus:outline-none"
+                          className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-2.5 text-xs font-semibold text-white focus:border-[#EAEAE6] focus:outline-none"
                         >
                           {syllabi.map((s) => (
                             <option key={s.id} value={s.courseCode}>{s.courseCode} - {s.title}</option>
@@ -1419,13 +1549,13 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                        <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                           Target Academic Level
                         </label>
                         <select
                           value={formLevel}
                           onChange={(e) => setFormLevel(e.target.value as any)}
-                          className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-2.5 text-xs font-semibold text-white focus:border-[#06B6D4] focus:outline-none font-mono"
+                          className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-2.5 text-xs font-semibold text-white focus:border-[#EAEAE6] focus:outline-none font-mono"
                         >
                           <option value="all">All Levels</option>
                           <option value="Level 3">Level 3</option>
@@ -1435,13 +1565,13 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                        <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                           Target Trade
                         </label>
                         <select
                           value={formTradeId}
                           onChange={(e) => setFormTradeId(e.target.value)}
-                          className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-2.5 text-xs font-semibold text-white focus:border-[#06B6D4] focus:outline-none"
+                          className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-2.5 text-xs font-semibold text-white focus:border-[#EAEAE6] focus:outline-none"
                         >
                           <option value="all">All Academic Trades</option>
                           {trades.map((t) => (
@@ -1453,14 +1583,14 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                   </div>
 
                   {/* Timing & Proctoring Settings */}
-                  <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4 space-y-4">
+                  <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-4 space-y-4">
                     <span className="block text-xs font-bold text-white uppercase tracking-wider font-mono">
                       Rules &amp; Proctoring Settings
                     </span>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-[11px] font-bold text-[#94A3B8] mb-1">
+                        <label className="block text-[11px] font-bold text-[#A1A1AA] mb-1">
                           Time Limit (Minutes)
                         </label>
                         <input
@@ -1470,13 +1600,13 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                           value={formTimeLimit}
                           onChange={(e) => setFormTimeLimit(Number(e.target.value))}
                           placeholder="0 = Untimed"
-                          className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-2 text-xs font-mono text-white focus:border-[#06B6D4] focus:outline-none"
+                          className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-2 text-xs font-mono text-white focus:border-[#EAEAE6] focus:outline-none"
                         />
-                        <span className="text-[10px] text-[#64748B] mt-0.5 block">0 = Untimed practice</span>
+                        <span className="text-[10px] text-[#71717A] mt-0.5 block">0 = Untimed practice</span>
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-bold text-[#94A3B8] mb-1">
+                        <label className="block text-[11px] font-bold text-[#A1A1AA] mb-1">
                           Passing Grade (%)
                         </label>
                         <input
@@ -1485,12 +1615,12 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                           max={100}
                           value={formPassPercentage}
                           onChange={(e) => setFormPassPercentage(Number(e.target.value))}
-                          className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-2 text-xs font-mono text-emerald-400 font-bold focus:border-[#06B6D4] focus:outline-none"
+                          className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-2 text-xs font-mono text-emerald-400 font-bold focus:border-[#EAEAE6] focus:outline-none"
                         />
                       </div>
 
                       <div>
-                        <label className="block text-[11px] font-bold text-[#94A3B8] mb-1">
+                        <label className="block text-[11px] font-bold text-[#A1A1AA] mb-1">
                           Allowed Attempts
                         </label>
                         <input
@@ -1499,49 +1629,125 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                           max={10}
                           value={formMaxAttempts}
                           onChange={(e) => setFormMaxAttempts(Number(e.target.value))}
-                          className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-2 text-xs font-mono text-white focus:border-[#06B6D4] focus:outline-none"
+                          className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-2 text-xs font-mono text-white focus:border-[#EAEAE6] focus:outline-none"
                         />
-                        <span className="text-[10px] text-[#64748B] mt-0.5 block">0 = Unlimited</span>
+                        <span className="text-[10px] text-[#71717A] mt-0.5 block">0 = Unlimited</span>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#334155]">
-                      <label className="flex items-center space-x-2.5 text-xs text-[#CBD5E1] cursor-pointer">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-[#2E2E34]">
+                      <label className="flex items-center space-x-2.5 text-xs text-[#EAEAE6] cursor-pointer">
                         <input
                           type="checkbox"
                           checked={formAntiCheating}
                           onChange={(e) => setFormAntiCheating(e.target.checked)}
-                          className="rounded border-[#334155] text-[#06B6D4] focus:ring-0"
+                          className="rounded border-[#2E2E34] text-[#EAEAE6] focus:ring-0"
                         />
                         <span>Enforce Anti-Cheating &amp; Tab-Switch Tracking</span>
                       </label>
 
-                      <label className="flex items-center space-x-2.5 text-xs text-[#CBD5E1] cursor-pointer">
+                      <label className="flex items-center space-x-2.5 text-xs text-[#EAEAE6] cursor-pointer">
                         <input
                           type="checkbox"
                           checked={formShuffleQuestions}
                           onChange={(e) => setFormShuffleQuestions(e.target.checked)}
-                          className="rounded border-[#334155] text-[#06B6D4] focus:ring-0"
+                          className="rounded border-[#2E2E34] text-[#EAEAE6] focus:ring-0"
                         />
                         <span>Shuffle Question Order for Each Student</span>
                       </label>
 
+                      <label className="flex items-center space-x-2.5 text-xs text-[#EAEAE6] cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formRequireFullscreen}
+                          onChange={(e) => setFormRequireFullscreen(e.target.checked)}
+                          className="rounded border-[#2E2E34] text-[#EAEAE6] focus:ring-0"
+                        />
+                        <span>Require Fullscreen Exam Hall</span>
+                      </label>
+
+                      <label className="flex items-center space-x-2.5 text-xs text-[#EAEAE6] cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={formLockCopyPaste}
+                          onChange={(e) => setFormLockCopyPaste(e.target.checked)}
+                          className="rounded border-[#2E2E34] text-[#EAEAE6] focus:ring-0"
+                        />
+                        <span>Disable Copy, Paste &amp; Right-Click</span>
+                      </label>
+                    </div>
+
+                    {/* Question Bank Draw & Auto-Submit Threshold & Scheduling */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-[#2E2E34]">
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#A1A1AA] mb-1">
+                          Random Draw Count
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={500}
+                          value={formQuestionDrawCount}
+                          onChange={(e) => setFormQuestionDrawCount(Number(e.target.value))}
+                          className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-2 text-xs font-mono text-white focus:border-[#EAEAE6] focus:outline-none"
+                        />
+                        <span className="text-[10px] text-[#71717A] mt-0.5 block">0 = Use all questions</span>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#A1A1AA] mb-1">
+                          Auto-Submit Tab Limit
+                        </label>
+                        <input
+                          type="number"
+                          min={0}
+                          max={20}
+                          value={formMaxTabSwitches}
+                          onChange={(e) => setFormMaxTabSwitches(Number(e.target.value))}
+                          className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-2 text-xs font-mono text-rose-300 font-bold focus:border-[#EAEAE6] focus:outline-none"
+                        />
+                        <span className="text-[10px] text-[#71717A] mt-0.5 block">0 = Warn only (no auto-submit)</span>
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#A1A1AA] mb-1">
+                          Scheduled Opens At
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={formAvailableFrom}
+                          onChange={(e) => setFormAvailableFrom(e.target.value)}
+                          className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-2 text-xs font-mono text-white focus:border-[#EAEAE6] focus:outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-[11px] font-bold text-[#A1A1AA] mb-1">
+                          Scheduled Closes At
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={formDueDate}
+                          onChange={(e) => setFormDueDate(e.target.value)}
+                          className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-2 text-xs font-mono text-white focus:border-[#EAEAE6] focus:outline-none"
+                        />
+                      </div>
                     </div>
 
                     {/* Results & Answer Explanations Release Strategy */}
-                    <div className="pt-3 border-t border-[#334155] space-y-2.5">
+                    <div className="pt-3 border-t border-[#2E2E34] space-y-2.5">
                       <div className="flex items-center space-x-2">
-                        <Lock className="h-4 w-4 text-[#06B6D4]" />
+                        <Lock className="h-4 w-4 text-[#EAEAE6]" />
                         <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
                           Release of Answers, Solutions &amp; Explanations
                         </span>
                       </div>
-                      <p className="text-[11px] text-[#94A3B8]">
+                      <p className="text-[11px] text-[#A1A1AA]">
                         Prevent students who finish or start earlier from accessing correct answers and leaking them to classmates.
                       </p>
 
-                      <div className="space-y-2 bg-[#0B0F19] p-3.5 rounded-2xl border border-[#334155]">
-                        <label className="flex items-start space-x-2.5 text-xs text-[#CBD5E1] cursor-pointer">
+                      <div className="space-y-2 bg-[#141416] p-3.5 rounded-2xl border border-[#2E2E34]">
+                        <label className="flex items-start space-x-2.5 text-xs text-[#EAEAE6] cursor-pointer">
                           <input
                             type="radio"
                             name="resultsReleaseMode"
@@ -1551,19 +1757,19 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                               setFormResultsReleaseMode("manual_release");
                               setFormShowResultsImmediately(false);
                             }}
-                            className="mt-0.5 text-[#06B6D4] focus:ring-0"
+                            className="mt-0.5 text-[#EAEAE6] focus:ring-0"
                           />
                           <div>
                             <span className="font-semibold text-white block">
                               🔒 Manual Instructor Release (Recommended for Assessments)
                             </span>
-                            <span className="text-[11px] text-[#94A3B8] block mt-0.5">
+                            <span className="text-[11px] text-[#A1A1AA] block mt-0.5">
                               Answers and explanations remain strictly locked. When all students finish, click &quot;Release Answers&quot; on the exam card to publish results.
                             </span>
                           </div>
                         </label>
 
-                        <label className="flex items-start space-x-2.5 text-xs text-[#CBD5E1] cursor-pointer pt-2 border-t border-[#1E293B]">
+                        <label className="flex items-start space-x-2.5 text-xs text-[#EAEAE6] cursor-pointer pt-2 border-t border-[#1C1C1F]">
                           <input
                             type="radio"
                             name="resultsReleaseMode"
@@ -1573,19 +1779,19 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                               setFormResultsReleaseMode("after_due_date");
                               setFormShowResultsImmediately(false);
                             }}
-                            className="mt-0.5 text-[#06B6D4] focus:ring-0"
+                            className="mt-0.5 text-[#EAEAE6] focus:ring-0"
                           />
                           <div>
                             <span className="font-semibold text-white block">
                               ⏰ After Global Exam Due Date / Deadline
                             </span>
-                            <span className="text-[11px] text-[#94A3B8] block mt-0.5">
+                            <span className="text-[11px] text-[#A1A1AA] block mt-0.5">
                               Unlocks automatically only after the entire class deadline passes, never based on individual student start times.
                             </span>
                           </div>
                         </label>
 
-                        <label className="flex items-start space-x-2.5 text-xs text-[#CBD5E1] cursor-pointer pt-2 border-t border-[#1E293B]">
+                        <label className="flex items-start space-x-2.5 text-xs text-[#EAEAE6] cursor-pointer pt-2 border-t border-[#1C1C1F]">
                           <input
                             type="radio"
                             name="resultsReleaseMode"
@@ -1595,13 +1801,13 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                               setFormResultsReleaseMode("immediate");
                               setFormShowResultsImmediately(true);
                             }}
-                            className="mt-0.5 text-[#06B6D4] focus:ring-0"
+                            className="mt-0.5 text-[#EAEAE6] focus:ring-0"
                           />
                           <div>
                             <span className="font-semibold text-white block">
                               ⚡ Immediately Upon Submission
                             </span>
-                            <span className="text-[11px] text-[#94A3B8] block mt-0.5">
+                            <span className="text-[11px] text-[#A1A1AA] block mt-0.5">
                               Reveals answers immediately to each student as soon as they submit (only recommended for ungraded self-practice checks).
                             </span>
                           </div>
@@ -1617,13 +1823,13 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                   <div>
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                       <div>
-                        <span className="text-xs font-bold font-mono text-[#94A3B8] uppercase tracking-wider block">
+                        <span className="text-xs font-bold font-mono text-[#A1A1AA] uppercase tracking-wider block">
                           Assessment Questions ({formQuestions.length}) &bull; Total Points:{" "}
-                          <span className="text-[#06B6D4] font-bold">
+                          <span className="text-[#EAEAE6] font-bold">
                             {formQuestions.reduce((s, q) => s + (Number(q.points) || 0), 0)} Pts
                           </span>
                         </span>
-                        <span className="text-[11px] text-[#64748B]">
+                        <span className="text-[11px] text-[#71717A]">
                           Supports Single Choice, Multi-Select Checkboxes, True/False, Short Answer & Essays.
                         </span>
                       </div>
@@ -1633,7 +1839,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                         <button
                           type="button"
                           onClick={() => setIsImportModalOpen(true)}
-                          className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-950 bg-[#06B6D4] hover:bg-[#0891B2] hover:text-white transition-all shadow-md active:scale-95"
+                          className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-[#141416] bg-emerald-500 hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-md active:scale-95"
                         >
                           <Upload className="h-3.5 w-3.5" />
                           <span>Import Questions</span>
@@ -1644,19 +1850,19 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                           <button
                             type="button"
                             onClick={() => setIsBuilderTemplateMenuOpen(!isBuilderTemplateMenuOpen)}
-                            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#CBD5E1] bg-[#0B0F19] border border-[#334155] hover:text-white hover:border-slate-500 transition-all"
+                            className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-[#EAEAE6] bg-[#141416] border border-[#2E2E34] hover:text-white hover:border-slate-500 transition-all"
                           >
-                            <Download className="h-3.5 w-3.5 text-cyan-400" />
+                            <Download className="h-3.5 w-3.5 text-[#EAEAE6]" />
                             <span>Template</span>
-                            <ChevronDown className="h-3 w-3 text-[#94A3B8]" />
+                            <ChevronDown className="h-3 w-3 text-[#A1A1AA]" />
                           </button>
 
                           {isBuilderTemplateMenuOpen && (
                             <div 
-                              className="absolute right-0 mt-1 w-64 rounded-2xl border border-[#334155] bg-[#0B0F19] p-2 shadow-2xl z-30 space-y-1 animate-in fade-in"
+                              className="absolute right-0 mt-1 w-64 rounded-2xl border border-[#2E2E34] bg-[#141416] p-2 shadow-2xl z-30 space-y-1 animate-in fade-in"
                               onMouseLeave={() => setIsBuilderTemplateMenuOpen(false)}
                             >
-                              <div className="px-2.5 py-1 text-[10px] font-mono uppercase font-bold text-[#64748B]">
+                              <div className="px-2.5 py-1 text-[10px] font-mono uppercase font-bold text-[#71717A]">
                                 Question Starter Templates
                               </div>
 
@@ -1666,7 +1872,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                                   downloadExamTemplateMarkdown();
                                   setIsBuilderTemplateMenuOpen(false);
                                 }}
-                                className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all group"
+                                className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1C1C1F] text-xs text-[#EAEAE6] hover:text-white transition-all group"
                               >
                                 <FileText className="h-4 w-4 text-emerald-400 shrink-0 group-hover:scale-110 transition-transform" />
                                 <div>
@@ -1674,7 +1880,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                                     <span>Markdown Template (.md)</span>
                                     <span className="rounded bg-emerald-500/20 text-emerald-300 text-[9px] px-1.5 py-0.2">Recommended</span>
                                   </span>
-                                  <span className="text-[10px] text-[#94A3B8] block">Standard formatted document with code blocks</span>
+                                  <span className="text-[10px] text-[#A1A1AA] block">Standard formatted document with code blocks</span>
                                 </div>
                               </button>
 
@@ -1684,15 +1890,15 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                                   downloadExamTemplatePlainText();
                                   setIsBuilderTemplateMenuOpen(false);
                                 }}
-                                className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all group"
+                                className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1C1C1F] text-xs text-[#EAEAE6] hover:text-white transition-all group"
                               >
-                                <FileText className="h-4 w-4 text-cyan-400 shrink-0 group-hover:scale-110 transition-transform" />
+                                <FileText className="h-4 w-4 text-[#EAEAE6] shrink-0 group-hover:scale-110 transition-transform" />
                                 <div>
                                   <span className="font-bold block text-white flex items-center space-x-1.5">
                                     <span>Plain Text Template (.txt)</span>
-                                    <span className="rounded bg-cyan-500/20 text-cyan-300 text-[9px] px-1.5 py-0.2">AI Friendly</span>
+                                    <span className="rounded bg-[#EAEAE6]/20 text-[#EAEAE6] text-[9px] px-1.5 py-0.2">AI Friendly</span>
                                   </span>
-                                  <span className="text-[10px] text-[#94A3B8] block">Natural text for ChatGPT / Claude / Gemini</span>
+                                  <span className="text-[10px] text-[#A1A1AA] block">Natural text for ChatGPT / Claude / Gemini</span>
                                 </div>
                               </button>
 
@@ -1702,7 +1908,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                                   handleCopyAIPrompt();
                                   setIsBuilderTemplateMenuOpen(false);
                                 }}
-                                className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all group"
+                                className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1C1C1F] text-xs text-[#EAEAE6] hover:text-white transition-all group"
                               >
                                 <Sparkles className="h-4 w-4 text-amber-400 shrink-0 group-hover:scale-110 transition-transform" />
                                 <div>
@@ -1710,11 +1916,11 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                                     <span>Copy AI Prompt</span>
                                     <span className="rounded bg-amber-500/20 text-amber-300 text-[9px] px-1.5 py-0.2">Instant</span>
                                   </span>
-                                  <span className="text-[10px] text-[#94A3B8] block">Paste into any AI to generate questions</span>
+                                  <span className="text-[10px] text-[#A1A1AA] block">Paste into any AI to generate questions</span>
                                 </div>
                               </button>
 
-                              <div className="border-t border-[#334155]/60 my-1" />
+                              <div className="border-t border-[#2E2E34]/60 my-1" />
 
                               <button
                                 type="button"
@@ -1722,12 +1928,12 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                                   downloadExamTemplateCSV();
                                   setIsBuilderTemplateMenuOpen(false);
                                 }}
-                                className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all"
+                                className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1C1C1F] text-xs text-[#EAEAE6] hover:text-white transition-all"
                               >
                                 <FileSpreadsheet className="h-4 w-4 text-emerald-400 shrink-0" />
                                 <div>
                                   <span className="font-bold block text-white">CSV Template</span>
-                                  <span className="text-[10px] text-[#94A3B8] block">Excel &amp; Google Sheets</span>
+                                  <span className="text-[10px] text-[#A1A1AA] block">Excel &amp; Google Sheets</span>
                                 </div>
                               </button>
 
@@ -1737,12 +1943,12 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                                   downloadExamTemplateJSON();
                                   setIsBuilderTemplateMenuOpen(false);
                                 }}
-                                className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1E293B] text-xs text-[#CBD5E1] hover:text-white transition-all"
+                                className="w-full flex items-center space-x-2.5 px-3 py-2 text-left rounded-xl hover:bg-[#1C1C1F] text-xs text-[#EAEAE6] hover:text-white transition-all"
                               >
                                 <FileCode className="h-4 w-4 text-purple-400 shrink-0" />
                                 <div>
                                   <span className="font-bold block text-white">JSON Template</span>
-                                  <span className="text-[10px] text-[#94A3B8] block">Formatted Array Object</span>
+                                  <span className="text-[10px] text-[#A1A1AA] block">Formatted Array Object</span>
                                 </div>
                               </button>
                             </div>
@@ -1751,7 +1957,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
                         {/* Export Existing Questions (if any) */}
                         {formQuestions.length > 0 && (
-                          <div className="flex items-center space-x-1 border-l border-[#334155] pl-2">
+                          <div className="flex items-center space-x-1 border-l border-[#2E2E34] pl-2">
                             <button
                               type="button"
                               title="Export questions as Markdown (.md)"
@@ -1764,7 +1970,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                               type="button"
                               title="Export questions as plain text"
                               onClick={() => exportExamQuestionsToPlainText(formQuestions, formTitle || "exam")}
-                              className="px-2 py-1 rounded-lg text-cyan-300 hover:text-white hover:bg-slate-800 text-[11px] font-mono border border-cyan-500/30"
+                              className="px-2 py-1 rounded-lg text-[#EAEAE6] hover:text-white hover:bg-slate-800 text-[11px] font-mono border border-[#EAEAE6]/30"
                             >
                               TXT
                             </button>
@@ -1772,7 +1978,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                               type="button"
                               title="Export questions to CSV"
                               onClick={() => exportExamQuestionsToCSV(formQuestions, formTitle || "exam")}
-                              className="px-2 py-1 rounded-lg text-[#94A3B8] hover:text-white hover:bg-slate-800 text-[11px] font-mono border border-[#334155]"
+                              className="px-2 py-1 rounded-lg text-[#A1A1AA] hover:text-white hover:bg-slate-800 text-[11px] font-mono border border-[#2E2E34]"
                             >
                               CSV
                             </button>
@@ -1780,7 +1986,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                               type="button"
                               title="Export questions to JSON"
                               onClick={() => exportExamQuestionsToJSON(formQuestions, formTitle || "exam")}
-                              className="px-2 py-1 rounded-lg text-[#94A3B8] hover:text-white hover:bg-slate-800 text-[11px] font-mono border border-[#334155]"
+                              className="px-2 py-1 rounded-lg text-[#A1A1AA] hover:text-white hover:bg-slate-800 text-[11px] font-mono border border-[#2E2E34]"
                             >
                               JSON
                             </button>
@@ -1800,7 +2006,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     </div>
 
                     {formQuestions.length === 0 ? (
-                      <div className="rounded-2xl border border-dashed border-[#334155] bg-[#1E293B]/40 p-6 text-center text-xs text-[#94A3B8]">
+                      <div className="rounded-2xl border border-dashed border-[#2E2E34] bg-[#1C1C1F]/40 p-6 text-center text-xs text-[#A1A1AA]">
                         No questions added yet. Use the question editor below to create multiple choice, true/false, or coding questions.
                       </div>
                     ) : (
@@ -1810,17 +2016,17 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                             key={q.id}
                             className={`flex items-start justify-between rounded-2xl border p-4 transition-all ${
                               editingQuestionIdx === idx
-                                ? "border-[#06B6D4] bg-[#06B6D4]/10 shadow-lg"
-                                : "border-[#334155] bg-[#1E293B]"
+                                ? "border-[#EAEAE6] bg-[#EAEAE6]/10 shadow-lg"
+                                : "border-[#2E2E34] bg-[#1C1C1F]"
                             }`}
                           >
                             <div className="flex items-start space-x-3">
-                              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#0B0F19] font-mono text-xs font-bold text-[#06B6D4] border border-[#334155] shrink-0 mt-0.5">
+                              <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-[#141416] font-mono text-xs font-bold text-[#EAEAE6] border border-[#2E2E34] shrink-0 mt-0.5">
                                 {idx + 1}
                               </span>
                               <div>
                                 <div className="flex items-center space-x-2 mb-1">
-                                  <span className="rounded bg-[#0B0F19] border border-[#334155] px-1.5 py-0.2 text-[10px] font-mono uppercase text-cyan-300 font-bold">
+                                  <span className="rounded bg-[#141416] border border-[#2E2E34] px-1.5 py-0.2 text-[10px] font-mono uppercase text-[#EAEAE6] font-bold">
                                     {q.type.replace("_", " ")}
                                   </span>
                                   <span className="text-[10px] font-mono text-emerald-400 font-bold">
@@ -1834,7 +2040,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                             <div className="flex items-center space-x-1 shrink-0 ml-3">
                               <button
                                 onClick={() => handleEditQuestionInList(idx)}
-                                className="p-1 rounded text-[#94A3B8] hover:text-white hover:bg-slate-800"
+                                className="p-1 rounded text-[#A1A1AA] hover:text-white hover:bg-slate-800"
                               >
                                 <Edit3 className="h-3.5 w-3.5" />
                               </button>
@@ -1852,30 +2058,30 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                   </div>
 
                   {/* Question Creator Box */}
-                  <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5 space-y-4">
-                    <div className="flex items-center justify-between border-b border-[#334155] pb-3">
+                  <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-5 space-y-4">
+                    <div className="flex items-center justify-between border-b border-[#2E2E34] pb-3">
                       <span className="text-xs font-bold text-white uppercase font-mono flex items-center space-x-1.5">
-                        <Plus className="h-4 w-4 text-[#06B6D4]" />
+                        <Plus className="h-4 w-4 text-[#EAEAE6]" />
                         <span>{editingQuestionIdx !== null ? `Edit Question #${editingQuestionIdx + 1}` : "Add New Question"}</span>
                       </span>
 
                       <div className="flex items-center space-x-3">
                         <div className="flex items-center space-x-1.5">
-                          <label className="text-[11px] font-mono text-[#94A3B8]">Points:</label>
+                          <label className="text-[11px] font-mono text-[#A1A1AA]">Points:</label>
                           <input
                             type="number"
                             min={1}
                             max={50}
                             value={qPoints}
                             onChange={(e) => setQPoints(Number(e.target.value))}
-                            className="w-16 rounded-lg border border-[#334155] bg-[#0B0F19] px-2 py-1 text-xs font-mono text-emerald-400 font-bold focus:border-[#06B6D4] focus:outline-none"
+                            className="w-16 rounded-lg border border-[#2E2E34] bg-[#141416] px-2 py-1 text-xs font-mono text-emerald-400 font-bold focus:border-[#EAEAE6] focus:outline-none"
                           />
                         </div>
 
                         <select
                           value={qType}
                           onChange={(e) => setQType(e.target.value as QuestionType)}
-                          className="rounded-lg border border-[#334155] bg-[#0B0F19] px-2.5 py-1 text-xs font-semibold text-cyan-300 focus:border-[#06B6D4] focus:outline-none"
+                          className="rounded-lg border border-[#2E2E34] bg-[#141416] px-2.5 py-1 text-xs font-semibold text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
                         >
                           <option value="multiple_choice">Multiple Choice (Single)</option>
                           <option value="multiple_select">Multiple Select (Checkboxes)</option>
@@ -1891,7 +2097,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
                     {/* Question Prompt */}
                     <div>
-                      <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                      <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                         Question Prompt (Markdown &amp; Code Syntax Supported)
                       </label>
                       <textarea
@@ -1899,14 +2105,14 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                         value={qPrompt}
                         onChange={(e) => setQPrompt(e.target.value)}
                         placeholder="Write your question here... (e.g. 'What is the time complexity of binary search?' or paste code snippet)"
-                        className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none font-mono"
+                        className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none font-mono"
                       />
                     </div>
 
                     {/* Options / Answer Input Based on Question Type */}
                     {qType === "multiple_choice" && (
                       <div className="space-y-2">
-                        <label className="block text-[11px] font-bold text-[#94A3B8]">
+                        <label className="block text-[11px] font-bold text-[#A1A1AA]">
                           Answer Choices (Select radio button for the CORRECT option)
                         </label>
                         {qOptions.map((opt, idx) => (
@@ -1916,7 +2122,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                               name="mc_correct"
                               checked={qCorrectSingle === String(idx)}
                               onChange={() => setQCorrectSingle(String(idx))}
-                              className="text-[#06B6D4] focus:ring-0 cursor-pointer"
+                              className="text-[#EAEAE6] focus:ring-0 cursor-pointer"
                             />
                             <input
                               type="text"
@@ -1927,13 +2133,13 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                                 setQOptions(copy);
                               }}
                               placeholder={`Option ${idx + 1}`}
-                              className="flex-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-1.5 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                              className="flex-1 rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-1.5 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
                             />
                             {qOptions.length > 2 && (
                               <button
                                 type="button"
                                 onClick={() => setQOptions(prev => prev.filter((_, i) => i !== idx))}
-                                className="p-1 text-[#64748B] hover:text-rose-400"
+                                className="p-1 text-[#71717A] hover:text-rose-400"
                               >
                                 <X className="h-3.5 w-3.5" />
                               </button>
@@ -1944,7 +2150,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                           <button
                             type="button"
                             onClick={() => setQOptions(prev => [...prev, ""])}
-                            className="text-xs text-[#06B6D4] hover:underline font-mono"
+                            className="text-xs text-[#EAEAE6] hover:underline font-mono"
                           >
                             + Add Another Option
                           </button>
@@ -1954,7 +2160,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
                     {qType === "multiple_select" && (
                       <div className="space-y-2">
-                        <label className="block text-[11px] font-bold text-[#94A3B8]">
+                        <label className="block text-[11px] font-bold text-[#A1A1AA]">
                           Answer Choices (Check all boxes that are CORRECT)
                         </label>
                         {qOptions.map((opt, idx) => {
@@ -1971,7 +2177,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                                     setQCorrectMulti(prev => prev.filter(v => v !== String(idx)));
                                   }
                                 }}
-                                className="rounded text-[#06B6D4] focus:ring-0 cursor-pointer"
+                                className="rounded text-[#EAEAE6] focus:ring-0 cursor-pointer"
                               />
                               <input
                                 type="text"
@@ -1982,13 +2188,13 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                                   setQOptions(copy);
                                 }}
                                 placeholder={`Choice ${idx + 1}`}
-                                className="flex-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-1.5 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                                className="flex-1 rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-1.5 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
                               />
                               {qOptions.length > 2 && (
                                 <button
                                   type="button"
                                   onClick={() => setQOptions(prev => prev.filter((_, i) => i !== idx))}
-                                  className="p-1 text-[#64748B] hover:text-rose-400"
+                                  className="p-1 text-[#71717A] hover:text-rose-400"
                                 >
                                   <X className="h-3.5 w-3.5" />
                                 </button>
@@ -2000,7 +2206,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                           <button
                             type="button"
                             onClick={() => setQOptions(prev => [...prev, ""])}
-                            className="text-xs text-[#06B6D4] hover:underline font-mono"
+                            className="text-xs text-[#EAEAE6] hover:underline font-mono"
                           >
                             + Add Another Choice
                           </button>
@@ -2010,7 +2216,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
                     {qType === "true_false" && (
                       <div className="space-y-2">
-                        <label className="block text-[11px] font-bold text-[#94A3B8]">
+                        <label className="block text-[11px] font-bold text-[#A1A1AA]">
                           Select Correct Answer
                         </label>
                         <div className="flex items-center space-x-4">
@@ -2041,7 +2247,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
                     {qType === "short_answer" && (
                       <div>
-                        <label className="block text-[11px] font-bold text-[#94A3B8] mb-1">
+                        <label className="block text-[11px] font-bold text-[#A1A1AA] mb-1">
                           Exact Target Answer (Case-insensitive auto-match)
                         </label>
                         <input
@@ -2049,13 +2255,13 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                           value={qCorrectText}
                           onChange={(e) => setQCorrectText(e.target.value)}
                           placeholder="e.g. O(log n) or polymorphism"
-                          className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3.5 py-2 text-xs font-mono text-emerald-400 font-bold focus:border-[#06B6D4] focus:outline-none"
+                          className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] px-3.5 py-2 text-xs font-mono text-emerald-400 font-bold focus:border-[#EAEAE6] focus:outline-none"
                         />
                       </div>
                     )}
 
                     {qType === "essay" && (
-                      <div className="rounded-xl bg-[#0B0F19] p-3 text-xs text-[#94A3B8] border border-[#334155]">
+                      <div className="rounded-xl bg-[#141416] p-3 text-xs text-[#A1A1AA] border border-[#2E2E34]">
                         <p>
                           💡 <strong>Open-ended Question:</strong> Student answers will be saved and presented in the Teacher Grading Desk for manual scoring and custom feedback.
                         </p>
@@ -2064,19 +2270,19 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
                     {/* Code Completion Editor */}
                     {qType === "code_completion" && (
-                      <div className="space-y-3 rounded-2xl bg-[#0B0F19] p-4 border border-[#334155]">
+                      <div className="space-y-3 rounded-2xl bg-[#141416] p-4 border border-[#2E2E34]">
                         <div className="flex items-center justify-between">
-                          <label className="text-xs font-bold text-cyan-400 font-mono flex items-center space-x-1.5">
+                          <label className="text-xs font-bold text-[#EAEAE6] font-mono flex items-center space-x-1.5">
                             <Code className="h-4 w-4" />
                             <span>Code Snippet with Interactive Blanks</span>
                           </label>
 
                           <div className="flex items-center space-x-2">
-                            <span className="text-[10px] font-mono text-[#94A3B8]">Language:</span>
+                            <span className="text-[10px] font-mono text-[#A1A1AA]">Language:</span>
                             <select
                               value={qCodeLanguage}
                               onChange={(e) => setQCodeLanguage(e.target.value)}
-                              className="rounded-lg border border-[#334155] bg-[#1E293B] px-2 py-0.5 text-xs font-mono text-cyan-300 focus:border-cyan-400 focus:outline-none"
+                              className="rounded-lg border border-[#2E2E34] bg-[#1C1C1F] px-2 py-0.5 text-xs font-mono text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
                             >
                               <option value="python">Python</option>
                               <option value="javascript">JavaScript</option>
@@ -2095,8 +2301,8 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                           </div>
                         </div>
 
-                        <p className="text-[11px] text-[#94A3B8]">
-                          Mark missing tokens with <code className="text-cyan-300 font-mono bg-slate-800 px-1 py-0.5 rounded">___1___</code>, <code className="text-cyan-300 font-mono bg-slate-800 px-1 py-0.5 rounded">___2___</code> or <code className="text-cyan-300 font-mono bg-slate-800 px-1 py-0.5 rounded">{"{{1}}"}</code> where students need to type.
+                        <p className="text-[11px] text-[#A1A1AA]">
+                          Mark missing tokens with <code className="text-[#EAEAE6] font-mono bg-slate-800 px-1 py-0.5 rounded">___1___</code>, <code className="text-[#EAEAE6] font-mono bg-slate-800 px-1 py-0.5 rounded">___2___</code> or <code className="text-[#EAEAE6] font-mono bg-slate-800 px-1 py-0.5 rounded">{"{{1}}"}</code> where students need to type.
                         </p>
 
                         <textarea
@@ -2104,25 +2310,25 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                           value={qCodeSnippet}
                           onChange={(e) => setQCodeSnippet(e.target.value)}
                           placeholder={`def factorial(n):\n    if n <= 1:\n        return ___1___\n    return n * factorial(___2___)`}
-                          className="w-full rounded-xl border border-[#334155] bg-[#020617] p-3 text-xs font-mono text-cyan-200 placeholder-slate-600 focus:border-cyan-400 focus:outline-none leading-relaxed"
+                          className="w-full rounded-xl border border-[#2E2E34] bg-[#020617] p-3 text-xs font-mono text-[#EAEAE6] placeholder-slate-600 focus:border-[#EAEAE6] focus:outline-none leading-relaxed"
                         />
 
                         <div>
-                          <label className="block text-[11px] font-bold text-[#CBD5E1] mb-1">
-                            Accepted Answers for Blanks (One blank per line, aliases separated by <code className="text-cyan-400">|</code> or commas):
+                          <label className="block text-[11px] font-bold text-[#EAEAE6] mb-1">
+                            Accepted Answers for Blanks (One blank per line, aliases separated by <code className="text-[#EAEAE6]">|</code> or commas):
                           </label>
                           <textarea
                             rows={3}
                             value={qCodeBlanksText}
                             onChange={(e) => setQCodeBlanksText(e.target.value)}
                             placeholder={`Blank 1: 1\nBlank 2: n - 1`}
-                            className="w-full rounded-xl border border-[#334155] bg-[#020617] p-2.5 text-xs font-mono text-emerald-400 placeholder-slate-600 focus:border-cyan-400 focus:outline-none"
+                            className="w-full rounded-xl border border-[#2E2E34] bg-[#020617] p-2.5 text-xs font-mono text-emerald-400 placeholder-slate-600 focus:border-[#EAEAE6] focus:outline-none"
                           />
                         </div>
 
                         {qCodeSnippet && (
                           <div className="pt-2">
-                            <span className="block text-[10px] font-mono uppercase text-[#94A3B8] mb-1.5 font-bold">
+                            <span className="block text-[10px] font-mono uppercase text-[#A1A1AA] mb-1.5 font-bold">
                               Student Interactive Preview:
                             </span>
                             <CodeQuestionRenderer
@@ -2153,19 +2359,19 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
                     {/* Scrambled Code Ordering Editor */}
                     {qType === "code_ordering" && (
-                      <div className="space-y-3 rounded-2xl bg-[#0B0F19] p-4 border border-[#334155]">
+                      <div className="space-y-3 rounded-2xl bg-[#141416] p-4 border border-[#2E2E34]">
                         <div className="flex items-center justify-between">
-                          <label className="text-xs font-bold text-cyan-400 font-mono flex items-center space-x-1.5">
+                          <label className="text-xs font-bold text-[#EAEAE6] font-mono flex items-center space-x-1.5">
                             <Shuffle className="h-4 w-4" />
                             <span>Code Lines (In Correct Sequential Order)</span>
                           </label>
 
                           <div className="flex items-center space-x-2">
-                            <span className="text-[10px] font-mono text-[#94A3B8]">Language:</span>
+                            <span className="text-[10px] font-mono text-[#A1A1AA]">Language:</span>
                             <select
                               value={qCodeLanguage}
                               onChange={(e) => setQCodeLanguage(e.target.value)}
-                              className="rounded-lg border border-[#334155] bg-[#1E293B] px-2 py-0.5 text-xs font-mono text-cyan-300 focus:border-cyan-400 focus:outline-none"
+                              className="rounded-lg border border-[#2E2E34] bg-[#1C1C1F] px-2 py-0.5 text-xs font-mono text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
                             >
                               <option value="python">Python</option>
                               <option value="javascript">JavaScript</option>
@@ -2184,7 +2390,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                           </div>
                         </div>
 
-                        <p className="text-[11px] text-[#94A3B8]">
+                        <p className="text-[11px] text-[#A1A1AA]">
                           Enter the full program lines here in their <strong>correct working sequence</strong>. During the student examination, lines are automatically shuffled into interactive draggable/touch-sortable blocks (Parson&apos;s puzzle).
                         </p>
 
@@ -2193,12 +2399,12 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                           value={qCodeLinesText}
                           onChange={(e) => setQCodeLinesText(e.target.value)}
                           placeholder={`def find_max(arr):\n    max_val = arr[0]\n    for num in arr:\n        if num > max_val:\n            max_val = num\n    return max_val`}
-                          className="w-full rounded-xl border border-[#334155] bg-[#020617] p-3 text-xs font-mono text-cyan-200 placeholder-slate-600 focus:border-cyan-400 focus:outline-none leading-relaxed"
+                          className="w-full rounded-xl border border-[#2E2E34] bg-[#020617] p-3 text-xs font-mono text-[#EAEAE6] placeholder-slate-600 focus:border-[#EAEAE6] focus:outline-none leading-relaxed"
                         />
 
                         {qCodeLinesText && (
                           <div className="pt-2">
-                            <span className="block text-[10px] font-mono uppercase text-[#94A3B8] mb-1.5 font-bold">
+                            <span className="block text-[10px] font-mono uppercase text-[#A1A1AA] mb-1.5 font-bold">
                               Student Interactive Preview (Shuffled cards with touch controls):
                             </span>
                             <CodeQuestionRenderer
@@ -2219,19 +2425,19 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
                     {/* Predict Output Editor */}
                     {qType === "predict_output" && (
-                      <div className="space-y-3 rounded-2xl bg-[#0B0F19] p-4 border border-[#334155]">
+                      <div className="space-y-3 rounded-2xl bg-[#141416] p-4 border border-[#2E2E34]">
                         <div className="flex items-center justify-between">
-                          <label className="text-xs font-bold text-cyan-400 font-mono flex items-center space-x-1.5">
+                          <label className="text-xs font-bold text-[#EAEAE6] font-mono flex items-center space-x-1.5">
                             <Code className="h-4 w-4" />
                             <span>Source Code for Analysis</span>
                           </label>
 
                           <div className="flex items-center space-x-2">
-                            <span className="text-[10px] font-mono text-[#94A3B8]">Language:</span>
+                            <span className="text-[10px] font-mono text-[#A1A1AA]">Language:</span>
                             <select
                               value={qCodeLanguage}
                               onChange={(e) => setQCodeLanguage(e.target.value)}
-                              className="rounded-lg border border-[#334155] bg-[#1E293B] px-2 py-0.5 text-xs font-mono text-cyan-300 focus:border-cyan-400 focus:outline-none"
+                              className="rounded-lg border border-[#2E2E34] bg-[#1C1C1F] px-2 py-0.5 text-xs font-mono text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
                             >
                               <option value="python">Python</option>
                               <option value="javascript">JavaScript</option>
@@ -2253,11 +2459,11 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                           value={qCodeSnippet}
                           onChange={(e) => setQCodeSnippet(e.target.value)}
                           placeholder={`nums = [1, 2, 3, 4]\nres = [x * 2 for x in nums if x % 2 == 0]\nprint(res)`}
-                          className="w-full rounded-xl border border-[#334155] bg-[#020617] p-3 text-xs font-mono text-cyan-200 placeholder-slate-600 focus:border-cyan-400 focus:outline-none leading-relaxed"
+                          className="w-full rounded-xl border border-[#2E2E34] bg-[#020617] p-3 text-xs font-mono text-[#EAEAE6] placeholder-slate-600 focus:border-[#EAEAE6] focus:outline-none leading-relaxed"
                         />
 
                         <div>
-                          <label className="block text-[11px] font-bold text-[#CBD5E1] mb-1">
+                          <label className="block text-[11px] font-bold text-[#EAEAE6] mb-1">
                             Exact Expected Standard Terminal Output (stdout):
                           </label>
                           <input
@@ -2265,13 +2471,13 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                             value={qCorrectText}
                             onChange={(e) => setQCorrectText(e.target.value)}
                             placeholder="e.g. [4, 8] or Hello, World!"
-                            className="w-full rounded-xl border border-[#334155] bg-[#020617] px-3.5 py-2 text-xs font-mono text-emerald-400 font-bold focus:border-cyan-400 focus:outline-none"
+                            className="w-full rounded-xl border border-[#2E2E34] bg-[#020617] px-3.5 py-2 text-xs font-mono text-emerald-400 font-bold focus:border-[#EAEAE6] focus:outline-none"
                           />
                         </div>
 
                         {qCodeSnippet && (
                           <div className="pt-2">
-                            <span className="block text-[10px] font-mono uppercase text-[#94A3B8] mb-1.5 font-bold">
+                            <span className="block text-[10px] font-mono uppercase text-[#A1A1AA] mb-1.5 font-bold">
                               Student Interactive Preview (IDE + Terminal View):
                             </span>
                             <CodeQuestionRenderer
@@ -2293,7 +2499,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
                     {/* Educational Explanation */}
                     <div>
-                      <label className="block text-[11px] font-bold text-[#94A3B8] mb-1">
+                      <label className="block text-[11px] font-bold text-[#A1A1AA] mb-1">
                         Explanation (Shown to students during post-exam review)
                       </label>
                       <input
@@ -2301,7 +2507,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                         value={qExplanation}
                         onChange={(e) => setQExplanation(e.target.value)}
                         placeholder="e.g. Binary search halves the search space each step, resulting in O(log n) logarithmic complexity."
-                        className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-2 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                        className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-2 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
                       />
                     </div>
 
@@ -2309,7 +2515,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                       <button
                         type="button"
                         onClick={handleSaveQuestion}
-                        className="inline-flex items-center space-x-1.5 rounded-xl bg-cyan-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-400 transition-all shadow-md"
+                        className="inline-flex items-center space-x-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-[#141416] hover:bg-emerald-500 transition-all shadow-md"
                       >
                         <Plus className="h-3.5 w-3.5" />
                         <span>{editingQuestionIdx !== null ? "Update Question" : "Add Question to Exam"}</span>
@@ -2321,8 +2527,8 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-between border-t border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
-              <span className="text-xs font-mono text-[#94A3B8]">
+            <div className="flex items-center justify-between border-t border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/70 shrink-0">
+              <span className="text-xs font-mono text-[#A1A1AA]">
                 {formQuestions.length} Questions &bull; Total Points:{" "}
                 <strong className="text-emerald-400">
                   {formQuestions.reduce((s, q) => s + (Number(q.points) || 0), 0)}
@@ -2333,7 +2539,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                 <button
                   type="button"
                   onClick={() => setIsBuilderOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#94A3B8] hover:text-white bg-[#0B0F19] border border-[#334155]"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#A1A1AA] hover:text-white bg-[#141416] border border-[#2E2E34]"
                 >
                   Cancel
                 </button>
@@ -2342,7 +2548,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                   type="button"
                   disabled={savingExam}
                   onClick={() => handleSaveExam("draft")}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-slate-800 border border-[#334155] transition-all"
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-slate-300 hover:text-white bg-slate-800 border border-[#2E2E34] transition-all"
                 >
                   Save as Draft
                 </button>
@@ -2351,7 +2557,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                   type="button"
                   disabled={savingExam}
                   onClick={() => handleSaveExam("published")}
-                  className="inline-flex items-center space-x-1.5 px-5 py-2 rounded-xl text-xs font-bold text-slate-950 bg-[#06B6D4] hover:bg-[#0891B2] hover:text-white transition-all shadow-lg disabled:opacity-50"
+                  className="inline-flex items-center space-x-1.5 px-5 py-2 rounded-xl text-xs font-bold text-[#141416] bg-emerald-500 hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-lg disabled:opacity-50"
                 >
                   <Send className="h-3.5 w-3.5" />
                   <span>{savingExam ? "Saving..." : "Publish Assessment"}</span>
@@ -2367,10 +2573,10 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
       {/* ========================================================================= */}
       {selectedExamForSubmissions && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-6 backdrop-blur-md animate-in fade-in">
-          <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-[#334155] bg-[#0F172A] shadow-2xl flex flex-col">
-            <div className="flex items-center justify-between border-b border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-[#2E2E34] bg-[#141416] shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/70 shrink-0">
               <div>
-                <div className="flex items-center space-x-2 text-xs font-mono text-[#06B6D4] mb-0.5">
+                <div className="flex items-center space-x-2 text-xs font-mono text-[#EAEAE6] mb-0.5">
                   <span className="uppercase font-bold">{selectedExamForSubmissions.type}</span>
                   <span>&bull;</span>
                   <span>{selectedExamForSubmissions.courseCode}</span>
@@ -2382,7 +2588,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
               <button
                 onClick={() => setSelectedExamForSubmissions(null)}
-                className="rounded-xl p-1.5 text-[#94A3B8] hover:text-white hover:bg-slate-800"
+                className="rounded-xl p-1.5 text-[#A1A1AA] hover:text-white hover:bg-slate-800"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -2390,35 +2596,35 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
             <div className="flex-1 overflow-y-auto p-6">
               {loadingAttempts ? (
-                <div className="py-20 text-center text-[#94A3B8]">
-                  <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-3" />
+                <div className="py-20 text-center text-[#A1A1AA]">
+                  <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent mb-3" />
                   Loading student attempts and proctoring logs...
                 </div>
               ) : examAttempts.length === 0 ? (
-                <div className="py-16 text-center text-[#94A3B8] bg-[#1E293B]/40 rounded-2xl border border-[#334155] p-6">
-                  <Users className="mx-auto h-10 w-10 text-[#64748B] mb-2" />
+                <div className="py-16 text-center text-[#A1A1AA] bg-[#1C1C1F]/40 rounded-2xl border border-[#2E2E34] p-6">
+                  <Users className="mx-auto h-10 w-10 text-[#71717A] mb-2" />
                   <p className="text-sm font-bold text-white mb-1">No Student Attempts Yet</p>
-                  <p className="text-xs text-[#94A3B8] max-w-sm mx-auto">
+                  <p className="text-xs text-[#A1A1AA] max-w-sm mx-auto">
                     Students enrolled in {selectedExamForSubmissions.courseCode} ({selectedExamForSubmissions.level}) will appear here when they start or submit this assessment.
                   </p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {/* Search and Filter Toolbar */}
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#1E293B]/70 p-3 rounded-2xl border border-[#334155]">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#1C1C1F]/70 p-3 rounded-2xl border border-[#2E2E34]">
                     <div className="relative w-full sm:w-80">
-                      <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#94A3B8]" />
+                      <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#A1A1AA]" />
                       <input
                         type="text"
                         placeholder="Search student name, username, or level..."
                         value={attemptsSearchQuery}
                         onChange={(e) => setAttemptsSearchQuery(e.target.value)}
-                        className="w-full rounded-xl border border-[#334155] bg-[#0F172A] py-2 pl-9 pr-8 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                        className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] py-2 pl-9 pr-8 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
                       />
                       {attemptsSearchQuery && (
                         <button
                           onClick={() => setAttemptsSearchQuery("")}
-                          className="absolute right-2.5 top-2.5 text-xs text-[#94A3B8] hover:text-white"
+                          className="absolute right-2.5 top-2.5 text-xs text-[#A1A1AA] hover:text-white"
                         >
                           ✕
                         </button>
@@ -2426,8 +2632,8 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3 self-end sm:self-center">
-                      <div className="text-xs font-mono text-[#94A3B8]">
-                        Showing <span className="text-[#06B6D4] font-bold">
+                      <div className="text-xs font-mono text-[#A1A1AA]">
+                        Showing <span className="text-[#EAEAE6] font-bold">
                           {examAttempts.filter(att => {
                             if (!attemptsSearchQuery.trim()) return true;
                             const q = attemptsSearchQuery.toLowerCase();
@@ -2452,10 +2658,10 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-[#334155] bg-[#1E293B] overflow-hidden shadow-xl">
+                  <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] overflow-hidden shadow-xl">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-xs min-w-[750px]">
-                        <thead className="border-b border-[#334155] bg-[#0B0F19]/60 font-mono text-[#94A3B8] uppercase">
+                        <thead className="border-b border-[#2E2E34] bg-[#141416]/60 font-mono text-[#A1A1AA] uppercase">
                           <tr>
                             <th className="px-5 py-3">Student</th>
                             <th className="px-5 py-3">Level</th>
@@ -2465,91 +2671,215 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                             <th className="px-5 py-3 text-right">Actions</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#334155]/60 text-[#CBD5E1]">
-                          {examAttempts.filter(att => {
-                            if (!attemptsSearchQuery.trim()) return true;
-                            const q = attemptsSearchQuery.toLowerCase();
-                            return (
-                              (att.studentName || "").toLowerCase().includes(q) ||
-                              (att.studentUsername || "").toLowerCase().includes(q) ||
-                              (att.studentLevel || "").toLowerCase().includes(q) ||
-                              (att.status || "").toLowerCase().includes(q)
-                            );
-                          }).map((att) => {
-                            const isGraded = att.status === "graded";
-                            const hasViolations = att.tabSwitchCount > 0;
+                        <tbody className="divide-y divide-[#2E2E34]/60 text-[#EAEAE6]">
+                          {(() => {
+                            const filtered = examAttempts.filter(att => {
+                              if (!attemptsSearchQuery.trim()) return true;
+                              const q = attemptsSearchQuery.toLowerCase();
+                              return (
+                                (att.studentName || "").toLowerCase().includes(q) ||
+                                (att.studentUsername || "").toLowerCase().includes(q) ||
+                                (att.studentLevel || "").toLowerCase().includes(q) ||
+                                (att.status || "").toLowerCase().includes(q)
+                              );
+                            });
 
-                            return (
-                              <tr key={att.id} className="hover:bg-[#0B0F19]/40 transition-colors">
-                                <td className="px-5 py-3.5">
-                                  <div className="font-bold text-white">{att.studentName}</div>
-                                  <span className="text-[10px] font-mono text-[#64748B]">@{att.studentUsername}</span>
-                                </td>
+                            // Group all attempts by the same student under one single name
+                            const groupsMap = new Map<string, ExamAttempt[]>();
+                            filtered.forEach((att) => {
+                              const key = att.studentUid || att.studentUsername || att.studentName;
+                              const arr = groupsMap.get(key) || [];
+                              arr.push(att);
+                              groupsMap.set(key, arr);
+                            });
 
-                              <td className="px-5 py-3.5 font-mono text-[11px] text-[#94A3B8]">
-                                {att.studentLevel}
-                              </td>
+                            return Array.from(groupsMap.entries()).map(([studentKey, studentAttempts]) => {
+                              const sorted = [...studentAttempts].sort((a, b) => (b.attemptNumber || 1) - (a.attemptNumber || 1));
+                              const latest = sorted[0];
+                              const isMulti = sorted.length > 1;
+                              const isExpanded = !!expandedStudentGroups[studentKey];
+                              const bestScoreAtt = sorted.reduce((best, cur) => ((cur.percentage || 0) >= (best.percentage || 0) ? cur : best), sorted[0]);
+                              const totalViolations = sorted.reduce((sum, a) => sum + (a.tabSwitchCount || 0), 0);
+                              const hasOverride = !!selectedExamForSubmissions.studentOverrides?.[latest.studentUid];
+                              const anyPendingReview = sorted.some(a => a.status === "submitted");
+                              const isGraded = latest.status === "graded";
 
-                              <td className="px-5 py-3.5">
-                                <div className="font-mono text-xs text-white">
-                                  {Math.floor(att.timeSpentSeconds / 60)}m {att.timeSpentSeconds % 60}s
-                                </div>
-                                <span className="text-[10px] font-mono text-[#64748B]">
-                                  {att.submittedAt ? new Date(att.submittedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "In Progress"}
-                                </span>
-                              </td>
+                              return (
+                                <React.Fragment key={studentKey}>
+                                  <tr className="hover:bg-[#141416]/40 transition-colors">
+                                    <td className="px-5 py-3.5">
+                                      <div className="flex items-center space-x-2">
+                                        {isMulti && (
+                                          <button
+                                            type="button"
+                                            onClick={() => setExpandedStudentGroups(prev => ({ ...prev, [studentKey]: !prev[studentKey] }))}
+                                            className="rounded-md bg-[#141416] border border-[#2E2E34] p-1 text-[#EAEAE6] hover:border-emerald-500/50 transition-colors"
+                                            title={isExpanded ? "Collapse attempts" : `Show all ${sorted.length} attempts`}
+                                          >
+                                            {isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                                          </button>
+                                        )}
+                                        <div>
+                                          <div className="flex items-center space-x-2">
+                                            <span className="font-bold text-white">{latest.studentName}</span>
+                                            {isMulti && (
+                                              <button
+                                                type="button"
+                                                onClick={() => setExpandedStudentGroups(prev => ({ ...prev, [studentKey]: !prev[studentKey] }))}
+                                                className="rounded-full bg-[#EAEAE6]/15 border border-[#EAEAE6]/30 px-2 py-0.5 text-[10px] font-mono font-bold text-[#EAEAE6] hover:bg-[#EAEAE6] hover:text-[#141416] transition-all"
+                                              >
+                                                {sorted.length} Attempts
+                                              </button>
+                                            )}
+                                            {hasOverride && (
+                                              <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-amber-300">
+                                                Override Active
+                                              </span>
+                                            )}
+                                          </div>
+                                          <span className="text-[10px] font-mono text-[#71717A]">@{latest.studentUsername}</span>
+                                        </div>
+                                      </div>
+                                    </td>
 
-                              {/* Proctoring Tab Switches */}
-                              <td className="px-5 py-3.5">
-                                {hasViolations ? (
-                                  <span className="inline-flex items-center space-x-1 rounded-md bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 text-[11px] font-mono font-bold text-rose-300">
-                                    <ShieldAlert className="h-3 w-3" />
-                                    <span>{att.tabSwitchCount} Tab Switches</span>
-                                  </span>
-                                ) : (
-                                  <span className="inline-flex items-center space-x-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-mono text-emerald-400">
-                                    <CheckCircle2 className="h-3 w-3" />
-                                    <span>Clean Attempt</span>
-                                  </span>
-                                )}
-                              </td>
+                                    <td className="px-5 py-3.5 font-mono text-[11px] text-[#A1A1AA]">
+                                      {latest.studentLevel}
+                                    </td>
 
-                              <td className="px-5 py-3.5">
-                                {isGraded ? (
-                                  <div className="flex flex-col">
-                                    <span className={`inline-flex items-center space-x-1 font-mono font-bold text-xs ${
-                                      att.passed ? "text-emerald-400" : "text-rose-400"
-                                    }`}>
-                                      <span>{att.score} / {att.maxScore}</span>
-                                      <span>({att.percentage}%)</span>
-                                    </span>
-                                    <span className={`text-[10px] font-mono uppercase font-bold mt-0.5 ${
-                                      att.passed ? "text-emerald-500" : "text-rose-500"
-                                    }`}>
-                                      {att.passed ? "Passed" : "Failed"}
-                                    </span>
-                                  </div>
-                                ) : (
-                                  <span className="inline-flex items-center space-x-1 rounded-md bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[11px] font-mono font-bold text-amber-400">
-                                    <Clock className="h-3 w-3" />
-                                    <span>Review Required</span>
-                                  </span>
-                                )}
-                              </td>
+                                    <td className="px-5 py-3.5">
+                                      <div className="font-mono text-xs text-white">
+                                        {Math.floor(latest.timeSpentSeconds / 60)}m {latest.timeSpentSeconds % 60}s
+                                      </div>
+                                      <span className="text-[10px] font-mono text-[#71717A]">
+                                        {isMulti ? `Latest (#${latest.attemptNumber}) • ` : ""}
+                                        {latest.submittedAt ? new Date(latest.submittedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "In Progress"}
+                                      </span>
+                                    </td>
 
-                              <td className="px-5 py-3.5 text-right">
-                                <button
-                                  onClick={() => handleOpenGradingModal(att)}
-                                  className="inline-flex items-center space-x-1 rounded-lg bg-[#06B6D4]/15 px-2.5 py-1 text-xs font-bold text-[#06B6D4] hover:bg-[#06B6D4] hover:text-slate-950 transition-all border border-[#06B6D4]/30"
-                                >
-                                  <Award className="h-3.5 w-3.5" />
-                                  <span>{isGraded ? "Edit Grade" : "Grade & Review"}</span>
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
+                                    {/* Proctoring Tab Switches */}
+                                    <td className="px-5 py-3.5">
+                                      {totalViolations > 0 ? (
+                                        <span className="inline-flex items-center space-x-1 rounded-md bg-rose-500/15 border border-rose-500/30 px-2 py-0.5 text-[11px] font-mono font-bold text-rose-300">
+                                          <ShieldAlert className="h-3 w-3" />
+                                          <span>{totalViolations} Tab Switches</span>
+                                        </span>
+                                      ) : (
+                                        <span className="inline-flex items-center space-x-1 rounded-md bg-emerald-500/10 px-2 py-0.5 text-[11px] font-mono text-emerald-400">
+                                          <CheckCircle2 className="h-3 w-3" />
+                                          <span>Clean Attempt</span>
+                                        </span>
+                                      )}
+                                    </td>
+
+                                    <td className="px-5 py-3.5">
+                                      {anyPendingReview ? (
+                                        <span className="inline-flex items-center space-x-1 rounded-md bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 text-[11px] font-mono font-bold text-amber-400">
+                                          <Clock className="h-3 w-3" />
+                                          <span>Review Required</span>
+                                        </span>
+                                      ) : isGraded ? (
+                                        <div className="flex flex-col">
+                                          <span className={`inline-flex items-center space-x-1 font-mono font-bold text-xs ${
+                                            bestScoreAtt.passed ? "text-emerald-400" : "text-rose-400"
+                                          }`}>
+                                            <span>{bestScoreAtt.score} / {bestScoreAtt.maxScore}</span>
+                                            <span>({bestScoreAtt.percentage}%)</span>
+                                            {isMulti && <span className="text-[10px] text-[#A1A1AA]">Best</span>}
+                                          </span>
+                                          <span className={`text-[10px] font-mono uppercase font-bold mt-0.5 ${
+                                            bestScoreAtt.passed ? "text-emerald-500" : "text-rose-500"
+                                          }`}>
+                                            {bestScoreAtt.passed ? "Passed" : "Failed"}
+                                          </span>
+                                        </div>
+                                      ) : (
+                                        <span className="text-[11px] font-mono text-[#A1A1AA]">In Progress</span>
+                                      )}
+                                    </td>
+
+                                    <td className="px-5 py-3.5 text-right">
+                                      <div className="inline-flex items-center justify-end gap-1.5">
+                                        <button
+                                          type="button"
+                                          onClick={() => handleOpenOverrideModal(latest.studentUid, latest.studentName, latest.studentUsername)}
+                                          className="inline-flex items-center space-x-1 rounded-lg bg-[#141416] border border-[#2E2E34] px-2.5 py-1 text-xs font-bold text-amber-300 hover:border-amber-400 transition-all"
+                                          title="Grant Extra Attempt, Extra Time, or Extended Deadline"
+                                        >
+                                          <UserPlus className="h-3.5 w-3.5" />
+                                          <span>Grant</span>
+                                        </button>
+
+                                        {!isMulti ? (
+                                          <button
+                                            onClick={() => handleOpenGradingModal(latest)}
+                                            className="inline-flex items-center space-x-1 rounded-lg bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-300 hover:bg-emerald-500 hover:text-[#141416] transition-all border border-emerald-500/40"
+                                          >
+                                            <Award className="h-3.5 w-3.5" />
+                                            <span>{isGraded ? "Edit Grade" : "Grade & Review"}</span>
+                                          </button>
+                                        ) : (
+                                          <button
+                                            type="button"
+                                            onClick={() => setExpandedStudentGroups(prev => ({ ...prev, [studentKey]: !prev[studentKey] }))}
+                                            className="inline-flex items-center space-x-1 rounded-lg bg-emerald-500/15 px-2.5 py-1 text-xs font-bold text-emerald-300 hover:bg-emerald-500 hover:text-[#141416] transition-all border border-emerald-500/40"
+                                          >
+                                            <span>{isExpanded ? "Hide Attempts" : `View ${sorted.length} Attempts`}</span>
+                                          </button>
+                                        )}
+                                      </div>
+                                    </td>
+                                  </tr>
+
+                                  {isMulti && isExpanded && sorted.map((subAtt) => {
+                                    const subGraded = subAtt.status === "graded";
+                                    return (
+                                      <tr key={subAtt.id} className="bg-[#141416]/70 border-l-2 border-emerald-500/50">
+                                        <td className="pl-12 pr-5 py-2.5 text-[11px] font-mono text-[#A1A1AA]">
+                                          ↳ Attempt #{subAtt.attemptNumber}
+                                          {subAtt.autoSubmittedReason && (
+                                            <span className="ml-2 rounded bg-rose-500/15 px-1.5 py-0.5 text-[9px] text-rose-300">
+                                              {subAtt.autoSubmittedReason}
+                                            </span>
+                                          )}
+                                        </td>
+                                        <td className="px-5 py-2.5 font-mono text-[11px] text-[#71717A]">{subAtt.studentLevel}</td>
+                                        <td className="px-5 py-2.5 font-mono text-[11px] text-[#A1A1AA]">
+                                          {Math.floor(subAtt.timeSpentSeconds / 60)}m {subAtt.timeSpentSeconds % 60}s &bull;{" "}
+                                          {subAtt.submittedAt ? new Date(subAtt.submittedAt).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "In Progress"}
+                                        </td>
+                                        <td className="px-5 py-2.5 font-mono text-[11px]">
+                                          {subAtt.tabSwitchCount > 0 ? (
+                                            <span className="text-rose-300">{subAtt.tabSwitchCount} switches</span>
+                                          ) : (
+                                            <span className="text-emerald-400">Clean</span>
+                                          )}
+                                        </td>
+                                        <td className="px-5 py-2.5 font-mono text-[11px]">
+                                          {subGraded ? (
+                                            <span className={subAtt.passed ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                                              {subAtt.score} / {subAtt.maxScore} ({subAtt.percentage}%)
+                                            </span>
+                                          ) : (
+                                            <span className="text-amber-400">Pending Review</span>
+                                          )}
+                                        </td>
+                                        <td className="px-5 py-2.5 text-right">
+                                          <button
+                                            onClick={() => handleOpenGradingModal(subAtt)}
+                                            className="inline-flex items-center space-x-1 rounded-lg bg-emerald-500/15 px-2.5 py-1 text-[11px] font-bold text-emerald-300 hover:bg-emerald-500 hover:text-[#141416] transition-all border border-emerald-500/40"
+                                          >
+                                            <Award className="h-3 w-3" />
+                                            <span>{subGraded ? "Edit Grade" : "Grade"}</span>
+                                          </button>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </React.Fragment>
+                              );
+                            });
+                          })()}
+                        </tbody>
                     </table>
                   </div>
                 </div>
@@ -2565,20 +2895,20 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
       {/* ========================================================================= */}
       {gradingAttempt && selectedExamForSubmissions && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-6 backdrop-blur-md animate-in fade-in">
-          <div className="max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-3xl border border-[#334155] bg-[#0F172A] shadow-2xl flex flex-col">
-            <div className="flex items-center justify-between border-b border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
+          <div className="max-h-[92vh] w-full max-w-3xl overflow-hidden rounded-3xl border border-[#2E2E34] bg-[#141416] shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/70 shrink-0">
               <div>
                 <h3 className="text-base font-extrabold text-white">
                   Grading Attempt: {gradingAttempt.studentName}
                 </h3>
-                <p className="text-xs text-[#94A3B8]">
+                <p className="text-xs text-[#A1A1AA]">
                   {selectedExamForSubmissions.title} &bull; {selectedExamForSubmissions.courseCode} &bull; Time: {Math.floor(gradingAttempt.timeSpentSeconds / 60)}m {gradingAttempt.timeSpentSeconds % 60}s
                 </p>
               </div>
 
               <button
                 onClick={() => setGradingAttempt(null)}
-                className="rounded-xl p-1.5 text-[#94A3B8] hover:text-white hover:bg-slate-800"
+                className="rounded-xl p-1.5 text-[#A1A1AA] hover:text-white hover:bg-slate-800"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -2607,18 +2937,18 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                   return (
                     <div
                       key={q.id}
-                      className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4 space-y-3"
+                      className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-4 space-y-3"
                     >
-                      <div className="flex items-start justify-between gap-2 border-b border-[#334155]/60 pb-2">
+                      <div className="flex items-start justify-between gap-2 border-b border-[#2E2E34]/60 pb-2">
                         <div className="flex items-center space-x-2">
-                          <span className="font-mono text-xs font-bold text-[#06B6D4]">#{idx + 1}</span>
-                          <span className="rounded bg-[#0B0F19] px-2 py-0.5 text-[10px] font-mono uppercase text-[#94A3B8]">
+                          <span className="font-mono text-xs font-bold text-[#EAEAE6]">#{idx + 1}</span>
+                          <span className="rounded bg-[#141416] px-2 py-0.5 text-[10px] font-mono uppercase text-[#A1A1AA]">
                             {q.type.replace("_", " ")}
                           </span>
                         </div>
 
                         <div className="flex items-center space-x-2">
-                          <span className="text-[11px] font-mono text-[#94A3B8]">Awarded:</span>
+                          <span className="text-[11px] font-mono text-[#A1A1AA]">Awarded:</span>
                           <input
                             type="number"
                             min={0}
@@ -2631,9 +2961,9 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                                 [q.id]: { ...prev[q.id], awardedPoints: val }
                               }));
                             }}
-                            className="w-16 rounded-lg border border-[#334155] bg-[#0B0F19] px-2 py-1 text-xs font-mono font-bold text-emerald-400 focus:border-[#06B6D4] focus:outline-none"
+                            className="w-16 rounded-lg border border-[#2E2E34] bg-[#141416] px-2 py-1 text-xs font-mono font-bold text-emerald-400 focus:border-[#EAEAE6] focus:outline-none"
                           />
-                          <span className="text-xs font-mono text-[#94A3B8]">/ {q.points} Pts</span>
+                          <span className="text-xs font-mono text-[#A1A1AA]">/ {q.points} Pts</span>
                         </div>
                       </div>
 
@@ -2641,21 +2971,21 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                       <p className="text-xs text-white font-medium">{q.prompt}</p>
 
                       {/* Student's Given Answer */}
-                      <div className="rounded-xl bg-[#0B0F19] p-3 text-xs border border-[#334155]">
-                        <span className="text-[10px] font-mono text-[#06B6D4] uppercase block mb-1">
+                      <div className="rounded-xl bg-[#141416] p-3 text-xs border border-[#2E2E34]">
+                        <span className="text-[10px] font-mono text-[#EAEAE6] uppercase block mb-1">
                           Student's Answer:
                         </span>
                         <div className="font-mono text-white whitespace-pre-wrap">
                           {studentAnswer !== undefined && studentAnswer !== null
                             ? (Array.isArray(studentAnswer) ? studentAnswer.join(", ") : String(studentAnswer))
-                            : <span className="text-[#64748B] italic">No answer provided</span>
+                            : <span className="text-[#71717A] italic">No answer provided</span>
                           }
                         </div>
                       </div>
 
                       {/* Expected Answer (if available) */}
                       {q.correctAnswer !== undefined && (
-                        <div className="text-[11px] font-mono text-[#94A3B8]">
+                        <div className="text-[11px] font-mono text-[#A1A1AA]">
                           Expected Target: <strong className="text-emerald-400">{Array.isArray(q.correctAnswer) ? q.correctAnswer.join(", ") : String(q.correctAnswer)}</strong>
                         </div>
                       )}
@@ -2673,7 +3003,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                             }));
                           }}
                           placeholder="Feedback or correction on this question (optional)..."
-                          className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-1.5 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                          className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-1.5 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
                         />
                       </div>
                     </div>
@@ -2689,16 +3019,16 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                   value={generalFeedback}
                   onChange={(e) => setGeneralFeedback(e.target.value)}
                   placeholder="Provide overall constructive advice and comments for this student's exam attempt..."
-                  className="w-full rounded-2xl border border-[#334155] bg-[#0B0F19] p-3 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                  className="w-full rounded-2xl border border-[#2E2E34] bg-[#141416] p-3 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between border-t border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
+            <div className="flex items-center justify-between border-t border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/70 shrink-0">
               <button
                 type="button"
                 onClick={() => setGradingAttempt(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-[#94A3B8] hover:text-white bg-[#0B0F19] border border-[#334155]"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-[#A1A1AA] hover:text-white bg-[#141416] border border-[#2E2E34]"
               >
                 Cancel
               </button>
@@ -2707,7 +3037,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                 type="button"
                 disabled={savingGrade}
                 onClick={handleSaveAttemptGrade}
-                className="inline-flex items-center space-x-1.5 px-5 py-2 rounded-xl text-xs font-bold text-slate-950 bg-emerald-400 hover:bg-emerald-500 hover:text-white transition-all shadow-lg"
+                className="inline-flex items-center space-x-1.5 px-5 py-2 rounded-xl text-xs font-bold text-[#141416] bg-emerald-400 hover:bg-emerald-500 hover:text-white transition-all shadow-lg"
               >
                 <Award className="h-4 w-4" />
                 <span>{savingGrade ? "Saving..." : "Submit Grade & Evaluation"}</span>
@@ -2721,18 +3051,18 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
       {/* ========================================================================= */}
       {isImportModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-6 backdrop-blur-md animate-in fade-in">
-          <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-[#334155] bg-[#0F172A] shadow-2xl flex flex-col">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-[#2E2E34] bg-[#141416] shadow-2xl flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/70 shrink-0">
               <div className="flex items-center space-x-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#06B6D4]/20 text-[#06B6D4]">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#EAEAE6]/20 text-[#EAEAE6]">
                   <Upload className="h-5 w-5" />
                 </span>
                 <div>
                   <h3 className="text-base font-extrabold text-white">
                     Bulk Import Questions
                   </h3>
-                  <p className="text-xs text-[#94A3B8]">
+                  <p className="text-xs text-[#A1A1AA]">
                     Import questions from AI outputs (ChatGPT / Gemini / Claude), plain text documents, spreadsheets (CSV), or JSON.
                   </p>
                 </div>
@@ -2746,7 +3076,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                   setParsedPreviewQuestions([]);
                   setImportErrors([]);
                 }}
-                className="rounded-xl p-1.5 text-[#94A3B8] hover:text-white hover:bg-slate-800"
+                className="rounded-xl p-1.5 text-[#A1A1AA] hover:text-white hover:bg-slate-800"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -2755,14 +3085,14 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
             {/* Modal Body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-6">
               {/* AI Prompt & Templates Banner */}
-              <div className="rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/30 to-[#1E293B] p-4.5 space-y-3 shadow-lg">
+              <div className="rounded-2xl border border-[#EAEAE6]/30 bg-gradient-to-r from-cyan-950/30 to-[#1C1C1F] p-4.5 space-y-3 shadow-lg">
                 <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
                   <div>
                     <span className="text-xs font-bold text-white uppercase tracking-wider font-mono flex items-center space-x-1.5">
-                      <Sparkles className="h-4 w-4 text-cyan-400" />
+                      <Sparkles className="h-4 w-4 text-[#EAEAE6]" />
                       <span>AI Exam Generator &amp; Starter Templates</span>
                     </span>
-                    <p className="text-[11px] text-[#94A3B8] mt-0.5">
+                    <p className="text-[11px] text-[#A1A1AA] mt-0.5">
                       Generate tests in seconds with ChatGPT, Gemini, or Claude, or download template files to write your questions.
                     </p>
                   </div>
@@ -2774,13 +3104,13 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                       onClick={handleCopyAIPrompt}
                       className={`inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 ${
                         copiedAIPrompt
-                          ? "bg-emerald-400 text-slate-950 shadow-emerald-500/20"
-                          : "bg-cyan-500 hover:bg-cyan-400 text-slate-950"
+                          ? "bg-emerald-400 text-[#141416] shadow-emerald-500/20"
+                          : "bg-[#EAEAE6] hover:bg-[#EAEAE6] text-[#141416]"
                       }`}
                     >
                       {copiedAIPrompt ? (
                         <>
-                          <Check className="h-3.5 w-3.5 text-slate-950 font-bold" />
+                          <Check className="h-3.5 w-3.5 text-[#141416] font-bold" />
                           <span>Copied to Clipboard!</span>
                         </>
                       ) : (
@@ -2805,7 +3135,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     <button
                       type="button"
                       onClick={downloadExamTemplatePlainText}
-                      className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/30 hover:bg-cyan-500/20 transition-all shadow"
+                      className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold text-[#EAEAE6] bg-[#EAEAE6]/10 border border-[#EAEAE6]/30 hover:bg-[#EAEAE6]/20 transition-all shadow"
                     >
                       <FileText className="h-3.5 w-3.5" />
                       <span>Plain Text (.txt)</span>
@@ -2834,17 +3164,17 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                 </div>
 
                 {/* Natural Format Example Pill */}
-                <div className="rounded-xl bg-[#0B0F19] p-3 text-[11px] font-mono border border-[#334155] flex flex-col md:flex-row md:items-center justify-between gap-2">
-                  <div className="space-y-0.5 text-[#CBD5E1]">
+                <div className="rounded-xl bg-[#141416] p-3 text-[11px] font-mono border border-[#2E2E34] flex flex-col md:flex-row md:items-center justify-between gap-2">
+                  <div className="space-y-0.5 text-[#EAEAE6]">
                     <div className="text-white font-bold flex items-center space-x-1.5">
-                      <Bot className="h-3.5 w-3.5 text-cyan-400" />
+                      <Bot className="h-3.5 w-3.5 text-[#EAEAE6]" />
                       <span>Natural AI / Plain Text Format Example:</span>
                     </div>
-                    <div className="text-[#94A3B8]">
+                    <div className="text-[#A1A1AA]">
                       1. What is the function of a router? &bull; A) Forwards network packets &bull; B) Cools the computer &bull; Answer: A &bull; Points: 2
                     </div>
                   </div>
-                  <span className="text-[10px] text-cyan-300 font-bold bg-cyan-950/70 border border-cyan-500/30 px-2 py-1 rounded-lg shrink-0">
+                  <span className="text-[10px] text-[#EAEAE6] font-bold bg-cyan-950/70 border border-[#EAEAE6]/30 px-2 py-1 rounded-lg shrink-0">
                     Works automatically with any AI output!
                   </span>
                 </div>
@@ -2852,8 +3182,8 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
               {/* Format Filter Selection */}
               <div className="flex items-center space-x-2 text-xs">
-                <span className="font-mono text-[11px] text-[#94A3B8] font-bold uppercase">Format Mode:</span>
-                <div className="flex items-center space-x-1 bg-[#1E293B] p-1 rounded-xl border border-[#334155]">
+                <span className="font-mono text-[11px] text-[#A1A1AA] font-bold uppercase">Format Mode:</span>
+                <div className="flex items-center space-x-1 bg-[#1C1C1F] p-1 rounded-xl border border-[#2E2E34]">
                   <button
                     type="button"
                     onClick={() => {
@@ -2862,8 +3192,8 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     }}
                     className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all ${
                       importFormatSelection === "auto"
-                        ? "bg-[#06B6D4] text-slate-950 shadow"
-                        : "text-[#94A3B8] hover:text-white"
+                        ? "bg-[#EAEAE6] text-[#141416] shadow"
+                        : "text-[#A1A1AA] hover:text-white"
                     }`}
                   >
                     Auto-Detect
@@ -2876,8 +3206,8 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     }}
                     className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all ${
                       importFormatSelection === "plain_text"
-                        ? "bg-[#06B6D4] text-slate-950 shadow"
-                        : "text-[#94A3B8] hover:text-white"
+                        ? "bg-[#EAEAE6] text-[#141416] shadow"
+                        : "text-[#A1A1AA] hover:text-white"
                     }`}
                   >
                     Markdown / AI (.md)
@@ -2890,8 +3220,8 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     }}
                     className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all ${
                       importFormatSelection === "csv"
-                        ? "bg-[#06B6D4] text-slate-950 shadow"
-                        : "text-[#94A3B8] hover:text-white"
+                        ? "bg-[#EAEAE6] text-[#141416] shadow"
+                        : "text-[#A1A1AA] hover:text-white"
                     }`}
                   >
                     CSV (Excel)
@@ -2904,8 +3234,8 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     }}
                     className={`px-2.5 py-1 rounded-lg font-bold text-xs transition-all ${
                       importFormatSelection === "json"
-                        ? "bg-[#06B6D4] text-slate-950 shadow"
-                        : "text-[#94A3B8] hover:text-white"
+                        ? "bg-[#EAEAE6] text-[#141416] shadow"
+                        : "text-[#A1A1AA] hover:text-white"
                     }`}
                   >
                     JSON
@@ -2914,14 +3244,14 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
               </div>
 
               {/* Import Source Tabs */}
-              <div className="flex border-b border-[#334155] space-x-4">
+              <div className="flex border-b border-[#2E2E34] space-x-4">
                 <button
                   type="button"
                   onClick={() => setImportSourceTab("upload")}
                   className={`pb-3 text-xs font-bold transition-all flex items-center space-x-2 border-b-2 ${
                     importSourceTab === "upload"
-                      ? "border-[#06B6D4] text-[#06B6D4]"
-                      : "border-transparent text-[#94A3B8] hover:text-white"
+                      ? "border-[#EAEAE6] text-[#EAEAE6]"
+                      : "border-transparent text-[#A1A1AA] hover:text-white"
                   }`}
                 >
                   <Upload className="h-4 w-4" />
@@ -2932,8 +3262,8 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                   onClick={() => setImportSourceTab("paste")}
                   className={`pb-3 text-xs font-bold transition-all flex items-center space-x-2 border-b-2 ${
                     importSourceTab === "paste"
-                      ? "border-[#06B6D4] text-[#06B6D4]"
-                      : "border-transparent text-[#94A3B8] hover:text-white"
+                      ? "border-[#EAEAE6] text-[#EAEAE6]"
+                      : "border-transparent text-[#A1A1AA] hover:text-white"
                   }`}
                 >
                   <FileText className="h-4 w-4" />
@@ -2945,7 +3275,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                   className={`pb-3 text-xs font-bold transition-all flex items-center space-x-2 border-b-2 relative ${
                     importSourceTab === "ams_sync"
                       ? "border-emerald-400 text-emerald-400"
-                      : "border-transparent text-[#94A3B8] hover:text-white"
+                      : "border-transparent text-[#A1A1AA] hover:text-white"
                   }`}
                 >
                   <Server className="h-4 w-4 text-emerald-400" />
@@ -2958,29 +3288,29 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
               {/* Source Tab Contents */}
               {importSourceTab === "upload" && (
-                <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5">
+                <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-5">
                   <div className="mb-3 flex items-center justify-between">
                     <div>
                       <label className="block text-xs font-bold text-white mb-0.5">
                         Drop or Select Your Assessment File
                       </label>
-                      <p className="text-[11px] text-[#94A3B8]">
+                      <p className="text-[11px] text-[#A1A1AA]">
                         Supports Markdown (<strong>.md</strong>), Plain Text (<strong>.txt</strong>), Excel CSV (<strong>.csv</strong>), and JSON (<strong>.json</strong>).
                       </p>
                     </div>
                     {importFileName && (
-                      <span className="text-xs font-mono font-bold text-cyan-300 bg-cyan-950/70 border border-cyan-500/30 px-2.5 py-1 rounded-lg">
+                      <span className="text-xs font-mono font-bold text-[#EAEAE6] bg-cyan-950/70 border border-[#EAEAE6]/30 px-2.5 py-1 rounded-lg">
                         {importFileName}
                       </span>
                     )}
                   </div>
 
-                  <label className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#334155] bg-[#0B0F19] p-8 cursor-pointer hover:border-[#06B6D4] transition-all group text-center">
-                    <Upload className="h-8 w-8 text-[#94A3B8] group-hover:text-[#06B6D4] transition-all mb-2.5" />
-                    <span className="text-sm font-bold text-white group-hover:text-[#06B6D4]">
+                  <label className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[#2E2E34] bg-[#141416] p-8 cursor-pointer hover:border-[#EAEAE6] transition-all group text-center">
+                    <Upload className="h-8 w-8 text-[#A1A1AA] group-hover:text-[#EAEAE6] transition-all mb-2.5" />
+                    <span className="text-sm font-bold text-white group-hover:text-[#EAEAE6]">
                       {importFileName ? importFileName : "Click to Browse or Drag File Here"}
                     </span>
-                    <span className="text-[11px] text-[#64748B] mt-1.5">
+                    <span className="text-[11px] text-[#71717A] mt-1.5">
                       Accepts .md (Markdown), .txt (AI output), .csv (Spreadsheet), and .json
                     </span>
                     <input
@@ -2994,13 +3324,13 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
               )}
 
               {importSourceTab === "paste" && (
-                <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5 flex flex-col">
+                <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-5 flex flex-col">
                   <div className="flex items-center justify-between mb-2">
                     <div>
                       <label className="block text-xs font-bold text-white mb-0.5">
                         Paste Raw AI Output or Markdown Document
                       </label>
-                      <p className="text-[11px] text-[#94A3B8]">
+                      <p className="text-[11px] text-[#A1A1AA]">
                         Paste text copied straight from ChatGPT, Gemini, Claude, or your Python AMS output.
                       </p>
                     </div>
@@ -3020,20 +3350,20 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     value={importInputText}
                     onChange={(e) => handleTextareaChange(e.target.value)}
                     placeholder={`### Question 1 [multiple_choice] (3 pts)\nWhich data structure is immutable in Python?\n* A) List\n* B) Tuple (Correct)\n* C) Set\n* D) Dictionary\n\n### Question 2 [code_completion] (5 pts)\nFill in the missing loop operator:\n\`\`\`python\ntotal = 0\nfor x in items:\n    total ___1___ x\nreturn total\n\`\`\`\n* Blank 1: +=\n\n### Question 3 [predict_output] (4 pts)\nWhat will this print?\n\`\`\`python\nprint("Hello" * 2)\n\`\`\`\n* Output: HelloHello`}
-                    className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3.5 text-xs font-mono text-[#CBD5E1] placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none resize-none leading-relaxed"
+                    className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3.5 text-xs font-mono text-[#EAEAE6] placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none resize-none leading-relaxed"
                   />
                 </div>
               )}
 
               {importSourceTab === "ams_sync" && (
-                <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/20 via-[#1E293B] to-[#0B0F19] p-5 space-y-4">
+                <div className="rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-950/20 via-[#1C1C1F] to-[#141416] p-5 space-y-4">
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <div className="flex items-center space-x-2">
                         <Server className="h-5 w-5 text-emerald-400" />
                         <h4 className="text-sm font-bold text-white">Live Python AMS Curriculum Sync</h4>
                       </div>
-                      <p className="text-xs text-[#94A3B8] mt-1">
+                      <p className="text-xs text-[#A1A1AA] mt-1">
                         Directly queries your Python Django AMS backend to generate and parse assessment questions on demand.
                       </p>
                     </div>
@@ -3044,7 +3374,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                      <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                         AMS API Endpoint URL
                       </label>
                       <input
@@ -3052,15 +3382,15 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                         value={amsEndpointUrl}
                         onChange={(e) => setAmsEndpointUrl(e.target.value)}
                         placeholder="http://127.0.0.1:8000/api/exams/generate/"
-                        className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3.5 py-2.5 text-xs font-mono text-white placeholder-[#64748B] focus:border-emerald-400 focus:outline-none"
+                        className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] px-3.5 py-2.5 text-xs font-mono text-white placeholder-[#71717A] focus:border-emerald-400 focus:outline-none"
                       />
-                      <span className="text-[10px] text-[#64748B] mt-1 block">
+                      <span className="text-[10px] text-[#71717A] mt-1 block">
                         Defaults to local Django endpoint. Supports ngrok or hosted URLs.
                       </span>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                      <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                         Subject / Topic Query
                       </label>
                       <input
@@ -3068,9 +3398,9 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                         value={amsTopic}
                         onChange={(e) => setAmsTopic(e.target.value)}
                         placeholder={formTitle || "e.g., Python Data Structures & Functions"}
-                        className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] px-3.5 py-2.5 text-xs text-white placeholder-[#64748B] focus:border-emerald-400 focus:outline-none"
+                        className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] px-3.5 py-2.5 text-xs text-white placeholder-[#71717A] focus:border-emerald-400 focus:outline-none"
                       />
-                      <span className="text-[10px] text-[#64748B] mt-1 block">
+                      <span className="text-[10px] text-[#71717A] mt-1 block">
                         Leave blank to use current assessment title ({formTitle || "Assessment"}).
                       </span>
                     </div>
@@ -3079,11 +3409,11 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                   <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
                     <div className="flex items-center space-x-3 text-xs">
                       <div>
-                        <span className="text-[#94A3B8] text-xs mr-2 font-bold">Questions:</span>
+                        <span className="text-[#A1A1AA] text-xs mr-2 font-bold">Questions:</span>
                         <select
                           value={amsQuestionCount}
                           onChange={(e) => setAmsQuestionCount(Number(e.target.value))}
-                          className="rounded-lg border border-[#334155] bg-[#0B0F19] px-2.5 py-1 text-xs text-white focus:outline-none font-bold"
+                          className="rounded-lg border border-[#2E2E34] bg-[#141416] px-2.5 py-1 text-xs text-white focus:outline-none font-bold"
                         >
                           <option value={3}>3 questions</option>
                           <option value={5}>5 questions</option>
@@ -3093,11 +3423,11 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                       </div>
 
                       <div>
-                        <span className="text-[#94A3B8] text-xs mr-2 font-bold">Difficulty:</span>
+                        <span className="text-[#A1A1AA] text-xs mr-2 font-bold">Difficulty:</span>
                         <select
                           value={amsDifficulty}
                           onChange={(e) => setAmsDifficulty(e.target.value as any)}
-                          className="rounded-lg border border-[#334155] bg-[#0B0F19] px-2.5 py-1 text-xs text-white focus:outline-none font-bold capitalize"
+                          className="rounded-lg border border-[#2E2E34] bg-[#141416] px-2.5 py-1 text-xs text-white focus:outline-none font-bold capitalize"
                         >
                           <option value="easy">Easy</option>
                           <option value="medium">Medium</option>
@@ -3110,7 +3440,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                       type="button"
                       disabled={amsSyncing}
                       onClick={handleSyncWithAMS}
-                      className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition-all shadow-md active:scale-95 disabled:opacity-50"
+                      className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-[#141416] transition-all shadow-md active:scale-95 disabled:opacity-50"
                     >
                       <RefreshCw className={`h-3.5 w-3.5 ${amsSyncing ? "animate-spin" : ""}`} />
                       <span>{amsSyncing ? "Connecting to AMS..." : "Generate & Pull from AMS"}</span>
@@ -3132,20 +3462,20 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                         <WifiOff className="h-4 w-4 shrink-0 mt-0.5" />
                         <div className="space-y-1">
                           <span className="font-bold block">AMS Connection Notice:</span>
-                          <span className="block text-[#CBD5E1] text-[11px] leading-relaxed">
+                          <span className="block text-[#EAEAE6] text-[11px] leading-relaxed">
                             {amsSyncError}
                           </span>
                         </div>
                       </div>
 
                       <div className="border-t border-rose-500/20 pt-2 flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-[10px] text-[#94A3B8]">
+                        <span className="text-[10px] text-[#A1A1AA]">
                           Tip: If AMS is not hosted, copy the Markdown generated in Python and paste it directly.
                         </span>
                         <button
                           type="button"
                           onClick={() => setImportSourceTab("paste")}
-                          className="text-[11px] font-bold text-cyan-300 hover:underline"
+                          className="text-[11px] font-bold text-[#EAEAE6] hover:underline"
                         >
                           Switch to Paste Markdown &rarr;
                         </button>
@@ -3156,22 +3486,22 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
               )}
 
               {/* Import Mode: Append vs Replace */}
-              <div className="flex items-center justify-between rounded-2xl border border-[#334155] bg-[#1E293B] p-4">
+              <div className="flex items-center justify-between rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-4">
                 <div>
                   <span className="text-xs font-bold text-white block">Import Action</span>
-                  <span className="text-[11px] text-[#94A3B8]">
+                  <span className="text-[11px] text-[#A1A1AA]">
                     Choose how imported questions are merged with this assessment.
                   </span>
                 </div>
 
-                <div className="flex items-center space-x-2 bg-[#0B0F19] p-1 rounded-xl border border-[#334155]">
+                <div className="flex items-center space-x-2 bg-[#141416] p-1 rounded-xl border border-[#2E2E34]">
                   <button
                     type="button"
                     onClick={() => setImportMode("append")}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       importMode === "append"
-                        ? "bg-[#06B6D4] text-slate-950 shadow"
-                        : "text-[#94A3B8] hover:text-white"
+                        ? "bg-[#EAEAE6] text-[#141416] shadow"
+                        : "text-[#A1A1AA] hover:text-white"
                     }`}
                   >
                     Append to Existing ({formQuestions.length})
@@ -3183,7 +3513,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       importMode === "replace"
                         ? "bg-rose-500 text-white shadow"
-                        : "text-[#94A3B8] hover:text-white"
+                        : "text-[#A1A1AA] hover:text-white"
                     }`}
                   >
                     Replace All Existing
@@ -3214,20 +3544,20 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                       <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                       <span className="text-xs font-bold text-white uppercase font-mono tracking-wider">
                         Valid Questions Ready ({parsedPreviewQuestions.length}) &bull; Total Points:{" "}
-                        <span className="text-[#06B6D4]">
+                        <span className="text-[#EAEAE6]">
                           {parsedPreviewQuestions.reduce((s, q) => s + (Number(q.points) || 0), 0)} Pts
                         </span>
                       </span>
                     </div>
 
                     <div className="flex items-center space-x-2">
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg border font-bold uppercase tracking-wider text-cyan-300 border-cyan-500/30 bg-cyan-500/10">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-lg border font-bold uppercase tracking-wider text-[#EAEAE6] border-[#EAEAE6]/30 bg-[#EAEAE6]/10">
                         Detected: {detectedFormat === "plain_text" ? "AI Plain Text" : detectedFormat.toUpperCase()}
                       </span>
                     </div>
 
                     <div className="flex items-center flex-wrap gap-1.5 text-[10px] font-mono">
-                      <span className="rounded bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 text-cyan-300">
+                      <span className="rounded bg-[#EAEAE6]/10 border border-[#EAEAE6]/30 px-2 py-0.5 text-[#EAEAE6]">
                         {parsedPreviewQuestions.filter(q => q.type === "multiple_choice").length} Single Choice
                       </span>
                       <span className="rounded bg-indigo-500/10 border border-indigo-500/30 px-2 py-0.5 text-indigo-300">
@@ -3264,14 +3594,14 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                     {parsedPreviewQuestions.map((q, idx) => (
                       <div
                         key={idx}
-                        className="rounded-xl border border-[#334155] bg-[#1E293B] p-3 text-xs space-y-2"
+                        className="rounded-xl border border-[#2E2E34] bg-[#1C1C1F] p-3 text-xs space-y-2"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">
-                            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[#0B0F19] font-mono text-[10px] font-bold text-[#06B6D4]">
+                            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-[#141416] font-mono text-[10px] font-bold text-[#EAEAE6]">
                               {idx + 1}
                             </span>
-                            <span className="rounded bg-[#0B0F19] border border-[#334155] px-1.5 py-0.2 text-[10px] font-mono uppercase text-cyan-300 font-bold">
+                            <span className="rounded bg-[#141416] border border-[#2E2E34] px-1.5 py-0.2 text-[10px] font-mono uppercase text-[#EAEAE6] font-bold">
                               {q.type.replace("_", " ")}
                             </span>
                             <span className="text-[10px] font-mono text-emerald-400 font-bold">
@@ -3296,7 +3626,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                                   className={`rounded-lg px-2.5 py-1 text-[11px] border flex items-center justify-between ${
                                     isCorrect
                                       ? "border-emerald-500/50 bg-emerald-500/10 text-emerald-300 font-bold"
-                                      : "border-[#334155] bg-[#0B0F19] text-[#94A3B8]"
+                                      : "border-[#2E2E34] bg-[#141416] text-[#A1A1AA]"
                                   }`}
                                 >
                                   <span>{String.fromCharCode(65 + oIdx)}. {opt}</span>
@@ -3319,13 +3649,13 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                         {/* Short Answer / Essay Guideline */}
                         {(q.type === "short_answer" || q.type === "essay") && q.correctAnswer && (
                           <div className="text-[11px] text-slate-300">
-                            <span className="font-bold text-cyan-400">Accepted Answer / Rubric: </span>
+                            <span className="font-bold text-[#EAEAE6]">Accepted Answer / Rubric: </span>
                             {String(q.correctAnswer)}
                           </div>
                         )}
 
                         {q.explanation && (
-                          <div className="text-[10px] text-[#94A3B8] italic">
+                          <div className="text-[10px] text-[#A1A1AA] italic">
                             Rationale: {q.explanation}
                           </div>
                         )}
@@ -3334,14 +3664,14 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                   </div>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-dashed border-[#334155] bg-[#0B0F19]/60 p-8 text-center text-xs text-[#94A3B8]">
+                <div className="rounded-2xl border border-dashed border-[#2E2E34] bg-[#141416]/60 p-8 text-center text-xs text-[#A1A1AA]">
                   Select a file or paste formatted CSV/JSON above to view preview and import questions.
                 </div>
               )}
             </div>
 
             {/* Modal Footer */}
-            <div className="flex items-center justify-between border-t border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
+            <div className="flex items-center justify-between border-t border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/70 shrink-0">
               <button
                 type="button"
                 onClick={() => {
@@ -3351,7 +3681,7 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                   setParsedPreviewQuestions([]);
                   setImportErrors([]);
                 }}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-[#94A3B8] hover:text-white bg-[#0B0F19] border border-[#334155]"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-[#A1A1AA] hover:text-white bg-[#141416] border border-[#2E2E34]"
               >
                 Cancel
               </button>
@@ -3360,13 +3690,236 @@ export default function ExamManager({ adminUser, syllabi = [], trades = [] }: Ex
                 type="button"
                 disabled={parsedPreviewQuestions.length === 0}
                 onClick={handleConfirmImport}
-                className="inline-flex items-center space-x-1.5 px-5 py-2 rounded-xl text-xs font-bold text-slate-950 bg-[#06B6D4] hover:bg-[#0891B2] hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg active:scale-95"
+                className="inline-flex items-center space-x-1.5 px-5 py-2 rounded-xl text-xs font-bold text-[#141416] bg-emerald-500 hover:bg-emerald-400 hover:text-[#141416] disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg active:scale-95"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 <span>
                   Confirm &amp; Import ({parsedPreviewQuestions.length} Questions)
                 </span>
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 2B: PER-STUDENT OVERRIDE (EXTRA ATTEMPTS / EXTRA TIME / DEADLINE) */}
+      {/* ========================================================================= */}
+      {overrideTargetStudent && selectedExamForSubmissions && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md animate-in fade-in">
+          <div className="w-full max-w-md rounded-3xl border border-[#2E2E34] bg-[#141416] p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] pb-3">
+              <div>
+                <span className="text-[10px] font-mono uppercase text-amber-300 font-bold block">Student Exception Grant</span>
+                <h4 className="text-base font-extrabold text-white">
+                  {overrideTargetStudent.name} <span className="text-xs font-mono text-[#A1A1AA]">(@{overrideTargetStudent.username})</span>
+                </h4>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOverrideTargetStudent(null)}
+                className="rounded-lg p-1.5 text-[#A1A1AA] hover:text-white"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-[#A1A1AA] mb-1">Extra Attempts (+)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={20}
+                    value={overrideExtraAttempts}
+                    onChange={(e) => setOverrideExtraAttempts(Number(e.target.value))}
+                    className="w-full rounded-xl border border-[#2E2E34] bg-[#1C1C1F] px-3 py-2 text-xs font-mono text-white focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-[#A1A1AA] mb-1">Extra Time (+ Mins)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={180}
+                    value={overrideExtraMinutes}
+                    onChange={(e) => setOverrideExtraMinutes(Number(e.target.value))}
+                    className="w-full rounded-xl border border-[#2E2E34] bg-[#1C1C1F] px-3 py-2 text-xs font-mono text-white focus:border-emerald-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-[#A1A1AA] mb-1">Extended Deadline (Optional)</label>
+                <input
+                  type="datetime-local"
+                  value={overrideExtendedDueDate}
+                  onChange={(e) => setOverrideExtendedDueDate(e.target.value)}
+                  className="w-full rounded-xl border border-[#2E2E34] bg-[#1C1C1F] px-3 py-2 text-xs font-mono text-white focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-[#A1A1AA] mb-1">Reason / Note</label>
+                <input
+                  type="text"
+                  value={overrideReason}
+                  onChange={(e) => setOverrideReason(e.target.value)}
+                  placeholder="e.g. Medical excuse or connectivity drop"
+                  className="w-full rounded-xl border border-[#2E2E34] bg-[#1C1C1F] px-3 py-2 text-xs text-white placeholder-[#71717A] focus:border-emerald-500 focus:outline-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-[#2E2E34]">
+              <button
+                type="button"
+                onClick={() => setOverrideTargetStudent(null)}
+                className="rounded-xl border border-[#2E2E34] bg-[#1C1C1F] px-4 py-2 text-xs font-semibold text-[#A1A1AA] hover:text-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={savingOverride}
+                onClick={handleSaveOverride}
+                className="inline-flex items-center space-x-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-[#141416] hover:bg-emerald-400 transition-all disabled:opacity-50"
+              >
+                <Check className="h-3.5 w-3.5" />
+                <span>{savingOverride ? "Saving..." : "Save Override"}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL 2C: EXAM ANALYTICS & ITEM DIFFICULTY BREAKDOWN */}
+      {/* ========================================================================= */}
+      {analyticsExam && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-6 backdrop-blur-md animate-in fade-in">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-[#2E2E34] bg-[#141416] shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/70 shrink-0">
+              <div>
+                <div className="flex items-center space-x-2 text-xs font-mono text-emerald-400 mb-0.5">
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  <span className="uppercase font-bold">Assessment Analytics &amp; Item Difficulty</span>
+                </div>
+                <h3 className="text-base font-extrabold text-white">
+                  {analyticsExam.title} ({analyticsExam.courseCode})
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setAnalyticsExam(null)}
+                className="rounded-xl p-1.5 text-[#A1A1AA] hover:text-white hover:bg-[#2E2E34]"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {loadingAnalytics ? (
+                <div className="py-16 text-center text-[#A1A1AA] text-xs font-mono">
+                  Computing cohort statistics and question difficulty...
+                </div>
+              ) : analyticsAttempts.length === 0 ? (
+                <div className="py-16 text-center text-[#A1A1AA] bg-[#1C1C1F] rounded-2xl border border-[#2E2E34] p-6">
+                  <BarChart3 className="mx-auto h-10 w-10 text-[#71717A] mb-2" />
+                  <p className="text-sm font-bold text-white">No Submissions Yet</p>
+                  <p className="text-xs mt-1">Analytics will populate automatically as students submit attempts.</p>
+                </div>
+              ) : (() => {
+                const uniqueStudents = new Set(analyticsAttempts.map(a => a.studentUid || a.studentUsername)).size;
+                const graded = analyticsAttempts.filter(a => typeof a.percentage === "number");
+                const avgPct = graded.length > 0 ? Math.round(graded.reduce((s, a) => s + (a.percentage || 0), 0) / graded.length) : 0;
+                const passCount = graded.filter(a => a.passed).length;
+                const passRate = graded.length > 0 ? Math.round((passCount / graded.length) * 100) : 0;
+                const avgSec = Math.round(analyticsAttempts.reduce((s, a) => s + (a.timeSpentSeconds || 0), 0) / analyticsAttempts.length);
+
+                const itemStats = analyticsExam.questions.map((q, idx) => {
+                  let answeredCount = 0;
+                  let fullCreditCount = 0;
+                  analyticsAttempts.forEach((att) => {
+                    const qGrade = att.questionGrades?.[q.id];
+                    if (qGrade) {
+                      answeredCount++;
+                      if (qGrade.awardedPoints >= (qGrade.maxPoints || q.points || 1)) {
+                        fullCreditCount++;
+                      }
+                    }
+                  });
+                  const correctRate = answeredCount > 0 ? Math.round((fullCreditCount / answeredCount) * 100) : 0;
+                  return { q, idx, answeredCount, fullCreditCount, correctRate };
+                }).sort((a, b) => a.correctRate - b.correctRate);
+
+                return (
+                  <>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-4">
+                        <span className="text-[10px] font-mono uppercase text-[#A1A1AA]">Unique Students</span>
+                        <div className="text-2xl font-extrabold text-white mt-1">{uniqueStudents}</div>
+                        <span className="text-[10px] font-mono text-[#71717A]">{analyticsAttempts.length} total attempts</span>
+                      </div>
+                      <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-4">
+                        <span className="text-[10px] font-mono uppercase text-[#A1A1AA]">Average Score</span>
+                        <div className="text-2xl font-extrabold text-emerald-400 mt-1">{avgPct}%</div>
+                        <span className="text-[10px] font-mono text-[#71717A]">Pass threshold: {analyticsExam.passPercentage}%</span>
+                      </div>
+                      <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-4">
+                        <span className="text-[10px] font-mono uppercase text-[#A1A1AA]">Pass Rate</span>
+                        <div className={`text-2xl font-extrabold mt-1 ${passRate >= 50 ? "text-emerald-400" : "text-rose-400"}`}>{passRate}%</div>
+                        <span className="text-[10px] font-mono text-[#71717A]">{passCount} of {graded.length} passed</span>
+                      </div>
+                      <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-4">
+                        <span className="text-[10px] font-mono uppercase text-[#A1A1AA]">Avg Duration</span>
+                        <div className="text-2xl font-extrabold text-white mt-1">{Math.floor(avgSec / 60)}m {avgSec % 60}s</div>
+                        <span className="text-[10px] font-mono text-[#71717A]">Across all attempts</span>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <h4 className="text-xs font-mono font-bold uppercase text-[#EAEAE6] tracking-wider">
+                        Question Difficulty Breakdown (Hardest First)
+                      </h4>
+                      <div className="space-y-2">
+                        {itemStats.map(({ q, idx, answeredCount, fullCreditCount, correctRate }) => {
+                          const tier =
+                            correctRate < 40 ? "Hard (Reteach)" : correctRate < 75 ? "Moderate" : "Strong";
+                          const tierClass =
+                            correctRate < 40
+                              ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
+                              : correctRate < 75
+                              ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                              : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
+                          return (
+                            <div key={q.id} className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <div className="flex items-center space-x-2 mb-1">
+                                  <span className="rounded bg-[#141416] border border-[#2E2E34] px-2 py-0.5 text-[10px] font-mono font-bold text-[#EAEAE6]">
+                                    Q{idx + 1} &bull; {q.points} Pts
+                                  </span>
+                                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-mono font-bold ${tierClass}`}>
+                                    {tier}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-white line-clamp-2">{q.prompt}</p>
+                              </div>
+                              <div className="shrink-0 text-right">
+                                <div className="text-lg font-extrabold font-mono text-white">{correctRate}%</div>
+                                <span className="text-[10px] font-mono text-[#A1A1AA]">
+                                  {fullCreditCount}/{answeredCount} correct
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>

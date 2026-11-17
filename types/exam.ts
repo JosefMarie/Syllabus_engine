@@ -36,6 +36,15 @@ export interface ExamQuestion {
   codeLines?: string[]; // Original/scrambled lines for code_ordering
 }
 
+export interface StudentExamOverride {
+  extraAttempts?: number;
+  extraMinutes?: number;
+  extendedDueDate?: string;
+  reason?: string;
+  grantedBy?: string;
+  grantedAt?: string;
+}
+
 export interface Exam {
   id: string;
   title: string;
@@ -51,13 +60,19 @@ export interface Exam {
   maxAttempts: number; // 1 for formal exam, 0 = unlimited for practice quiz
   shuffleQuestions?: boolean;
   shuffleOptions?: boolean;
+  questionDrawCount?: number; // 0 or undefined = all questions; N > 0 = randomly draw N questions per attempt
   enableAntiCheating?: boolean; // Detects window blur, tab switching, and fullscreen exit
+  maxTabSwitches?: number; // 0 = warn only, N > 0 = auto-submit exam after N tab switches
+  requireFullscreen?: boolean; // Automatically enter fullscreen on start & warn on exit
+  lockCopyPaste?: boolean; // Block copy, cut, paste, and right-click inside exam hall
   showResultsImmediately?: boolean; // If true, reveals score and answers upon submit
   resultsReleaseMode?: 'manual_release' | 'after_due_date' | 'immediate'; // Control when answers & explanations unlock
   resultsReleased?: boolean; // Set by instructor to release answers & explanations to all students
   questions: ExamQuestion[];
   totalPoints: number;
+  availableFrom?: string; // Optional scheduled open ISO string
   dueDate?: string; // Optional deadline ISO string
+  studentOverrides?: Record<string, StudentExamOverride>; // Per-student retake, extra time, & deadline overrides
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
@@ -91,6 +106,8 @@ export interface ExamAttempt {
   submittedAt?: string;
   timeSpentSeconds: number;
   tabSwitchCount: number; // Disciplinary tracking for tab switching/unfocusing during exam
+  drawnQuestionIds?: string[]; // Subset of question IDs drawn if questionDrawCount > 0
+  autoSubmittedReason?: string; // e.g., 'time_expired' | 'tab_switch_limit'
   questionGrades?: Record<string, QuestionGrade>;
   teacherFeedback?: string;
   gradedBy?: string;

@@ -104,13 +104,13 @@ export default function SyllabusStudyDeck({
         {/* Header */}
         <div className="p-5 border-b border-slate-800 flex items-center justify-between bg-slate-950/60">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 border border-[#EAEAE6]/40 flex items-center justify-center text-[#EAEAE6]">
               <Layers className="w-5 h-5" />
             </div>
             <div>
               <h3 className="text-base font-bold text-white flex items-center gap-2">
                 <span>Course Study Deck & Flashcards</span>
-                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[#EAEAE6]/20 text-[#EAEAE6] border border-[#EAEAE6]/30">
                   {syllabus.courseCode}
                 </span>
               </h3>
@@ -139,7 +139,7 @@ export default function SyllabusStudyDeck({
 
           <div className="w-24 h-2 bg-slate-800 rounded-full overflow-hidden">
             <div
-              className="h-full bg-cyan-400 rounded-full transition-all"
+              className="h-full bg-[#EAEAE6] rounded-full transition-all"
               style={{ width: `${((currentIndex + 1) / totalCards) * 100}%` }}
             />
           </div>
@@ -151,15 +151,15 @@ export default function SyllabusStudyDeck({
             onClick={handleFlip}
             className="w-full max-w-lg min-h-[280px] p-8 rounded-3xl border-2 cursor-pointer transition-all duration-300 flex flex-col justify-between select-none relative overflow-hidden group shadow-xl"
             style={{
-              backgroundColor: isFlipped ? "#0F172A" : "#1E293B",
+              backgroundColor: isFlipped ? "#141416" : "#1C1C1F",
               borderColor: isFlipped ? "rgba(6, 182, 212, 0.6)" : "rgba(51, 65, 85, 0.8)"
             }}
           >
             <div className="flex items-center justify-between text-xs text-slate-400">
-              <span className="font-mono uppercase tracking-wider text-[10px] text-cyan-400">
+              <span className="font-mono uppercase tracking-wider text-[10px] text-[#EAEAE6]">
                 {isFlipped ? "Back: Explanation & Details" : "Front: Prompt & Concept"}
               </span>
-              <span className="flex items-center gap-1 text-[11px] text-slate-500 group-hover:text-cyan-400 transition-colors">
+              <span className="flex items-center gap-1 text-[11px] text-slate-500 group-hover:text-[#EAEAE6] transition-colors">
                 <RotateCw className="w-3.5 h-3.5" />
                 <span>Click to Flip</span>
               </span>
@@ -181,7 +181,7 @@ export default function SyllabusStudyDeck({
               <span className="truncate max-w-[200px] text-slate-500">
                 {currentCard.topicTitle}
               </span>
-              <span className="font-mono text-cyan-400 font-bold">
+              <span className="font-mono text-[#EAEAE6] font-bold">
                 Status: {currentMastery.toUpperCase()}
               </span>
             </div>
@@ -200,7 +200,7 @@ export default function SyllabusStudyDeck({
               <button
                 type="button"
                 onClick={() => handleRate("mastered")}
-                className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md shadow-emerald-950/40 transition-all flex items-center gap-1.5"
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-[#141416] shadow-md shadow-emerald-950/40 transition-all flex items-center gap-1.5"
               >
                 <CheckCircle2 className="w-4 h-4" />
                 <span>Mastered Concept!</span>

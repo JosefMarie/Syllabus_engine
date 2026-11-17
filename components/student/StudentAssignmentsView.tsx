@@ -426,30 +426,8 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
     }
   };
 
-  // Automatically record "received" receipt for assignments strictly delivered to this student's level view (staggered to prevent Firestore write spikes)
-  useEffect(() => {
-    if (!currentUser?.uid || myLevelAssignments.length === 0) return;
-
-    const unreceipted = myLevelAssignments.filter(
-      asg => !asg.studentReceipts?.[currentUser.uid]?.receivedAt
-    );
-
-    if (unreceipted.length === 0) return;
-
-    const timers: NodeJS.Timeout[] = [];
-    unreceipted.forEach((asg, index) => {
-      const timer = setTimeout(() => {
-        recordAssignmentStudentReceipt(asg.id, currentUser, "received").catch(err => {
-          console.warn("Could not record assignment receipt:", err);
-        });
-      }, index * 350);
-      timers.push(timer);
-    });
-
-    return () => {
-      timers.forEach(t => clearTimeout(t));
-    };
-  }, [myLevelAssignments, currentUser]);
+  // Automatic background "received" receipt writes disabled to minimize Firestore writes.
+  // "opened" receipt is still recorded when a student clicks Start/Edit/View.
 
   const handleOpenAssignment = (asg: Assignment) => {
     setActiveAssignment(asg);
@@ -707,8 +685,8 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-[#334155] bg-[#1E293B]/60 p-8 text-center text-xs font-mono text-[#94A3B8]">
-        <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-2" />
+      <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F]/60 p-8 text-center text-xs font-mono text-[#A1A1AA]">
+        <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent mb-2" />
         Loading your class assignments...
       </div>
     );
@@ -717,13 +695,13 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
   return (
     <div className="space-y-6">
       {/* Header and Direct Submit Button */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#334155] pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2E2E34] pb-4">
         <div>
           <h2 className="text-base font-extrabold text-white flex items-center space-x-2">
-            <Award className="h-5 w-5 text-[#06B6D4]" />
+            <Award className="h-5 w-5 text-[#EAEAE6]" />
             <span>Class Assignments &amp; Course Projects</span>
           </h2>
-          <p className="text-xs text-[#94A3B8] mt-0.5">
+          <p className="text-xs text-[#A1A1AA] mt-0.5">
             Complete tasks assigned by your instructor, or submit independent homework &amp; project files under your course.
           </p>
         </div>
@@ -733,10 +711,10 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
             type="button"
             onClick={() => loadData(false)}
             disabled={isSyncing}
-            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-[#06B6D4] transition-all disabled:opacity-50"
+            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#2E2E34] bg-[#1C1C1F] px-3 py-2 text-xs font-semibold text-[#EAEAE6] hover:text-white hover:border-[#EAEAE6] transition-all disabled:opacity-50"
             title="Sync latest assignments & grades from instructor"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-[#06B6D4] ${isSyncing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 text-[#EAEAE6] ${isSyncing ? "animate-spin" : ""}`} />
             <span>{isSyncing ? "Syncing..." : "Sync Latest"}</span>
           </button>
 
@@ -747,7 +725,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
               }
               setIsSelfSubmitModalOpen(true);
             }}
-            className="inline-flex items-center space-x-2 rounded-xl bg-gradient-to-r from-[#06B6D4] to-[#3B82F6] px-4 py-2 text-xs font-bold text-slate-950 shadow-lg hover:brightness-110 transition-all shrink-0"
+            className="inline-flex items-center space-x-2 rounded-xl bg-gradient-to-r from-[#EAEAE6] to-[#3B82F6] px-4 py-2 text-xs font-bold text-[#141416] shadow-lg hover:brightness-110 transition-all shrink-0"
           >
             <Upload className="h-4 w-4" />
             <span>Submit Course Assignment</span>
@@ -757,14 +735,14 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
       {/* SECTION 0: MY ASSIGNMENT MARKS & GRADES BY SUBJECT */}
       {subjectMarksSummary.length > 0 && (
-        <div className="rounded-2xl border border-emerald-500/30 bg-[#1E293B]/85 p-5 shadow-xl space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#334155]/70 pb-3">
+        <div className="rounded-2xl border border-emerald-500/30 bg-[#1C1C1F]/85 p-5 shadow-xl space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#2E2E34]/70 pb-3">
             <div>
               <h3 className="text-xs font-extrabold font-mono text-emerald-400 uppercase tracking-wider flex items-center space-x-2">
                 <BarChart3 className="h-4 w-4 text-emerald-400" />
                 <span>My Assignment Marks &amp; Grades by Subject ({subjectMarksSummary.length})</span>
               </h3>
-              <p className="text-[11px] text-[#94A3B8] mt-0.5">
+              <p className="text-[11px] text-[#A1A1AA] mt-0.5">
                 View your graded assignment marks and total scores grouped by subject / course module.
               </p>
             </div>
@@ -790,12 +768,12 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
               return (
                 <div
                   key={subj.courseCode}
-                  className="rounded-xl border border-[#334155] bg-[#0B0F19]/70 p-4 flex flex-col justify-between space-y-3"
+                  className="rounded-xl border border-[#2E2E34] bg-[#141416]/70 p-4 flex flex-col justify-between space-y-3"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div>
-                        <span className="inline-block rounded-md bg-[#06B6D4]/15 border border-[#06B6D4]/30 px-2 py-0.5 text-[10px] font-mono font-bold text-[#06B6D4]">
+                        <span className="inline-block rounded-md bg-[#EAEAE6]/15 border border-[#EAEAE6]/30 px-2 py-0.5 text-[10px] font-mono font-bold text-[#EAEAE6]">
                           {subj.courseCode}
                         </span>
                         <h4 className="text-xs font-bold text-white mt-1 line-clamp-1">
@@ -813,7 +791,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                           }`}>
                             {avgPct}%
                           </span>
-                          <span className="block text-[10px] font-mono text-[#94A3B8] mt-0.5">
+                          <span className="block text-[10px] font-mono text-[#A1A1AA] mt-0.5">
                             {subj.earnedPoints} / {subj.possiblePoints} Pts
                           </span>
                         </div>
@@ -825,7 +803,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                     </div>
 
                     {/* Individual assignment marks in this subject */}
-                    <div className="space-y-1.5 pt-2 border-t border-[#334155]/60">
+                    <div className="space-y-1.5 pt-2 border-t border-[#2E2E34]/60">
                       {subj.gradedItems.map((item) => (
                         <button
                           key={item.id}
@@ -839,9 +817,9 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                               setViewingSubmission(item.submission);
                             }
                           }}
-                          className="w-full flex items-center justify-between rounded-lg bg-[#1E293B]/80 hover:bg-[#1E293B] border border-[#334155]/60 hover:border-[#06B6D4]/50 px-2.5 py-1.5 text-left transition-all"
+                          className="w-full flex items-center justify-between rounded-lg bg-[#1C1C1F]/80 hover:bg-[#1C1C1F] border border-[#2E2E34]/60 hover:border-[#EAEAE6]/50 px-2.5 py-1.5 text-left transition-all"
                         >
-                          <span className="text-[11px] font-medium text-[#CBD5E1] truncate pr-2">
+                          <span className="text-[11px] font-medium text-[#EAEAE6] truncate pr-2">
                             {item.title}
                           </span>
                           <span className="text-[11px] font-mono font-bold text-emerald-400 shrink-0">
@@ -868,11 +846,11 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
       {independentSubmissions.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold font-mono text-[#06B6D4] uppercase tracking-wider flex items-center space-x-1.5">
+            <h3 className="text-xs font-bold font-mono text-[#EAEAE6] uppercase tracking-wider flex items-center space-x-1.5">
               <BookOpen className="h-3.5 w-3.5" />
               <span>Your Self-Submitted Course Work ({independentSubmissions.length})</span>
             </h3>
-            <span className="text-[11px] font-mono text-[#94A3B8]">Visible to course teachers</span>
+            <span className="text-[11px] font-mono text-[#A1A1AA]">Visible to course teachers</span>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
@@ -882,10 +860,10 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                 <div
                   key={sub.id}
                   onClick={() => setViewingSubmission(sub)}
-                  className="rounded-2xl border border-[#334155] bg-[#1E293B]/80 p-4 hover:border-[#06B6D4]/50 cursor-pointer transition-all shadow-md group space-y-2.5"
+                  className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F]/80 p-4 hover:border-[#EAEAE6]/50 cursor-pointer transition-all shadow-md group space-y-2.5"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="rounded-md bg-[#06B6D4]/10 border border-[#06B6D4]/30 px-2 py-0.5 text-[10px] font-mono font-bold text-[#06B6D4]">
+                    <span className="rounded-md bg-[#EAEAE6]/10 border border-[#EAEAE6]/30 px-2 py-0.5 text-[10px] font-mono font-bold text-[#EAEAE6]">
                       {sub.courseCode}
                     </span>
                     <div className="flex items-center space-x-1.5">
@@ -916,20 +894,20 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                   </div>
 
                   <div>
-                    <h4 className="text-sm font-bold text-white group-hover:text-[#06B6D4] transition-colors line-clamp-1">
+                    <h4 className="text-sm font-bold text-white group-hover:text-[#EAEAE6] transition-colors line-clamp-1">
                       {sub.submissionTitle || "Course Assignment"}
                     </h4>
-                    <span className="text-[10px] font-mono text-[#64748B] block mt-0.5">
+                    <span className="text-[10px] font-mono text-[#71717A] block mt-0.5">
                       Submitted on {new Date(sub.submittedAt).toLocaleDateString()}
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between pt-2 border-t border-[#334155]/60 text-[11px] font-mono text-[#94A3B8]">
-                    <span className="flex items-center space-x-1 text-[#06B6D4]">
+                  <div className="flex items-center justify-between pt-2 border-t border-[#2E2E34]/60 text-[11px] font-mono text-[#A1A1AA]">
+                    <span className="flex items-center space-x-1 text-[#EAEAE6]">
                       {sub.fileData ? <Upload className="h-3 w-3" /> : <FileText className="h-3 w-3" />}
                       <span className="truncate max-w-[150px]">{sub.fileData ? sub.fileData.name : "Markdown Notes"}</span>
                     </span>
-                    <span className="text-[#06B6D4] group-hover:underline">View Details &rarr;</span>
+                    <span className="text-[#EAEAE6] group-hover:underline">View Details &rarr;</span>
                   </div>
                 </div>
               );
@@ -942,11 +920,11 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
       <div className="space-y-3">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-xs font-bold font-mono text-[#94A3B8] uppercase tracking-wider">
+            <h3 className="text-xs font-bold font-mono text-[#A1A1AA] uppercase tracking-wider">
               Assigned by Instructor ({assignments.length})
             </h3>
             <div className="flex items-center space-x-2">
-              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold bg-[#06B6D4]/15 text-[#06B6D4] border border-[#06B6D4]/30">
+              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold bg-[#EAEAE6]/15 text-[#EAEAE6] border border-[#EAEAE6]/30">
                 {currentUser.level || "Class Tasks"} ({myLevelAssignments.length})
               </span>
             </div>
@@ -955,7 +933,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
               <select
                 value={selectedSubjectFilter}
                 onChange={(e) => setSelectedSubjectFilter(e.target.value)}
-                className="rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-1.5 text-[11px] font-mono text-white focus:border-[#06B6D4] focus:outline-none"
+                className="rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-1.5 text-[11px] font-mono text-white focus:border-[#EAEAE6] focus:outline-none"
               >
                 <option value="all">All {currentUser.level || "Class"} Subjects ({myLevelAssignments.length})</option>
                 {availableSubjectCodes.map((code) => {
@@ -969,18 +947,18 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
               </select>
             )}
           </div>
-          <span className="text-xs font-mono text-[#06B6D4]">
+          <span className="text-xs font-mono text-[#EAEAE6]">
             {Object.keys(submissions).length} / {assignments.length} Completed
           </span>
         </div>
 
         {assignments.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-[#334155] bg-[#1E293B]/40 p-8 text-center">
-            <FileText className="mx-auto h-10 w-10 text-[#64748B] mb-2" />
+          <div className="rounded-2xl border border-dashed border-[#2E2E34] bg-[#1C1C1F]/40 p-8 text-center">
+            <FileText className="mx-auto h-10 w-10 text-[#71717A] mb-2" />
             <h3 className="text-sm font-bold text-white mb-1">
               No Assignments Posted for {currentUser.level || "Your Class"} Yet
             </h3>
-            <p className="text-xs text-[#94A3B8] max-w-sm mx-auto mb-4">
+            <p className="text-xs text-[#A1A1AA] max-w-sm mx-auto mb-4">
               When your instructor publishes an assignment for {currentUser.level || "your level"}, it will appear here automatically.
             </p>
             <div className="flex items-center justify-center gap-2">
@@ -991,7 +969,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                   }
                   setIsSelfSubmitModalOpen(true);
                 }}
-                className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-3.5 py-1.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+                className="inline-flex items-center space-x-2 rounded-xl bg-emerald-500 px-3.5 py-1.5 text-xs font-bold text-[#141416] hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-md"
               >
                 <Upload className="h-3.5 w-3.5" />
                 <span>Submit Course Assignment</span>
@@ -1012,12 +990,12 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
               return (
                 <div
                   key={asg.id}
-                  className="flex flex-col justify-between rounded-2xl border border-[#334155] bg-[#1E293B]/90 p-5 hover:border-[#06B6D4]/50 transition-all shadow-xl group"
+                  className="flex flex-col justify-between rounded-2xl border border-[#2E2E34] bg-[#1C1C1F]/90 p-5 hover:border-[#EAEAE6]/50 transition-all shadow-xl group"
                 >
                   <div>
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="rounded-md bg-[#06B6D4]/10 border border-[#06B6D4]/30 px-2 py-0.5 text-[10px] font-mono font-bold text-[#06B6D4]">
+                        <span className="rounded-md bg-[#EAEAE6]/10 border border-[#EAEAE6]/30 px-2 py-0.5 text-[10px] font-mono font-bold text-[#EAEAE6]">
                           {asg.courseCode || "General"}
                         </span>
                         {asg.level && (
@@ -1047,16 +1025,16 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                       </span>
                     </div>
 
-                    <h3 className="text-sm font-bold text-white group-hover:text-[#06B6D4] transition-colors line-clamp-2 mb-1.5">
+                    <h3 className="text-sm font-bold text-white group-hover:text-[#EAEAE6] transition-colors line-clamp-2 mb-1.5">
                       {asg.title}
                     </h3>
 
-                    <p className="text-xs text-[#94A3B8] line-clamp-2 mb-3 leading-relaxed">
+                    <p className="text-xs text-[#A1A1AA] line-clamp-2 mb-3 leading-relaxed">
                       {asg.description || asg.instructionsMarkdown}
                     </p>
 
                     {(effectiveDueDate) && (
-                      <div className={`flex flex-wrap items-center gap-1.5 text-[11px] font-mono mb-3 ${isOverdue ? "text-rose-400 font-bold" : extension ? "text-cyan-300 font-semibold" : "text-[#94A3B8]"}`}>
+                      <div className={`flex flex-wrap items-center gap-1.5 text-[11px] font-mono mb-3 ${isOverdue ? "text-rose-400 font-bold" : extension ? "text-[#EAEAE6] font-semibold" : "text-[#A1A1AA]"}`}>
                         <Calendar className="h-3.5 w-3.5 shrink-0" />
                         <span>
                           {extension ? "Extended Due: " : "Due: "}
@@ -1064,7 +1042,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                           {isOverdue ? " (Closed)" : ""}
                         </span>
                         {extension && (
-                          <span className="rounded bg-cyan-500/15 border border-cyan-500/30 px-1.5 py-0.5 text-[9px] font-bold text-cyan-300">
+                          <span className="rounded bg-[#EAEAE6]/15 border border-[#EAEAE6]/30 px-1.5 py-0.5 text-[9px] font-bold text-[#EAEAE6]">
                             Approved Extension
                           </span>
                         )}
@@ -1072,7 +1050,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                     )}
                   </div>
 
-                  <div className="pt-3 border-t border-[#334155]/60 flex items-center justify-between gap-2">
+                  <div className="pt-3 border-t border-[#2E2E34]/60 flex items-center justify-between gap-2">
                     <div>
                       {isGraded ? (
                         <span className="inline-flex items-center space-x-1 rounded-md bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 text-[11px] font-mono font-bold text-emerald-400">
@@ -1082,7 +1060,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                           </span>
                         </span>
                       ) : canEditSubmission ? (
-                        <span className="inline-flex items-center space-x-1 rounded-md bg-cyan-500/15 border border-cyan-500/30 px-2 py-0.5 text-[11px] font-mono font-bold text-cyan-300">
+                        <span className="inline-flex items-center space-x-1 rounded-md bg-[#EAEAE6]/15 border border-[#EAEAE6]/30 px-2 py-0.5 text-[11px] font-mono font-bold text-[#EAEAE6]">
                           <CheckCircle2 className="h-3 w-3" />
                           <span>Submitted • Editable</span>
                         </span>
@@ -1097,7 +1075,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                           <span>Deadline Passed</span>
                         </span>
                       ) : (
-                        <span className="inline-flex items-center space-x-1 text-[11px] font-mono text-[#94A3B8]">
+                        <span className="inline-flex items-center space-x-1 text-[11px] font-mono text-[#A1A1AA]">
                           <Clock className="h-3 w-3" />
                           <span>Not Submitted</span>
                         </span>
@@ -1108,14 +1086,14 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                       onClick={() => handleOpenAssignment(asg)}
                       className={`inline-flex items-center space-x-1 rounded-lg px-3 py-1.5 text-xs font-bold transition-all shadow-md ${
                         isGraded
-                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-slate-950"
+                          ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500 hover:text-[#141416]"
                           : canEditSubmission
-                          ? "bg-[#0B0F19] text-[#06B6D4] border border-[#06B6D4]/40 hover:bg-[#06B6D4] hover:text-slate-950"
+                          ? "bg-[#141416] text-[#EAEAE6] border border-[#EAEAE6]/40 hover:bg-emerald-500 hover:text-[#141416]"
                           : isSubmitted
                           ? "bg-slate-800 text-amber-300 border border-amber-500/30 hover:bg-slate-700"
                           : isOverdue
                           ? "bg-slate-800 text-slate-300 border border-slate-700 hover:bg-slate-700"
-                          : "bg-[#06B6D4] text-slate-950 hover:bg-[#0891B2] hover:text-white"
+                          : "bg-[#EAEAE6] text-[#141416] hover:bg-white hover:text-[#141416]"
                       }`}
                     >
                       <span>
@@ -1142,20 +1120,20 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
       {/* MODAL 1: STUDENT SELF-SUBMIT UNDER COURSE */}
       {isSelfSubmitModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#334155] bg-[#1E293B] p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-[#334155] pb-3">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] pb-3">
               <div>
                 <h3 className="text-base font-extrabold text-white flex items-center space-x-2">
-                  <Upload className="h-5 w-5 text-[#06B6D4]" />
+                  <Upload className="h-5 w-5 text-[#EAEAE6]" />
                   <span>Submit Assignment for Course</span>
                 </h3>
-                <p className="text-xs text-[#94A3B8] mt-0.5">
+                <p className="text-xs text-[#A1A1AA] mt-0.5">
                   Select a course and submit your project file, homework, or solution directly under your name ({currentUser.fullName}).
                 </p>
               </div>
               <button
                 onClick={() => setIsSelfSubmitModalOpen(false)}
-                className="rounded-lg p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155]"
+                className="rounded-lg p-1.5 text-[#A1A1AA] hover:text-white hover:bg-[#2E2E34]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1163,12 +1141,12 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
             <form onSubmit={handleSelfSubmit} className="space-y-4">
               {/* Optional Assignment ID from Instructor */}
-              <div className="rounded-xl border border-[#06B6D4]/30 bg-[#06B6D4]/5 p-3 space-y-2">
+              <div className="rounded-xl border border-[#EAEAE6]/30 bg-[#EAEAE6]/5 p-3 space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="block text-xs font-bold text-[#06B6D4]">
+                  <label className="block text-xs font-bold text-[#EAEAE6]">
                     Assignment ID from Teacher (Optional)
                   </label>
-                  <span className="text-[10px] font-mono text-[#94A3B8]">e.g. ASG-K9M4</span>
+                  <span className="text-[10px] font-mono text-[#A1A1AA]">e.g. ASG-K9M4</span>
                 </div>
                 <input
                   type="text"
@@ -1191,7 +1169,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                     }
                   }}
                   placeholder="Enter Assignment ID shared by your teacher (if assignment wasn't visible)"
-                  className="w-full rounded-xl border border-[#334155]/70 bg-[#0B0F19]/80 px-3.5 py-2 text-xs font-mono text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none uppercase"
+                  className="w-full rounded-xl border border-[#2E2E34]/70 bg-[#141416]/80 px-3.5 py-2 text-xs font-mono text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none uppercase"
                 />
                 {assignmentIdCode.trim() && (
                   matchedAssignmentByCode ? (
@@ -1211,14 +1189,14 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                  <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                     Select Course / Subject <span className="text-rose-400">*</span>
                   </label>
                   <select
                     required
                     value={selectedCourseCode}
                     onChange={(e) => setSelectedCourseCode(e.target.value)}
-                    className="w-full rounded-xl border border-[#334155]/70 bg-[#0B0F19]/60 backdrop-blur-md px-3 py-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                    className="w-full rounded-xl border border-[#2E2E34]/70 bg-[#141416]/60 backdrop-blur-md px-3 py-2.5 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   >
                     <option value="">-- Choose Course --</option>
                     {studentCourses.map((c) => (
@@ -1230,7 +1208,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                  <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                     Assignment Topic / Title <span className="text-rose-400">*</span>
                   </label>
                   <input
@@ -1239,13 +1217,13 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                     value={customTitle}
                     onChange={(e) => setCustomTitle(e.target.value)}
                     placeholder="e.g. Lab 2: Binary Search Tree Solution"
-                    className="w-full rounded-xl border border-[#334155]/70 bg-[#0B0F19]/60 backdrop-blur-md px-3.5 py-2.5 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                    className="w-full rounded-xl border border-[#2E2E34]/70 bg-[#141416]/60 backdrop-blur-md px-3.5 py-2.5 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                   Explanation, Code, or Solution Notes (Markdown supported)
                 </label>
                 <textarea
@@ -1253,12 +1231,12 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                   value={customMarkdown}
                   onChange={(e) => setCustomMarkdown(e.target.value)}
                   placeholder="Provide answers, code snippets, or notes about your submission..."
-                  className="w-full rounded-xl border border-[#334155]/70 bg-[#0B0F19]/60 backdrop-blur-md p-3 text-xs font-mono text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none leading-relaxed"
+                  className="w-full rounded-xl border border-[#2E2E34]/70 bg-[#141416]/60 backdrop-blur-md p-3 text-xs font-mono text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none leading-relaxed"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                   Attach Readable Document or Code File (PDF, DOCX, MD, TXT, JSON, CSV, Source Code, Image — Max 5MB, No .zip)
                 </label>
                 <div className="flex items-center space-x-3">
@@ -1269,9 +1247,9 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                         (window as any).__SYLLABUS_FILE_PICKER_TIMESTAMP = Date.now();
                       }
                     }}
-                    className="inline-flex items-center space-x-2 rounded-xl border border-[#334155] bg-[#0B0F19] px-4 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-[#06B6D4] cursor-pointer transition-all"
+                    className="inline-flex items-center space-x-2 rounded-xl border border-[#2E2E34] bg-[#141416] px-4 py-2 text-xs font-semibold text-[#EAEAE6] hover:text-white hover:border-[#EAEAE6] cursor-pointer transition-all"
                   >
-                    <Upload className="h-4 w-4 text-[#06B6D4]" />
+                    <Upload className="h-4 w-4 text-[#EAEAE6]" />
                     <span>{customFile ? "Change File" : "Choose File"}</span>
                     <input
                       type="file"
@@ -1288,13 +1266,13 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                   </label>
 
                   {customFile && (
-                    <div className="flex items-center space-x-2 rounded-xl bg-[#0B0F19] border border-[#334155] px-3 py-1.5 text-xs text-white">
+                    <div className="flex items-center space-x-2 rounded-xl bg-[#141416] border border-[#2E2E34] px-3 py-1.5 text-xs text-white">
                       <FileCheck className="h-4 w-4 text-emerald-400" />
                       <span className="font-mono text-[11px] truncate max-w-[200px]">{customFile.name}</span>
                       <button
                         type="button"
                         onClick={() => setCustomFile(null)}
-                        className="text-[#94A3B8] hover:text-rose-400"
+                        className="text-[#A1A1AA] hover:text-rose-400"
                       >
                         <X className="h-3.5 w-3.5" />
                       </button>
@@ -1310,11 +1288,11 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                 </div>
               )}
 
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-[#334155]">
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-[#2E2E34]">
                 <button
                   type="button"
                   onClick={() => setIsSelfSubmitModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#94A3B8] hover:text-white bg-[#0B0F19] border border-[#334155]"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#A1A1AA] hover:text-white bg-[#141416] border border-[#2E2E34]"
                 >
                   Cancel
                 </button>
@@ -1322,7 +1300,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                 <button
                   type="submit"
                   disabled={submittingSelf}
-                  className="inline-flex items-center space-x-1.5 px-5 py-2 rounded-xl text-xs font-bold text-slate-950 bg-[#06B6D4] hover:bg-[#0891B2] hover:text-white transition-all shadow-lg disabled:opacity-50"
+                  className="inline-flex items-center space-x-1.5 px-5 py-2 rounded-xl text-xs font-bold text-[#141416] bg-emerald-500 hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-lg disabled:opacity-50"
                 >
                   <Send className="h-3.5 w-3.5" />
                   <span>{submittingSelf ? "Submitting..." : "Submit to Teacher"}</span>
@@ -1336,10 +1314,10 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
       {/* MODAL 2: VIEW INDEPENDENT SUBMISSION DETAILS */}
       {viewingSubmission && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in">
-          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#334155] bg-[#1E293B] p-6 shadow-2xl space-y-5">
-            <div className="flex items-start justify-between border-b border-[#334155] pb-3">
+          <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-6 shadow-2xl space-y-5">
+            <div className="flex items-start justify-between border-b border-[#2E2E34] pb-3">
               <div>
-                <div className="flex items-center space-x-2 text-xs font-mono text-[#06B6D4] mb-1">
+                <div className="flex items-center space-x-2 text-xs font-mono text-[#EAEAE6] mb-1">
                   <span>Course: {viewingSubmission.courseCode}</span>
                   <span>•</span>
                   <span>{new Date(viewingSubmission.submittedAt).toLocaleString()}</span>
@@ -1348,7 +1326,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
               </div>
               <button
                 onClick={() => setViewingSubmission(null)}
-                className="rounded-lg p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155]"
+                className="rounded-lg p-1.5 text-[#A1A1AA] hover:text-white hover:bg-[#2E2E34]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1367,7 +1345,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                   </span>
                 </div>
                 {viewingSubmission.feedback && (
-                  <p className="text-xs text-[#CBD5E1] italic">
+                  <p className="text-xs text-[#EAEAE6] italic">
                     "{viewingSubmission.feedback}"
                   </p>
                 )}
@@ -1376,9 +1354,9 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
             {/* Content notes */}
             {viewingSubmission.contentMarkdown && (
-              <div className="rounded-xl border border-[#334155]/60 bg-[#0B0F19]/50 backdrop-blur-md p-4 space-y-2">
-                <span className="text-[10px] font-mono text-[#06B6D4] uppercase tracking-wider block">Your Notes / Solution:</span>
-                <div className="prose prose-invert prose-xs max-w-none text-[#CBD5E1]">
+              <div className="rounded-xl border border-[#2E2E34]/60 bg-[#141416]/50 backdrop-blur-md p-4 space-y-2">
+                <span className="text-[10px] font-mono text-[#EAEAE6] uppercase tracking-wider block">Your Notes / Solution:</span>
+                <div className="prose prose-invert prose-xs max-w-none text-[#EAEAE6]">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {viewingSubmission.contentMarkdown}
                   </ReactMarkdown>
@@ -1388,12 +1366,12 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
             {/* Attached file */}
             {viewingSubmission.fileData && (
-              <div className="flex items-center justify-between rounded-xl border border-[#334155]/60 bg-[#0B0F19]/50 backdrop-blur-md p-3.5">
+              <div className="flex items-center justify-between rounded-xl border border-[#2E2E34]/60 bg-[#141416]/50 backdrop-blur-md p-3.5">
                 <div className="flex items-center space-x-2.5">
-                  <FileCheck className="h-5 w-5 text-[#06B6D4]" />
+                  <FileCheck className="h-5 w-5 text-[#EAEAE6]" />
                   <div>
                     <span className="block text-xs font-bold text-white">{viewingSubmission.fileData.name}</span>
-                    <span className="block text-[10px] font-mono text-[#94A3B8]">{(viewingSubmission.fileData.size / 1024).toFixed(1)} KB</span>
+                    <span className="block text-[10px] font-mono text-[#A1A1AA]">{(viewingSubmission.fileData.size / 1024).toFixed(1)} KB</span>
                   </div>
                 </div>
                 {viewingSubmission.fileData.base64Url && (
@@ -1402,7 +1380,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                     download={viewingSubmission.fileData.name}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center space-x-1 rounded-lg bg-[#06B6D4] px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+                    className="inline-flex items-center space-x-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-[#141416] hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-md"
                   >
                     <Upload className="h-3 w-3" />
                     <span>Download</span>
@@ -1411,7 +1389,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
               </div>
             )}
 
-            <div className="flex items-center justify-between pt-3 border-t border-[#334155]">
+            <div className="flex items-center justify-between pt-3 border-t border-[#2E2E34]">
               <button
                 type="button"
                 disabled={deletingSubId === viewingSubmission.id}
@@ -1424,7 +1402,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
               <button
                 onClick={() => setViewingSubmission(null)}
-                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#0B0F19]/60 backdrop-blur-sm border border-[#334155]/70 hover:bg-[#0B0F19]/90"
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-white bg-[#141416]/60 backdrop-blur-sm border border-[#2E2E34]/70 hover:bg-[#141416]/90"
               >
                 Close
               </button>
@@ -1445,17 +1423,17 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in">
-            <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-[#334155] bg-[#1E293B] p-6 shadow-2xl space-y-6">
-              <div className="flex items-start justify-between border-b border-[#334155] pb-4">
+            <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-6 shadow-2xl space-y-6">
+              <div className="flex items-start justify-between border-b border-[#2E2E34] pb-4">
                 <div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-[#06B6D4] mb-1">
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-mono text-[#EAEAE6] mb-1">
                     <span>{activeAssignment.courseCode || "General"}</span>
                     <span>•</span>
                     <span>{activeAssignment.totalPoints} Total Points</span>
                     {effectiveDueDate && (
                       <>
                         <span>•</span>
-                        <span className={isPastDue ? "text-rose-400 font-bold" : extension ? "text-cyan-300 font-bold" : "text-[#94A3B8]"}>
+                        <span className={isPastDue ? "text-rose-400 font-bold" : extension ? "text-[#EAEAE6] font-bold" : "text-[#A1A1AA]"}>
                           {extension ? "Extended Due: " : "Due: "}
                           {formatAssignmentDueDate(effectiveDueDate)}
                           {isPastDue ? " (Closed)" : ""}
@@ -1467,16 +1445,16 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                 </div>
                 <button
                   onClick={() => setActiveAssignment(null)}
-                  className="rounded-lg p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155]"
+                  className="rounded-lg p-1.5 text-[#A1A1AA] hover:text-white hover:bg-[#2E2E34]"
                 >
                   <X className="h-5 w-5" />
                 </button>
               </div>
 
               {/* Assignment Instructions in Markdown */}
-              <div className="rounded-xl border border-[#334155] bg-[#0B0F19] p-4 space-y-2">
-                <span className="text-[10px] font-mono text-[#06B6D4] uppercase tracking-wider block">Instructions:</span>
-                <div className="prose prose-invert prose-xs max-w-none leading-relaxed text-[#CBD5E1]">
+              <div className="rounded-xl border border-[#2E2E34] bg-[#141416] p-4 space-y-2">
+                <span className="text-[10px] font-mono text-[#EAEAE6] uppercase tracking-wider block">Instructions:</span>
+                <div className="prose prose-invert prose-xs max-w-none leading-relaxed text-[#EAEAE6]">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {activeAssignment.instructionsMarkdown || activeAssignment.description}
                   </ReactMarkdown>
@@ -1485,8 +1463,8 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
               {/* Assignment Attachments (if any) */}
               {activeAssignment.attachments && activeAssignment.attachments.length > 0 && (
-                <div className="rounded-xl border border-[#334155] bg-[#0B0F19] p-4 space-y-2">
-                  <span className="text-[10px] font-mono text-[#06B6D4] uppercase tracking-wider block">
+                <div className="rounded-xl border border-[#2E2E34] bg-[#141416] p-4 space-y-2">
+                  <span className="text-[10px] font-mono text-[#EAEAE6] uppercase tracking-wider block">
                     Attached Reference Files:
                   </span>
                   <div className="flex flex-wrap gap-2">
@@ -1497,7 +1475,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                         download={att.name}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center space-x-1.5 rounded-lg border border-[#334155] bg-[#1E293B] px-3 py-1.5 text-xs font-semibold text-[#06B6D4] hover:border-[#06B6D4]"
+                        className="inline-flex items-center space-x-1.5 rounded-lg border border-[#2E2E34] bg-[#1C1C1F] px-3 py-1.5 text-xs font-semibold text-[#EAEAE6] hover:border-[#EAEAE6]"
                       >
                         <FileText className="h-3.5 w-3.5" />
                         <span>{att.name}</span>
@@ -1525,7 +1503,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                         </div>
                       </div>
                       {existingSubmission.feedback && (
-                        <p className="text-xs text-[#CBD5E1] italic leading-relaxed">
+                        <p className="text-xs text-[#EAEAE6] italic leading-relaxed">
                           &ldquo;{existingSubmission.feedback}&rdquo;
                         </p>
                       )}
@@ -1553,11 +1531,11 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
                   {/* Read-only view of what the student submitted */}
                   {existingSubmission.contentMarkdown && (
-                    <div className="rounded-xl border border-[#334155] bg-[#0B0F19] p-4 space-y-2">
-                      <span className="text-[10px] font-mono text-[#06B6D4] uppercase tracking-wider block">
+                    <div className="rounded-xl border border-[#2E2E34] bg-[#141416] p-4 space-y-2">
+                      <span className="text-[10px] font-mono text-[#EAEAE6] uppercase tracking-wider block">
                         Your Submitted Solution / Notes (Read-Only):
                       </span>
-                      <div className="prose prose-invert prose-xs max-w-none text-[#CBD5E1] leading-relaxed">
+                      <div className="prose prose-invert prose-xs max-w-none text-[#EAEAE6] leading-relaxed">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {existingSubmission.contentMarkdown}
                         </ReactMarkdown>
@@ -1566,12 +1544,12 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                   )}
 
                   {existingSubmission.fileData && (
-                    <div className="flex items-center justify-between rounded-xl border border-[#334155] bg-[#0B0F19] p-3.5">
+                    <div className="flex items-center justify-between rounded-xl border border-[#2E2E34] bg-[#141416] p-3.5">
                       <div className="flex items-center space-x-2.5">
                         <FileCheck className="h-5 w-5 text-emerald-400" />
                         <div>
                           <span className="block text-xs font-bold text-white">{existingSubmission.fileData.name}</span>
-                          <span className="block text-[10px] font-mono text-[#94A3B8]">
+                          <span className="block text-[10px] font-mono text-[#A1A1AA]">
                             Submitted File • {(existingSubmission.fileData.size / 1024).toFixed(1)} KB (Locked)
                           </span>
                         </div>
@@ -1582,7 +1560,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                           download={existingSubmission.fileData.name}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center space-x-1 rounded-lg bg-[#06B6D4] px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+                          className="inline-flex items-center space-x-1 rounded-lg bg-emerald-500 px-3 py-1.5 text-xs font-bold text-[#141416] hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-md"
                         >
                           <Upload className="h-3 w-3" />
                           <span>Download Copy</span>
@@ -1591,11 +1569,11 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                     </div>
                   )}
 
-                  <div className="flex items-center justify-end pt-3 border-t border-[#334155]">
+                  <div className="flex items-center justify-end pt-3 border-t border-[#2E2E34]">
                     <button
                       type="button"
                       onClick={() => setActiveAssignment(null)}
-                      className="px-5 py-2 rounded-xl text-xs font-bold text-slate-950 bg-[#06B6D4] hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+                      className="px-5 py-2 rounded-xl text-xs font-bold text-[#141416] bg-emerald-500 hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-md"
                     >
                       Close
                     </button>
@@ -1614,11 +1592,11 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                     </p>
                   </div>
 
-                  <div className="flex items-center justify-end pt-3 border-t border-[#334155]">
+                  <div className="flex items-center justify-end pt-3 border-t border-[#2E2E34]">
                     <button
                       type="button"
                       onClick={() => setActiveAssignment(null)}
-                      className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-[#0B0F19] border border-[#334155] hover:bg-slate-800"
+                      className="px-5 py-2 rounded-xl text-xs font-semibold text-white bg-[#141416] border border-[#2E2E34] hover:bg-slate-800"
                     >
                       Close
                     </button>
@@ -1640,7 +1618,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                             Code: {activeMatchedGroup.joinCode}
                           </span>
                         </div>
-                        <p className="text-xs text-[#CBD5E1] leading-relaxed">
+                        <p className="text-xs text-[#EAEAE6] leading-relaxed">
                           Submitting on behalf of all teammates:{" "}
                           <span className="text-white font-semibold">
                             {activeMatchedGroup.members.map(m => m.fullName).join(", ")}
@@ -1662,16 +1640,16 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                   )}
 
                   {extension ? (
-                    <div className="rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-3.5 py-2.5 text-[11px] text-cyan-200 flex items-start space-x-2">
-                      <Clock className="h-4 w-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <div className="rounded-xl border border-[#EAEAE6]/40 bg-[#EAEAE6]/10 px-3.5 py-2.5 text-[11px] text-[#EAEAE6] flex items-start space-x-2">
+                      <Clock className="h-4 w-4 text-[#EAEAE6] shrink-0 mt-0.5" />
                       <div>
                         <span className="font-bold text-white">
                           Instructor-Approved Deadline Extension Active (until {formatAssignmentDueDate(effectiveDueDate)})
                         </span>
                         {extension.reason && (
-                          <span className="block text-cyan-200/80 mt-0.5">Reason: {extension.reason}</span>
+                          <span className="block text-[#EAEAE6]/80 mt-0.5">Reason: {extension.reason}</span>
                         )}
-                        <span className="block text-cyan-200/80 mt-0.5">
+                        <span className="block text-[#EAEAE6]/80 mt-0.5">
                           You can upload a file or update your submission until the extended deadline ends.
                         </span>
                       </div>
@@ -1684,8 +1662,8 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                       </span>
                     </div>
                   ) : (
-                    <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/5 px-3.5 py-2.5 text-[11px] text-cyan-200/90 flex items-center space-x-2">
-                      <Clock className="h-3.5 w-3.5 text-cyan-400 shrink-0" />
+                    <div className="rounded-xl border border-[#EAEAE6]/30 bg-[#EAEAE6]/5 px-3.5 py-2.5 text-[11px] text-[#EAEAE6]/90 flex items-center space-x-2">
+                      <Clock className="h-3.5 w-3.5 text-[#EAEAE6] shrink-0" />
                       <span>
                         <strong>Editable Until Deadline:</strong> You can update your submission or replace your uploaded file anytime before the deadline{effectiveDueDate ? ` (${formatAssignmentDueDate(effectiveDueDate)})` : ""}.
                       </span>
@@ -1696,7 +1674,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                   <form onSubmit={handleSubmit} className="space-y-4">
                     {activeAssignment.allowTextSubmission && (
                       <div>
-                        <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                        <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                           Your Solution / Markdown Notes / Code Answer
                         </label>
                         <textarea
@@ -1704,14 +1682,14 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                           value={textAnswer}
                           onChange={(e) => setTextAnswer(e.target.value)}
                           placeholder="Type your explanation, answers, and code here... (Markdown supported)"
-                          className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs font-mono text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none leading-relaxed"
+                          className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs font-mono text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none leading-relaxed"
                         />
                       </div>
                     )}
 
                     {activeAssignment.allowFileUpload && (
                       <div>
-                        <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                        <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                           File Attachment (PDF, DOCX, MD, TXT, JSON, CSV, Source Code, or Image — No .zip)
                         </label>
                         <div className="flex items-center space-x-3">
@@ -1722,9 +1700,9 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                                 (window as any).__SYLLABUS_FILE_PICKER_TIMESTAMP = Date.now();
                               }
                             }}
-                            className="inline-flex items-center space-x-2 rounded-xl border border-[#334155] bg-[#0B0F19] px-4 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-[#06B6D4] cursor-pointer transition-all"
+                            className="inline-flex items-center space-x-2 rounded-xl border border-[#2E2E34] bg-[#141416] px-4 py-2 text-xs font-semibold text-[#EAEAE6] hover:text-white hover:border-[#EAEAE6] cursor-pointer transition-all"
                           >
-                            <Upload className="h-4 w-4 text-[#06B6D4]" />
+                            <Upload className="h-4 w-4 text-[#EAEAE6]" />
                             <span>{selectedFile ? "Change Selected File" : "Choose File (Max 5MB)"}</span>
                             <input
                               type="file"
@@ -1741,13 +1719,13 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                           </label>
 
                           {selectedFile && (
-                            <div className="flex items-center space-x-2 rounded-xl bg-[#1E293B] border border-[#334155] px-3 py-1.5 text-xs text-white">
+                            <div className="flex items-center space-x-2 rounded-xl bg-[#1C1C1F] border border-[#2E2E34] px-3 py-1.5 text-xs text-white">
                               <FileCheck className="h-4 w-4 text-emerald-400" />
                               <span className="font-mono text-[11px] truncate max-w-[200px]">{selectedFile.name}</span>
                               <button
                                 type="button"
                                 onClick={() => setSelectedFile(null)}
-                                className="text-[#94A3B8] hover:text-rose-400"
+                                className="text-[#A1A1AA] hover:text-rose-400"
                               >
                                 <X className="h-3.5 w-3.5" />
                               </button>
@@ -1764,11 +1742,11 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                       </div>
                     )}
 
-                    <div className="flex items-center justify-end space-x-3 pt-3 border-t border-[#334155]">
+                    <div className="flex items-center justify-end space-x-3 pt-3 border-t border-[#2E2E34]">
                       <button
                         type="button"
                         onClick={() => setActiveAssignment(null)}
-                        className="px-4 py-2 rounded-xl text-xs font-semibold text-[#94A3B8] hover:text-white bg-[#0B0F19] border border-[#334155]"
+                        className="px-4 py-2 rounded-xl text-xs font-semibold text-[#A1A1AA] hover:text-white bg-[#141416] border border-[#2E2E34]"
                       >
                         Close
                       </button>
@@ -1776,7 +1754,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                       <button
                         type="submit"
                         disabled={submitting || (activeAssignment.submissionType === "group" && !activeMatchedGroup)}
-                        className="inline-flex items-center space-x-1.5 px-5 py-2 rounded-xl text-xs font-bold text-slate-950 bg-[#06B6D4] hover:bg-[#0891B2] hover:text-white transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center space-x-1.5 px-5 py-2 rounded-xl text-xs font-bold text-[#141416] bg-emerald-500 hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         <Send className="h-3.5 w-3.5" />
                         <span>

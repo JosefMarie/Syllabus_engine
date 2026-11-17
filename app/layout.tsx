@@ -5,7 +5,7 @@ import CommandPalette from "@/components/common/CommandPalette";
 import GeometricBackground from "@/components/common/GeometricBackground";
 
 export const viewport: Viewport = {
-  themeColor: "#0B0F19",
+  themeColor: "#141416",
   width: "device-width",
   initialScale: 1,
   maximumScale: 5,
@@ -29,7 +29,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
-        <meta name="theme-color" content="#0B0F19" />
+        <meta name="theme-color" content="#141416" />
         <link rel="apple-touch-icon" href="/icons/icon-192.png" />
 
         <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -58,7 +58,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="bg-[#0B0F19] text-[#CBD5E1] antialiased selection:bg-[#06B6D4] selection:text-white relative min-h-screen">
+      <body className="bg-[#141416] text-[#EAEAE6] antialiased selection:bg-[#EAEAE6] selection:text-[#141416] relative min-h-screen">
         <GeometricBackground />
         <PWAProvider>
           <CommandPalette />

@@ -92,39 +92,39 @@ function LoginForm() {
 
   return (
     <>
-      <div className={`w-full max-w-md rounded-3xl border border-[#334155]/80 bg-[#1E293B]/85 backdrop-blur-2xl p-7 sm:p-8 shadow-2xl transition-all ${
+      <div className={`w-full max-w-md rounded-[28px] border border-[#2E2E34] bg-[#1C1C1F] p-7 sm:p-8 shadow-2xl transition-all ${
         shakeError ? "animate-shake border-rose-500/60" : ""
       }`}>
-        <div className="mb-6 flex items-center justify-between border-b border-[#334155]/60 pb-4">
+        <div className="mb-6 flex items-center justify-between border-b border-[#2E2E34] pb-4">
           <Link
             href="/"
             prefetch={false}
-            className="inline-flex items-center space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors"
+            className="inline-flex items-center space-x-1.5 rounded-full border border-[#323238] bg-[#141416] px-3 py-1.5 text-xs text-[#A1A1AA] hover:text-white transition-colors"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-3.5 w-3.5" />
             <span>Catalog</span>
           </Link>
 
           <div className="flex items-center space-x-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#EAEAE6] text-[#141416]">
               <GraduationCap className="h-4 w-4" />
             </div>
-            <span className="font-mono text-sm font-bold text-white">Student Login</span>
+            <span className="font-mono text-sm font-bold text-[#EAEAE6]">Student Login</span>
           </div>
         </div>
 
         {/* Quick Switcher / Remembered Student Avatar Card */}
         {rememberedStudent && (
-          <div className="mb-5 rounded-2xl border border-cyan-500/40 bg-cyan-500/10 p-3.5 flex items-center justify-between">
+          <div className="mb-5 rounded-2xl border border-[#2E2E34] bg-[#141416] p-3.5 flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-cyan-500 to-teal-400 text-slate-950 font-bold font-mono shadow-md">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EAEAE6] text-[#141416] font-bold font-mono shadow-md">
                 {rememberedStudent.avatarLetter}
               </div>
               <div>
                 <span className="block text-xs font-bold text-white">
                   {rememberedStudent.fullName}
                 </span>
-                <span className="block text-[10px] font-mono text-cyan-300">
+                <span className="block text-[10px] font-mono text-[#A1A1AA]">
                   {rememberedStudent.level} • @{rememberedStudent.username}
                 </span>
               </div>
@@ -133,7 +133,7 @@ function LoginForm() {
             <button
               type="button"
               onClick={handleForgetQuickAccount}
-              className="text-[10px] font-mono text-[#94A3B8] hover:text-rose-400 p-1.5 rounded-lg hover:bg-[#1E293B]/60 transition-colors"
+              className="text-[10px] font-mono text-[#A1A1AA] hover:text-rose-400 p-1.5 rounded-lg hover:bg-[#1C1C1F] transition-colors"
               title="Sign in with a different account"
             >
               Switch Account
@@ -157,24 +157,24 @@ function LoginForm() {
           )}
 
           <div>
-            <label className="text-xs font-mono text-[#CBD5E1]">Email or Username *</label>
+            <label className="text-xs font-mono text-[#A1A1AA]">Email or Username *</label>
             <input
               type="text"
               required
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               placeholder="josef.marie@school.edu or josef_m"
-              className="mt-1 w-full rounded-xl border border-[#334155]/70 bg-[#0B0F19]/60 backdrop-blur-md p-3 text-xs text-white placeholder-[#64748B] focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none transition-all shadow-inner"
+              className="mt-1 w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs text-[#EAEAE6] placeholder-[#71717A] focus:border-[#EAEAE6] focus:ring-2 focus:ring-[#EAEAE6]/15 focus:outline-none transition-all shadow-inner"
             />
           </div>
 
           <div>
             <div className="flex items-center justify-between">
-              <label className="text-xs font-mono text-[#CBD5E1]">Password *</label>
+              <label className="text-xs font-mono text-[#A1A1AA]">Password *</label>
               <button
                 type="button"
                 onClick={() => setShowRecoveryModal(true)}
-                className="text-[11px] font-mono text-cyan-400 hover:text-cyan-300 hover:underline"
+                className="text-[11px] font-mono text-[#EAEAE6] hover:text-white hover:underline"
               >
                 Forgot Password?
               </button>
@@ -186,12 +186,12 @@ function LoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full rounded-xl border border-[#334155]/70 bg-[#0B0F19]/60 backdrop-blur-md p-3 pr-10 text-xs text-white placeholder-[#64748B] focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none transition-all shadow-inner"
+                className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 pr-10 text-xs text-[#EAEAE6] placeholder-[#71717A] focus:border-[#EAEAE6] focus:ring-2 focus:ring-[#EAEAE6]/15 focus:outline-none transition-all shadow-inner"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-3 text-[#94A3B8] hover:text-white transition-colors"
+                className="absolute right-3 top-3 text-[#A1A1AA] hover:text-white transition-colors"
                 title={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -201,12 +201,12 @@ function LoginForm() {
 
           {/* Remember Me Checkbox */}
           <div className="flex items-center justify-between pt-1 text-xs">
-            <label className="flex items-center space-x-2 text-[#94A3B8] hover:text-white cursor-pointer select-none">
+            <label className="flex items-center space-x-2 text-[#A1A1AA] hover:text-white cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
-                className="h-4 w-4 rounded border-[#334155] bg-[#0B0F19] text-cyan-500 focus:ring-cyan-500/30"
+                className="h-4 w-4 rounded border-[#2E2E34] bg-[#141416] accent-[#EAEAE6]"
               />
               <span className="font-mono text-[11px]">Remember on this device</span>
             </label>
@@ -215,15 +215,15 @@ function LoginForm() {
           <button
             type="submit"
             disabled={submitting}
-            className="mt-2 w-full rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 py-3 text-xs font-bold text-slate-950 hover:brightness-110 active:scale-[0.99] transition-all shadow-lg shadow-cyan-950/30 disabled:opacity-50"
+            className="mt-2 w-full rounded-full bg-emerald-500 py-3 text-xs font-bold text-[#141416] hover:bg-emerald-400 active:scale-[0.99] transition-all shadow-lg disabled:opacity-50"
           >
             {submitting ? "Signing in..." : "Log In to Student Workspace"}
           </button>
 
-          <div className="pt-4 border-t border-[#334155]/70 flex flex-col gap-2 text-center text-xs text-[#94A3B8]">
+          <div className="pt-4 border-t border-[#2E2E34] flex flex-col gap-2 text-center text-xs text-[#A1A1AA]">
             <div>
               Don't have an account?{" "}
-              <Link href="/auth/register" prefetch={false} className="font-bold text-cyan-400 hover:text-cyan-300 hover:underline">
+              <Link href="/auth/register" prefetch={false} className="font-bold text-[#EAEAE6] hover:underline">
                 Create Student Account
               </Link>
             </div>
@@ -232,9 +232,9 @@ function LoginForm() {
               <Link
                 href="/admin"
                 prefetch={false}
-                className="inline-flex items-center space-x-1.5 text-xs text-[#94A3B8] hover:text-cyan-400 transition-colors"
+                className="inline-flex items-center space-x-1.5 text-xs text-[#A1A1AA] hover:text-white transition-colors"
               >
-                <ShieldCheck className="h-4 w-4 text-cyan-400" />
+                <ShieldCheck className="h-4 w-4 text-[#EAEAE6]" />
                 <span>Teacher Admin Access</span>
               </Link>
             </div>
@@ -257,10 +257,10 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-transparent p-4 text-[#CBD5E1]">
+    <div className="flex min-h-screen items-center justify-center bg-[#141416] p-4 text-[#EAEAE6]">
       <Suspense fallback={
-        <div className="w-full max-w-md rounded-2xl border border-[#334155]/80 bg-[#1E293B]/85 backdrop-blur-xl p-8 shadow-2xl flex justify-center items-center h-64">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent" />
+        <div className="w-full max-w-md rounded-[28px] border border-[#2E2E34] bg-[#1C1C1F] p-8 shadow-2xl flex justify-center items-center h-64">
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent" />
         </div>
       }>
         <LoginForm />

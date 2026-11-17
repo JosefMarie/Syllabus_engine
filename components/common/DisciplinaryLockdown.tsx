@@ -168,7 +168,7 @@ export default function DisciplinaryLockdown({
       }}
     >
       {/* Background glowing red radial haze */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-rose-950/50 via-[#0B0F19] to-black -z-10 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-rose-950/50 via-[#141416] to-black -z-10 pointer-events-none" />
 
       {/* Top Floating Siren Badge */}
       <div className="animate-bounce inline-flex items-center space-x-2 rounded-full bg-rose-600 border border-rose-400 px-5 py-2 text-xs sm:text-sm font-mono font-black text-white uppercase tracking-widest shadow-[0_0_30px_rgba(225,29,72,0.8)] mb-6">
@@ -196,22 +196,22 @@ export default function DisciplinaryLockdown({
         {/* Violation Notice Box */}
         <div className="rounded-2xl border border-rose-500/30 bg-rose-950/20 p-4 text-left text-xs space-y-2.5">
           <div className="flex justify-between items-center border-b border-rose-500/20 pb-2">
-            <span className="text-[#94A3B8] font-mono">Student Account:</span>
+            <span className="text-[#A1A1AA] font-mono">Student Account:</span>
             <span className="font-bold text-white font-mono">{studentName} (@{studentUsername})</span>
           </div>
 
           <div className="flex justify-between items-center border-b border-rose-500/20 pb-2">
-            <span className="text-[#94A3B8] font-mono">Disciplinary Action:</span>
+            <span className="text-[#A1A1AA] font-mono">Disciplinary Action:</span>
             <span className="font-bold text-rose-400 font-mono">Account Rejected / Suspended</span>
           </div>
 
-          <div className="text-[11px] text-[#CBD5E1] leading-relaxed pt-1">
+          <div className="text-[11px] text-[#EAEAE6] leading-relaxed pt-1">
             {reason}
           </div>
         </div>
 
         {/* Strict Instructor Re-approval Notice */}
-        <div className="rounded-xl bg-[#0B0F19] border border-[#334155] p-4 text-xs text-[#94A3B8] leading-relaxed">
+        <div className="rounded-xl bg-[#141416] border border-[#2E2E34] p-4 text-xs text-[#A1A1AA] leading-relaxed">
           <p className="font-semibold text-white mb-1">
             🔒 This workstation is locked out of the syllabus platform.
           </p>
@@ -233,9 +233,9 @@ export default function DisciplinaryLockdown({
             {/* Mute Audio Siren */}
             <button
               onClick={() => setMuted(!muted)}
-              className="w-full sm:w-auto inline-flex items-center justify-center space-x-1.5 rounded-xl border border-[#334155] bg-[#0B0F19] px-4 py-3 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-slate-500 transition-all"
+              className="w-full sm:w-auto inline-flex items-center justify-center space-x-1.5 rounded-xl border border-[#2E2E34] bg-[#141416] px-4 py-3 text-xs font-semibold text-[#EAEAE6] hover:text-white hover:border-slate-500 transition-all"
             >
-              {muted ? <VolumeX className="h-4 w-4 text-rose-400" /> : <Volume2 className="h-4 w-4 text-[#06B6D4]" />}
+              {muted ? <VolumeX className="h-4 w-4 text-rose-400" /> : <Volume2 className="h-4 w-4 text-[#EAEAE6]" />}
               <span>{muted ? "Unmute Alarm" : "Silence Siren"}</span>
             </button>
           </div>
@@ -251,7 +251,7 @@ export default function DisciplinaryLockdown({
           <div className="pt-2">
             <button
               onClick={() => setShowAdminLogin(!showAdminLogin)}
-              className="text-[11px] font-mono text-[#64748B] hover:text-[#06B6D4] underline transition-colors"
+              className="text-[11px] font-mono text-[#71717A] hover:text-[#EAEAE6] underline transition-colors"
             >
               {showAdminLogin ? "Hide Instructor Unlock" : "Teacher In-Person Unlock"}
             </button>
@@ -259,9 +259,9 @@ export default function DisciplinaryLockdown({
 
           {/* Teacher Unlock Form */}
           {showAdminLogin && (
-            <form onSubmit={handleInstructorUnlock} className="mt-3 p-4 rounded-2xl bg-[#0B0F19] border border-[#334155] space-y-3 text-left">
+            <form onSubmit={handleInstructorUnlock} className="mt-3 p-4 rounded-2xl bg-[#141416] border border-[#2E2E34] space-y-3 text-left">
               <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                <Lock className="h-3.5 w-3.5 text-[#06B6D4]" />
+                <Lock className="h-3.5 w-3.5 text-[#EAEAE6]" />
                 <span>Instructor Authorization Override</span>
               </div>
 
@@ -277,7 +277,7 @@ export default function DisciplinaryLockdown({
                 placeholder="Instructor Email (e.g. layjoe0001@gmail.com)"
                 value={adminEmail}
                 onChange={(e) => setAdminEmail(e.target.value)}
-                className="w-full rounded-xl bg-[#1E293B] border border-[#334155] px-3 py-2 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                className="w-full rounded-xl bg-[#1C1C1F] border border-[#2E2E34] px-3 py-2 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
               />
 
               <input
@@ -286,7 +286,7 @@ export default function DisciplinaryLockdown({
                 placeholder="Instructor Password"
                 value={adminPassword}
                 onChange={(e) => setAdminPassword(e.target.value)}
-                className="w-full rounded-xl bg-[#1E293B] border border-[#334155] px-3 py-2 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                className="w-full rounded-xl bg-[#1C1C1F] border border-[#2E2E34] px-3 py-2 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
               />
 
               <input
@@ -296,13 +296,13 @@ export default function DisciplinaryLockdown({
                 placeholder="6-Digit Google Authenticator Code"
                 value={adminTotpCode}
                 onChange={(e) => setAdminTotpCode(e.target.value.replace(/\D/g, ""))}
-                className="w-full font-mono text-center tracking-widest rounded-xl bg-[#1E293B] border border-[#334155] px-3 py-2 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                className="w-full font-mono text-center tracking-widest rounded-xl bg-[#1C1C1F] border border-[#2E2E34] px-3 py-2 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
               />
 
               <button
                 type="submit"
                 disabled={unlocking}
-                className="w-full inline-flex items-center justify-center space-x-2 rounded-xl bg-[#10B981] py-2 text-xs font-bold text-slate-950 hover:bg-emerald-400 transition-all disabled:opacity-50"
+                className="w-full inline-flex items-center justify-center space-x-2 rounded-xl bg-[#10B981] py-2 text-xs font-bold text-[#141416] hover:bg-emerald-400 transition-all disabled:opacity-50"
               >
                 <span>{unlocking ? "Verifying..." : "Authorize & Reactivate Student"}</span>
                 <ArrowRight className="h-3.5 w-3.5" />

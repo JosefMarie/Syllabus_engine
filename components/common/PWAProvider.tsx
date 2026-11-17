@@ -117,11 +117,11 @@ export default function PWAProvider({ children }: { children: React.ReactNode })
       {/* Global Forced Refresh Banner */}
       {isForcingRefresh && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 backdrop-blur-md p-4">
-          <div className="flex items-center space-x-3 rounded-2xl border border-[#06B6D4]/50 bg-[#0F172A] px-6 py-4 shadow-2xl">
-            <RefreshCw className="h-5 w-5 animate-spin text-[#06B6D4]" />
+          <div className="flex items-center space-x-3 rounded-2xl border border-[#EAEAE6]/50 bg-[#141416] px-6 py-4 shadow-2xl">
+            <RefreshCw className="h-5 w-5 animate-spin text-[#EAEAE6]" />
             <div>
               <p className="text-sm font-bold text-white">Updating Platform Content...</p>
-              <p className="text-xs text-[#94A3B8]">Clearing old browser chunks and reloading fresh data.</p>
+              <p className="text-xs text-[#A1A1AA]">Clearing old browser chunks and reloading fresh data.</p>
             </div>
           </div>
         </div>
@@ -129,7 +129,7 @@ export default function PWAProvider({ children }: { children: React.ReactNode })
 
       {/* Minimal Offline Warning Banner (Online-Always Mode) */}
       {!isOnline && (
-        <div className="fixed bottom-4 left-4 z-40 pointer-events-auto flex items-center gap-3 rounded-xl border border-rose-500/40 bg-[#0F172A]/95 px-4 py-2.5 text-xs text-rose-200 shadow-2xl backdrop-blur-md">
+        <div className="fixed bottom-4 left-4 z-40 pointer-events-auto flex items-center gap-3 rounded-xl border border-rose-500/40 bg-[#141416]/95 px-4 py-2.5 text-xs text-rose-200 shadow-2xl backdrop-blur-md">
           <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-rose-500/20 text-rose-400">
             <WifiOff className="h-4 w-4" />
           </div>
@@ -147,13 +147,13 @@ export default function PWAProvider({ children }: { children: React.ReactNode })
 
       {/* Helpful notice for users still opening the legacy installed PWA shortcut */}
       {isStandaloneApp && !standaloneNoticeDismissed && (
-        <div className="fixed bottom-4 right-4 z-40 max-w-sm pointer-events-auto flex items-start gap-3 rounded-xl border border-cyan-500/40 bg-[#0F172A]/95 px-4 py-3 text-xs text-slate-200 shadow-2xl backdrop-blur-md">
-          <ExternalLink className="h-4 w-4 text-cyan-400 shrink-0 mt-0.5" />
+        <div className="fixed bottom-4 right-4 z-40 max-w-sm pointer-events-auto flex items-start gap-3 rounded-xl border border-[#EAEAE6]/40 bg-[#141416]/95 px-4 py-3 text-xs text-slate-200 shadow-2xl backdrop-blur-md">
+          <ExternalLink className="h-4 w-4 text-[#EAEAE6] shrink-0 mt-0.5" />
           <div className="space-y-1">
             <span className="block font-bold text-white">Installed App Retired (Online Mode)</span>
             <p className="text-[11px] text-slate-300 leading-relaxed">
               Offline app mode has been removed for faster performance. You can uninstall this app shortcut and use{" "}
-              <strong className="text-cyan-300">{typeof window !== "undefined" ? window.location.origin : "the website"}</strong>{" "}
+              <strong className="text-[#EAEAE6]">{typeof window !== "undefined" ? window.location.origin : "the website"}</strong>{" "}
               directly in your browser.
             </p>
           </div>

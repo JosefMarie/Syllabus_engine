@@ -37,9 +37,9 @@ export const SUGGESTION_CATEGORIES: Record<SuggestionCategory, { label: string; 
     label: "Course / Syllabus",
     icon: "📚",
     description: "Propose topic additions or corrections in course modules",
-    color: "text-cyan-400",
-    border: "border-cyan-500/40",
-    bg: "bg-cyan-500/10"
+    color: "text-[#EAEAE6]",
+    border: "border-[#EAEAE6]/40",
+    bg: "bg-[#EAEAE6]/10"
   },
   dev_tip_request: {
     label: "Dev Tip Request",
@@ -139,7 +139,7 @@ export default function SuggestionBoxModal({
         onClick={() => setIsOpen(true)}
         type="button"
         title="Submit a suggestion or feedback"
-        className="fixed bottom-5 right-5 z-40 inline-flex items-center space-x-2 rounded-2xl bg-gradient-to-r from-cyan-500 via-indigo-600 to-purple-600 px-4 py-3 text-xs font-bold text-white shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300 ring-2 ring-cyan-400/40 group backdrop-blur-md"
+        className="fixed bottom-5 right-5 z-40 inline-flex items-center space-x-2 rounded-2xl bg-gradient-to-r from-cyan-500 via-indigo-600 to-purple-600 px-4 py-3 text-xs font-bold text-white shadow-2xl hover:scale-105 active:scale-95 transition-all duration-300 ring-2 ring-[#EAEAE6]/40 group backdrop-blur-md"
       >
         <span className="text-base group-hover:rotate-12 transition-transform">💡</span>
         <span className="hidden sm:inline">Suggestion Box</span>
@@ -148,26 +148,26 @@ export default function SuggestionBoxModal({
       {/* Modal Dialog */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in">
-          <div className="relative max-h-[92vh] w-full max-w-xl overflow-hidden rounded-3xl border border-[#334155] bg-[#0F172A] shadow-2xl flex flex-col">
+          <div className="relative max-h-[92vh] w-full max-w-xl overflow-hidden rounded-3xl border border-[#2E2E34] bg-[#141416] shadow-2xl flex flex-col">
             
             {/* Top Accent Stripe */}
             <div className="h-1.5 w-full bg-gradient-to-r from-amber-400 via-cyan-400 to-purple-500" />
 
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/70 shrink-0">
               <div className="flex items-center space-x-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-500/20 to-cyan-500/20 border border-cyan-500/40 text-cyan-400 shadow-inner">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-tr from-amber-500/20 to-cyan-500/20 border border-[#EAEAE6]/40 text-[#EAEAE6] shadow-inner">
                   <MessageSquarePlus className="h-5 w-5" />
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-white">Suggestion &amp; Feedback Box</h3>
-                  <p className="text-[11px] text-[#94A3B8] font-mono">Direct line to teachers &amp; engineering staff</p>
+                  <p className="text-[11px] text-[#A1A1AA] font-mono">Direct line to teachers &amp; engineering staff</p>
                 </div>
               </div>
 
               <button
                 onClick={resetAndClose}
-                className="p-1.5 rounded-xl text-[#94A3B8] hover:text-white bg-[#0B0F19] border border-[#334155] hover:border-rose-500/40 transition-all"
+                className="p-1.5 rounded-xl text-[#A1A1AA] hover:text-white bg-[#141416] border border-[#2E2E34] hover:border-rose-500/40 transition-all"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -181,21 +181,21 @@ export default function SuggestionBoxModal({
                 </div>
 
                 <h4 className="text-xl font-extrabold text-white">Suggestion Received!</h4>
-                <p className="text-xs text-[#CBD5E1] max-w-sm leading-relaxed">
+                <p className="text-xs text-[#EAEAE6] max-w-sm leading-relaxed">
                   Thank you for contributing to our academic community! Your feedback has been safely submitted to the instructor portal for review.
                 </p>
 
                 <div className="pt-4 flex items-center space-x-3">
                   <button
                     onClick={() => setIsSuccess(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-mono font-bold text-[#CBD5E1] bg-[#1E293B] border border-[#334155] hover:text-white transition-all"
+                    className="px-4 py-2 rounded-xl text-xs font-mono font-bold text-[#EAEAE6] bg-[#1C1C1F] border border-[#2E2E34] hover:text-white transition-all"
                   >
                     Submit Another
                   </button>
 
                   <button
                     onClick={resetAndClose}
-                    className="px-6 py-2 rounded-xl text-xs font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-500 transition-all shadow-lg active:scale-95"
+                    className="px-6 py-2 rounded-xl text-xs font-bold text-[#141416] bg-emerald-500 hover:bg-emerald-500 transition-all shadow-lg active:scale-95"
                   >
                     Done
                   </button>
@@ -205,7 +205,7 @@ export default function SuggestionBoxModal({
               <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-5">
                 {/* Category Selection */}
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8] block mb-2">
+                  <label className="text-xs font-mono text-[#A1A1AA] block mb-2">
                     Select Suggestion Category:
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
@@ -219,8 +219,8 @@ export default function SuggestionBoxModal({
                           onClick={() => setCategory(catKey)}
                           className={`flex items-center space-x-2 p-2.5 rounded-xl border text-left transition-all ${
                             isSelected
-                              ? `${item.bg} ${item.border} ${item.color} font-bold ring-1 ring-cyan-400/50 shadow-md`
-                              : "bg-[#0B0F19] border-[#334155] text-[#94A3B8] hover:text-white hover:border-[#475569]"
+                              ? `${item.bg} ${item.border} ${item.color} font-bold ring-1 ring-[#EAEAE6]/50 shadow-md`
+                              : "bg-[#141416] border-[#2E2E34] text-[#A1A1AA] hover:text-white hover:border-[#3F3F46]"
                           }`}
                         >
                           <span className="text-base">{item.icon}</span>
@@ -233,7 +233,7 @@ export default function SuggestionBoxModal({
 
                 {/* Title */}
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8] block mb-1">
+                  <label className="text-xs font-mono text-[#A1A1AA] block mb-1">
                     Suggestion Summary / Subject *
                   </label>
                   <input
@@ -242,13 +242,13 @@ export default function SuggestionBoxModal({
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="e.g. Could we add a developer tip explaining Docker containers?"
-                    className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] px-3.5 py-2.5 text-xs text-white placeholder-[#64748B] focus:border-cyan-400 focus:outline-none"
+                    className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] px-3.5 py-2.5 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
                   />
                 </div>
 
                 {/* Message */}
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8] block mb-1">
+                  <label className="text-xs font-mono text-[#A1A1AA] block mb-1">
                     Detailed Message &amp; Explanation *
                   </label>
                   <textarea
@@ -257,14 +257,14 @@ export default function SuggestionBoxModal({
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Share any context, how this will help your learning, or details about the issue..."
-                    className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] p-3 text-xs text-white placeholder-[#64748B] focus:border-cyan-400 focus:outline-none"
+                    className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] p-3 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
                   />
                 </div>
 
                 {/* Anonymous Toggle & Identity */}
-                <div className="rounded-2xl border border-[#334155] bg-[#0B0F19] p-4 space-y-3">
+                <div className="rounded-2xl border border-[#2E2E34] bg-[#141416] p-4 space-y-3">
                   <div className="flex items-center justify-between">
-                    <label className="flex items-center space-x-2 text-xs font-mono text-[#CBD5E1] cursor-pointer">
+                    <label className="flex items-center space-x-2 text-xs font-mono text-[#EAEAE6] cursor-pointer">
                       <input
                         type="checkbox"
                         checked={isAnonymous}
@@ -274,13 +274,13 @@ export default function SuggestionBoxModal({
                       <span>Submit Anonymously 🕶️</span>
                     </label>
 
-                    <span className="text-[10px] font-mono text-[#64748B]">
+                    <span className="text-[10px] font-mono text-[#71717A]">
                       {isAnonymous ? "Identity Hidden" : "Attached to Profile"}
                     </span>
                   </div>
 
                   {!isAnonymous && (
-                    <div className="text-xs text-[#94A3B8] pt-1 border-t border-[#334155]/60 flex items-center justify-between">
+                    <div className="text-xs text-[#A1A1AA] pt-1 border-t border-[#2E2E34]/60 flex items-center justify-between">
                       {currentUser ? (
                         <span>
                           Submitting as: <strong className="text-white">{currentUser.fullName}</strong> ({currentUser.level || "Student"})
@@ -292,14 +292,14 @@ export default function SuggestionBoxModal({
                             placeholder="Your Name (Optional)"
                             value={guestName}
                             onChange={(e) => setGuestName(e.target.value)}
-                            className="rounded-lg bg-[#1E293B] border border-[#334155] px-2.5 py-1 text-xs text-white focus:outline-none focus:border-cyan-400"
+                            className="rounded-lg bg-[#1C1C1F] border border-[#2E2E34] px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#EAEAE6]"
                           />
                           <input
                             type="email"
                             placeholder="Your Email (Optional)"
                             value={guestEmail}
                             onChange={(e) => setGuestEmail(e.target.value)}
-                            className="rounded-lg bg-[#1E293B] border border-[#334155] px-2.5 py-1 text-xs text-white focus:outline-none focus:border-cyan-400"
+                            className="rounded-lg bg-[#1C1C1F] border border-[#2E2E34] px-2.5 py-1 text-xs text-white focus:outline-none focus:border-[#EAEAE6]"
                           />
                         </div>
                       )}
@@ -308,15 +308,15 @@ export default function SuggestionBoxModal({
                 </div>
 
                 {/* Footer Actions */}
-                <div className="pt-2 flex items-center justify-between border-t border-[#334155]">
-                  <span className="text-[11px] text-[#64748B] font-mono">
+                <div className="pt-2 flex items-center justify-between border-t border-[#2E2E34]">
+                  <span className="text-[11px] text-[#71717A] font-mono">
                     All feedback is strictly confidential &bull; TVET Academic Council
                   </span>
 
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="inline-flex items-center space-x-2 rounded-xl bg-cyan-400 hover:bg-cyan-500 px-6 py-2.5 text-xs font-black text-slate-950 transition-all shadow-xl active:scale-95 disabled:opacity-50"
+                    className="inline-flex items-center space-x-2 rounded-xl bg-emerald-500 hover:bg-emerald-500 px-6 py-2.5 text-xs font-black text-[#141416] transition-all shadow-xl active:scale-95 disabled:opacity-50"
                   >
                     <Send className="h-3.5 w-3.5" />
                     <span>{submitting ? "Sending..." : "Submit Suggestion"}</span>

@@ -148,11 +148,11 @@ export function SubmissionFileViewerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="relative flex flex-col w-full max-w-6xl h-[92vh] rounded-2xl border border-cyan-500/30 bg-[#0F172A] shadow-2xl overflow-hidden">
+      <div className="relative flex flex-col w-full max-w-6xl h-[92vh] rounded-2xl border border-[#EAEAE6]/30 bg-[#141416] shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-slate-700/60 bg-[#1E293B]/90 px-5 py-3.5 backdrop-blur-md">
+        <div className="flex items-center justify-between border-b border-slate-700/60 bg-[#1C1C1F]/90 px-5 py-3.5 backdrop-blur-md">
           <div className="flex items-center space-x-3 min-w-0">
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EAEAE6]/10 border border-[#EAEAE6]/30 text-[#EAEAE6]">
               {isPdf || isDocx ? (
                 <FileText className="h-5 w-5" />
               ) : isCodeOrText ? (
@@ -169,7 +169,7 @@ export function SubmissionFileViewerModal({
                   {fileData ? fileName : "Submission Details"}
                 </h3>
                 {fileData && (
-                  <span className="rounded bg-slate-800 px-2 py-0.5 text-[10px] font-mono text-cyan-400 border border-slate-700">
+                  <span className="rounded bg-slate-800 px-2 py-0.5 text-[10px] font-mono text-[#EAEAE6] border border-slate-700">
                     {(fileData.size / 1024).toFixed(1)} KB
                   </span>
                 )}
@@ -189,7 +189,7 @@ export function SubmissionFileViewerModal({
                   onClick={() => setActiveTab("file")}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                     activeTab === "file"
-                      ? "bg-cyan-500 text-slate-950 shadow-sm"
+                      ? "bg-[#EAEAE6] text-[#141416] shadow-sm"
                       : "text-slate-400 hover:text-white"
                   }`}
                 >
@@ -201,7 +201,7 @@ export function SubmissionFileViewerModal({
                   onClick={() => setActiveTab("text")}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                     activeTab === "text"
-                      ? "bg-cyan-500 text-slate-950 shadow-sm"
+                      ? "bg-[#EAEAE6] text-[#141416] shadow-sm"
                       : "text-slate-400 hover:text-white"
                   }`}
                 >
@@ -213,7 +213,7 @@ export function SubmissionFileViewerModal({
                   onClick={() => setActiveTab("instructions")}
                   className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
                     activeTab === "instructions"
-                      ? "bg-cyan-500 text-slate-950 shadow-sm"
+                      ? "bg-[#EAEAE6] text-[#141416] shadow-sm"
                       : "text-slate-400 hover:text-white"
                   }`}
                 >
@@ -260,7 +260,7 @@ export function SubmissionFileViewerModal({
         </div>
 
         {/* Content Body */}
-        <div className="flex-1 overflow-auto bg-[#0B0F19] p-4 relative">
+        <div className="flex-1 overflow-auto bg-[#141416] p-4 relative">
           {activeTab === "file" && (
             <>
               {/* PDF Previewer */}
@@ -272,7 +272,7 @@ export function SubmissionFileViewerModal({
                       href={base64Url}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center space-x-1 text-cyan-400 hover:underline"
+                      className="inline-flex items-center space-x-1 text-[#EAEAE6] hover:underline"
                     >
                       <span>Open in New Tab</span>
                       <ExternalLink className="h-3 w-3" />
@@ -288,12 +288,12 @@ export function SubmissionFileViewerModal({
 
               {/* Word Document (.docx) Previewer */}
               {isDocx && (
-                <div className="w-full h-full flex flex-col rounded-xl border border-slate-800 bg-[#0F172A] overflow-hidden">
+                <div className="w-full h-full flex flex-col rounded-xl border border-slate-800 bg-[#141416] overflow-hidden">
                   <div className="flex items-center justify-between border-b border-slate-800 bg-slate-900/70 px-4 py-2.5 text-xs">
                     <div className="flex items-center space-x-2">
-                      <FileText className="h-4 w-4 text-cyan-400" />
+                      <FileText className="h-4 w-4 text-[#EAEAE6]" />
                       <span className="font-mono font-bold text-slate-200">{fileName}</span>
-                      <span className="rounded bg-cyan-500/10 px-2 py-0.5 text-[10px] font-semibold text-cyan-400 border border-cyan-500/20">
+                      <span className="rounded bg-[#EAEAE6]/10 px-2 py-0.5 text-[10px] font-semibold text-[#EAEAE6] border border-[#EAEAE6]/20">
                         DOCX Document Reader
                       </span>
                     </div>
@@ -310,7 +310,7 @@ export function SubmissionFileViewerModal({
                   <div className="flex-1 overflow-auto p-6">
                     {isLoadingDocx ? (
                       <div className="flex items-center justify-center h-48 space-x-2 text-slate-400 text-xs">
-                        <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+                        <Loader2 className="h-4 w-4 animate-spin text-[#EAEAE6]" />
                         <span>Extracting text from Word document...</span>
                       </div>
                     ) : docxText ? (
@@ -350,7 +350,7 @@ export function SubmissionFileViewerModal({
 
                   {isLoadingZip ? (
                     <div className="flex items-center justify-center h-64 space-x-2 text-slate-400 text-xs">
-                      <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+                      <Loader2 className="h-4 w-4 animate-spin text-[#EAEAE6]" />
                       <span>Unpacking ZIP archive in browser...</span>
                     </div>
                   ) : zipEntries.length > 0 ? (
@@ -366,7 +366,7 @@ export function SubmissionFileViewerModal({
                             onClick={() => setSelectedZipFileIdx(idx)}
                             className={`w-full text-left px-2.5 py-2 rounded-lg text-xs font-mono transition-all flex items-center justify-between ${
                               selectedZipFileIdx === idx
-                                ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
+                                ? "bg-[#EAEAE6]/20 text-[#EAEAE6] border border-[#EAEAE6]/40"
                                 : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
                             }`}
                           >
@@ -384,7 +384,7 @@ export function SubmissionFileViewerModal({
                       <div className="flex-1 overflow-auto p-4 font-mono text-xs leading-relaxed text-slate-300 select-text">
                         {zipEntries[selectedZipFileIdx] && (
                           <>
-                            <div className="mb-3 pb-2 border-b border-slate-800 flex items-center justify-between text-xs text-cyan-400">
+                            <div className="mb-3 pb-2 border-b border-slate-800 flex items-center justify-between text-xs text-[#EAEAE6]">
                               <span className="font-bold">{zipEntries[selectedZipFileIdx].path}</span>
                               <span className="text-slate-500">
                                 {zipEntries[selectedZipFileIdx].content.split("\n").length} lines
@@ -415,7 +415,7 @@ export function SubmissionFileViewerModal({
                         <a
                           href={base64Url}
                           download={fileName}
-                          className="inline-flex items-center space-x-2 rounded-xl bg-cyan-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-400 transition-all shadow-lg"
+                          className="inline-flex items-center space-x-2 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-[#141416] hover:bg-emerald-500 transition-all shadow-lg"
                         >
                           <Download className="h-4 w-4" />
                           <span>Download {fileName}</span>
@@ -431,7 +431,7 @@ export function SubmissionFileViewerModal({
                 <div className="w-full h-full flex flex-col rounded-xl border border-slate-800 bg-[#090D16] overflow-hidden">
                   <div className="flex items-center justify-between border-b border-slate-800/80 bg-slate-900/60 px-4 py-2 text-xs">
                     <div className="flex items-center space-x-2">
-                      <Code2 className="h-4 w-4 text-cyan-400" />
+                      <Code2 className="h-4 w-4 text-[#EAEAE6]" />
                       <span className="font-mono font-bold text-slate-200">{fileName}</span>
                       <span className="text-[10px] font-mono text-slate-500">
                         ({decodedText.split("\n").length} lines)
@@ -471,7 +471,7 @@ export function SubmissionFileViewerModal({
                     >
                       <ZoomOut className="h-4 w-4" />
                     </button>
-                    <span className="text-xs font-mono text-cyan-400">{zoomLevel}%</span>
+                    <span className="text-xs font-mono text-[#EAEAE6]">{zoomLevel}%</span>
                     <button
                       onClick={() => setZoomLevel((prev) => Math.min(250, prev + 25))}
                       className="p-1 text-slate-400 hover:text-white"
@@ -509,7 +509,7 @@ export function SubmissionFileViewerModal({
                     <a
                       href={base64Url}
                       download={fileName}
-                      className="inline-flex items-center space-x-2 rounded-xl bg-cyan-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-400 transition-all shadow-lg"
+                      className="inline-flex items-center space-x-2 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-[#141416] hover:bg-emerald-500 transition-all shadow-lg"
                     >
                       <Download className="h-4 w-4" />
                       <span>Download {fileName}</span>
@@ -521,8 +521,8 @@ export function SubmissionFileViewerModal({
           )}
 
           {activeTab === "text" && submission.contentMarkdown && (
-            <div className="max-w-4xl mx-auto rounded-xl border border-slate-800 bg-[#0F172A] p-6 shadow-inner">
-              <h4 className="text-xs font-bold uppercase tracking-wider text-cyan-400 mb-4 pb-2 border-b border-slate-800">
+            <div className="max-w-4xl mx-auto rounded-xl border border-slate-800 bg-[#141416] p-6 shadow-inner">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#EAEAE6] mb-4 pb-2 border-b border-slate-800">
                 Student Written Text Answer
               </h4>
               <div className="prose prose-invert prose-sm max-w-none text-slate-200 leading-relaxed">
@@ -534,11 +534,11 @@ export function SubmissionFileViewerModal({
           )}
 
           {activeTab === "instructions" && assignment && (
-            <div className="max-w-4xl mx-auto rounded-xl border border-slate-800 bg-[#0F172A] p-6 shadow-inner">
+            <div className="max-w-4xl mx-auto rounded-xl border border-slate-800 bg-[#141416] p-6 shadow-inner">
               <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800">
                 <div>
                   <h4 className="text-sm font-bold text-white">{assignment.title}</h4>
-                  <span className="text-xs text-cyan-400 font-mono">
+                  <span className="text-xs text-[#EAEAE6] font-mono">
                     Total Marks: {assignment.totalPoints} pts
                   </span>
                 </div>
@@ -553,7 +553,7 @@ export function SubmissionFileViewerModal({
         </div>
 
         {/* Footer info */}
-        <div className="flex items-center justify-between border-t border-slate-800 bg-[#1E293B] px-5 py-2.5 text-xs text-slate-400">
+        <div className="flex items-center justify-between border-t border-slate-800 bg-[#1C1C1F] px-5 py-2.5 text-xs text-slate-400">
           <div className="flex items-center space-x-4">
             <span>
               Status:{" "}
@@ -563,7 +563,7 @@ export function SubmissionFileViewerModal({
             </span>
             {submission.score !== undefined && (
               <span>
-                Awarded Score: <strong className="text-cyan-400">{submission.score}</strong> / {submission.maxScore}
+                Awarded Score: <strong className="text-[#EAEAE6]">{submission.score}</strong> / {submission.maxScore}
               </span>
             )}
           </div>

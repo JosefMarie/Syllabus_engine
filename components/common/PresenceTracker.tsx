@@ -94,40 +94,9 @@ export default function PresenceTracker({
 
   const OFFLINE_STUDY_KEY = `syllabus_offline_time_${userId}`;
 
-  // Flush active seconds helper with offline queueing
+  // Continuous topicTimeRecords Firestore writes disabled to keep reads/writes minimal
   const flushActiveSeconds = () => {
-    const cur = currentTopicRef.current;
-    if (activeSecondsAccumulatorRef.current > 0 && cur.topicId && cur.syllabusId) {
-      const secondsToAdd = activeSecondsAccumulatorRef.current;
-      activeSecondsAccumulatorRef.current = 0;
-
-      // If browser is offline, store locally until connectivity is restored
-      if (typeof navigator !== "undefined" && !navigator.onLine) {
-        try {
-          const existing = parseInt(localStorage.getItem(OFFLINE_STUDY_KEY) || "0", 10);
-          localStorage.setItem(OFFLINE_STUDY_KEY, String(existing + secondsToAdd));
-        } catch (e) {
-          console.warn("Error saving offline study time:", e);
-        }
-        return;
-      }
-
-      recordActiveTopicTime({
-        userId,
-        studentName: fullName,
-        studentEmail: email,
-        studentUsername: username,
-        studentTradeId: tradeId,
-        studentLevel: level,
-        syllabusId: cur.syllabusId,
-        syllabusTitle: cur.syllabusTitle || "Syllabus",
-        topicId: cur.topicId,
-        topicTitle: cur.topicTitle || "Topic",
-        subtopicId: cur.subtopicId,
-        subtopicTitle: cur.subtopicTitle,
-        secondsToAdd,
-      }).catch((err) => console.warn("Error flushing active topic time:", err));
-    }
+    activeSecondsAccumulatorRef.current = 0;
   };
 
   // Reconnection listener to flush any queued offline study seconds
@@ -383,32 +352,23 @@ export default function PresenceTracker({
       const now = Date.now();
       const stateChanged = state !== lastReportedStateRef.current;
       const subtopicChanged = (subtopicTitle || "") !== lastReportedSubtopicRef.current;
-      // Adaptive steady-state heartbeat: 60s steady-state preserves Firestore quota & network bandwidth
-      // while state transitions (unfocused, changing topic, strikes) remain 100% instant.
-      const routineHeartbeatDue = (now - lastPresenceWriteRef.current) >= 60000;
+      const syllabusChanged = (syllabusTitle || "") !== lastReportedSyllabusRef.current;
+      // Event-driven presence: immediate write on state, tab/area, or topic shift,
+      // plus a lightweight 3-minute (180s) keep-alive to minimize Firestore writes.
+      const routineHeartbeatDue = (now - lastPresenceWriteRef.current) >= 180000;
 
-      // Adaptive Write: Immediate on state/topic shift, strikes, or every 60s steady-state heartbeat
-      if (stateChanged || subtopicChanged || routineHeartbeatDue) {
+      if (stateChanged || subtopicChanged || syllabusChanged || routineHeartbeatDue) {
         lastReportedStateRef.current = state;
         lastReportedSubtopicRef.current = subtopicTitle || "";
+        lastReportedSyllabusRef.current = syllabusTitle || "";
         lastPresenceWriteRef.current = now;
         updateStudentPresence(userId, fullName, state, subtopicTitle, syllabusTitle, unfocusedDuration);
-      }
-
-      // ACCUMULATE ACTIVE LEARNING TIME:
-      // Count when actively reading/interacting, or in group work mode while active
-      if (state === 'actively_reading' || (restrictionsDisabledRef.current && secondsSinceLastInput < 120)) {
-        activeSecondsAccumulatorRef.current += 5; // 5 second tick
-        
-        // Flush every 60 seconds (1 minute chunks) of active study to persist progress without flooding public networks
-        if (activeSecondsAccumulatorRef.current >= 60) {
-          flushActiveSeconds();
-        }
       }
     };
 
     const lastReportedStateRef = { current: "" as PresenceState | "" };
     const lastReportedSubtopicRef = { current: "" };
+    const lastReportedSyllabusRef = { current: "" };
     const lastPresenceWriteRef = { current: 0 };
 
     // Initial report
@@ -509,7 +469,7 @@ export default function PresenceTracker({
     };
 
     const handleBeforeUnload = () => {
-      flushActiveSeconds();
+      updateStudentPresence(userId, fullName, 'offline', subtopicTitle, syllabusTitle, 0);
     };
 
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -589,15 +549,15 @@ export default function PresenceTracker({
 
       {showAttentionPrompt && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-3xl border border-amber-500/30 bg-[#0F172A] p-6 shadow-2xl text-center">
+          <div className="w-full max-w-md rounded-3xl border border-amber-500/30 bg-[#141416] p-6 shadow-2xl text-center">
             <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
               <Clock className="h-8 w-8 animate-pulse" />
             </div>
             <h3 className="text-lg font-bold text-white">Active Learning Verification</h3>
-            <p className="mt-2 text-sm text-[#94A3B8] leading-relaxed">
+            <p className="mt-2 text-sm text-[#A1A1AA] leading-relaxed">
               You haven&apos;t interacted with this topic for 2 minutes. Continuous syllabus focus is mandatory. Please confirm you are actively studying.
             </p>
-            <div className="mt-4 inline-flex items-center space-x-2 rounded-xl bg-[#1E293B] px-4 py-2 border border-slate-700">
+            <div className="mt-4 inline-flex items-center space-x-2 rounded-xl bg-[#1C1C1F] px-4 py-2 border border-slate-700">
               <span className="text-xs text-slate-400">Automatic suspension in:</span>
               <span className="font-mono text-base font-bold text-amber-400">{promptCountdown}s</span>
             </div>
@@ -615,7 +575,7 @@ export default function PresenceTracker({
       )}
 
       {multiWindowDetected && !restrictionsDisabled && (
-        <div className="fixed bottom-4 left-4 z-50 max-w-md rounded-2xl border border-amber-500/50 bg-[#1E293B] p-4 text-xs shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom">
+        <div className="fixed bottom-4 left-4 z-50 max-w-md rounded-2xl border border-amber-500/50 bg-[#1C1C1F] p-4 text-xs shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom">
           <div className="flex items-start space-x-3">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
               <Layers className="h-5 w-5" />
@@ -624,7 +584,7 @@ export default function PresenceTracker({
               <h4 className="font-bold text-white flex items-center space-x-1">
                 <span>Multiple Windows Active</span>
               </h4>
-              <p className="mt-1 text-[#94A3B8] leading-relaxed">
+              <p className="mt-1 text-[#A1A1AA] leading-relaxed">
                 We noticed another session window open for your account. Please keep only your primary syllabus window active for accurate progress tracking.
               </p>
             </div>

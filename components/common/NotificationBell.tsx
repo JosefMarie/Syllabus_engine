@@ -87,7 +87,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-[#334155] bg-[#1E293B] text-[#94A3B8] hover:border-[#06B6D4] hover:text-white transition-all shadow-sm"
+        className="relative flex h-9 w-9 items-center justify-center rounded-xl border border-[#2E2E34] bg-[#1C1C1F] text-[#A1A1AA] hover:border-[#EAEAE6] hover:text-white transition-all shadow-sm"
         title="Notifications"
       >
         <Bell className="h-4 w-4" />
@@ -100,14 +100,14 @@ export default function NotificationBell({ userId }: { userId: string }) {
 
       {/* Dropdown Menu */}
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-[#334155]/70 bg-[#1E293B]/90 backdrop-blur-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+        <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl border border-[#2E2E34]/70 bg-[#1C1C1F]/90 backdrop-blur-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md px-4 py-3">
+          <div className="flex items-center justify-between border-b border-[#2E2E34]/70 bg-[#141416]/50 backdrop-blur-md px-4 py-3">
             <div className="flex items-center space-x-2">
-              <Bell className="h-4 w-4 text-[#06B6D4]" />
+              <Bell className="h-4 w-4 text-[#EAEAE6]" />
               <span className="text-xs font-bold text-white">Notifications</span>
               {unreadCount > 0 && (
-                <span className="rounded-full bg-cyan-500/20 px-2 py-0.2 text-[10px] font-bold text-cyan-300 border border-cyan-500/30">
+                <span className="rounded-full bg-[#EAEAE6]/20 px-2 py-0.2 text-[10px] font-bold text-[#EAEAE6] border border-[#EAEAE6]/30">
                   {unreadCount} new
                 </span>
               )}
@@ -118,7 +118,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
                 <button
                   type="button"
                   onClick={handleMarkAllRead}
-                  className="text-[11px] font-semibold text-cyan-400 hover:text-cyan-300 flex items-center space-x-1"
+                  className="text-[11px] font-semibold text-[#EAEAE6] hover:text-[#EAEAE6] flex items-center space-x-1"
                 >
                   <CheckCheck className="h-3.5 w-3.5" />
                   <span>Mark all read</span>
@@ -128,7 +128,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
                 <button
                   type="button"
                   onClick={handleClearRead}
-                  className="text-[11px] font-semibold text-[#94A3B8] hover:text-rose-400 flex items-center space-x-1 transition-colors"
+                  className="text-[11px] font-semibold text-[#A1A1AA] hover:text-rose-400 flex items-center space-x-1 transition-colors"
                   title="Remove all read notifications"
                 >
                   <Trash2 className="h-3 w-3" />
@@ -141,8 +141,8 @@ export default function NotificationBell({ userId }: { userId: string }) {
           {/* List */}
           <div className="max-h-80 overflow-y-auto p-2 space-y-1.5 custom-scrollbar">
             {notifications.length === 0 ? (
-              <div className="py-8 text-center text-xs text-[#94A3B8]">
-                <Bell className="h-8 w-8 text-[#64748B] mx-auto mb-2 opacity-50" />
+              <div className="py-8 text-center text-xs text-[#A1A1AA]">
+                <Bell className="h-8 w-8 text-[#71717A] mx-auto mb-2 opacity-50" />
                 No notifications.
               </div>
             ) : (
@@ -155,8 +155,8 @@ export default function NotificationBell({ userId }: { userId: string }) {
                     key={n.id}
                     className={`rounded-xl border p-3 transition-all ${
                       isUnread
-                        ? "border-cyan-500/40 bg-cyan-500/10 text-white backdrop-blur-sm"
-                        : "border-[#334155]/60 bg-[#0B0F19]/50 backdrop-blur-sm text-[#94A3B8]"
+                        ? "border-[#EAEAE6]/40 bg-[#EAEAE6]/10 text-white backdrop-blur-sm"
+                        : "border-[#2E2E34]/60 bg-[#141416]/50 backdrop-blur-sm text-[#A1A1AA]"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2">
@@ -165,11 +165,11 @@ export default function NotificationBell({ userId }: { userId: string }) {
                           <span className="text-xs font-bold text-white">
                             {sender}
                           </span>
-                          <span className="text-[10px] text-[#64748B]">
+                          <span className="text-[10px] text-[#71717A]">
                             {new Date(n.createdAt).toLocaleDateString([], { month: "short", day: "numeric" })}
                           </span>
                         </div>
-                        <p className="text-xs text-[#CBD5E1] leading-relaxed">
+                        <p className="text-xs text-[#EAEAE6] leading-relaxed">
                           {n.message}
                         </p>
                       </div>
@@ -180,7 +180,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
                             type="button"
                             onClick={(e) => handleMarkAsRead(n.id, e)}
                             title="Mark as read"
-                            className="rounded-lg p-1 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-500/10 transition-colors"
+                            className="rounded-lg p-1 text-[#EAEAE6] hover:text-[#EAEAE6] hover:bg-[#EAEAE6]/10 transition-colors"
                           >
                             <Check className="h-3.5 w-3.5" />
                           </button>
@@ -189,7 +189,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
                           type="button"
                           onClick={(e) => handleDeleteNotification(n.id, e)}
                           title="Delete notification"
-                          className="rounded-lg p-1 text-[#64748B] hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                          className="rounded-lg p-1 text-[#71717A] hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>

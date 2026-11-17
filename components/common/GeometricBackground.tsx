@@ -264,7 +264,7 @@ export default function GeometricBackground() {
 
       {/* Subtle vignette border gradient to deepen edges and focus content */}
       <div 
-        className="absolute inset-0 bg-radial-gradient from-transparent via-[#0B0F19]/20 to-[#0B0F19]/80 pointer-events-none" 
+        className="absolute inset-0 bg-radial-gradient from-transparent via-[#141416]/20 to-[#141416]/80 pointer-events-none" 
       />
     </div>
   );

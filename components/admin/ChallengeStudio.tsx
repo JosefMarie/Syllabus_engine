@@ -167,10 +167,10 @@ export default function ChallengeStudio({ adminUser }: ChallengeStudioProps) {
   return (
     <div className="space-y-6">
       {/* Top Header Card */}
-      <div className="rounded-2xl border border-[#334155]/80 bg-[#1E293B]/75 backdrop-blur-xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
+      <div className="rounded-2xl border border-[#2E2E34]/80 bg-[#1C1C1F]/75 backdrop-blur-xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 h-44 w-44 bg-gradient-to-bl from-amber-500/15 via-rose-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
 
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#334155]/80 pb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2E2E34]/80 pb-5">
           <div className="flex items-center space-x-3.5">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-amber-500/20 to-rose-500/20 border border-amber-500/40 text-amber-400 shadow-inner shrink-0">
               <Code2 className="h-6 w-6" />
@@ -184,7 +184,7 @@ export default function ChallengeStudio({ adminUser }: ChallengeStudioProps) {
                   ⚡ Algorithm Arena
                 </span>
               </div>
-              <p className="mt-1 text-xs text-[#94A3B8]">
+              <p className="mt-1 text-xs text-[#A1A1AA]">
                 Publish weekly coding puzzles with automated unit tests for students to solve in-browser.
               </p>
             </div>
@@ -194,7 +194,7 @@ export default function ChallengeStudio({ adminUser }: ChallengeStudioProps) {
             <button
               type="button"
               onClick={() => openComposer()}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-slate-950 shadow-lg shadow-amber-950/40 transition-all flex items-center gap-2"
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-[#141416] shadow-lg shadow-amber-950/40 transition-all flex items-center gap-2"
             >
               <Plus className="w-4 h-4" />
               <span>Create Challenge</span>
@@ -204,28 +204,28 @@ export default function ChallengeStudio({ adminUser }: ChallengeStudioProps) {
 
         {/* Stat Overview */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-5">
-          <div className="rounded-xl bg-[#0B0F19]/60 border border-[#334155]/60 p-4">
+          <div className="rounded-xl bg-[#141416]/60 border border-[#2E2E34]/60 p-4">
             <span className="text-xs text-slate-400 block mb-1">Active Challenges</span>
             <span className="text-2xl font-bold font-mono text-white">
               {challenges.filter((c) => c.active !== false).length}
             </span>
           </div>
 
-          <div className="rounded-xl bg-[#0B0F19]/60 border border-[#334155]/60 p-4">
+          <div className="rounded-xl bg-[#141416]/60 border border-[#2E2E34]/60 p-4">
             <span className="text-xs text-slate-400 block mb-1">Student Submissions</span>
-            <span className="text-2xl font-bold font-mono text-cyan-300">
+            <span className="text-2xl font-bold font-mono text-[#EAEAE6]">
               {submissions.length}
             </span>
           </div>
 
-          <div className="rounded-xl bg-[#0B0F19]/60 border border-[#334155]/60 p-4">
+          <div className="rounded-xl bg-[#141416]/60 border border-[#2E2E34]/60 p-4">
             <span className="text-xs text-slate-400 block mb-1">Successful Solves</span>
             <span className="text-2xl font-bold font-mono text-emerald-400">
               {submissions.filter((s) => s.passed).length}
             </span>
           </div>
 
-          <div className="rounded-xl bg-[#0B0F19]/60 border border-[#334155]/60 p-4">
+          <div className="rounded-xl bg-[#141416]/60 border border-[#2E2E34]/60 p-4">
             <span className="text-xs text-slate-400 block mb-1">Total XP Awarded</span>
             <span className="text-2xl font-bold font-mono text-amber-400">
               {submissions.filter((s) => s.passed).reduce((sum, s) => sum + s.awardedPoints, 0)} XP
@@ -235,22 +235,22 @@ export default function ChallengeStudio({ adminUser }: ChallengeStudioProps) {
       </div>
 
       {/* Filter and Challenge List */}
-      <div className="rounded-2xl border border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-xl p-4 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="rounded-2xl border border-[#2E2E34]/70 bg-[#1C1C1F]/75 backdrop-blur-xl p-4 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3">
         <div className="relative flex-1 w-full">
-          <Search className="absolute left-3.5 top-3 h-4 w-4 text-[#94A3B8]" />
+          <Search className="absolute left-3.5 top-3 h-4 w-4 text-[#A1A1AA]" />
           <input
             type="text"
             placeholder="Search challenges by title or function name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-[#334155]/80 bg-[#0B0F19]/70 py-2.5 pl-10 pr-4 text-xs text-white placeholder-[#64748B] focus:border-amber-400 focus:outline-none"
+            className="w-full rounded-xl border border-[#2E2E34]/80 bg-[#141416]/70 py-2.5 pl-10 pr-4 text-xs text-white placeholder-[#71717A] focus:border-amber-400 focus:outline-none"
           />
         </div>
 
         <select
           value={difficultyFilter}
           onChange={(e) => setDifficultyFilter(e.target.value)}
-          className="rounded-xl border border-[#334155]/80 bg-[#0B0F19]/70 py-2 px-3 text-xs text-white focus:outline-none shrink-0"
+          className="rounded-xl border border-[#2E2E34]/80 bg-[#141416]/70 py-2 px-3 text-xs text-white focus:outline-none shrink-0"
         >
           <option value="all">All Difficulties</option>
           <option value="easy">Easy</option>
@@ -264,7 +264,7 @@ export default function ChallengeStudio({ adminUser }: ChallengeStudioProps) {
         {filteredChallenges.map((ch) => (
           <div
             key={ch.id}
-            className="rounded-2xl border border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-xl p-5 shadow-xl flex flex-col justify-between space-y-4 hover:border-amber-500/40 transition-all"
+            className="rounded-2xl border border-[#2E2E34]/70 bg-[#1C1C1F]/75 backdrop-blur-xl p-5 shadow-xl flex flex-col justify-between space-y-4 hover:border-amber-500/40 transition-all"
           >
             <div>
               <div className="flex items-start justify-between gap-2 mb-2">
@@ -300,7 +300,7 @@ export default function ChallengeStudio({ adminUser }: ChallengeStudioProps) {
                     title="Edit challenge"
                     className="p-1 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800"
                   >
-                    <Edit3 className="w-4 h-4 text-cyan-400" />
+                    <Edit3 className="w-4 h-4 text-[#EAEAE6]" />
                   </button>
                   <button
                     type="button"
@@ -321,11 +321,11 @@ export default function ChallengeStudio({ adminUser }: ChallengeStudioProps) {
                 {ch.title}
               </h4>
               <p className="text-xs text-slate-400 mt-1 line-clamp-2">
-                Function: <code className="text-cyan-400 font-mono font-bold">{ch.functionName}(...)</code>
+                Function: <code className="text-[#EAEAE6] font-mono font-bold">{ch.functionName}(...)</code>
               </p>
             </div>
 
-            <div className="pt-3 border-t border-[#334155]/60 flex items-center justify-between text-xs font-mono">
+            <div className="pt-3 border-t border-[#2E2E34]/60 flex items-center justify-between text-xs font-mono">
               <span className="text-amber-400 font-bold">+{ch.points} XP Points</span>
               <span className="text-slate-500">{ch.testCases?.length || 0} Test Cases</span>
             </div>
@@ -380,7 +380,7 @@ export default function ChallengeStudio({ adminUser }: ChallengeStudioProps) {
                     value={formFunctionName}
                     onChange={(e) => setFormFunctionName(e.target.value)}
                     placeholder="e.g. reverseList"
-                    className="w-full rounded-xl border border-slate-700 bg-slate-950 p-2.5 text-cyan-300 font-mono focus:border-amber-400 focus:outline-none"
+                    className="w-full rounded-xl border border-slate-700 bg-slate-950 p-2.5 text-[#EAEAE6] font-mono focus:border-amber-400 focus:outline-none"
                   />
                 </div>
               </div>
@@ -438,7 +438,7 @@ export default function ChallengeStudio({ adminUser }: ChallengeStudioProps) {
                   rows={4}
                   value={formStarterCode}
                   onChange={(e) => setFormStarterCode(e.target.value)}
-                  className="w-full rounded-xl border border-slate-700 bg-slate-950 p-2.5 text-cyan-300 font-mono focus:border-amber-400 focus:outline-none"
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 p-2.5 text-[#EAEAE6] font-mono focus:border-amber-400 focus:outline-none"
                 />
               </div>
 
@@ -496,7 +496,7 @@ export default function ChallengeStudio({ adminUser }: ChallengeStudioProps) {
                             value={tc.input}
                             onChange={(e) => handleUpdateTestCase(idx, "input", e.target.value)}
                             placeholder='e.g. "[2, 7, 11, 15], 9"'
-                            className="w-full rounded-lg border border-slate-800 bg-slate-900 p-2 text-cyan-300 font-mono text-xs focus:outline-none"
+                            className="w-full rounded-lg border border-slate-800 bg-slate-900 p-2 text-[#EAEAE6] font-mono text-xs focus:outline-none"
                           />
                         </div>
                         <div>
@@ -525,7 +525,7 @@ export default function ChallengeStudio({ adminUser }: ChallengeStudioProps) {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-slate-950 shadow-md transition-all"
+                  className="px-5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-rose-500 hover:from-amber-400 hover:to-rose-400 text-[#141416] shadow-md transition-all"
                 >
                   {editingChallengeId ? "Save Changes" : "Publish Challenge"}
                 </button>

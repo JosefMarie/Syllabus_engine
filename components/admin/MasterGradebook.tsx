@@ -349,8 +349,8 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
       case "good":
         return {
           label: "In Good Standing",
-          badge: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30",
-          icon: <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+          badge: "bg-[#EAEAE6]/15 text-[#EAEAE6] border-[#EAEAE6]/30",
+          icon: <CheckCircle2 className="w-3.5 h-3.5 text-[#EAEAE6]" />
         };
       case "at_risk":
         return {
@@ -379,7 +379,7 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
       case "A":
         return "text-emerald-400 bg-emerald-500/10 border-emerald-500/30";
       case "B":
-        return "text-cyan-400 bg-cyan-500/10 border-cyan-500/30";
+        return "text-[#EAEAE6] bg-[#EAEAE6]/10 border-[#EAEAE6]/30";
       case "C":
         return "text-amber-400 bg-amber-500/10 border-amber-500/30";
       case "D":
@@ -392,12 +392,12 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
   return (
     <div className="space-y-6">
       {/* Top Header Card */}
-      <div className="rounded-2xl border border-[#334155]/80 bg-[#1E293B]/75 backdrop-blur-xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
+      <div className="rounded-2xl border border-[#2E2E34]/80 bg-[#1C1C1F]/75 backdrop-blur-xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
         <div className="absolute top-0 right-0 h-44 w-44 bg-gradient-to-bl from-cyan-500/15 via-blue-500/10 to-transparent rounded-full blur-3xl pointer-events-none" />
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#334155]/80 pb-5">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#2E2E34]/80 pb-5">
           <div className="flex items-center space-x-3.5">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 border border-cyan-500/40 text-cyan-400 shadow-inner shrink-0">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 border border-[#EAEAE6]/40 text-[#EAEAE6] shadow-inner shrink-0">
               <GraduationCap className="h-6 w-6" />
             </div>
             <div>
@@ -405,11 +405,11 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
                 <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
                   Academic Master Gradebook
                 </h2>
-                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#EAEAE6]/20 text-[#EAEAE6] border border-[#EAEAE6]/30">
                   Live Ledger
                 </span>
               </div>
-              <p className="mt-1 text-xs text-[#94A3B8]">
+              <p className="mt-1 text-xs text-[#A1A1AA]">
                 Unified grades combining real exam attempts, assignments, syllabus progress, and discipline standing.
               </p>
             </div>
@@ -429,7 +429,7 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
             <button
               type="button"
               onClick={() => window.print()}
-              className="px-3 py-2 rounded-xl text-xs font-bold bg-[#0B0F19]/80 hover:bg-[#0B0F19] text-[#CBD5E1] hover:text-white border border-[#334155] transition-all flex items-center gap-1.5"
+              className="px-3 py-2 rounded-xl text-xs font-bold bg-[#141416]/80 hover:bg-[#141416] text-[#EAEAE6] hover:text-white border border-[#2E2E34] transition-all flex items-center gap-1.5"
             >
               <Printer className="w-4 h-4 text-slate-400" />
               <span className="hidden sm:inline">Print Report</span>
@@ -439,7 +439,7 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
               type="button"
               onClick={loadData}
               disabled={loading}
-              className="p-2 rounded-xl text-xs bg-[#0B0F19]/80 hover:bg-[#0B0F19] text-[#94A3B8] hover:text-white border border-[#334155] transition-all"
+              className="p-2 rounded-xl text-xs bg-[#141416]/80 hover:bg-[#141416] text-[#A1A1AA] hover:text-white border border-[#2E2E34] transition-all"
               title="Refresh Gradebook Data"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
@@ -449,10 +449,10 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
 
         {/* 4 Stat Overview Tiles */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pt-5">
-          <div className="rounded-xl bg-[#0B0F19]/60 border border-[#334155]/60 p-4">
+          <div className="rounded-xl bg-[#141416]/60 border border-[#2E2E34]/60 p-4">
             <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
               <span>Active Students</span>
-              <Users className="w-4 h-4 text-cyan-400" />
+              <Users className="w-4 h-4 text-[#EAEAE6]" />
             </div>
             <div className="text-2xl font-extrabold text-white font-mono">
               {stats.total}
@@ -460,18 +460,18 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
             <p className="text-[11px] text-slate-500 mt-1">Enrolled across all trades</p>
           </div>
 
-          <div className="rounded-xl bg-[#0B0F19]/60 border border-[#334155]/60 p-4">
+          <div className="rounded-xl bg-[#141416]/60 border border-[#2E2E34]/60 p-4">
             <div className="flex items-center justify-between text-slate-400 text-xs mb-1">
               <span>Class Composite Avg</span>
-              <Sparkles className="w-4 h-4 text-cyan-400" />
+              <Sparkles className="w-4 h-4 text-[#EAEAE6]" />
             </div>
-            <div className="text-2xl font-extrabold text-cyan-400 font-mono">
+            <div className="text-2xl font-extrabold text-[#EAEAE6] font-mono">
               {stats.classAvg.toFixed(1)}%
             </div>
             <p className="text-[11px] text-slate-500 mt-1">Exams + Work + Syllabus</p>
           </div>
 
-          <div className="rounded-xl bg-[#0B0F19]/60 border border-emerald-500/30 p-4">
+          <div className="rounded-xl bg-[#141416]/60 border border-emerald-500/30 p-4">
             <div className="flex items-center justify-between text-emerald-400 text-xs mb-1">
               <span>Honor Roll</span>
               <Award className="w-4 h-4 text-emerald-400" />
@@ -482,7 +482,7 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
             <p className="text-[11px] text-emerald-400/70 mt-1">≥ 85% Score & Good Focus</p>
           </div>
 
-          <div className="rounded-xl bg-[#0B0F19]/60 border border-rose-500/30 p-4">
+          <div className="rounded-xl bg-[#141416]/60 border border-rose-500/30 p-4">
             <div className="flex items-center justify-between text-rose-400 text-xs mb-1">
               <span>Intervention Needed</span>
               <AlertTriangle className="w-4 h-4 text-rose-400" />
@@ -498,15 +498,15 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
       </div>
 
       {/* Filter and Search Controls */}
-      <div className="rounded-2xl border border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-xl p-4 shadow-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+      <div className="rounded-2xl border border-[#2E2E34]/70 bg-[#1C1C1F]/75 backdrop-blur-xl p-4 shadow-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
         <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-3 h-4 w-4 text-[#94A3B8]" />
+          <Search className="absolute left-3.5 top-3 h-4 w-4 text-[#A1A1AA]" />
           <input
             type="text"
             placeholder="Search student by name, username, trade, or email..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-[#334155]/80 bg-[#0B0F19]/70 py-2.5 pl-10 pr-4 text-xs text-white placeholder-[#64748B] focus:border-cyan-400 focus:outline-none"
+            className="w-full rounded-xl border border-[#2E2E34]/80 bg-[#141416]/70 py-2.5 pl-10 pr-4 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
           />
         </div>
 
@@ -515,7 +515,7 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
           <select
             value={selectedTrade}
             onChange={(e) => setSelectedTrade(e.target.value)}
-            className="rounded-xl border border-[#334155]/80 bg-[#0B0F19]/70 py-2 px-3 text-xs text-white focus:border-cyan-400 focus:outline-none"
+            className="rounded-xl border border-[#2E2E34]/80 bg-[#141416]/70 py-2 px-3 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
           >
             <option value="all">All Academic Trades</option>
             {trades.map((t) => (
@@ -529,7 +529,7 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
           <select
             value={selectedLevel}
             onChange={(e) => setSelectedLevel(e.target.value)}
-            className="rounded-xl border border-[#334155]/80 bg-[#0B0F19]/70 py-2 px-3 text-xs text-white focus:border-cyan-400 focus:outline-none"
+            className="rounded-xl border border-[#2E2E34]/80 bg-[#141416]/70 py-2 px-3 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
           >
             <option value="all">All Levels</option>
             <option value="Level 3">Level 3</option>
@@ -541,7 +541,7 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
           <select
             value={selectedStanding}
             onChange={(e) => setSelectedStanding(e.target.value)}
-            className="rounded-xl border border-[#334155]/80 bg-[#0B0F19]/70 py-2 px-3 text-xs text-white focus:border-cyan-400 focus:outline-none"
+            className="rounded-xl border border-[#2E2E34]/80 bg-[#141416]/70 py-2 px-3 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
           >
             <option value="all">All Standings</option>
             <option value="honor">🌟 Honor Roll Only</option>
@@ -554,63 +554,63 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
       </div>
 
       {/* Main Gradebook Spreadsheet Table */}
-      <div className="rounded-2xl border border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-xl shadow-2xl overflow-hidden">
+      <div className="rounded-2xl border border-[#2E2E34]/70 bg-[#1C1C1F]/75 backdrop-blur-xl shadow-2xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse text-xs">
             <thead>
-              <tr className="border-b border-[#334155]/80 bg-[#0B0F19]/80 text-[#94A3B8] font-mono">
+              <tr className="border-b border-[#2E2E34]/80 bg-[#141416]/80 text-[#A1A1AA] font-mono">
                 <th className="py-3.5 px-4 cursor-pointer hover:text-white" onClick={() => toggleSort("name")}>
                   <div className="flex items-center gap-1.5">
                     <span>Student</span>
-                    {sortField === "name" ? (sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-cyan-400" /> : <ArrowDown className="w-3.5 h-3.5 text-cyan-400" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === "name" ? (sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#EAEAE6]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#EAEAE6]" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
                 <th className="py-3.5 px-4 cursor-pointer hover:text-white" onClick={() => toggleSort("trade")}>
                   <div className="flex items-center gap-1.5">
                     <span>Trade & Level</span>
-                    {sortField === "trade" ? (sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-cyan-400" /> : <ArrowDown className="w-3.5 h-3.5 text-cyan-400" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === "trade" ? (sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#EAEAE6]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#EAEAE6]" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
                 <th className="py-3.5 px-4 cursor-pointer hover:text-white" onClick={() => toggleSort("strikes")}>
                   <div className="flex items-center gap-1.5">
                     <span>Discipline Focus</span>
-                    {sortField === "strikes" ? (sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-cyan-400" /> : <ArrowDown className="w-3.5 h-3.5 text-cyan-400" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === "strikes" ? (sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#EAEAE6]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#EAEAE6]" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
                 <th className="py-3.5 px-4 cursor-pointer hover:text-white" onClick={() => toggleSort("progress")}>
                   <div className="flex items-center gap-1.5">
                     <span>Syllabus Progress</span>
-                    {sortField === "progress" ? (sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-cyan-400" /> : <ArrowDown className="w-3.5 h-3.5 text-cyan-400" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === "progress" ? (sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#EAEAE6]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#EAEAE6]" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
                 <th className="py-3.5 px-4 cursor-pointer hover:text-white" onClick={() => toggleSort("examAvg")}>
                   <div className="flex items-center gap-1.5">
                     <span>Exams</span>
-                    {sortField === "examAvg" ? (sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-cyan-400" /> : <ArrowDown className="w-3.5 h-3.5 text-cyan-400" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === "examAvg" ? (sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#EAEAE6]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#EAEAE6]" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
                 <th className="py-3.5 px-4 cursor-pointer hover:text-white" onClick={() => toggleSort("assignAvg")}>
                   <div className="flex items-center gap-1.5">
                     <span>Assignments</span>
-                    {sortField === "assignAvg" ? (sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-cyan-400" /> : <ArrowDown className="w-3.5 h-3.5 text-cyan-400" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === "assignAvg" ? (sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#EAEAE6]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#EAEAE6]" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
                 <th className="py-3.5 px-4 cursor-pointer hover:text-white" onClick={() => toggleSort("composite")}>
                   <div className="flex items-center gap-1.5">
                     <span>Composite Grade</span>
-                    {sortField === "composite" ? (sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-cyan-400" /> : <ArrowDown className="w-3.5 h-3.5 text-cyan-400" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
+                    {sortField === "composite" ? (sortDirection === "asc" ? <ArrowUp className="w-3.5 h-3.5 text-[#EAEAE6]" /> : <ArrowDown className="w-3.5 h-3.5 text-[#EAEAE6]" />) : <ArrowUpDown className="w-3 h-3 opacity-40" />}
                   </div>
                 </th>
                 <th className="py-3.5 px-4 text-center">Standing</th>
                 <th className="py-3.5 px-4 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#334155]/60 text-slate-300">
+            <tbody className="divide-y divide-[#2E2E34]/60 text-slate-300">
               {loading ? (
                 <tr>
                   <td colSpan={9} className="py-16 text-center text-slate-400">
                     <div className="flex flex-col items-center justify-center">
-                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent mb-3" />
+                      <div className="h-8 w-8 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent mb-3" />
                       <span>Compiling Academic Master Gradebook...</span>
                     </div>
                   </td>
@@ -629,14 +629,14 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
                   return (
                     <tr
                       key={record.studentUid}
-                      className={`hover:bg-[#0B0F19]/40 transition-colors ${
+                      className={`hover:bg-[#141416]/40 transition-colors ${
                         isSuspended ? "bg-rose-950/10" : ""
                       }`}
                     >
                       {/* 1. Student Name & Profile */}
                       <td className="py-3 px-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 flex items-center justify-center font-bold text-cyan-300 text-xs shrink-0">
+                          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-cyan-500/20 to-blue-500/20 border border-[#EAEAE6]/30 flex items-center justify-center font-bold text-[#EAEAE6] text-xs shrink-0">
                             {record.studentName.charAt(0).toUpperCase()}
                           </div>
                           <div className="min-w-0">
@@ -655,7 +655,7 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
                         <div className="font-medium text-slate-200 truncate max-w-[140px]">
                           {record.tradeName}
                         </div>
-                        <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-mono bg-cyan-500/10 text-cyan-300 border border-cyan-500/30">
+                        <span className="inline-block mt-0.5 px-2 py-0.5 rounded-full text-[10px] font-mono bg-[#EAEAE6]/10 text-[#EAEAE6] border border-[#EAEAE6]/30">
                           {record.level}
                         </span>
                       </td>
@@ -694,11 +694,11 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
                         <div className="flex items-center gap-2">
                           <div className="w-16 h-2 bg-slate-800 rounded-full overflow-hidden shrink-0">
                             <div
-                              className="h-full bg-cyan-400 rounded-full"
+                              className="h-full bg-[#EAEAE6] rounded-full"
                               style={{ width: `${Math.min(record.syllabusProgressPct, 100)}%` }}
                             />
                           </div>
-                          <span className="font-mono text-xs font-bold text-cyan-300">
+                          <span className="font-mono text-xs font-bold text-[#EAEAE6]">
                             {record.syllabusProgressPct.toFixed(0)}%
                           </span>
                         </div>
@@ -770,7 +770,7 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
                         <button
                           type="button"
                           onClick={() => setSelectedStudent(record)}
-                          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 transition-all inline-flex items-center gap-1.5"
+                          className="px-2.5 py-1.5 rounded-lg text-xs font-semibold bg-[#EAEAE6]/10 hover:bg-[#EAEAE6]/20 text-[#EAEAE6] border border-[#EAEAE6]/30 transition-all inline-flex items-center gap-1.5"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           <span>Transcript</span>
@@ -785,7 +785,7 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
         </div>
 
         {/* Footer info bar */}
-        <div className="p-4 border-t border-[#334155]/80 bg-[#0B0F19]/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#94A3B8]">
+        <div className="p-4 border-t border-[#2E2E34]/80 bg-[#141416]/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#A1A1AA]">
           <span>
             Showing <strong className="text-white">{filteredRecords.length}</strong> of {stats.total} total students
           </span>
@@ -813,7 +813,7 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
             {/* Modal Header */}
             <div className="p-6 border-b border-slate-800 flex items-start justify-between bg-slate-950/50">
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 border border-cyan-500/40 flex items-center justify-center font-bold text-cyan-300 text-lg">
+                <div className="w-12 h-12 rounded-2xl bg-[#EAEAE6]/20 border border-[#EAEAE6]/40 flex items-center justify-center font-bold text-[#EAEAE6] text-lg">
                   {selectedStudent.studentName.charAt(0).toUpperCase()}
                 </div>
                 <div>
@@ -848,7 +848,7 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800 text-center">
                   <span className="text-[11px] text-slate-400 block mb-1">Composite Score</span>
-                  <div className="text-xl font-bold font-mono text-cyan-400">
+                  <div className="text-xl font-bold font-mono text-[#EAEAE6]">
                     {selectedStudent.compositeScore.toFixed(1)}% ({selectedStudent.letterGrade})
                   </div>
                 </div>
@@ -920,7 +920,7 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <BookOpen className="w-4 h-4 text-cyan-400" />
+                    <BookOpen className="w-4 h-4 text-[#EAEAE6]" />
                     <span>Exam Attempts ({selectedStudent.examAttempts.length})</span>
                   </h4>
                   <span className="text-xs text-slate-400">
@@ -967,7 +967,7 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-cyan-400" />
+                    <FileText className="w-4 h-4 text-[#EAEAE6]" />
                     <span>Course Assignment Submissions ({selectedStudent.assignmentSubmissions.length})</span>
                   </h4>
                   <span className="text-xs text-slate-400">
@@ -997,7 +997,7 @@ export default function MasterGradebook({ adminUser, trades = [] }: MasterGradeb
                         <div className="text-right">
                           {sub.status === "graded" && sub.score !== undefined ? (
                             <>
-                              <span className="font-mono font-bold text-sm text-cyan-400">
+                              <span className="font-mono font-bold text-sm text-[#EAEAE6]">
                                 {(((sub.score || 0) / (sub.maxScore || 100)) * 100).toFixed(1)}%
                               </span>
                               <span className="block text-[10px] text-slate-500 font-mono">

@@ -77,10 +77,10 @@ export default function AchievementBadgesModal({
       case "diamond":
         return {
           label: "Diamond",
-          border: "border-cyan-400/60 shadow-lg shadow-cyan-950/40",
+          border: "border-[#EAEAE6]/60 shadow-lg shadow-cyan-950/40",
           bg: "bg-cyan-950/30",
-          text: "text-cyan-300",
-          badge: "bg-cyan-500/20 text-cyan-300 border-cyan-400/40"
+          text: "text-[#EAEAE6]",
+          badge: "bg-[#EAEAE6]/20 text-[#EAEAE6] border-[#EAEAE6]/40"
         };
     }
   };
@@ -131,11 +131,11 @@ export default function AchievementBadgesModal({
           <div className="flex items-center gap-2">
             <div className="w-24 h-2 bg-slate-800 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-amber-500 to-cyan-400 rounded-full"
+                className="h-full bg-gradient-to-r from-amber-500 to-white rounded-full"
                 style={{ width: `${(unlockedCount / totalBadges) * 100}%` }}
               />
             </div>
-            <span className="text-cyan-300 font-mono font-bold text-[11px]">
+            <span className="text-[#EAEAE6] font-mono font-bold text-[11px]">
               {Math.round((unlockedCount / totalBadges) * 100)}%
             </span>
           </div>

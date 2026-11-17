@@ -160,21 +160,23 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-transparent p-4 text-[#CBD5E1]">
-      <div className={`w-full max-w-lg rounded-2xl border border-[#334155]/80 bg-[#1E293B]/85 backdrop-blur-xl p-8 shadow-2xl transition-all ${shake ? "animate-shake border-rose-500/60" : ""}`}>
-        <div className="mb-6 flex items-center justify-between border-b border-[#334155]/60 pb-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#141416] p-4 text-[#EAEAE6]">
+      <div className={`w-full max-w-lg rounded-[28px] border border-[#2E2E34] bg-[#1C1C1F] p-8 shadow-2xl transition-all ${shake ? "animate-shake border-rose-500/60" : ""}`}>
+        <div className="mb-6 flex items-center justify-between border-b border-[#2E2E34] pb-4">
           <Link
             href="/"
             prefetch={false}
-            className="inline-flex items-center space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors"
+            className="inline-flex items-center space-x-1.5 rounded-full border border-[#323238] bg-[#141416] px-3 py-1.5 text-xs text-[#A1A1AA] hover:text-white transition-colors"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-3.5 w-3.5" />
             <span>Catalog</span>
           </Link>
 
           <div className="flex items-center space-x-2">
-            <GraduationCap className="h-5 w-5 text-[#06B6D4]" />
-            <span className="font-mono text-sm font-bold text-white">Student Registration</span>
+            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-[#EAEAE6] text-[#141416]">
+              <GraduationCap className="h-4 w-4" />
+            </div>
+            <span className="font-mono text-sm font-bold text-[#EAEAE6]">Student Registration</span>
           </div>
         </div>
 
@@ -184,7 +186,7 @@ export default function RegisterPage() {
               <CheckCircle2 className="h-8 w-8" />
             </div>
             <h2 className="text-xl font-bold text-white">Registration Submitted!</h2>
-            <p className="text-xs text-[#94A3B8] leading-relaxed">
+            <p className="text-xs text-[#A1A1AA] leading-relaxed">
               Your account has been registered under <strong className="text-white">{level}</strong> and is currently <span className="text-[#F59E0B] font-mono">pending teacher verification</span>. Once approved by your instructor, you can log in to access your course syllabi.
             </p>
 
@@ -192,7 +194,7 @@ export default function RegisterPage() {
               <Link
                 href="/auth/login"
                 prefetch={false}
-                className="inline-flex w-full items-center justify-center rounded-xl bg-[#06B6D4] py-3 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg"
+                className="inline-flex w-full items-center justify-center rounded-full bg-emerald-500 py-3 text-xs font-bold text-[#141416] hover:bg-emerald-400 transition-all shadow-lg"
               >
                 Go to Student Login
               </Link>
@@ -208,35 +210,35 @@ export default function RegisterPage() {
             )}
 
             <div>
-              <label className="text-xs font-mono text-[#94A3B8]">Full Name *</label>
+              <label className="text-xs font-mono text-[#A1A1AA]">Full Name *</label>
               <input
                 type="text"
                 required
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 placeholder="e.g. Josef Marie"
-                className="mt-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                className="mt-1 w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs text-[#EAEAE6] placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
               />
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-xs font-mono text-[#94A3B8]">Email Address (Optional)</label>
+                <label className="text-xs font-mono text-[#A1A1AA]">Email Address (Optional)</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="josef.marie@school.edu"
-                  className="mt-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs text-[#EAEAE6] placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-mono text-[#94A3B8]">Username *</label>
+                  <label className="text-xs font-mono text-[#A1A1AA]">Username *</label>
                   {usernameStatus === "checking" && (
-                    <span className="flex items-center space-x-1 text-[10px] text-[#94A3B8]">
-                      <Loader2 className="h-2.5 w-2.5 animate-spin text-[#06B6D4]" />
+                    <span className="flex items-center space-x-1 text-[10px] text-[#A1A1AA]">
+                      <Loader2 className="h-2.5 w-2.5 animate-spin text-[#EAEAE6]" />
                       <span>Checking...</span>
                     </span>
                   )}
@@ -260,12 +262,12 @@ export default function RegisterPage() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.-]/g, ""))}
                     placeholder="josef_m"
-                    className={`w-full rounded-xl border bg-[#0B0F19] p-3 pr-8 text-xs text-white placeholder-[#64748B] focus:outline-none transition-colors ${
+                    className={`w-full rounded-xl border bg-[#141416] p-3 pr-8 text-xs text-[#EAEAE6] placeholder-[#71717A] focus:outline-none transition-colors ${
                       usernameStatus === "available"
                         ? "border-emerald-500/70 focus:border-emerald-400"
                         : usernameStatus === "unavailable"
                         ? "border-rose-500/70 focus:border-rose-400"
-                        : "border-[#334155] focus:border-[#06B6D4]"
+                        : "border-[#2E2E34] focus:border-[#EAEAE6]"
                     }`}
                   />
                   {usernameStatus === "available" && (
@@ -285,14 +287,14 @@ export default function RegisterPage() {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="text-xs font-mono text-[#94A3B8]">Select Trade *</label>
+                <label className="text-xs font-mono text-[#A1A1AA]">Select Trade *</label>
                 {loadingTrades ? (
-                  <div className="mt-1 p-3 text-xs text-[#94A3B8]">Loading trades...</div>
+                  <div className="mt-1 p-3 text-xs text-[#A1A1AA]">Loading trades...</div>
                 ) : (
                   <select
                     value={tradeId}
                     onChange={(e) => setTradeId(e.target.value)}
-                    className="mt-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                    className="mt-1 w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   >
                     {trades.map((t) => (
                       <option key={t.id} value={t.id}>
@@ -304,11 +306,11 @@ export default function RegisterPage() {
               </div>
 
               <div>
-                <label className="text-xs font-mono text-[#94A3B8]">Select Level *</label>
+                <label className="text-xs font-mono text-[#A1A1AA]">Select Level *</label>
                 <select
                   value={level}
                   onChange={(e) => setLevel(e.target.value as StudentLevel)}
-                  className="mt-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                  className="mt-1 w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
                 >
                   <option value="Level 3">Level 3</option>
                   <option value="Level 4">Level 4</option>
@@ -319,7 +321,7 @@ export default function RegisterPage() {
 
             {/* Password with Eye Toggle */}
             <div>
-              <label className="text-xs font-mono text-[#94A3B8]">Password *</label>
+              <label className="text-xs font-mono text-[#A1A1AA]">Password *</label>
               <div className="relative mt-1">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -327,12 +329,12 @@ export default function RegisterPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 pr-10 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                  className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 pr-10 text-xs text-[#EAEAE6] placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-[#94A3B8] hover:text-white"
+                  className="absolute right-3 top-3 text-[#A1A1AA] hover:text-white"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -345,7 +347,7 @@ export default function RegisterPage() {
             {/* Confirm Password with Eye Toggle */}
             <div>
               <div className="flex items-center justify-between">
-                <label className="text-xs font-mono text-[#94A3B8]">Confirm Password *</label>
+                <label className="text-xs font-mono text-[#A1A1AA]">Confirm Password *</label>
                 {confirmPassword && password && (
                   <span className={`text-[10px] font-mono ${password === confirmPassword ? "text-emerald-400" : "text-rose-400"}`}>
                     {password === confirmPassword ? "Passwords match ✓" : "Passwords do not match ✕"}
@@ -359,18 +361,18 @@ export default function RegisterPage() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
-                  className={`w-full rounded-xl border bg-[#0B0F19] p-3 pr-10 text-xs text-white placeholder-[#64748B] focus:outline-none ${
+                  className={`w-full rounded-xl border bg-[#141416] p-3 pr-10 text-xs text-[#EAEAE6] placeholder-[#71717A] focus:outline-none ${
                     confirmPassword && password && password !== confirmPassword
                       ? "border-rose-500/70 focus:border-rose-400"
                       : confirmPassword && password && password === confirmPassword
                       ? "border-emerald-500/70 focus:border-emerald-400"
-                      : "border-[#334155] focus:border-[#06B6D4]"
+                      : "border-[#2E2E34] focus:border-[#EAEAE6]"
                   }`}
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  className="absolute right-3 top-3 text-[#94A3B8] hover:text-white"
+                  className="absolute right-3 top-3 text-[#A1A1AA] hover:text-white"
                 >
                   {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -380,14 +382,14 @@ export default function RegisterPage() {
             <button
               type="submit"
               disabled={submitting || (usernameStatus === "unavailable")}
-              className="mt-2 w-full rounded-xl bg-[#06B6D4] py-3 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg disabled:opacity-50"
+              className="mt-2 w-full rounded-full bg-emerald-500 py-3 text-xs font-bold text-[#141416] hover:bg-emerald-400 transition-all shadow-lg disabled:opacity-50"
             >
               {submitting ? "Submitting Registration..." : "Register Account"}
             </button>
 
-            <div className="pt-2 text-center text-xs text-[#94A3B8]">
+            <div className="pt-2 text-center text-xs text-[#A1A1AA]">
               Already have an account?{" "}
-              <Link href="/auth/login" prefetch={false} className="font-bold text-[#06B6D4] hover:underline">
+              <Link href="/auth/login" prefetch={false} className="font-bold text-[#EAEAE6] hover:underline">
                 Log In
               </Link>
             </div>

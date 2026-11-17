@@ -44,16 +44,6 @@ import StudentAssignmentsView from "@/components/student/StudentAssignmentsView"
 import StudentGroupsView from "@/components/student/StudentGroupsView";
 import StudentExamsView from "@/components/student/StudentExamsView";
 import StudentAcademicStanding from "@/components/student/StudentAcademicStanding";
-import StudentFeedbackView from "@/components/student/StudentFeedbackView";
-import StudentBulletinBanner from "@/components/student/StudentBulletinBanner";
-import StudentChallengeArena from "@/components/student/StudentChallengeArena";
-import SuggestionBoxModal from "@/components/common/SuggestionBoxModal";
-import AchievementBadgesModal from "@/components/student/AchievementBadgesModal";
-import CertificateVaultModal from "@/components/student/CertificateVaultModal";
-import { CourseCertificate } from "@/types/certificate";
-import { getStudentCertificates } from "@/lib/certificates";
-import { evaluateStudentAchievements } from "@/lib/achievements";
-import { getStudentExamAttempts, getStudentSubmissions, getStudentChallengeSubmissions, getStudentSuggestions } from "@/lib/db";
 
 export default function CatalogPage() {
   const router = useRouter();
@@ -65,8 +55,7 @@ export default function CatalogPage() {
     return map;
   });
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => getStoredSession());
-  const [studentPortalTab, setStudentPortalTab] = useState<"courses" | "assignments" | "groups" | "exams" | "feedback" | "arena">("courses");
-  const [isSuggestionModalOpen, setIsSuggestionModalOpen] = useState(false);
+  const [studentPortalTab, setStudentPortalTab] = useState<"courses" | "assignments" | "groups" | "exams">("courses");
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(() => getLocalSyllabi().length === 0);
   const [navigatingSyllabusId, setNavigatingSyllabusId] = useState<string | null>(null);
@@ -84,41 +73,12 @@ export default function CatalogPage() {
   const [activeLevelFilter, setActiveLevelFilter] = useState<string>("all");
   const [studentProgressMap, setStudentProgressMap] = useState<Record<string, boolean>>({});
   const [adminUser, setAdminUser] = useState<UserProfile | null>(null);
-  const [isBadgesModalOpen, setIsBadgesModalOpen] = useState(false);
-  const [isCertsModalOpen, setIsCertsModalOpen] = useState(false);
-  const [studentCertificates, setStudentCertificates] = useState<CourseCertificate[]>([]);
-
-  useEffect(() => {
-    if (!currentUser || currentUser.role !== "student") return;
-
-    getStudentCertificates(currentUser.uid).then(setStudentCertificates);
-
-    Promise.all([
-      getStudentExamAttempts(currentUser.uid),
-      getStudentSubmissions(currentUser.uid),
-      getStudentChallengeSubmissions(currentUser.uid),
-      getStudentSuggestions(currentUser.uid)
-    ]).then(([studentExams, studentSubs, challenges, suggestions]) => {
-      const solvedChallenges = challenges.filter(c => c.passed).length;
-      const progress = getSubtopicProgress(currentUser.uid);
-      const completedSubtopics = Object.values(progress).filter(Boolean).length;
-
-      evaluateStudentAchievements(currentUser, {
-        subtopicsCompleted: completedSubtopics,
-        hasFinishedAnySyllabus: studentCertificates.length > 0,
-        examAttempts: studentExams,
-        submissions: studentSubs,
-        challengesSolvedCount: solvedChallenges,
-        suggestionsCount: suggestions.length
-      });
-    }).catch(console.warn);
-  }, [currentUser?.uid]);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get("tab");
-      if (tab === "courses" || tab === "assignments" || tab === "groups" || tab === "exams" || tab === "feedback") {
+      if (tab === "courses" || tab === "assignments" || tab === "groups" || tab === "exams") {
         setStudentPortalTab(tab);
       }
     }
@@ -324,8 +284,8 @@ export default function CatalogPage() {
   if (currentUser && currentUser.status === "pending_approval" && currentUser.role === "student") {
     const wasReset = (currentUser.unfocusedCount || 0) === 0;
     return (
-      <div className="flex min-h-screen items-center justify-center bg-transparent p-6 text-[#CBD5E1]">
-        <div className="w-full max-w-md rounded-2xl border border-amber-500/40 bg-[#1E293B]/85 backdrop-blur-xl p-8 text-center shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
+      <div className="flex min-h-screen items-center justify-center bg-transparent p-6 text-[#EAEAE6]">
+        <div className="w-full max-w-md rounded-2xl border border-amber-500/40 bg-[#1C1C1F]/85 backdrop-blur-xl p-8 text-center shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
             <AlertTriangle className="h-8 w-8" />
           </div>
@@ -336,7 +296,7 @@ export default function CatalogPage() {
             <h2 className="text-xl font-extrabold text-white tracking-tight">
               {wasReset ? "Account Reset By Instructor" : "Registration Under Review"}
             </h2>
-            <p className="mt-2 text-xs text-[#CBD5E1] leading-relaxed">
+            <p className="mt-2 text-xs text-[#EAEAE6] leading-relaxed">
               {wasReset 
                 ? "Your side-window focus strikes have been reset to 0/10 by your teacher. Your account is currently awaiting teacher approval before your study session resumes."
                 : "Your student account registration is awaiting faculty verification. Once approved, you will have immediate access to your accredited syllabus."}
@@ -354,9 +314,9 @@ export default function CatalogPage() {
           <div className="pt-2">
             <button
               onClick={handleLogout}
-              className="inline-flex w-full items-center justify-center space-x-2 rounded-xl bg-slate-800 py-3 text-xs font-bold text-[#CBD5E1] hover:bg-slate-700 transition-all border border-slate-700"
+              className="inline-flex w-full items-center justify-center space-x-2 rounded-full bg-rose-500/15 py-3 text-xs font-bold text-rose-300 hover:bg-rose-500 hover:text-white transition-all border border-rose-500/40"
             >
-              <LogOut className="h-4 w-4 text-rose-400" />
+              <LogOut className="h-4 w-4" />
               <span>Log Out</span>
             </button>
           </div>
@@ -366,7 +326,7 @@ export default function CatalogPage() {
   }
 
   return (
-    <div className="min-h-screen bg-transparent text-[#CBD5E1]">
+    <div className="min-h-screen bg-transparent text-[#EAEAE6]">
       {currentUser && (
         <>
           <NotificationAlert userId={currentUser.uid} />
@@ -378,590 +338,614 @@ export default function CatalogPage() {
               username={currentUser.username}
               tradeId={currentUser.tradeId}
               level={currentUser.level}
+              syllabusTitle="Student Portal"
+              subtopicTitle={
+                studentPortalTab === "assignments"
+                  ? "My Class Assignments"
+                  : studentPortalTab === "groups"
+                  ? "My Study Groups"
+                  : studentPortalTab === "exams"
+                  ? "Exams & Quizzes"
+                  : "Course Syllabi Catalog"
+              }
             />
           )}
         </>
       )}
-      {/* Top Header */}
-      <header className="sticky top-0 z-30 border-b border-[#334155]/60 bg-[#0B0F19]/75 px-6 py-4 backdrop-blur-xl">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
-          <Link href="/" className="flex items-center space-x-3 group">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-[#06B6D4] to-[#3B82F6] text-white shadow-lg group-hover:scale-105 transition-transform">
-              <BookOpen className="h-5 w-5" />
-            </div>
-            <div>
-              <span className="text-base font-extrabold text-white tracking-tight">Digital Syllabus Platform</span>
-              <span className="block text-[10px] font-mono text-[#06B6D4]">Student & Teacher Portal</span>
-            </div>
-          </Link>
+      {/* OUTER MONOCHROME BENTO SHELL (Design.jpeg) */}
+      <div className="min-h-screen bg-[#141416] text-[#EAEAE6] px-3 sm:px-6 py-4 sm:py-6">
+        <div className="mx-auto max-w-7xl space-y-5">
 
-          <div className="flex items-center space-x-2.5">
-            {/* Quick Command Palette Trigger Button */}
-            <button
-              type="button"
-              onClick={() => {
-                window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, ctrlKey: true }));
-              }}
-              className="hidden md:flex items-center space-x-2 rounded-xl border border-[#334155]/70 bg-[#1E293B]/70 backdrop-blur-md px-3 py-1.5 text-xs text-[#94A3B8] hover:border-cyan-500/50 hover:text-white transition-all shadow-sm"
-              title="Search courses, exams, groups (Cmd+K)"
-            >
-              <Search className="h-3.5 w-3.5 text-cyan-400" />
-              <span>Search &amp; Jump</span>
-              <kbd className="rounded bg-[#0B0F19]/60 backdrop-blur-sm px-1.5 py-0.5 text-[10px] font-mono text-[#64748B] border border-[#334155]/60">
-                ⌘K
-              </kbd>
-            </button>
+          {/* UPPER DARK-FRAMED BENTO CONTAINER */}
+          <div className="rounded-[28px] bg-[#1C1C1F] border border-[#2D2D32] p-3 sm:p-4 shadow-2xl space-y-3 sm:space-y-4">
 
-            {currentUser && (
-              <NotificationBell userId={currentUser.uid} />
-            )}
+            {/* TOP NOTCHED HEADER BAR */}
+            <header className="flex flex-wrap items-center justify-between gap-3 px-2 py-1">
+              <Link
+                href="/"
+                className="inline-flex items-center space-x-2.5 rounded-full bg-[#EAEAE6] text-[#141416] px-4 py-2 shadow-sm hover:bg-white transition-colors"
+              >
+                <BookOpen className="h-4 w-4 text-[#141416]" />
+                <span className="text-xs sm:text-sm font-extrabold tracking-tight">
+                  Syllabus Engine
+                </span>
+              </Link>
 
-            {currentUser ? (
-              <div className="flex items-center space-x-3">
-                <div className="hidden sm:flex flex-col text-right">
-                  <span className="text-xs font-bold text-white">{currentUser.fullName}</span>
-                  <span className="text-[10px] font-mono text-[#06B6D4]">
-                    {currentUser.role === 'teacher' ? 'Course Instructor' : `${currentUser.level} • ${tradesMap[currentUser.tradeId] || 'General'}`}
-                  </span>
+              {currentUser ? (
+                <nav className="flex items-center flex-wrap gap-1.5 sm:gap-2">
+                  {[
+                    { id: "courses", label: "Course Syllabi", icon: BookOpen },
+                    { id: "assignments", label: "Assignments", icon: Award },
+                    { id: "groups", label: "Study Groups", icon: Users },
+                    { id: "exams", label: "Exams & Quizzes", icon: FileQuestion },
+                  ].map((tab) => {
+                    const Icon = tab.icon;
+                    const active = studentPortalTab === tab.id;
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setStudentPortalTab(tab.id as any)}
+                        className={`inline-flex items-center space-x-1.5 rounded-full px-3.5 py-1.5 text-xs font-bold transition-all ${
+                          active
+                            ? "bg-[#EAEAE6] text-[#141416] shadow-sm"
+                            : "text-[#A1A1AA] hover:text-white hover:bg-[#27272B]"
+                        }`}
+                      >
+                        <Icon className="h-3.5 w-3.5" />
+                        <span>{tab.label}</span>
+                      </button>
+                    );
+                  })}
+                </nav>
+              ) : (
+                <div className="hidden md:flex items-center space-x-2 text-[11px] font-mono text-[#A1A1AA]">
+                  <span className="rounded-full border border-[#2E2E34] bg-[#141416] px-3 py-1">Software Development</span>
+                  <span className="rounded-full border border-[#2E2E34] bg-[#141416] px-3 py-1">Level 3</span>
+                  <span className="rounded-full border border-[#2E2E34] bg-[#141416] px-3 py-1">Level 4</span>
+                  <span className="rounded-full border border-[#2E2E34] bg-[#141416] px-3 py-1">Level 5</span>
                 </div>
+              )}
 
-                {currentUser.role === 'student' && (
-                  <div className="flex items-center space-x-1.5">
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, ctrlKey: true }));
+                  }}
+                  className="hidden lg:inline-flex items-center space-x-1.5 rounded-full border border-[#323238] bg-[#141416] px-3 py-1.5 text-xs text-[#A1A1AA] hover:text-white hover:border-[#52525B] transition-all"
+                  title="Quick Search (Cmd+K)"
+                >
+                  <Search className="h-3.5 w-3.5" />
+                  <span>⌘K</span>
+                </button>
+
+                {currentUser && <NotificationBell userId={currentUser.uid} />}
+
+                {currentUser ? (
+                  <div className="flex items-center space-x-2 rounded-full bg-[#141416] border border-[#2E2E34] pl-3.5 pr-1.5 py-1">
+                    <div className="hidden sm:flex flex-col text-right leading-tight">
+                      <span className="text-xs font-bold text-[#EAEAE6]">{currentUser.fullName}</span>
+                      <span className="text-[10px] font-mono text-[#A1A1AA]">
+                        {currentUser.role === 'teacher' ? 'Instructor' : `${currentUser.level} • Software Dev`}
+                      </span>
+                    </div>
                     <button
-                      type="button"
-                      onClick={() => setIsBadgesModalOpen(true)}
-                      className="inline-flex items-center space-x-1 rounded-xl border border-amber-500/30 bg-amber-500/10 px-2.5 py-1.5 text-xs font-bold text-amber-300 hover:bg-amber-500/20 hover:text-white transition-all shadow-sm"
-                      title="View Student Achievements & Badges"
+                      onClick={handleLogout}
+                      className="inline-flex items-center space-x-1 rounded-full bg-rose-500/15 border border-rose-500/40 text-rose-300 px-3 py-1.5 text-xs font-bold hover:bg-rose-500 hover:text-white transition-all"
                     >
-                      <span>🏆 Badges</span>
+                      <LogOut className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Logout</span>
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsCertsModalOpen(true)}
-                      className="inline-flex items-center space-x-1 rounded-xl border border-cyan-500/30 bg-cyan-500/10 px-2.5 py-1.5 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20 hover:text-white transition-all shadow-sm"
-                      title="View Official Accredited Certificates"
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <Link
+                      href="/auth/login"
+                      prefetch={false}
+                      className="inline-flex items-center space-x-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-3.5 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500 hover:text-[#141416] transition-all"
                     >
-                      <span>📜 Certs</span>
-                      {studentCertificates.length > 0 && (
-                        <span className="ml-1 rounded-full bg-cyan-500 px-1.5 py-0.2 text-[10px] font-extrabold text-slate-950">
-                          {studentCertificates.length}
-                        </span>
-                      )}
-                    </button>
+                      <LogIn className="h-3.5 w-3.5" />
+                      <span>Student Login</span>
+                    </Link>
+
+                    <Link
+                      href="/auth/register"
+                      prefetch={false}
+                      className="inline-flex items-center space-x-1.5 rounded-full bg-emerald-500 px-3.5 py-1.5 text-xs font-bold text-[#141416] hover:bg-emerald-400 transition-all shadow-sm"
+                    >
+                      <UserPlus className="h-3.5 w-3.5" />
+                      <span>Register</span>
+                    </Link>
                   </div>
                 )}
 
-                <button
-                  onClick={handleLogout}
-                  className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155]/70 bg-[#1E293B]/70 backdrop-blur-md px-3.5 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-rose-500/50 transition-all"
-                >
-                  <LogOut className="h-3.5 w-3.5 text-rose-400" />
-                  <span className="hidden sm:inline">Logout</span>
-                </button>
+                {(!currentUser || adminUser) && (
+                  <Link
+                    href={adminUser ? "/admin" : "/admin/login"}
+                    prefetch={false}
+                    className="inline-flex items-center space-x-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500 hover:text-[#141416] transition-all"
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Teacher Portal</span>
+                  </Link>
+                )}
               </div>
-            ) : (
-              <div className="flex items-center space-x-2">
-                <Link
-                  href="/auth/login"
-                  prefetch={false}
-                  className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155]/70 bg-[#1E293B]/70 backdrop-blur-md px-3.5 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white transition-all"
-                >
-                  <LogIn className="h-3.5 w-3.5 text-[#06B6D4]" />
-                  <span>Student Login</span>
-                </Link>
+            </header>
 
-                <Link
-                  href="/auth/register"
-                  prefetch={false}
-                  className="inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4] px-3.5 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg"
-                >
-                  <UserPlus className="h-3.5 w-3.5" />
-                  <span>Register</span>
-                </Link>
-              </div>
-            )}
-
-            {/* Dev Tips Link */}
-            <Link
-              href="/tips"
-              className="inline-flex items-center space-x-1.5 rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-3 py-2 text-xs font-bold text-cyan-300 hover:bg-cyan-500/20 hover:text-white transition-all shadow-sm"
-              title="Explore Developer Tips &amp; Insights"
-            >
-              <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
-              <span>Dev Tips 💡</span>
-            </Link>
-
-            {(!currentUser || adminUser) && (
-              <Link
-                href={adminUser ? "/admin" : "/admin/login"}
-                className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155]/70 bg-[#1E293B]/70 backdrop-blur-md px-3 py-2 text-xs font-semibold text-white hover:border-[#06B6D4] transition-all"
-              >
-                <ShieldCheck className="h-4 w-4 text-[#06B6D4]" />
-                <span className="hidden sm:inline">Teacher Portal</span>
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* OPTIONAL EMAIL SUGGESTION BANNER */}
-      {currentUser && currentUser.role === "student" && !currentUser.email && (
-        <div className="bg-gradient-to-r from-[#06B6D4]/20 via-[#1E293B] to-[#3B82F6]/20 border-b border-[#06B6D4]/30 px-6 py-3">
-          <div className="mx-auto max-w-7xl flex flex-col sm:flex-row items-center justify-between gap-3">
-            <div className="flex items-center space-x-2 text-xs text-white">
-              <Mail className="h-4 w-4 text-[#06B6D4] shrink-0" />
-              <span>
-                <strong>Profile Suggestion:</strong> You registered without an email address. Add your email now to receive course updates and teacher notifications!
-              </span>
-            </div>
-
-            {emailSuccessMsg ? (
-              <span className="text-xs font-mono text-[#10B981] font-bold flex items-center gap-1">
-                <CheckCircle2 className="h-4 w-4" /> {emailSuccessMsg}
-              </span>
-            ) : (
-              <form onSubmit={handleSaveEmail} className="flex items-center space-x-2 shrink-0">
-                {emailErrMsg && <span className="text-[11px] text-rose-400">{emailErrMsg}</span>}
-                <input
-                  type="email"
-                  required
-                  placeholder="josef.marie@school.edu"
-                  value={newEmail}
-                  onChange={(e) => setNewEmail(e.target.value)}
-                  className="rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-1.5 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
-                />
-                <button
-                  type="submit"
-                  disabled={updatingEmail}
-                  className="rounded-xl bg-[#06B6D4] px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md disabled:opacity-50"
-                >
-                  {updatingEmail ? "Saving..." : "Add Email"}
-                </button>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Hero Section */}
-      <section className="border-b border-[#334155] bg-gradient-to-b from-[#1E293B]/40 to-transparent px-6 py-12">
-        <div className="mx-auto max-w-7xl text-center sm:text-left">
-          <div className="inline-flex items-center space-x-2 rounded-full border border-[#06B6D4]/30 bg-[#06B6D4]/10 px-3.5 py-1 text-xs font-mono text-[#06B6D4] mb-4">
-            <Sparkles className="h-3.5 w-3.5" />
-            <span>Interactive Competency-Based Education Catalog</span>
-          </div>
-
-          <h2 className="text-3xl font-extrabold text-white sm:text-4xl tracking-tight leading-tight">
-            Explore Accredited Syllabi & Learning Modules
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm text-[#94A3B8] leading-relaxed">
-            Access structured syllabus frameworks, learning outcomes, topic breakdowns, code execution playgrounds, and AI concept explanations.
-          </p>
-
-          {/* Search Bar */}
-          <div className="mt-6 relative max-w-xl">
-            <Search className="absolute left-4 top-3.5 h-4 w-4 text-[#94A3B8]" />
-            <input
-              type="text"
-              placeholder="Search course title, code (e.g. CS101), or topic..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-2xl border border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-md py-3 pl-11 pr-4 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none shadow-xl"
-            />
-          </div>
-
-          {/* Hello & Study Focus Instructions Banner */}
-          <div className="mt-8 rounded-2xl border border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-xl p-5 sm:p-6 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 h-40 w-40 bg-gradient-to-bl from-[#06B6D4]/15 to-transparent rounded-full blur-2xl pointer-events-none" />
-            
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#334155]/80 pb-4">
-              <div className="flex items-center space-x-3.5 text-left">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-tr from-[#06B6D4]/20 to-[#3B82F6]/20 border border-[#06B6D4]/40 text-[#06B6D4] shadow-inner shrink-0">
-                  <Eye className="h-6 w-6" />
+            {/* OPTIONAL EMAIL SUGGESTION BANNER */}
+            {currentUser && currentUser.role === "student" && !currentUser.email && (
+              <div className="rounded-2xl bg-[#141416] border border-[#2E2E34] px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div className="flex items-center space-x-2 text-xs text-[#EAEAE6]">
+                  <Mail className="h-4 w-4 shrink-0" />
+                  <span>
+                    <strong>Profile Suggestion:</strong> Add your email address to receive course updates and notifications.
+                  </span>
                 </div>
+
+                {emailSuccessMsg ? (
+                  <span className="text-xs font-mono text-emerald-400 font-bold flex items-center gap-1">
+                    <CheckCircle2 className="h-4 w-4" /> {emailSuccessMsg}
+                  </span>
+                ) : (
+                  <form onSubmit={handleSaveEmail} className="flex items-center space-x-2 shrink-0">
+                    {emailErrMsg && <span className="text-[11px] text-rose-400">{emailErrMsg}</span>}
+                    <input
+                      type="email"
+                      required
+                      value={newEmail}
+                      onChange={(e) => setNewEmail(e.target.value)}
+                      placeholder="your.email@example.com"
+                      className="rounded-full border border-[#323238] bg-[#1C1C1F] px-3.5 py-1.5 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none w-48 sm:w-56"
+                    />
+                    <button
+                      type="submit"
+                      disabled={updatingEmail}
+                      className="rounded-full bg-[#EAEAE6] px-3.5 py-1.5 text-xs font-bold text-[#141416] hover:bg-white transition-all disabled:opacity-50"
+                    >
+                      {updatingEmail ? "Saving..." : "Add Email"}
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
+
+            {/* BENTO ROW 1: LEFT EDITORIAL CARD (OFF-WHITE) + RIGHT FEATURED PANEL (CHARCOAL) */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
+              <div className="lg:col-span-6 rounded-[24px] bg-[#EAEAE6] text-[#141416] p-6 sm:p-7 flex flex-col justify-between min-h-[230px]">
                 <div>
-                  <h3 className="text-lg font-extrabold text-white flex items-center gap-2 tracking-tight">
-                    <span>Hello, {currentUser ? currentUser.fullName : 'Student'}!</span>
-                    <span className="text-xl">👋</span>
-                  </h3>
-                  <p className="text-xs text-[#94A3B8] mt-0.5">
-                    Essential Classroom Study Rules & Side-Window Focus Policy
+                  <div className="inline-flex items-center space-x-2 rounded-full bg-[#141416] text-[#EAEAE6] px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider mb-4">
+                    <span>Software Development</span>
+                    <span>•</span>
+                    <span>{currentUser?.role === "student" ? currentUser.level : "Levels 3 – 5"}</span>
+                  </div>
+                  <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight text-[#141416]">
+                    {currentUser ? `Welcome back, ${currentUser.fullName.split(" ")[0]}.` : "Software Development Learning Hub."}
+                  </h2>
+                  <p className="mt-2.5 text-xs sm:text-sm text-[#3F3F46] leading-relaxed max-w-lg">
+                    Structured course syllabi, class assignments, collaborative study groups, and timed assessments designed for focused mastery.
                   </p>
                 </div>
-              </div>
 
-              {/* Focus Standing Badge */}
-              {currentUser && (
-                <div className="flex items-center gap-2 shrink-0">
-                  {(currentUser.unfocusedCount || 0) >= 10 ? (
-                    <span className="inline-flex items-center space-x-1.5 rounded-full bg-rose-500/20 border border-rose-500/40 px-3.5 py-1 text-xs font-mono font-bold text-rose-300">
-                      <AlertTriangle className="h-4 w-4 shrink-0" />
-                      <span>Account Suspended ({currentUser.unfocusedCount || 10}/10 Violations)</span>
-                    </span>
-                  ) : (currentUser.unfocusedCount || 0) > 0 ? (
-                    <span className="inline-flex items-center space-x-1.5 rounded-full bg-amber-500/20 border border-amber-500/40 px-3.5 py-1 text-xs font-mono font-bold text-amber-300">
-                      <AlertTriangle className="h-4 w-4 shrink-0" />
-                      <span>Focus Warning: {currentUser.unfocusedCount} / 10 Side Windows</span>
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center space-x-1.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 px-3.5 py-1 text-xs font-mono font-bold text-emerald-400">
-                      <CheckCircle2 className="h-4 w-4 shrink-0" />
-                      <span>Focus Standing: 0 / 10 Strikes (Good Standing)</span>
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
+                <div className="mt-6 flex items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (currentUser) {
+                          setStudentPortalTab("assignments");
+                        } else {
+                          router.push("/auth/login");
+                        }
+                      }}
+                      className="inline-flex items-center space-x-2 rounded-full bg-[#141416] text-[#EAEAE6] px-5 py-2.5 text-xs font-bold hover:bg-[#27272B] transition-all"
+                    >
+                      <span>{currentUser ? "Open Assignments" : "Student Sign In"}</span>
+                      <ArrowRight className="h-3.5 w-3.5" />
+                    </button>
 
-            {/* Instruction Highlights */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5 pt-4 text-xs text-left">
-              <div className="rounded-xl bg-[#0B0F19]/50 backdrop-blur-md border border-[#334155]/70 p-4 space-y-1.5 hover:border-[#06B6D4]/40 transition-colors">
-                <div className="font-bold text-[#06B6D4] flex items-center space-x-2">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#06B6D4]/20 text-[11px] font-mono">1</span>
-                  <span>Keep Active Focus</span>
-                </div>
-                <p className="text-[#94A3B8] leading-relaxed text-[11px]">
-                  Keep your syllabus window in active focus while studying. Your reading time pauses automatically whenever you leave or stay idle.
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-[#0B0F19]/50 backdrop-blur-md border border-amber-500/30 p-4 space-y-1.5 hover:border-amber-500/50 transition-colors">
-                <div className="font-bold text-amber-400 flex items-center space-x-2">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-amber-500/20 text-[11px] font-mono">2</span>
-                  <span>Side Windows Are Monitored</span>
-                </div>
-                <p className="text-[#94A3B8] leading-relaxed text-[11px]">
-                  Opening side windows, switching tabs, or clicking outside the syllabus during class is recorded in real time as an inattention strike.
-                </p>
-              </div>
-
-              <div className="rounded-xl bg-[#0B0F19]/50 backdrop-blur-md border border-rose-500/40 bg-rose-950/20 p-4 space-y-1.5 hover:border-rose-500/60 transition-colors">
-                <div className="font-bold text-rose-400 flex items-center space-x-2">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500/20 text-[11px] font-mono">3</span>
-                  <span>10 Strikes = Account Rejection</span>
-                </div>
-                <p className="text-[#CBD5E1] leading-relaxed text-[11px]">
-                  If you accumulate <strong>10 side-window violations</strong>, your account is immediately <strong>rejected & suspended</strong>. You will be locked out and will require your teacher to approve your account again.
-                </p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Main Content Area */}
-      <main className="mx-auto max-w-7xl px-6 py-8">
-        {/* Real-time Campus & Class Broadcast Bulletins */}
-        <StudentBulletinBanner currentUser={currentUser} />
-
-        {/* Student Level Tabs (if logged in as student) */}
-        {currentUser && currentUser.role === "student" && (
-          <div className="mb-8 rounded-2xl border border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-xl p-4 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#334155]/60 pb-3 gap-3">
-              <div className="flex items-center space-x-2">
-                <GraduationCap className="h-5 w-5 text-[#06B6D4]" />
-                <span className="text-sm font-bold text-white">
-                  Syllabi for {tradesMap[currentUser.tradeId] || "Your Academic Trade"}
-                </span>
-              </div>
-
-              <div className="flex items-center space-x-2 text-xs font-mono text-[#94A3B8]">
-                <span>Approved Level: <strong className="text-[#10B981]">{currentUser.level}</strong></span>
-              </div>
-            </div>
-
-            {/* Level-Specific Subtopic Progress Bar */}
-            <div className="mt-4 p-3 rounded-xl border border-[#334155]/60 bg-[#0B0F19]/50 backdrop-blur-md">
-              <div className="flex items-center justify-between text-xs font-mono mb-1.5">
-                <span className="text-[#CBD5E1]">
-                  <strong className="text-[#06B6D4]">{currentUser.level}</strong> Required Academic Progress
-                </span>
-                <span className="text-[#10B981] font-bold">
-                  {levelCompletedSubtopics} / {levelTotalSubtopics} Subtopics ({levelProgressPercent}%)
-                </span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-[#1E293B]">
-                <div 
-                  className="h-full bg-gradient-to-r from-[#06B6D4] to-[#10B981] transition-all duration-300"
-                  style={{ width: `${levelProgressPercent}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="mt-4 flex flex-wrap items-center gap-2">
-              <span className="text-xs font-mono text-[#94A3B8] mr-2 flex items-center gap-1">
-                <Filter className="h-3.5 w-3.5 text-[#06B6D4]" /> Select Level View:
-              </span>
-
-              <button
-                onClick={() => setActiveLevelFilter("all")}
-                className={`rounded-xl px-4 py-2 text-xs font-mono font-bold transition-all ${
-                  activeLevelFilter === "all"
-                    ? 'bg-[#06B6D4] text-slate-950 shadow-lg'
-                    : 'bg-[#0B0F19]/60 backdrop-blur-sm text-[#94A3B8] hover:text-white hover:bg-[#0B0F19]/90 border border-[#334155]/60'
-                }`}
-              >
-                All Accessible Levels
-              </button>
-
-              {getPermittedLevels().map((lvl) => (
-                <button
-                  key={lvl}
-                  onClick={() => setActiveLevelFilter(lvl)}
-                  className={`rounded-xl px-4 py-2 text-xs font-mono font-bold transition-all ${
-                    activeLevelFilter === lvl
-                      ? 'bg-[#06B6D4] text-slate-950 shadow-lg'
-                      : 'bg-[#0B0F19]/60 backdrop-blur-sm text-[#94A3B8] hover:text-white hover:bg-[#0B0F19]/90 border border-[#334155]/60'
-                  }`}
-                >
-                  {lvl} {lvl === currentUser.level ? '(Your Level)' : ''}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* 1. Student Academic Performance & Standing Dashboard */}
-        {currentUser && currentUser.role === "student" && (
-          <StudentAcademicStanding
-            currentUser={currentUser}
-            syllabi={syllabi}
-            onTabChange={setStudentPortalTab}
-          />
-        )}
-
-        {/* Student Dashboard Tabs: Course Syllabi vs Class Assignments vs Study Groups vs Exams */}
-        {currentUser && (
-          <div className="flex items-center space-x-3 border-b border-[#334155]/60 pb-3 mb-6 overflow-x-auto">
-            <button
-              onClick={() => setStudentPortalTab("courses")}
-              className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
-                studentPortalTab === "courses"
-                  ? "bg-[#06B6D4] text-slate-950 shadow-md"
-                  : "bg-[#1E293B]/75 backdrop-blur-sm text-[#94A3B8] hover:text-white border border-[#334155]/70 hover:bg-[#1E293B]/95"
-              }`}
-            >
-              <BookOpen className="h-4 w-4" />
-              <span>Course Syllabi</span>
-            </button>
-
-            <button
-              onClick={() => setStudentPortalTab("assignments")}
-              className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
-                studentPortalTab === "assignments"
-                  ? "bg-[#06B6D4] text-slate-950 shadow-md"
-                  : "bg-[#1E293B]/75 backdrop-blur-sm text-[#94A3B8] hover:text-white border border-[#334155]/70 hover:bg-[#1E293B]/95"
-              }`}
-            >
-              <Award className="h-4 w-4" />
-              <span>My Class Assignments</span>
-            </button>
-
-            <button
-              onClick={() => setStudentPortalTab("groups")}
-              className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
-                studentPortalTab === "groups"
-                  ? "bg-[#06B6D4] text-slate-950 shadow-md"
-                  : "bg-[#1E293B]/75 backdrop-blur-sm text-[#94A3B8] hover:text-white border border-[#334155]/70 hover:bg-[#1E293B]/95"
-              }`}
-            >
-              <Users className="h-4 w-4" />
-              <span>My Study Groups</span>
-            </button>
-
-            <button
-              onClick={() => setStudentPortalTab("exams")}
-              className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
-                studentPortalTab === "exams"
-                  ? "bg-[#06B6D4] text-slate-950 shadow-md"
-                  : "bg-[#1E293B]/75 backdrop-blur-sm text-[#94A3B8] hover:text-white border border-[#334155]/70 hover:bg-[#1E293B]/95"
-              }`}
-            >
-              <FileQuestion className="h-4 w-4" />
-              <span>Exams & Quizzes</span>
-            </button>
-
-            <button
-              onClick={() => setStudentPortalTab("feedback")}
-              className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
-                studentPortalTab === "feedback"
-                  ? "bg-[#06B6D4] text-slate-950 shadow-md"
-                  : "bg-[#1E293B]/75 backdrop-blur-sm text-[#94A3B8] hover:text-white border border-[#334155]/70 hover:bg-[#1E293B]/95"
-              }`}
-            >
-              <MessageSquare className="h-4 w-4" />
-              <span>Feedback & Ideas 💡</span>
-            </button>
-
-            <button
-              onClick={() => setStudentPortalTab("arena")}
-              className={`inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all whitespace-nowrap ${
-                studentPortalTab === "arena"
-                  ? "bg-amber-500 text-slate-950 shadow-md"
-                  : "bg-[#1E293B]/75 backdrop-blur-sm text-[#94A3B8] hover:text-white border border-[#334155]/70 hover:bg-[#1E293B]/95"
-              }`}
-            >
-              <Code2 className="h-4 w-4 text-amber-400" />
-              <span>Coding Arena ⚡</span>
-            </button>
-
-            <Link
-              href="/tips"
-              className="inline-flex items-center space-x-2 text-xs font-bold px-4 py-2 rounded-xl transition-all whitespace-nowrap bg-gradient-to-r from-cyan-500/15 via-purple-500/15 to-indigo-500/15 text-cyan-300 border border-cyan-500/40 hover:border-cyan-400 hover:text-white shadow-sm"
-            >
-              <Sparkles className="h-4 w-4 text-cyan-400" />
-              <span>Dev Tips Hub 💡</span>
-            </Link>
-          </div>
-        )}
-
-        {/* ASSIGNMENTS VIEW, GROUPS VIEW, EXAMS VIEW, FEEDBACK VIEW, OR ARENA VIEW FOR LOGGED IN STUDENT */}
-        {currentUser && studentPortalTab === "assignments" ? (
-          <StudentAssignmentsView currentUser={currentUser} syllabi={syllabi} />
-        ) : currentUser && studentPortalTab === "groups" ? (
-          <StudentGroupsView 
-            currentUser={currentUser} 
-            syllabi={syllabi} 
-            onNavigateToAssignments={() => setStudentPortalTab("assignments")}
-          />
-        ) : currentUser && studentPortalTab === "exams" ? (
-          <StudentExamsView currentUser={currentUser} syllabi={syllabi} />
-        ) : currentUser && studentPortalTab === "feedback" ? (
-          <StudentFeedbackView 
-            currentUser={currentUser} 
-            onOpenNewSuggestion={() => setIsSuggestionModalOpen(true)} 
-          />
-        ) : currentUser && studentPortalTab === "arena" ? (
-          <StudentChallengeArena currentUser={currentUser} />
-        ) : (
-          <>
-            {/* Syllabi Grid */}
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-bold text-white">Available Course Syllabi</h3>
-              <span className="text-xs font-mono text-[#94A3B8]">Showing {filtered.length} courses</span>
-            </div>
-
-        {loading ? (
-          <div className="py-20 text-center text-[#94A3B8]">
-            <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-3" />
-            Loading Course Syllabi...
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="py-16 text-center text-[#94A3B8] bg-[#1E293B]/40 rounded-2xl border border-[#334155] p-6 space-y-3">
-            <BookOpen className="mx-auto h-10 w-10 text-[#64748B]" />
-            <h4 className="text-base font-bold text-white">No course syllabi available</h4>
-            <p className="text-xs text-[#94A3B8] max-w-md mx-auto">
-              {currentUser?.role === "student"
-                ? "No published syllabi found matching your assigned level or trade. Please check back soon as your instructors publish course curriculum."
-                : "No course syllabi have been published yet. Instructors can sign in to the Teacher Portal to create, organize, and publish accredited courses."}
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((syl) => {
-              const isNavigatingThis = navigatingSyllabusId === syl.id;
-              const isLocked = Boolean(navigatingSyllabusId);
-
-              return (
-                <div
-                  key={syl.id}
-                  onClick={() => {
-                    if (isLocked) return;
-                    if (!currentUser) {
-                      setAuthPromptSyl(syl);
-                    } else {
-                      setNavigatingSyllabusId(syl.id);
-                      // Fallback timer so UI never gets permanently stuck
-                      setTimeout(() => {
-                        setNavigatingSyllabusId(null);
-                      }, 8000);
-                      router.push(`/syllabus/view?id=${syl.id}`);
-                    }
-                  }}
-                  onMouseEnter={() => {
-                    if (currentUser) {
-                      try {
-                        router.prefetch(`/syllabus/view?id=${syl.id}`);
-                      } catch (e) {}
-                    }
-                  }}
-                  className={`group relative flex flex-col justify-between rounded-2xl border transition-all overflow-hidden p-6 shadow-xl ${
-                    isNavigatingThis
-                      ? 'border-[#06B6D4] bg-[#162032]/90 shadow-[#06B6D4]/20 ring-2 ring-[#06B6D4]/50 cursor-wait scale-[1.01]'
-                      : isLocked
-                      ? 'opacity-60 border-[#334155]/60 bg-[#1E293B]/70 backdrop-blur-md cursor-not-allowed'
-                      : 'border-[#334155]/70 bg-[#1E293B]/75 backdrop-blur-md hover:bg-[#1E293B]/90 hover:border-[#06B6D4]/70 hover:shadow-[0_8px_30px_rgba(6,182,212,0.15)] cursor-pointer'
-                  }`}
-                >
-                  {isNavigatingThis && (
-                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#06B6D4] to-transparent animate-pulse" />
-                  )}
-
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="rounded-lg bg-[#0B0F19]/70 backdrop-blur-sm px-2.5 py-1 font-mono text-xs font-bold text-[#06B6D4] border border-[#334155]/60">
-                        {syl.courseCode}
+                    {currentUser && (
+                      <span className={`inline-flex items-center space-x-1.5 rounded-full px-3 py-2 text-[11px] font-mono font-bold border ${
+                        (currentUser.unfocusedCount || 0) >= 10
+                          ? "bg-rose-500/15 border-rose-500/40 text-rose-700"
+                          : (currentUser.unfocusedCount || 0) > 0
+                          ? "bg-amber-500/15 border-amber-500/40 text-amber-800"
+                          : "bg-[#141416]/10 border-[#141416]/20 text-[#141416]"
+                      }`}>
+                        <Eye className="h-3.5 w-3.5" />
+                        <span>Focus: {currentUser.unfocusedCount || 0}/10 Strikes</span>
                       </span>
-                      {syl.level && (
-                        <span className="rounded bg-[#10B981]/15 px-2.5 py-0.5 font-mono text-[10px] text-[#10B981] font-bold border border-[#10B981]/30">
-                          {syl.level}
-                        </span>
-                      )}
-                    </div>
-
-                    <h4 className="text-base font-bold text-white group-hover:text-[#06B6D4] transition-colors leading-snug">
-                      {syl.title}
-                    </h4>
-                    <p className="mt-2 text-xs text-[#94A3B8] line-clamp-2 leading-relaxed">
-                      {syl.description}
-                    </p>
-                  </div>
-
-                  <div className="mt-6 flex items-center justify-between border-t border-[#334155] pt-4 text-xs font-semibold text-[#06B6D4]">
-                    {isNavigatingThis ? (
-                      <div className="flex items-center space-x-2 text-[#06B6D4] font-bold">
-                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent" />
-                        <span>Opening Course...</span>
-                      </div>
-                    ) : (
-                      <>
-                        <span>Explore Syllabus</span>
-                        <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                      </>
                     )}
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-        </>
-      )}
 
-        {/* Global Floating Pill while opening a course */}
+                  <div className="hidden sm:flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#141416] text-[#EAEAE6]">
+                    <GraduationCap className="h-5 w-5" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-6 rounded-[24px] bg-[#141416] border border-[#2E2E34] p-6 sm:p-7 flex flex-col justify-between min-h-[230px]">
+                {currentUser && currentUser.role === "student" ? (
+                  <>
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-[#A1A1AA]">
+                          Academic Progress Overview
+                        </span>
+                        <h3 className="text-xl font-extrabold text-[#EAEAE6] mt-1">
+                          {currentUser.level} • {tradesMap[currentUser.tradeId] || "Software Development"}
+                        </h3>
+                      </div>
+                      <span className="rounded-full bg-[#EAEAE6] text-[#141416] px-3 py-1 text-xs font-mono font-extrabold">
+                        {levelProgressPercent}% Done
+                      </span>
+                    </div>
+
+                    <div className="my-4 space-y-2">
+                      <div className="flex items-center justify-between text-xs font-mono text-[#A1A1AA]">
+                        <span>Completed Subtopics</span>
+                        <span className="text-[#EAEAE6] font-bold">
+                          {levelCompletedSubtopics} / {levelTotalSubtopics}
+                        </span>
+                      </div>
+                      <div className="h-2.5 w-full overflow-hidden rounded-full bg-[#27272B]">
+                        <div
+                          className="h-full bg-[#EAEAE6] rounded-full transition-all duration-300"
+                          style={{ width: `${levelProgressPercent}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 text-[11px]">
+                      <div className="rounded-xl bg-[#1C1C1F] border border-[#2E2E34] p-2.5">
+                        <span className="block font-bold text-[#EAEAE6]">1. Active Focus</span>
+                        <span className="text-[#A1A1AA] text-[10px]">Stay on study tab</span>
+                      </div>
+                      <div className="rounded-xl bg-[#1C1C1F] border border-[#2E2E34] p-2.5">
+                        <span className="block font-bold text-amber-300">2. Monitored</span>
+                        <span className="text-[#A1A1AA] text-[10px]">Tab-switch tracked</span>
+                      </div>
+                      <div className="rounded-xl bg-[#1C1C1F] border border-[#2E2E34] p-2.5">
+                        <span className="block font-bold text-rose-300">3. 10 Strikes</span>
+                        <span className="text-[#A1A1AA] text-[10px]">Auto-suspension</span>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <span className="text-[10px] font-mono uppercase tracking-wider text-[#A1A1AA]">
+                          Curriculum Architecture
+                        </span>
+                        <h3 className="text-xl font-extrabold text-[#EAEAE6] mt-1">
+                          Software Development Track
+                        </h3>
+                      </div>
+                      <span className="rounded-full border border-[#323238] bg-[#1C1C1F] px-3 py-1 text-[10px] font-mono text-[#EAEAE6]">
+                        3 Levels
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2.5 my-4">
+                      {[
+                        { lvl: "Level 3", desc: "Programming & Web Basics" },
+                        { lvl: "Level 4", desc: "DSA, Logic & Databases" },
+                        { lvl: "Level 5", desc: "React, Mobile & Systems" },
+                      ].map((item) => (
+                        <div key={item.lvl} className="rounded-2xl bg-[#1C1C1F] border border-[#2E2E34] p-3">
+                          <span className="block text-xs font-extrabold text-[#EAEAE6]">{item.lvl}</span>
+                          <span className="block text-[10px] text-[#A1A1AA] mt-1 leading-snug">{item.desc}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-[#A1A1AA] border-t border-[#2E2E34] pt-3">
+                      <span>Classroom focus &amp; attendance tracking active</span>
+                      <Link href="/auth/register" prefetch={false} className="font-bold text-[#EAEAE6] hover:underline">
+                        Create Account →
+                      </Link>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* BENTO ROW 2: LEFT SEARCH & LEVEL FILTER CARD + RIGHT 3 SQUARE BENTO TILES */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4">
+              <div className="lg:col-span-5 rounded-[24px] bg-[#EAEAE6] text-[#141416] p-5 flex flex-col justify-between space-y-4">
+                <div className="space-y-2.5">
+                  <span className="inline-block text-[10px] font-mono font-bold uppercase tracking-wider text-[#52525B]">
+                    Filter &amp; Search Courses
+                  </span>
+                  <div className="relative">
+                    <Search className="absolute left-3.5 top-3 h-4 w-4 text-[#52525B]" />
+                    <input
+                      type="text"
+                      placeholder="Search title, code (e.g. SWDFA501)..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="w-full rounded-full border border-[#D4D4CE] bg-white py-2.5 pl-10 pr-4 text-xs text-[#141416] placeholder-[#71717A] focus:border-[#141416] focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                {currentUser && currentUser.role === "student" ? (
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <button
+                      onClick={() => setActiveLevelFilter("all")}
+                      className={`rounded-full px-3.5 py-1.5 text-[11px] font-mono font-bold transition-all ${
+                        activeLevelFilter === "all"
+                          ? "bg-[#141416] text-[#EAEAE6]"
+                          : "bg-white text-[#3F3F46] border border-[#D4D4CE] hover:border-[#141416]"
+                      }`}
+                    >
+                      All Permitted
+                    </button>
+                    {getPermittedLevels().map((lvl) => (
+                      <button
+                        key={lvl}
+                        onClick={() => setActiveLevelFilter(lvl)}
+                        className={`rounded-full px-3.5 py-1.5 text-[11px] font-mono font-bold transition-all ${
+                          activeLevelFilter === lvl
+                            ? "bg-[#141416] text-[#EAEAE6]"
+                            : "bg-white text-[#3F3F46] border border-[#D4D4CE] hover:border-[#141416]"
+                        }`}
+                      >
+                        {lvl}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between text-xs text-[#3F3F46]">
+                    <span>Sign in to access your level modules</span>
+                    <Link
+                      href="/auth/login"
+                      prefetch={false}
+                      className="rounded-full bg-[#141416] text-[#EAEAE6] px-4 py-1.5 font-bold hover:bg-[#27272B]"
+                    >
+                      Login
+                    </Link>
+                  </div>
+                )}
+              </div>
+
+              <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+                <button
+                  type="button"
+                  onClick={() => setStudentPortalTab("courses")}
+                  className={`text-left rounded-[24px] p-5 border transition-all flex flex-col justify-between min-h-[140px] ${
+                    studentPortalTab === "courses"
+                      ? "bg-[#EAEAE6] text-[#141416] border-[#EAEAE6]"
+                      : "bg-[#141416] text-[#EAEAE6] border-[#2E2E34] hover:border-[#52525B]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <BookOpen className="h-5 w-5" />
+                    <span className="text-xs font-mono font-bold opacity-75">{filtered.length}</span>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-extrabold">Course Syllabi</h4>
+                    <p className="text-[11px] opacity-75 mt-0.5">Notes &amp; learning outcomes</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentUser) setStudentPortalTab("assignments");
+                    else router.push("/auth/login");
+                  }}
+                  className={`text-left rounded-[24px] p-5 border transition-all flex flex-col justify-between min-h-[140px] ${
+                    studentPortalTab === "assignments"
+                      ? "bg-[#EAEAE6] text-[#141416] border-[#EAEAE6]"
+                      : "bg-[#141416] text-[#EAEAE6] border-[#2E2E34] hover:border-[#52525B]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <Award className="h-5 w-5" />
+                    <ArrowRight className="h-4 w-4 opacity-75" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-extrabold">Class Assignments</h4>
+                    <p className="text-[11px] opacity-75 mt-0.5">Submit &amp; edit before due date</p>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentUser) setStudentPortalTab("exams");
+                    else router.push("/auth/login");
+                  }}
+                  className={`text-left rounded-[24px] p-5 border transition-all flex flex-col justify-between min-h-[140px] ${
+                    studentPortalTab === "exams" || studentPortalTab === "groups"
+                      ? "bg-[#EAEAE6] text-[#141416] border-[#EAEAE6]"
+                      : "bg-[#141416] text-[#EAEAE6] border-[#2E2E34] hover:border-[#52525B]"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <FileQuestion className="h-5 w-5" />
+                    <Users className="h-4 w-4 opacity-75" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-extrabold">Exams &amp; Groups</h4>
+                    <p className="text-[11px] opacity-75 mt-0.5">Assessments &amp; team projects</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* STUDENT ACADEMIC STANDING SUMMARY */}
+          {currentUser && currentUser.role === "student" && studentPortalTab === "courses" && (
+            <StudentAcademicStanding
+              currentUser={currentUser}
+              syllabi={syllabi}
+              onTabChange={setStudentPortalTab as any}
+            />
+          )}
+
+          {/* LOWER EDITORIAL SHEET (OFF-WHITE SURFACE MATCHING Design.jpeg) */}
+          <main className="rounded-[28px] bg-[#EAEAE6] text-[#141416] p-5 sm:p-8 shadow-2xl">
+            {currentUser && studentPortalTab === "assignments" ? (
+              <div className="rounded-2xl bg-[#141416] text-[#EAEAE6] p-4 sm:p-6 border border-[#2E2E34]">
+                <StudentAssignmentsView currentUser={currentUser} syllabi={syllabi} />
+              </div>
+            ) : currentUser && studentPortalTab === "groups" ? (
+              <div className="rounded-2xl bg-[#141416] text-[#EAEAE6] p-4 sm:p-6 border border-[#2E2E34]">
+                <StudentGroupsView
+                  currentUser={currentUser}
+                  syllabi={syllabi}
+                  onNavigateToAssignments={() => setStudentPortalTab("assignments")}
+                />
+              </div>
+            ) : currentUser && studentPortalTab === "exams" ? (
+              <div className="rounded-2xl bg-[#141416] text-[#EAEAE6] p-4 sm:p-6 border border-[#2E2E34]">
+                <StudentExamsView currentUser={currentUser} syllabi={syllabi} />
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-7 pb-4 border-b border-[#D4D4CE]">
+                  <div>
+                    <span className="inline-block rounded-full bg-[#141416] text-[#EAEAE6] px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider mb-2">
+                      Curriculum Catalog
+                    </span>
+                    <h3 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#141416]">
+                      Available Course Syllabi
+                    </h3>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-[#3F3F46] bg-white border border-[#D4D4CE] rounded-full px-3.5 py-1.5 self-start sm:self-auto">
+                    Showing {filtered.length} {filtered.length === 1 ? "course" : "courses"}
+                  </span>
+                </div>
+
+                {loading ? (
+                  <div className="py-20 text-center text-[#52525B]">
+                    <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#141416] border-t-transparent mb-3" />
+                    Loading Course Syllabi...
+                  </div>
+                ) : filtered.length === 0 ? (
+                  <div className="py-16 text-center text-[#3F3F46] bg-white rounded-2xl border border-[#D4D4CE] p-6 space-y-3">
+                    <BookOpen className="mx-auto h-10 w-10 text-[#71717A]" />
+                    <h4 className="text-base font-bold text-[#141416]">No course syllabi available</h4>
+                    <p className="text-xs text-[#52525B] max-w-md mx-auto">
+                      {currentUser?.role === "student"
+                        ? "No published syllabi found matching your assigned level. Please check back soon as your instructors publish course curriculum."
+                        : "No course syllabi have been published yet. Instructors can sign in to the Teacher Portal to create and publish courses."}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {filtered.map((syl, idx) => {
+                      const isNavigatingThis = navigatingSyllabusId === syl.id;
+                      const isLocked = Boolean(navigatingSyllabusId);
+
+                      return (
+                        <div
+                          key={syl.id}
+                          onClick={() => {
+                            if (isLocked) return;
+                            if (!currentUser) {
+                              setAuthPromptSyl(syl);
+                            } else {
+                              setNavigatingSyllabusId(syl.id);
+                              setTimeout(() => {
+                                setNavigatingSyllabusId(null);
+                              }, 8000);
+                              router.push(`/syllabus/view?id=${syl.id}`);
+                            }
+                          }}
+                          onMouseEnter={() => {
+                            if (currentUser) {
+                              try {
+                                router.prefetch(`/syllabus/view?id=${syl.id}`);
+                              } catch (e) {}
+                            }
+                          }}
+                          className={`group flex flex-col justify-between rounded-[22px] bg-white border p-4 transition-all ${
+                            idx % 3 === 1 ? "lg:translate-y-3" : ""
+                          } ${
+                            isNavigatingThis
+                              ? "border-[#141416] ring-2 ring-[#141416] cursor-wait"
+                              : isLocked
+                              ? "opacity-60 border-[#D4D4CE] cursor-not-allowed"
+                              : "border-[#D4D4CE] hover:border-[#141416] hover:shadow-xl cursor-pointer"
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center justify-between gap-2 mb-3">
+                              <span className="rounded-full bg-[#EAEAE6] px-2.5 py-1 font-mono text-[10px] font-bold text-[#141416]">
+                                {syl.courseCode}
+                              </span>
+                              {syl.level && (
+                                <span className="rounded-full bg-[#141416] px-2.5 py-1 font-mono text-[10px] font-bold text-[#EAEAE6]">
+                                  {syl.level}
+                                </span>
+                              )}
+                            </div>
+
+                            <div className="rounded-2xl bg-[#18181B] text-[#EAEAE6] p-5 min-h-[120px] flex flex-col justify-between mb-3.5 group-hover:bg-[#141416] transition-colors">
+                              <div className="flex items-center justify-between text-[10px] font-mono text-[#A1A1AA]">
+                                <span>Software Development</span>
+                                <span>{syl.learningOutcomes?.length || 0} Outcomes</span>
+                              </div>
+                              <h4 className="text-base font-extrabold text-white leading-snug mt-3">
+                                {syl.title}
+                              </h4>
+                            </div>
+
+                            <p className="text-xs text-[#52525B] line-clamp-2 leading-relaxed px-1">
+                              {syl.description}
+                            </p>
+                          </div>
+
+                          <div className="mt-4 flex items-center justify-between border-t border-[#E4E4DE] pt-3 px-1 text-xs font-bold text-[#141416]">
+                            {isNavigatingThis ? (
+                              <div className="flex items-center space-x-2">
+                                <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-[#141416] border-t-transparent" />
+                                <span>Opening Course...</span>
+                              </div>
+                            ) : (
+                              <>
+                                <span>Explore Syllabus</span>
+                                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
+            )}
+          </main>
+        </div>
+
         {navigatingSyllabusId && (
-          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center space-x-3 rounded-full border border-[#06B6D4]/60 bg-[#0F172A]/95 px-5 py-2.5 shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-3 duration-200">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent" />
-            <span className="text-xs font-semibold text-white">
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center space-x-3 rounded-full border border-[#323238] bg-[#141416] px-5 py-2.5 shadow-2xl">
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent" />
+            <span className="text-xs font-semibold text-[#EAEAE6]">
               Loading course curriculum... Please wait
             </span>
           </div>
         )}
-      </main>
+      </div>
 
       {/* AUTHENTICATION REQUIRED MODAL FOR GUESTS */}
       {authPromptSyl && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
-          <div className="w-full max-w-md rounded-2xl border border-[#334155]/80 bg-[#1E293B]/85 backdrop-blur-2xl p-7 text-center shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
-            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#06B6D4]/15 text-[#06B6D4] border border-[#06B6D4]/30">
-              <Lock className="h-8 w-8" />
+          <div className="w-full max-w-md rounded-3xl border border-[#2E2E34] bg-[#1C1C1F] p-7 text-center shadow-2xl space-y-5 animate-in fade-in zoom-in duration-200">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#EAEAE6] text-[#141416]">
+              <Lock className="h-7 w-7" />
             </div>
 
             <div>
               <h3 className="text-xl font-extrabold text-white tracking-tight">
                 Student Authentication Required
               </h3>
-              <p className="mt-2 text-xs text-[#94A3B8] leading-relaxed">
+              <p className="mt-2 text-xs text-[#A1A1AA] leading-relaxed">
                 To view syllabus modules, learning outcomes, and topic breakdown for <strong className="text-white">{authPromptSyl.title}</strong> ({authPromptSyl.courseCode}), please log in or register your student account.
               </p>
             </div>
@@ -970,7 +954,7 @@ export default function CatalogPage() {
               <Link
                 href="/auth/login"
                 prefetch={false}
-                className="inline-flex w-full items-center justify-center space-x-2 rounded-xl bg-[#06B6D4] py-3 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg"
+                className="inline-flex w-full items-center justify-center space-x-2 rounded-full bg-emerald-500 py-3 text-xs font-bold text-[#141416] hover:bg-emerald-400 transition-all shadow-lg"
               >
                 <LogIn className="h-4 w-4" />
                 <span>Log In to Access Content</span>
@@ -979,43 +963,22 @@ export default function CatalogPage() {
               <Link
                 href="/auth/register"
                 prefetch={false}
-                className="inline-flex w-full items-center justify-center space-x-2 rounded-xl border border-[#334155] bg-[#0B0F19] py-3 text-xs font-semibold text-white hover:border-[#06B6D4] transition-all"
+                className="inline-flex w-full items-center justify-center space-x-2 rounded-full border border-emerald-500/40 bg-emerald-500/15 py-3 text-xs font-bold text-emerald-300 hover:bg-emerald-500 hover:text-[#141416] transition-all"
               >
-                <UserPlus className="h-4 w-4 text-[#06B6D4]" />
+                <UserPlus className="h-4 w-4" />
                 <span>Register Student Account</span>
               </Link>
             </div>
 
             <button
               onClick={() => setAuthPromptSyl(null)}
-              className="text-xs font-mono text-[#94A3B8] hover:text-white pt-2 transition-colors"
+              className="text-xs font-mono text-[#A1A1AA] hover:text-white pt-2 transition-colors"
             >
               Close Window
             </button>
           </div>
         </div>
       )}
-
-      {/* FLOATING SUGGESTION & FEEDBACK BOX */}
-      <SuggestionBoxModal 
-        currentUser={currentUser} 
-        isOpenControlled={isSuggestionModalOpen}
-        onOpenChange={setIsSuggestionModalOpen}
-      />
-
-      {/* STUDENT ACHIEVEMENTS & BADGES MODAL */}
-      <AchievementBadgesModal
-        currentUser={currentUser}
-        isOpen={isBadgesModalOpen}
-        onClose={() => setIsBadgesModalOpen(false)}
-      />
-
-      {/* ACCREDITED CERTIFICATES VAULT MODAL */}
-      <CertificateVaultModal
-        certificates={studentCertificates}
-        isOpen={isCertsModalOpen}
-        onClose={() => setIsCertsModalOpen(false)}
-      />
     </div>
   );
 }

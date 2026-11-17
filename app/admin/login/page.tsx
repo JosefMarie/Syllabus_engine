@@ -162,20 +162,20 @@ export default function AdminLoginPage() {
   const isLockedOut = Boolean(lockoutUntil && Date.now() < lockoutUntil);
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-transparent p-4 text-[#CBD5E1]">
-      <div className="w-full max-w-md rounded-2xl border border-[#334155]/80 bg-[#1E293B]/85 backdrop-blur-xl p-8 shadow-2xl relative">
-        <div className="mb-6 flex items-center justify-between border-b border-[#334155]/60 pb-4">
+    <div className="flex min-h-screen items-center justify-center bg-[#141416] p-4 text-[#EAEAE6]">
+      <div className="w-full max-w-md rounded-[28px] border border-[#2E2E34] bg-[#1C1C1F] p-8 shadow-2xl relative">
+        <div className="mb-6 flex items-center justify-between border-b border-[#2E2E34] pb-4">
           <Link
             href="/"
             prefetch={false}
-            className="inline-flex items-center space-x-1.5 text-xs text-[#94A3B8] hover:text-white transition-colors bg-[#0B0F19] px-3 py-1.5 rounded-lg border border-[#334155]"
+            className="inline-flex items-center space-x-1.5 text-xs text-[#A1A1AA] hover:text-white transition-colors bg-[#141416] px-3 py-1.5 rounded-full border border-[#323238]"
           >
-            <ArrowLeft className="h-4 w-4" />
+            <ArrowLeft className="h-3.5 w-3.5" />
             <span>Catalog</span>
           </Link>
 
           <div className="flex items-center space-x-2">
-            <ShieldCheck className="h-5 w-5 text-[#06B6D4]" />
+            <ShieldCheck className="h-5 w-5 text-[#EAEAE6]" />
             <span className="font-mono text-sm font-bold text-white">Teacher Portal Login</span>
           </div>
         </div>
@@ -214,7 +214,7 @@ export default function AdminLoginPage() {
         {step === 'credentials' && (
           <form onSubmit={handleCredentialsSubmit} className="space-y-4">
             <div>
-              <label className="text-xs font-mono text-[#94A3B8]">Teacher Admin Email *</label>
+              <label className="text-xs font-mono text-[#A1A1AA]">Teacher Admin Email *</label>
               <input
                 type="email"
                 required
@@ -222,12 +222,12 @@ export default function AdminLoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Teacher email"
-                className="mt-1 w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none disabled:opacity-50"
+                className="mt-1 w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-xs text-[#EAEAE6] placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none disabled:opacity-50"
               />
             </div>
 
             <div>
-              <label className="text-xs font-mono text-[#94A3B8]">Admin Password *</label>
+              <label className="text-xs font-mono text-[#A1A1AA]">Admin Password *</label>
               <div className="relative mt-1">
                 <input
                   type={showPassword ? "text" : "password"}
@@ -236,12 +236,12 @@ export default function AdminLoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
-                  className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 pr-10 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none disabled:opacity-50"
+                  className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 pr-10 text-xs text-[#EAEAE6] placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none disabled:opacity-50"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3 text-[#94A3B8] hover:text-white"
+                  className="absolute right-3 top-3 text-[#A1A1AA] hover:text-white"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -251,15 +251,15 @@ export default function AdminLoginPage() {
             <button
               type="submit"
               disabled={submitting || isLockedOut}
-              className="mt-2 flex w-full items-center justify-center space-x-2 rounded-xl bg-[#06B6D4] py-3 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-lg disabled:opacity-50"
+              className="mt-2 flex w-full items-center justify-center space-x-2 rounded-full bg-emerald-500 py-3 text-xs font-bold text-[#141416] hover:bg-emerald-400 transition-all shadow-lg disabled:opacity-50"
             >
               <Lock className="h-4 w-4" />
               <span>{submitting ? "Verifying Credentials..." : "Continue to 2-Step Verification"}</span>
             </button>
 
-            <div className="pt-4 border-t border-[#334155] text-center text-xs text-[#94A3B8]">
+            <div className="pt-4 border-t border-[#2E2E34] text-center text-xs text-[#A1A1AA]">
               Need Student Portal access?{" "}
-              <Link href="/auth/login" prefetch={false} className="font-bold text-[#06B6D4] hover:underline">
+              <Link href="/auth/login" prefetch={false} className="font-bold text-[#EAEAE6] hover:underline">
                 Student Login
               </Link>
             </div>
@@ -269,18 +269,18 @@ export default function AdminLoginPage() {
         {/* STEP 2: GOOGLE AUTHENTICATOR 2FA */}
         {step === 'totp_2fa' && (
           <form onSubmit={handle2FASubmit} className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="rounded-xl border border-[#06B6D4]/30 bg-[#06B6D4]/10 p-4 text-center">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#06B6D4]/20 text-[#06B6D4] mb-2">
+            <div className="rounded-xl border border-[#2E2E34] bg-[#141416] p-4 text-center">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-[#EAEAE6]/10 text-[#EAEAE6] mb-2">
                 <Smartphone className="h-6 w-6 animate-pulse" />
               </div>
               <h3 className="text-sm font-bold text-white">Google Authenticator (2FA)</h3>
-              <p className="mt-1 text-xs text-[#94A3B8]">
+              <p className="mt-1 text-xs text-[#A1A1AA]">
                 Open the Authenticator app on your phone and enter your current 6-digit confirmation code.
               </p>
             </div>
 
             <div>
-              <label className="text-xs font-mono text-[#94A3B8] block text-center mb-2">
+              <label className="text-xs font-mono text-[#A1A1AA] block text-center mb-2">
                 6-Digit Confirmation Code
               </label>
               <input
@@ -291,27 +291,27 @@ export default function AdminLoginPage() {
                 value={totpCode}
                 onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, ""))}
                 placeholder="000000"
-                className="w-full tracking-[0.5em] text-center font-mono text-2xl font-black rounded-xl border border-[#06B6D4]/50 bg-[#0B0F19] p-3 text-white placeholder-[#334155] focus:border-[#06B6D4] focus:outline-none"
+                className="w-full tracking-[0.5em] text-center font-mono text-2xl font-black rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-[#EAEAE6] placeholder-[#3F3F46] focus:border-[#EAEAE6] focus:outline-none"
               />
             </div>
 
             <button
               type="submit"
               disabled={submitting || totpCode.trim().length !== 6}
-              className="flex w-full items-center justify-center space-x-2 rounded-xl bg-gradient-to-r from-[#06B6D4] to-cyan-400 py-3 text-xs font-bold text-slate-950 hover:brightness-110 transition-all shadow-lg shadow-cyan-500/20 disabled:opacity-50"
+              className="flex w-full items-center justify-center space-x-2 rounded-full bg-emerald-500 py-3 text-xs font-bold text-[#141416] hover:bg-emerald-400 transition-all shadow-lg disabled:opacity-50"
             >
               <KeyRound className="h-4 w-4" />
               <span>{submitting ? "Verifying Authenticator Code..." : "Authorize & Enter Admin Portal"}</span>
             </button>
 
-            <div className="flex items-center justify-between pt-3 border-t border-[#334155] text-xs">
+            <div className="flex items-center justify-between pt-3 border-t border-[#2E2E34] text-xs">
               <button
                 type="button"
                 onClick={() => {
                   setStep('credentials');
                   setErrorMsg(null);
                 }}
-                className="text-[#94A3B8] hover:text-white transition-colors"
+                className="text-[#A1A1AA] hover:text-white transition-colors"
               >
                 ← Back
               </button>
@@ -319,7 +319,7 @@ export default function AdminLoginPage() {
               <button
                 type="button"
                 onClick={() => setShowSetupModal(true)}
-                className="inline-flex items-center space-x-1 text-[#06B6D4] hover:underline"
+                className="inline-flex items-center space-x-1 text-[#EAEAE6] hover:underline"
               >
                 <QrCode className="h-3.5 w-3.5" />
                 <span>Pair / View QR Code</span>
@@ -331,9 +331,9 @@ export default function AdminLoginPage() {
         {/* SETUP / QR CODE MODAL */}
         {showSetupModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 animate-in fade-in">
-            <div className="w-full max-w-sm rounded-2xl border border-[#334155] bg-[#1E293B] p-6 text-center shadow-2xl">
+            <div className="w-full max-w-sm rounded-[28px] border border-[#2E2E34] bg-[#1C1C1F] p-6 text-center shadow-2xl">
               <h3 className="text-sm font-bold text-white mb-1">Pair Google Authenticator</h3>
-              <p className="text-xs text-[#94A3B8] mb-4">
+              <p className="text-xs text-[#A1A1AA] mb-4">
                 Scan this QR code with Google Authenticator or Microsoft Authenticator on your phone.
               </p>
 
@@ -349,15 +349,15 @@ export default function AdminLoginPage() {
 
               {/* Manual Secret Key */}
               <div className="mt-4 text-left">
-                <label className="text-[11px] font-mono text-[#94A3B8]">Manual Setup Key:</label>
-                <div className="flex items-center justify-between rounded-lg bg-[#0B0F19] p-2 border border-[#334155] mt-1">
+                <label className="text-[11px] font-mono text-[#A1A1AA]">Manual Setup Key:</label>
+                <div className="flex items-center justify-between rounded-lg bg-[#141416] p-2 border border-[#2E2E34] mt-1">
                   <span className="font-mono text-xs text-amber-300 select-all break-all">
                     {DEFAULT_ADMIN_TOTP_SECRET}
                   </span>
                   <button
                     type="button"
                     onClick={copySecretKey}
-                    className="ml-2 p-1.5 rounded-md hover:bg-[#1E293B] text-[#94A3B8] hover:text-white"
+                    className="ml-2 p-1.5 rounded-md hover:bg-[#1C1C1F] text-[#A1A1AA] hover:text-white"
                   >
                     {copiedKey ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
                   </button>
@@ -367,7 +367,7 @@ export default function AdminLoginPage() {
               <button
                 type="button"
                 onClick={() => setShowSetupModal(false)}
-                className="mt-5 w-full rounded-xl bg-[#334155] py-2.5 text-xs font-bold text-white hover:bg-[#475569] transition-colors"
+                className="mt-5 w-full rounded-full bg-[#2E2E34] py-2.5 text-xs font-bold text-[#EAEAE6] hover:bg-[#3F3F46] transition-colors"
               >
                 Close & Return
               </button>

@@ -167,7 +167,7 @@ export default function ActivityLogger() {
       case "STUDENT_REGISTER":
         return <span className="rounded-full bg-[#F59E0B]/15 px-2.5 py-0.5 text-[10px] font-mono font-bold text-[#F59E0B] border border-[#F59E0B]/30 flex items-center gap-1"><UserPlus className="h-3 w-3" /> Registration</span>;
       case "STUDENT_LOGIN":
-        return <span className="rounded-full bg-[#06B6D4]/15 px-2.5 py-0.5 text-[10px] font-mono font-bold text-[#06B6D4] border border-[#06B6D4]/30 flex items-center gap-1"><LogIn className="h-3 w-3" /> Login</span>;
+        return <span className="rounded-full bg-[#EAEAE6]/15 px-2.5 py-0.5 text-[10px] font-mono font-bold text-[#EAEAE6] border border-[#EAEAE6]/30 flex items-center gap-1"><LogIn className="h-3 w-3" /> Login</span>;
       case "STUDENT_LOGOUT":
         return <span className="rounded-full bg-slate-500/20 px-2.5 py-0.5 text-[10px] font-mono font-bold text-slate-300 border border-slate-500/30 flex items-center gap-1"><LogOut className="h-3 w-3" /> Logout</span>;
       case "AUTO_TIMEOUT_LOGOUT":
@@ -194,24 +194,24 @@ export default function ActivityLogger() {
       case "ENABLE_RESTRICTIONS":
         return <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-mono font-bold text-emerald-300 border border-emerald-500/30 flex items-center gap-1"><Lock className="h-3 w-3" /> Restrictions Enabled</span>;
       case "SAVE_SYLLABUS":
-        return <span className="rounded-full bg-[#06B6D4]/15 px-2.5 py-0.5 text-[10px] font-mono font-bold text-[#06B6D4] border border-[#06B6D4]/30 flex items-center gap-1">Syllabus Saved</span>;
+        return <span className="rounded-full bg-[#EAEAE6]/15 px-2.5 py-0.5 text-[10px] font-mono font-bold text-[#EAEAE6] border border-[#EAEAE6]/30 flex items-center gap-1">Syllabus Saved</span>;
       case "DELETE_SYLLABUS":
         return <span className="rounded-full bg-rose-500/15 px-2.5 py-0.5 text-[10px] font-mono font-bold text-rose-400 border border-rose-500/30 flex items-center gap-1">Syllabus Deleted</span>;
       default:
-        return <span className="rounded-full bg-[#334155] px-2.5 py-0.5 text-[10px] font-mono text-white">{action}</span>;
+        return <span className="rounded-full bg-[#2E2E34] px-2.5 py-0.5 text-[10px] font-mono text-white">{action}</span>;
     }
   };
 
   return (
     <div className="space-y-6">
       {/* Top Header & Action Buttons */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#334155] pb-4 gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#2E2E34] pb-4 gap-4">
         <div>
           <h3 className="text-lg font-bold text-white flex items-center gap-2">
-            <Activity className="h-5 w-5 text-[#06B6D4]" />
+            <Activity className="h-5 w-5 text-[#EAEAE6]" />
             <span>Student Activity &amp; Action Tracking Audit</span>
           </h3>
-          <p className="text-xs text-[#94A3B8]">
+          <p className="text-xs text-[#A1A1AA]">
             Real-time logs of student logins, subtopic views, focus violations, suspensions, password resets, and admin security events.
           </p>
         </div>
@@ -221,7 +221,7 @@ export default function ActivityLogger() {
             onClick={handleClearLogs}
             disabled={clearing}
             title="Clear all activity logs from database"
-            className="inline-flex items-center space-x-1.5 rounded-xl border border-rose-500/30 bg-[#1E293B] px-3.5 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 hover:text-white transition-all shadow-md"
+            className="inline-flex items-center space-x-1.5 rounded-xl border border-rose-500/30 bg-[#1C1C1F] px-3.5 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-500/20 hover:text-white transition-all shadow-md"
           >
             <Trash2 className="h-3.5 w-3.5 text-rose-400" />
             <span>{clearing ? "Clearing..." : "Clear Audit Logs"}</span>
@@ -230,9 +230,9 @@ export default function ActivityLogger() {
           <button
             onClick={() => loadLogs(displayLimit)}
             disabled={refreshing}
-            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3.5 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white transition-all shadow-md disabled:opacity-60"
+            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#2E2E34] bg-[#1C1C1F] px-3.5 py-2 text-xs font-semibold text-[#EAEAE6] hover:text-white transition-all shadow-md disabled:opacity-60"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-[#06B6D4] ${refreshing ? "animate-spin" : ""}`} />
+            <RefreshCw className={`h-3.5 w-3.5 text-[#EAEAE6] ${refreshing ? "animate-spin" : ""}`} />
             <span>{refreshing ? "Refreshing..." : "Refresh Logs"}</span>
           </button>
         </div>
@@ -240,9 +240,9 @@ export default function ActivityLogger() {
 
       {/* Live Security & Discipline Audit Summary */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="rounded-xl border border-[#334155] bg-[#1E293B]/90 p-3.5 flex items-center justify-between">
+        <div className="rounded-xl border border-[#2E2E34] bg-[#1C1C1F]/90 p-3.5 flex items-center justify-between">
           <div>
-            <span className="block text-[10px] font-mono uppercase tracking-wider text-[#94A3B8]">
+            <span className="block text-[10px] font-mono uppercase tracking-wider text-[#A1A1AA]">
               Security &amp; Auth Events
             </span>
             <span className="text-lg font-extrabold text-white font-mono">
@@ -258,9 +258,9 @@ export default function ActivityLogger() {
           </button>
         </div>
 
-        <div className="rounded-xl border border-[#334155] bg-[#1E293B]/90 p-3.5 flex items-center justify-between">
+        <div className="rounded-xl border border-[#2E2E34] bg-[#1C1C1F]/90 p-3.5 flex items-center justify-between">
           <div>
-            <span className="block text-[10px] font-mono uppercase tracking-wider text-[#94A3B8]">
+            <span className="block text-[10px] font-mono uppercase tracking-wider text-[#A1A1AA]">
               Suspended Accounts
             </span>
             <span className={`text-lg font-extrabold font-mono ${securityStats.suspendedStudents.length > 0 ? "text-rose-400" : "text-emerald-400"}`}>
@@ -270,9 +270,9 @@ export default function ActivityLogger() {
           <ShieldAlert className={`h-6 w-6 ${securityStats.suspendedStudents.length > 0 ? "text-rose-400" : "text-emerald-400/50"}`} />
         </div>
 
-        <div className="rounded-xl border border-[#334155] bg-[#1E293B]/90 p-3.5 flex items-center justify-between">
+        <div className="rounded-xl border border-[#2E2E34] bg-[#1C1C1F]/90 p-3.5 flex items-center justify-between">
           <div>
-            <span className="block text-[10px] font-mono uppercase tracking-wider text-[#94A3B8]">
+            <span className="block text-[10px] font-mono uppercase tracking-wider text-[#A1A1AA]">
               Students w/ Focus Strikes
             </span>
             <span className={`text-lg font-extrabold font-mono ${securityStats.flaggedFocusStudents.length > 0 ? "text-amber-400" : "text-emerald-400"}`}>
@@ -282,9 +282,9 @@ export default function ActivityLogger() {
           <EyeOff className={`h-6 w-6 ${securityStats.flaggedFocusStudents.length > 0 ? "text-amber-400" : "text-emerald-400/50"}`} />
         </div>
 
-        <div className="rounded-xl border border-[#334155] bg-[#1E293B]/90 p-3.5 flex items-center justify-between">
+        <div className="rounded-xl border border-[#2E2E34] bg-[#1C1C1F]/90 p-3.5 flex items-center justify-between">
           <div>
-            <span className="block text-[10px] font-mono uppercase tracking-wider text-[#94A3B8]">
+            <span className="block text-[10px] font-mono uppercase tracking-wider text-[#A1A1AA]">
               Window Lock Restrictions
             </span>
             <span className={`text-xs font-extrabold font-mono block mt-1 ${restrictions.restrictionsDisabled ? "text-amber-300" : "text-emerald-400"}`}>
@@ -307,7 +307,7 @@ export default function ActivityLogger() {
               <AlertTriangle className="h-4 w-4 text-amber-400" />
               <span>Active Student Security &amp; Focus Watchlist</span>
             </h4>
-            <span className="text-[11px] font-mono text-[#94A3B8]">Live from Student Profiles</span>
+            <span className="text-[11px] font-mono text-[#A1A1AA]">Live from Student Profiles</span>
           </div>
           <div className="flex flex-wrap gap-2">
             {securityStats.suspendedStudents.map((st) => (
@@ -350,13 +350,13 @@ export default function ActivityLogger() {
       {/* Filter and Search Bar */}
       <div className="flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="relative w-full md:w-80">
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#94A3B8]" />
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-[#A1A1AA]" />
           <input
             type="text"
             placeholder="Search student name (e.g. Josef Marie), email or action details..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl border border-[#334155] bg-[#1E293B] py-2 pl-9 pr-3 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+            className="w-full rounded-xl border border-[#2E2E34] bg-[#1C1C1F] py-2 pl-9 pr-3 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
           />
         </div>
 
@@ -376,8 +376,8 @@ export default function ActivityLogger() {
                 actionFilter === btn.id
                   ? btn.id === "SECURITY"
                     ? "bg-purple-500 text-white border-purple-400 shadow-md"
-                    : "bg-[#06B6D4] text-slate-950 border-[#06B6D4] shadow-md"
-                  : "bg-[#1E293B] text-[#94A3B8] border-[#334155] hover:border-[#06B6D4]"
+                    : "bg-[#EAEAE6] text-[#141416] border-[#EAEAE6] shadow-md"
+                  : "bg-[#1C1C1F] text-[#A1A1AA] border-[#2E2E34] hover:border-[#EAEAE6]"
               }`}
             >
               {btn.label}
@@ -388,12 +388,12 @@ export default function ActivityLogger() {
 
       {/* Log Feed */}
       {loading ? (
-        <div className="py-12 text-center text-xs text-[#94A3B8]">
-          <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-2" />
+        <div className="py-12 text-center text-xs text-[#A1A1AA]">
+          <div className="mx-auto h-6 w-6 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent mb-2" />
           Fetching activity logs...
         </div>
       ) : filtered.length === 0 ? (
-        <div className="py-12 text-center text-xs text-[#94A3B8] bg-[#1E293B]/40 rounded-2xl border border-[#334155]">
+        <div className="py-12 text-center text-xs text-[#A1A1AA] bg-[#1C1C1F]/40 rounded-2xl border border-[#2E2E34]">
           No recorded activity logs matching your filter criteria.
         </div>
       ) : (
@@ -401,8 +401,8 @@ export default function ActivityLogger() {
           {filtered.map((log) => (
             <div
               key={log.id}
-              className={`flex flex-col sm:flex-row sm:items-center justify-between rounded-xl border bg-[#1E293B] p-4 shadow-md gap-3 ${
-                SECURITY_ACTIONS.has(log.action) ? "border-purple-500/30" : "border-[#334155]"
+              className={`flex flex-col sm:flex-row sm:items-center justify-between rounded-xl border bg-[#1C1C1F] p-4 shadow-md gap-3 ${
+                SECURITY_ACTIONS.has(log.action) ? "border-purple-500/30" : "border-[#2E2E34]"
               }`}
             >
               <div className="space-y-1">
@@ -411,7 +411,7 @@ export default function ActivityLogger() {
                   <span className="text-sm font-bold text-white">
                     {log.userName === "Teacher Admin" ? "Josef Marie" : log.userName}
                   </span>
-                  <span className="text-xs font-mono text-[#06B6D4]">({log.userEmail || "No Email"})</span>
+                  <span className="text-xs font-mono text-[#EAEAE6]">({log.userEmail || "No Email"})</span>
                   {log.userLevel && (
                     <span className="rounded bg-[#10B981]/15 px-2 py-0.5 font-mono text-[10px] text-[#10B981] border border-[#10B981]/30">
                       {log.userLevel}
@@ -419,13 +419,13 @@ export default function ActivityLogger() {
                   )}
                 </div>
 
-                <p className="text-xs text-[#CBD5E1] pt-1 leading-relaxed">
+                <p className="text-xs text-[#EAEAE6] pt-1 leading-relaxed">
                   {(log.details || "").replace(/Teacher Admin/g, "Josef Marie")}
                 </p>
               </div>
 
-              <div className="flex items-center space-x-2 text-[11px] font-mono text-[#94A3B8] shrink-0">
-                <Clock className="h-3.5 w-3.5 text-[#06B6D4]" />
+              <div className="flex items-center space-x-2 text-[11px] font-mono text-[#A1A1AA] shrink-0">
+                <Clock className="h-3.5 w-3.5 text-[#EAEAE6]" />
                 <span>{new Date(log.timestamp).toLocaleString()}</span>
               </div>
             </div>
@@ -436,16 +436,16 @@ export default function ActivityLogger() {
               <button
                 onClick={handleLoadMore}
                 disabled={loadingMore}
-                className="inline-flex items-center space-x-2 rounded-xl border border-[#334155] bg-[#1E293B] px-6 py-2.5 text-xs font-bold text-white hover:border-[#06B6D4] hover:bg-[#06B6D4]/10 transition-all shadow-md disabled:opacity-50"
+                className="inline-flex items-center space-x-2 rounded-xl border border-[#2E2E34] bg-[#1C1C1F] px-6 py-2.5 text-xs font-bold text-white hover:border-[#EAEAE6] hover:bg-[#EAEAE6]/10 transition-all shadow-md disabled:opacity-50"
               >
                 {loadingMore ? (
                   <>
-                    <RefreshCw className="h-3.5 w-3.5 animate-spin text-[#06B6D4]" />
+                    <RefreshCw className="h-3.5 w-3.5 animate-spin text-[#EAEAE6]" />
                     <span>Loading Previous Logs...</span>
                   </>
                 ) : (
                   <>
-                    <Clock className="h-3.5 w-3.5 text-[#06B6D4]" />
+                    <Clock className="h-3.5 w-3.5 text-[#EAEAE6]" />
                     <span>Load 100 More Logs (Showing {activities.length})</span>
                   </>
                 )}

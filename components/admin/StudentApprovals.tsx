@@ -283,7 +283,7 @@ export default function StudentApprovals() {
             <span className="text-3xl font-extrabold text-white font-mono">
               {pendingCount}
             </span>
-            <span className="text-[11px] text-[#94A3B8] block mt-1">Students awaiting access</span>
+            <span className="text-[11px] text-[#A1A1AA] block mt-1">Students awaiting access</span>
           </div>
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#F59E0B]/20 text-[#F59E0B]">
             <Clock className="h-6 w-6" />
@@ -305,7 +305,7 @@ export default function StudentApprovals() {
             <span className="text-3xl font-extrabold text-white font-mono">
               {approvedCount}
             </span>
-            <span className="text-[11px] text-[#94A3B8] block mt-1">Active syllabus access</span>
+            <span className="text-[11px] text-[#A1A1AA] block mt-1">Active syllabus access</span>
           </div>
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#10B981]/20 text-[#10B981]">
             <CheckCircle2 className="h-6 w-6" />
@@ -327,7 +327,7 @@ export default function StudentApprovals() {
             <span className="text-3xl font-extrabold text-rose-400 font-mono">
               {suspendedCount}
             </span>
-            <span className="text-[11px] text-[#94A3B8] block mt-1">Exceeded side windows</span>
+            <span className="text-[11px] text-[#A1A1AA] block mt-1">Exceeded side windows</span>
           </div>
           <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-rose-500/20 text-rose-400">
             <AlertTriangle className="h-6 w-6" />
@@ -338,7 +338,7 @@ export default function StudentApprovals() {
           onClick={() => setFilter('all')}
           className={`rounded-2xl border text-left p-5 shadow-lg flex items-center justify-between transition-all cursor-pointer ${
             filter === 'all'
-              ? 'border-[#06B6D4] ring-2 ring-[#06B6D4]/40 bg-[#06B6D4]/15'
+              ? 'border-[#EAEAE6] ring-2 ring-[#EAEAE6]/40 bg-[#EAEAE6]/15'
               : 'border-slate-700 bg-slate-800/40 hover:border-slate-500'
           }`}
         >
@@ -349,19 +349,19 @@ export default function StudentApprovals() {
             <span className="text-3xl font-extrabold text-white font-mono">
               {users.length}
             </span>
-            <span className="text-[11px] text-[#94A3B8] block mt-1">Total across all levels</span>
+            <span className="text-[11px] text-[#A1A1AA] block mt-1">Total across all levels</span>
           </div>
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-700/30 text-[#06B6D4]">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-700/30 text-[#EAEAE6]">
             <GraduationCap className="h-6 w-6" />
           </div>
         </button>
       </div>
 
       {/* Header & Status Filter Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#334155] pb-4 gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#2E2E34] pb-4 gap-4">
         <div>
           <h3 className="text-lg font-bold text-white">Student Registration Verification & Focus Enforcement</h3>
-          <p className="text-xs text-[#94A3B8]">
+          <p className="text-xs text-[#A1A1AA]">
             Review student status, side-window focus strikes, and re-approve suspended accounts.
           </p>
         </div>
@@ -377,9 +377,9 @@ export default function StudentApprovals() {
           <button
             onClick={handleExportCSV}
             title="Download full student roster as CSV"
-            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-slate-800 hover:bg-slate-700 px-3 py-2 text-xs font-mono font-bold text-white transition-all shadow-sm active:scale-95"
+            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#2E2E34] bg-slate-800 hover:bg-slate-700 px-3 py-2 text-xs font-mono font-bold text-white transition-all shadow-sm active:scale-95"
           >
-            <Download className="h-3.5 w-3.5 text-cyan-400" />
+            <Download className="h-3.5 w-3.5 text-[#EAEAE6]" />
             <span className="hidden sm:inline">Export CSV</span>
           </button>
 
@@ -395,11 +395,11 @@ export default function StudentApprovals() {
             </button>
           )}
 
-          <div className="flex flex-wrap items-center gap-1.5 rounded-xl bg-[#1E293B] p-1 border border-[#334155]">
+          <div className="flex flex-wrap items-center gap-1.5 rounded-xl bg-[#1C1C1F] p-1 border border-[#2E2E34]">
             <button
               onClick={() => setFilter('pending')}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                filter === 'pending' ? 'bg-[#F59E0B]/20 text-[#F59E0B] font-bold' : 'text-[#94A3B8] hover:text-white'
+                filter === 'pending' ? 'bg-[#F59E0B]/20 text-[#F59E0B] font-bold' : 'text-[#A1A1AA] hover:text-white'
               }`}
             >
               Pending ({pendingCount})
@@ -407,7 +407,7 @@ export default function StudentApprovals() {
             <button
               onClick={() => setFilter('suspended')}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                filter === 'suspended' ? 'bg-rose-500/20 text-rose-400 font-bold' : 'text-[#94A3B8] hover:text-white'
+                filter === 'suspended' ? 'bg-rose-500/20 text-rose-400 font-bold' : 'text-[#A1A1AA] hover:text-white'
               }`}
             >
               Suspended ({suspendedCount})
@@ -415,7 +415,7 @@ export default function StudentApprovals() {
             <button
               onClick={() => setFilter('reset')}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                filter === 'reset' ? 'bg-purple-500/20 text-purple-300 font-bold' : 'text-[#94A3B8] hover:text-white'
+                filter === 'reset' ? 'bg-purple-500/20 text-purple-300 font-bold' : 'text-[#A1A1AA] hover:text-white'
               }`}
             >
               Reset Requests ({resetCount})
@@ -423,7 +423,7 @@ export default function StudentApprovals() {
             <button
               onClick={() => setFilter('approved')}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                filter === 'approved' ? 'bg-[#10B981]/20 text-[#10B981] font-bold' : 'text-[#94A3B8] hover:text-white'
+                filter === 'approved' ? 'bg-[#10B981]/20 text-[#10B981] font-bold' : 'text-[#A1A1AA] hover:text-white'
               }`}
             >
               Approved ({approvedCount})
@@ -431,7 +431,7 @@ export default function StudentApprovals() {
             <button
               onClick={() => setFilter('all')}
               className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
-                filter === 'all' ? 'bg-[#06B6D4]/20 text-[#06B6D4] font-bold' : 'text-[#94A3B8] hover:text-white'
+                filter === 'all' ? 'bg-[#EAEAE6]/20 text-[#EAEAE6] font-bold' : 'text-[#A1A1AA] hover:text-white'
               }`}
             >
               All ({users.length})
@@ -441,21 +441,21 @@ export default function StudentApprovals() {
       </div>
 
       {/* Real-Time Multi-Field Search & Level Filter Bar */}
-      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-[#1E293B]/80 p-3 rounded-2xl border border-[#334155] shadow-lg">
+      <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 bg-[#1C1C1F]/80 p-3 rounded-2xl border border-[#2E2E34] shadow-lg">
         {/* Search Input (Names, Username, Email) */}
         <div className="relative flex-1">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#94A3B8]" />
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A1A1AA]" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search by student name, username, or email across all categories..."
-            className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] py-2 pl-10 pr-9 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none transition-colors"
+            className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] py-2 pl-10 pr-9 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none transition-colors"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#94A3B8] hover:text-white p-0.5 rounded-md transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A1A1AA] hover:text-white p-0.5 rounded-md transition-colors"
               title="Clear search"
             >
               <X className="h-3.5 w-3.5" />
@@ -465,18 +465,18 @@ export default function StudentApprovals() {
 
         {/* Level Filter Selector */}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <div className="flex items-center space-x-1.5 text-xs text-[#94A3B8] font-mono pl-1">
-            <GraduationCap className="h-3.5 w-3.5 text-[#06B6D4]" />
+          <div className="flex items-center space-x-1.5 text-xs text-[#A1A1AA] font-mono pl-1">
+            <GraduationCap className="h-3.5 w-3.5 text-[#EAEAE6]" />
             <span className="hidden sm:inline">Level:</span>
           </div>
 
-          <div className="flex items-center rounded-xl bg-[#0B0F19] p-1 border border-[#334155] gap-1">
+          <div className="flex items-center rounded-xl bg-[#141416] p-1 border border-[#2E2E34] gap-1">
             <button
               onClick={() => setLevelFilter('all')}
               className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
                 levelFilter === 'all'
-                  ? 'bg-[#06B6D4] text-slate-950 font-bold shadow-xs'
-                  : 'text-[#94A3B8] hover:text-white'
+                  ? 'bg-emerald-500 text-[#141416] font-bold shadow-xs'
+                  : 'text-[#A1A1AA] hover:text-white'
               }`}
             >
               All Levels ({users.length})
@@ -485,8 +485,8 @@ export default function StudentApprovals() {
               onClick={() => setLevelFilter('Level 3')}
               className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
                 levelFilter === 'Level 3'
-                  ? 'bg-[#06B6D4] text-slate-950 font-bold shadow-xs'
-                  : 'text-[#94A3B8] hover:text-white'
+                  ? 'bg-emerald-500 text-[#141416] font-bold shadow-xs'
+                  : 'text-[#A1A1AA] hover:text-white'
               }`}
             >
               Level 3 ({level3Count})
@@ -495,8 +495,8 @@ export default function StudentApprovals() {
               onClick={() => setLevelFilter('Level 4')}
               className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
                 levelFilter === 'Level 4'
-                  ? 'bg-[#06B6D4] text-slate-950 font-bold shadow-xs'
-                  : 'text-[#94A3B8] hover:text-white'
+                  ? 'bg-emerald-500 text-[#141416] font-bold shadow-xs'
+                  : 'text-[#A1A1AA] hover:text-white'
               }`}
             >
               Level 4 ({level4Count})
@@ -505,8 +505,8 @@ export default function StudentApprovals() {
               onClick={() => setLevelFilter('Level 5')}
               className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition-all ${
                 levelFilter === 'Level 5'
-                  ? 'bg-[#06B6D4] text-slate-950 font-bold shadow-xs'
-                  : 'text-[#94A3B8] hover:text-white'
+                  ? 'bg-emerald-500 text-[#141416] font-bold shadow-xs'
+                  : 'text-[#A1A1AA] hover:text-white'
               }`}
             >
               Level 5 ({level5Count})
@@ -519,7 +519,7 @@ export default function StudentApprovals() {
                 setSearchQuery("");
                 setLevelFilter("all");
               }}
-              className="inline-flex items-center space-x-1 rounded-lg border border-[#334155] bg-[#0B0F19] px-2.5 py-1 text-xs text-[#06B6D4] hover:bg-[#1E293B] transition-all font-mono"
+              className="inline-flex items-center space-x-1 rounded-lg border border-[#2E2E34] bg-[#141416] px-2.5 py-1 text-xs text-[#EAEAE6] hover:bg-[#1C1C1F] transition-all font-mono"
             >
               <RotateCcw className="h-3 w-3" />
               <span>Reset</span>
@@ -530,42 +530,42 @@ export default function StudentApprovals() {
 
       {/* Filter Status Summary Tag */}
       {!loading && isFiltered && (
-        <div className="flex items-center justify-between text-xs text-[#94A3B8] font-mono px-2 py-1 rounded-xl bg-[#0B0F19]/40 border border-[#334155]/60">
+        <div className="flex items-center justify-between text-xs text-[#A1A1AA] font-mono px-2 py-1 rounded-xl bg-[#141416]/40 border border-[#2E2E34]/60">
           <span className="flex items-center space-x-1.5">
-            <Filter className="h-3.5 w-3.5 text-[#06B6D4]" />
+            <Filter className="h-3.5 w-3.5 text-[#EAEAE6]" />
             <span>
               Showing <strong className="text-white font-bold">{filteredUsers.length}</strong> of {users.length} registered students
             </span>
           </span>
-          <span className="text-[#06B6D4]">
+          <span className="text-[#EAEAE6]">
             Active filters: {[levelFilter !== 'all' ? levelFilter : null, searchQuery ? `"${searchQuery}"` : null].filter(Boolean).join(" • ")}
           </span>
         </div>
       )}
 
       {loading ? (
-        <div className="py-12 text-center text-xs text-[#94A3B8]">Loading student profiles...</div>
+        <div className="py-12 text-center text-xs text-[#A1A1AA]">Loading student profiles...</div>
       ) : filteredUsers.length === 0 ? (
         filter === 'pending' && pendingCount === 0 && approvedCount > 0 ? (
-          <div className="py-12 text-center text-xs text-[#94A3B8] bg-[#1E293B]/40 rounded-2xl border border-[#334155] p-6 space-y-3">
+          <div className="py-12 text-center text-xs text-[#A1A1AA] bg-[#1C1C1F]/40 rounded-2xl border border-[#2E2E34] p-6 space-y-3">
             <CheckCircle2 className="mx-auto h-12 w-12 text-[#10B981] mb-2" />
             <p className="text-base font-bold text-white">All Student Accounts Are Verified & Active</p>
-            <p className="text-xs text-[#94A3B8] max-w-md mx-auto">
+            <p className="text-xs text-[#A1A1AA] max-w-md mx-auto">
               There are currently 0 students awaiting approval. You have <strong className="text-[#10B981] font-bold">{approvedCount} approved students</strong> active across your academic trades and levels.
             </p>
             <button
               onClick={() => setFilter('approved')}
-              className="mt-2 inline-flex items-center space-x-1.5 rounded-xl bg-[#10B981] px-4 py-2 text-xs font-bold text-slate-950 hover:bg-emerald-400 transition-all shadow-md"
+              className="mt-2 inline-flex items-center space-x-1.5 rounded-xl bg-[#10B981] px-4 py-2 text-xs font-bold text-[#141416] hover:bg-emerald-400 transition-all shadow-md"
             >
               <UserCheck className="h-4 w-4" />
               <span>View Approved Students ({approvedCount})</span>
             </button>
           </div>
         ) : (
-          <div className="py-12 text-center text-xs text-[#94A3B8] bg-[#1E293B]/40 rounded-2xl border border-[#334155] p-6 space-y-3">
+          <div className="py-12 text-center text-xs text-[#A1A1AA] bg-[#1C1C1F]/40 rounded-2xl border border-[#2E2E34] p-6 space-y-3">
             <p className="text-sm font-bold text-white">No matching student registrations found</p>
-            <p className="text-xs text-[#94A3B8] max-w-md mx-auto">
-              No students found in category <strong className="text-[#06B6D4]">"{filter.toUpperCase()}"</strong>
+            <p className="text-xs text-[#A1A1AA] max-w-md mx-auto">
+              No students found in category <strong className="text-[#EAEAE6]">"{filter.toUpperCase()}"</strong>
               {levelFilter !== 'all' && <> for <strong className="text-[#10B981] font-mono">{levelFilter}</strong></>}
               {searchQuery && <> matching name, username, or email <strong className="text-amber-400">"{searchQuery}"</strong></>}.
             </p>
@@ -575,7 +575,7 @@ export default function StudentApprovals() {
                   setSearchQuery("");
                   setLevelFilter("all");
                 }}
-                className="mt-2 inline-flex items-center space-x-1.5 rounded-xl bg-[#06B6D4] px-4 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+                className="mt-2 inline-flex items-center space-x-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-[#141416] hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-md"
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 <span>Clear Search & Reset Filters</span>
@@ -595,13 +595,13 @@ export default function StudentApprovals() {
                 className={`flex flex-col sm:flex-row sm:items-center justify-between rounded-2xl border p-5 shadow-lg gap-4 transition-all ${
                   isSuspended 
                     ? 'border-rose-500/50 bg-rose-950/20' 
-                    : 'border-[#334155] bg-[#1E293B]'
+                    : 'border-[#2E2E34] bg-[#1C1C1F]'
                 }`}
               >
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <h4 className="text-base font-bold text-white">{user.fullName}</h4>
-                    <span className="text-xs font-mono text-[#06B6D4]">(@{user.username})</span>
+                    <span className="text-xs font-mono text-[#EAEAE6]">(@{user.username})</span>
                     
                     <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-mono font-semibold uppercase ${
                       user.status === 'approved'
@@ -630,10 +630,10 @@ export default function StudentApprovals() {
                     )}
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-[#94A3B8]">
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-[#A1A1AA]">
                     <span>Email: <strong className="text-white">{user.email || 'None'}</strong></span>
                     <span>•</span>
-                    <span>Trade: <strong className="text-[#06B6D4]">{tradesMap[user.tradeId] || "Assigned Trade"}</strong></span>
+                    <span>Trade: <strong className="text-[#EAEAE6]">{tradesMap[user.tradeId] || "Assigned Trade"}</strong></span>
                     <span>•</span>
                     <span>Assigned Level: <strong className="text-[#10B981] font-mono">{user.level}</strong></span>
                   </div>
@@ -651,7 +651,7 @@ export default function StudentApprovals() {
                       <Key className="h-3.5 w-3.5 text-purple-400 shrink-0" />
                       <span>
                         Reset Requested &bull; 6-digit Code:{" "}
-                        <strong className="font-mono text-white text-sm tracking-widest bg-[#0B0F19] px-2 py-0.5 rounded border border-purple-500/40">
+                        <strong className="font-mono text-white text-sm tracking-widest bg-[#141416] px-2 py-0.5 rounded border border-purple-500/40">
                           {user.recoveryCode || "998877"}
                         </strong>
                       </span>
@@ -684,7 +684,7 @@ export default function StudentApprovals() {
                   {user.status !== 'approved' && (
                     <button
                       onClick={() => handleStatusChange(user.uid, 'approved')}
-                      className="inline-flex items-center space-x-1.5 rounded-xl bg-[#10B981] px-4 py-2 text-xs font-bold text-slate-950 hover:bg-emerald-400 transition-all shadow-md"
+                      className="inline-flex items-center space-x-1.5 rounded-xl bg-[#10B981] px-4 py-2 text-xs font-bold text-[#141416] hover:bg-emerald-400 transition-all shadow-md"
                     >
                       <Check className="h-4 w-4" />
                       <span>{isSuspended ? 'Re-Approve & Clear Strikes' : 'Approve Student'}</span>
@@ -725,7 +725,7 @@ export default function StudentApprovals() {
                   <button
                     onClick={() => handleDeleteUser(user.uid, user.fullName)}
                     title="Permanently remove student"
-                    className="inline-flex items-center space-x-1 rounded-xl bg-slate-800/80 px-2.5 py-2 text-xs font-semibold text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-[#334155] transition-all"
+                    className="inline-flex items-center space-x-1 rounded-xl bg-slate-800/80 px-2.5 py-2 text-xs font-semibold text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 border border-[#2E2E34] transition-all"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Delete</span>

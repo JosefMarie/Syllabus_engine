@@ -235,8 +235,8 @@ export default function StudentGroupsView({
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-[#334155] bg-[#1E293B]/60 p-12 text-center text-xs font-mono text-[#94A3B8]">
-        <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-3" />
+      <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F]/60 p-12 text-center text-xs font-mono text-[#A1A1AA]">
+        <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent mb-3" />
         Loading your study groups...
       </div>
     );
@@ -245,13 +245,13 @@ export default function StudentGroupsView({
   return (
     <div className="space-y-6">
       {/* Header and Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#334155] pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2E2E34] pb-5">
         <div>
           <h2 className="text-base font-extrabold text-white flex items-center space-x-2">
-            <Users className="h-5 w-5 text-[#06B6D4]" />
+            <Users className="h-5 w-5 text-[#EAEAE6]" />
             <span>My Study &amp; Project Groups</span>
           </h2>
-          <p className="text-xs text-[#94A3B8] mt-0.5">
+          <p className="text-xs text-[#A1A1AA] mt-0.5">
             Collaborate on course assignments, form teams with classmates, and submit group work together.
           </p>
         </div>
@@ -259,7 +259,7 @@ export default function StudentGroupsView({
         <div className="flex items-center space-x-2.5">
           <button
             onClick={() => setIsJoinModalOpen(true)}
-            className="inline-flex items-center space-x-2 rounded-xl border border-[#334155] bg-[#1E293B] px-4 py-2.5 text-xs font-bold text-[#CBD5E1] hover:text-white hover:border-[#06B6D4] transition-all"
+            className="inline-flex items-center space-x-2 rounded-xl border border-[#2E2E34] bg-[#1C1C1F] px-4 py-2.5 text-xs font-bold text-[#EAEAE6] hover:text-white hover:border-[#EAEAE6] transition-all"
           >
             <Key className="h-4 w-4 text-amber-400" />
             <span>Join with Code</span>
@@ -267,7 +267,7 @@ export default function StudentGroupsView({
 
           <button
             onClick={() => setIsCreateModalOpen(true)}
-            className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-4 py-2.5 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+            className="inline-flex items-center space-x-2 rounded-xl bg-emerald-500 px-4 py-2.5 text-xs font-bold text-[#141416] hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-md"
           >
             <Plus className="h-4 w-4" />
             <span>Create a Group</span>
@@ -276,13 +276,13 @@ export default function StudentGroupsView({
       </div>
 
       {/* View Mode Navigation Tabs */}
-      <div className="flex items-center space-x-2 border-b border-[#334155]/60 pb-1">
+      <div className="flex items-center space-x-2 border-b border-[#2E2E34]/60 pb-1">
         <button
           onClick={() => setActiveTab("groups")}
           className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-bold rounded-xl transition-all ${
             activeTab === "groups"
-              ? "bg-[#06B6D4] text-slate-950 shadow-md"
-              : "text-[#94A3B8] hover:text-white hover:bg-[#1E293B]"
+              ? "bg-[#EAEAE6] text-[#141416] shadow-md"
+              : "text-[#A1A1AA] hover:text-white hover:bg-[#1C1C1F]"
           }`}
         >
           <Users className="h-4 w-4" />
@@ -294,7 +294,7 @@ export default function StudentGroupsView({
           className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-bold rounded-xl transition-all ${
             activeTab === "evaluations"
               ? "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md"
-              : "text-[#94A3B8] hover:text-white hover:bg-[#1E293B]"
+              : "text-[#A1A1AA] hover:text-white hover:bg-[#1C1C1F]"
           }`}
         >
           <Award className="h-4 w-4" />
@@ -312,12 +312,12 @@ export default function StudentGroupsView({
         <>
           {/* Banner if already enrolled in a group */}
           {myGroups.length > 0 && (
-            <div className="rounded-2xl border border-[#06B6D4]/30 bg-[#06B6D4]/10 p-4 flex items-center justify-between">
+            <div className="rounded-2xl border border-[#EAEAE6]/30 bg-[#EAEAE6]/10 p-4 flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <CheckCircle2 className="h-5 w-5 text-[#06B6D4] shrink-0" />
+                <CheckCircle2 className="h-5 w-5 text-[#EAEAE6] shrink-0" />
                 <div className="text-xs">
                   <span className="font-bold text-white block">Official Class Group: {myGroups[0].name}</span>
-                  <span className="text-[#94A3B8]">
+                  <span className="text-[#A1A1AA]">
                     This is your designated team for your entire class. This group will automatically collaborate and submit on all group assignments across all courses and modules.
                   </span>
                 </div>
@@ -327,25 +327,25 @@ export default function StudentGroupsView({
 
           {/* Groups List */}
           {myGroups.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-[#334155] bg-[#1E293B]/30 p-10 text-center">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#06B6D4]/10 border border-[#06B6D4]/20 text-[#06B6D4] mb-3">
+            <div className="rounded-3xl border border-dashed border-[#2E2E34] bg-[#1C1C1F]/30 p-10 text-center">
+              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-[#EAEAE6]/10 border border-[#EAEAE6]/20 text-[#EAEAE6] mb-3">
                 <Users className="h-7 w-7" />
               </div>
               <h3 className="text-base font-bold text-white">No Groups Joined Yet</h3>
-              <p className="text-xs text-[#94A3B8] max-w-md mx-auto mt-1 mb-5">
+              <p className="text-xs text-[#A1A1AA] max-w-md mx-auto mt-1 mb-5">
                 You haven&apos;t joined any project or study teams yet. Create a group for one of your courses or join an existing group with your friend&apos;s code!
               </p>
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <button
                   onClick={() => setIsCreateModalOpen(true)}
-                  className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-4 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all"
+                  className="inline-flex items-center space-x-2 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-[#141416] hover:bg-emerald-400 hover:text-[#141416] transition-all"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Create New Group</span>
                 </button>
                 <button
                   onClick={() => setIsJoinModalOpen(true)}
-                  className="inline-flex items-center space-x-2 rounded-xl border border-[#334155] bg-[#1E293B] px-4 py-2 text-xs font-bold text-white hover:border-[#06B6D4] transition-all"
+                  className="inline-flex items-center space-x-2 rounded-xl border border-[#2E2E34] bg-[#1C1C1F] px-4 py-2 text-xs font-bold text-white hover:border-[#EAEAE6] transition-all"
                 >
                   <Key className="h-4 w-4 text-amber-400" />
                   <span>Enter Join Code</span>
@@ -363,11 +363,11 @@ export default function StudentGroupsView({
                 return (
                   <div
                     key={group.id}
-                    className="rounded-3xl border border-[#334155] bg-[#1E293B] p-5 shadow-xl flex flex-col justify-between"
+                    className="rounded-3xl border border-[#2E2E34] bg-[#1C1C1F] p-5 shadow-xl flex flex-col justify-between"
                   >
                     <div>
                       {/* Top Bar */}
-                      <div className="flex items-start justify-between gap-3 border-b border-[#334155] pb-3 mb-3">
+                      <div className="flex items-start justify-between gap-3 border-b border-[#2E2E34] pb-3 mb-3">
                         <div>
                           <div className="flex items-center space-x-2">
                             <h4 className="text-base font-extrabold text-white">{group.name}</h4>
@@ -378,7 +378,7 @@ export default function StudentGroupsView({
                               </span>
                             )}
                           </div>
-                          <p className="text-xs font-mono text-[#06B6D4] mt-0.5">
+                          <p className="text-xs font-mono text-[#EAEAE6] mt-0.5">
                             {group.level} Class Team &bull; Works on All Courses &amp; Assignments
                           </p>
                         </div>
@@ -428,9 +428,9 @@ export default function StudentGroupsView({
                       )}
 
                       {/* Share Code Box */}
-                      <div className="rounded-2xl bg-[#0B0F19]/50 backdrop-blur-md p-3 border border-[#334155]/60 mb-3.5 flex items-center justify-between">
+                      <div className="rounded-2xl bg-[#141416]/50 backdrop-blur-md p-3 border border-[#2E2E34]/60 mb-3.5 flex items-center justify-between">
                         <div>
-                          <span className="block text-[10px] font-mono text-[#64748B] uppercase tracking-wider">
+                          <span className="block text-[10px] font-mono text-[#71717A] uppercase tracking-wider">
                             Invite Classmates (Join Code)
                           </span>
                           <span className="text-sm font-mono font-extrabold text-amber-400 tracking-wider">
@@ -440,7 +440,7 @@ export default function StudentGroupsView({
 
                         <button
                           onClick={() => handleCopyCode(group.joinCode)}
-                          className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155]/70 bg-[#1E293B]/70 backdrop-blur-sm px-3 py-1.5 text-xs font-bold text-white hover:border-[#06B6D4] transition-all"
+                          className="inline-flex items-center space-x-1.5 rounded-xl border border-[#2E2E34]/70 bg-[#1C1C1F]/70 backdrop-blur-sm px-3 py-1.5 text-xs font-bold text-white hover:border-[#EAEAE6] transition-all"
                         >
                           {copiedCode === group.joinCode ? (
                             <>
@@ -449,7 +449,7 @@ export default function StudentGroupsView({
                             </>
                           ) : (
                             <>
-                              <Copy className="h-3.5 w-3.5 text-[#06B6D4]" />
+                              <Copy className="h-3.5 w-3.5 text-[#EAEAE6]" />
                               <span>Copy Code</span>
                             </>
                           )}
@@ -458,7 +458,7 @@ export default function StudentGroupsView({
 
                       {/* Members */}
                       <div>
-                        <div className="flex items-center justify-between text-xs font-mono text-[#94A3B8] mb-2">
+                        <div className="flex items-center justify-between text-xs font-mono text-[#A1A1AA] mb-2">
                           <span>Roster ({group.members.length} / {group.maxMembers} members)</span>
                           <span>Level: {group.level}</span>
                         </div>
@@ -467,7 +467,7 @@ export default function StudentGroupsView({
                           {group.members.map((member) => (
                             <div
                               key={member.uid}
-                              className="flex items-center justify-between rounded-xl bg-[#0B0F19]/50 backdrop-blur-sm px-3 py-2 border border-[#334155]/60"
+                              className="flex items-center justify-between rounded-xl bg-[#141416]/50 backdrop-blur-sm px-3 py-2 border border-[#2E2E34]/60"
                             >
                               <div className="flex items-center space-x-2">
                                 {member.isLeader ? (
@@ -475,13 +475,13 @@ export default function StudentGroupsView({
                                     <Crown className="h-4 w-4 text-amber-400" />
                                   </span>
                                 ) : (
-                                  <div className="h-2 w-2 rounded-full bg-[#06B6D4] shrink-0 ml-1 mr-1" />
+                                  <div className="h-2 w-2 rounded-full bg-[#EAEAE6] shrink-0 ml-1 mr-1" />
                                 )}
                                 <div>
                                   <span className="text-xs font-bold text-white block">
                                     {member.fullName} {member.uid === currentUser.uid ? "(You)" : ""}
                                   </span>
-                                  <span className="text-[10px] font-mono text-[#64748B]">@{member.username}</span>
+                                  <span className="text-[10px] font-mono text-[#71717A]">@{member.username}</span>
                                 </div>
                               </div>
                             </div>
@@ -491,11 +491,11 @@ export default function StudentGroupsView({
                     </div>
 
                     {/* Footer Buttons */}
-                    <div className="pt-3 border-t border-[#334155] flex items-center justify-between">
+                    <div className="pt-3 border-t border-[#2E2E34] flex items-center justify-between">
                       {onNavigateToAssignments && (
                         <button
                           onClick={onNavigateToAssignments}
-                          className="inline-flex items-center space-x-1.5 text-xs font-mono text-[#06B6D4] hover:underline"
+                          className="inline-flex items-center space-x-1.5 text-xs font-mono text-[#EAEAE6] hover:underline"
                         >
                           <Sparkles className="h-3.5 w-3.5" />
                           <span>View Course Assignments &rarr;</span>
@@ -505,7 +505,7 @@ export default function StudentGroupsView({
                       {!group.isLocked && (
                         <button
                           onClick={() => handleLeaveGroup(group)}
-                          className="inline-flex items-center space-x-1.5 text-xs text-rose-400 hover:text-rose-300 ml-auto transition-colors"
+                          className="inline-flex items-center space-x-1.5 rounded-lg border border-rose-500/40 bg-rose-500/15 px-2.5 py-1 text-xs font-bold text-rose-300 hover:bg-rose-500 hover:text-white ml-auto transition-all"
                         >
                           <LogOut className="h-3.5 w-3.5" />
                           <span>Leave Team</span>
@@ -537,21 +537,21 @@ export default function StudentGroupsView({
           </div>
 
           {evaluations.length === 0 ? (
-            <div className="rounded-3xl border border-dashed border-[#334155] bg-[#1E293B]/40 p-12 text-center">
+            <div className="rounded-3xl border border-dashed border-[#2E2E34] bg-[#1C1C1F]/40 p-12 text-center">
               <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 mb-3">
                 <Award className="h-7 w-7" />
               </div>
               <h3 className="text-base font-bold text-white mb-1">
                 No Presentation Marks Published Yet
               </h3>
-              <p className="text-xs text-[#94A3B8] max-w-md mx-auto mb-4">
+              <p className="text-xs text-[#A1A1AA] max-w-md mx-auto mb-4">
                 When your team defends a PowerPoint presentation or project pitch in class, your instructor will record your team and individual scores. Your marks and teacher comments will appear here.
               </p>
               <button
                 onClick={() => setActiveTab("groups")}
-                className="inline-flex items-center space-x-2 rounded-xl bg-[#1E293B] border border-[#334155] px-4 py-2 text-xs font-bold text-white hover:border-[#06B6D4] transition-all"
+                className="inline-flex items-center space-x-2 rounded-xl bg-[#1C1C1F] border border-[#2E2E34] px-4 py-2 text-xs font-bold text-white hover:border-[#EAEAE6] transition-all"
               >
-                <Users className="h-4 w-4 text-[#06B6D4]" />
+                <Users className="h-4 w-4 text-[#EAEAE6]" />
                 <span>Back to My Groups</span>
               </button>
             </div>
@@ -564,10 +564,10 @@ export default function StudentGroupsView({
                 return (
                   <div
                     key={ev.id}
-                    className="rounded-3xl border border-emerald-500/30 bg-[#1E293B] p-6 shadow-xl space-y-4"
+                    className="rounded-3xl border border-emerald-500/30 bg-[#1C1C1F] p-6 shadow-xl space-y-4"
                   >
                     {/* Header */}
-                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-[#334155] pb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 border-b border-[#2E2E34] pb-4">
                       <div>
                         <div className="flex items-center space-x-2">
                           <h4 className="text-base font-bold text-white">
@@ -577,8 +577,8 @@ export default function StudentGroupsView({
                             {ev.courseCode || "Class Team"}
                           </span>
                         </div>
-                        <p className="text-xs text-[#94A3B8] mt-1">
-                          Team: <strong className="text-white">{ev.groupName}</strong> &bull; Evaluated by <span className="text-[#CBD5E1]">{ev.evaluatedBy || "Instructor"}</span> on {new Date(ev.evaluatedAt).toLocaleDateString()} at {new Date(ev.evaluatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        <p className="text-xs text-[#A1A1AA] mt-1">
+                          Team: <strong className="text-white">{ev.groupName}</strong> &bull; Evaluated by <span className="text-[#EAEAE6]">{ev.evaluatedBy || "Instructor"}</span> on {new Date(ev.evaluatedAt).toLocaleDateString()} at {new Date(ev.evaluatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
 
@@ -611,33 +611,33 @@ export default function StudentGroupsView({
                     {/* 3 Metric Score Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {/* 1. Whole Group Score */}
-                      <div className="rounded-2xl border border-teal-500/30 bg-[#0B0F19]/50 backdrop-blur-md p-4 text-center">
-                        <span className="text-[10px] font-mono text-[#64748B] uppercase tracking-wider block mb-1">
+                      <div className="rounded-2xl border border-teal-500/30 bg-[#141416]/50 backdrop-blur-md p-4 text-center">
+                        <span className="text-[10px] font-mono text-[#71717A] uppercase tracking-wider block mb-1">
                           1. Whole Group Mark ({ev.groupWeight}%)
                         </span>
                         <div className="text-2xl font-extrabold font-mono text-teal-300">
                           {ev.groupScore}%
                         </div>
-                        <span className="text-[10px] text-[#94A3B8] block mt-1">
+                        <span className="text-[10px] text-[#A1A1AA] block mt-1">
                           Slides, team structure &amp; delivery
                         </span>
                       </div>
 
                       {/* 2. Individual Defense Score */}
-                      <div className="rounded-2xl border border-emerald-500/30 bg-[#0B0F19]/50 backdrop-blur-md p-4 text-center">
-                        <span className="text-[10px] font-mono text-[#64748B] uppercase tracking-wider block mb-1">
+                      <div className="rounded-2xl border border-emerald-500/30 bg-[#141416]/50 backdrop-blur-md p-4 text-center">
+                        <span className="text-[10px] font-mono text-[#71717A] uppercase tracking-wider block mb-1">
                           2. Your Individual Defense ({ev.individualWeight}%)
                         </span>
                         <div className="text-2xl font-extrabold font-mono text-emerald-300">
                           {myEval ? myEval.individualScore : 0}%
                         </div>
-                        <span className="text-[10px] text-[#94A3B8] block mt-1">
+                        <span className="text-[10px] text-[#A1A1AA] block mt-1">
                           Speaking, mastery &amp; Q&amp;A defense
                         </span>
                       </div>
 
                       {/* 3. Final Weighted Grade */}
-                      <div className="rounded-2xl border border-emerald-400/50 bg-[#1E293B]/70 backdrop-blur-md p-4 text-center shadow-lg">
+                      <div className="rounded-2xl border border-emerald-400/50 bg-[#1C1C1F]/70 backdrop-blur-md p-4 text-center shadow-lg">
                         <span className="text-[10px] font-mono text-emerald-300 uppercase tracking-wider block mb-1 font-bold">
                           Official Final Mark
                         </span>
@@ -652,7 +652,7 @@ export default function StudentGroupsView({
                         }`}>
                           {myEval ? myEval.finalScore : 0}%
                         </div>
-                        <span className="text-[10px] text-[#94A3B8] font-mono block mt-1">
+                        <span className="text-[10px] text-[#A1A1AA] font-mono block mt-1">
                           ({ev.groupScore} &times; {ev.groupWeight}%) + ({myEval?.individualScore || 0} &times; {ev.individualWeight}%)
                         </span>
                       </div>
@@ -680,8 +680,8 @@ export default function StudentGroupsView({
                     </div>
 
                     {/* Team Members Defense Overview Table */}
-                    <div className="pt-2 border-t border-[#334155]/60">
-                      <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider block mb-2">
+                    <div className="pt-2 border-t border-[#2E2E34]/60">
+                      <span className="text-[10px] font-bold text-[#71717A] uppercase tracking-wider block mb-2">
                         Team Defense Performance:
                       </span>
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
@@ -691,7 +691,7 @@ export default function StudentGroupsView({
                             className={`rounded-xl border p-2.5 text-xs flex items-center justify-between ${
                               m.uid === currentUser.uid
                                 ? "border-emerald-500/40 bg-emerald-500/10"
-                                : "border-[#334155] bg-[#0B0F19]"
+                                : "border-[#2E2E34] bg-[#141416]"
                             }`}
                           >
                             <div>
@@ -699,7 +699,7 @@ export default function StudentGroupsView({
                                 {m.studentName} {m.uid === currentUser.uid ? "(You)" : ""}
                               </span>
                               <span className={`text-[10px] ${
-                                m.status === "absent" ? "text-red-400" : "text-[#94A3B8]"
+                                m.status === "absent" ? "text-red-400" : "text-[#A1A1AA]"
                               }`}>
                                 {m.status}
                               </span>
@@ -722,19 +722,19 @@ export default function StudentGroupsView({
       {/* MODAL: CREATE GROUP */}
       {isCreateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-3xl border border-[#334155] bg-[#1E293B] p-6 shadow-2xl relative">
+          <div className="w-full max-w-md rounded-3xl border border-[#2E2E34] bg-[#1C1C1F] p-6 shadow-2xl relative">
             <button
               onClick={() => setIsCreateModalOpen(false)}
-              className="absolute top-5 right-5 text-[#94A3B8] hover:text-white"
+              className="absolute top-5 right-5 text-[#A1A1AA] hover:text-white"
             >
               <X className="h-5 w-5" />
             </button>
 
             <h3 className="text-lg font-extrabold text-white flex items-center space-x-2 mb-1">
-              <UserPlus className="h-5 w-5 text-[#06B6D4]" />
+              <UserPlus className="h-5 w-5 text-[#EAEAE6]" />
               <span>Create a Study Group</span>
             </h3>
-            <p className="text-xs text-[#94A3B8] mb-5">
+            <p className="text-xs text-[#A1A1AA] mb-5">
               Pick your course, choose a team name, and get a code to invite your peers.
             </p>
 
@@ -746,18 +746,18 @@ export default function StudentGroupsView({
             )}
 
             <form onSubmit={handleCreateGroup} className="space-y-4">
-              <div className="rounded-xl bg-[#0B0F19] p-3 border border-[#334155] space-y-1">
-                <span className="text-[11px] font-mono text-[#94A3B8] block">Class Cohort:</span>
+              <div className="rounded-xl bg-[#141416] p-3 border border-[#2E2E34] space-y-1">
+                <span className="text-[11px] font-mono text-[#A1A1AA] block">Class Cohort:</span>
                 <span className="text-xs font-bold text-white block">
                   {currentUser.level} Class {currentUser.tradeId && currentUser.tradeId !== "all" ? `(${currentUser.tradeId})` : ""}
                 </span>
-                <span className="text-[10px] text-[#06B6D4] block">
+                <span className="text-[10px] text-[#EAEAE6] block">
                   This group is class-wide and works together on all assigned projects across all subjects and courses.
                 </span>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                   Group / Team Name *
                 </label>
                 <input
@@ -766,18 +766,18 @@ export default function StudentGroupsView({
                   placeholder="e.g. Code Ninjas, Team Alpha"
                   value={createGroupName}
                   onChange={(e) => setCreateGroupName(e.target.value)}
-                  className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white placeholder-[#64748B] focus:border-[#06B6D4] focus:outline-none"
+                  className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-2.5 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                   Maximum Team Size
                 </label>
                 <select
                   value={createMaxMembers}
                   onChange={(e) => setCreateMaxMembers(Number(e.target.value))}
-                  className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                  className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-2.5 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                 >
                   <option value={2}>2 Members (Pair)</option>
                   <option value={3}>3 Members</option>
@@ -791,18 +791,18 @@ export default function StudentGroupsView({
                 </select>
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-[#334155]">
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-[#2E2E34]">
                 <button
                   type="button"
                   onClick={() => setIsCreateModalOpen(false)}
-                  className="rounded-xl px-4 py-2 text-xs font-bold text-[#94A3B8] hover:text-white"
+                  className="rounded-xl px-4 py-2 text-xs font-bold text-[#A1A1AA] hover:text-white"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={creating}
-                  className="rounded-xl bg-[#06B6D4] px-5 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md disabled:opacity-50"
+                  className="rounded-xl bg-emerald-500 px-5 py-2 text-xs font-bold text-[#141416] hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-md disabled:opacity-50"
                 >
                   {creating ? "Creating..." : "Create Team"}
                 </button>
@@ -815,10 +815,10 @@ export default function StudentGroupsView({
       {/* MODAL: JOIN WITH CODE */}
       {isJoinModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in">
-          <div className="w-full max-w-md rounded-3xl border border-[#334155] bg-[#1E293B] p-6 shadow-2xl relative">
+          <div className="w-full max-w-md rounded-3xl border border-[#2E2E34] bg-[#1C1C1F] p-6 shadow-2xl relative">
             <button
               onClick={() => setIsJoinModalOpen(false)}
-              className="absolute top-5 right-5 text-[#94A3B8] hover:text-white"
+              className="absolute top-5 right-5 text-[#A1A1AA] hover:text-white"
             >
               <X className="h-5 w-5" />
             </button>
@@ -827,7 +827,7 @@ export default function StudentGroupsView({
               <Key className="h-5 w-5 text-amber-400" />
               <span>Join a Study Group</span>
             </h3>
-            <p className="text-xs text-[#94A3B8] mb-5">
+            <p className="text-xs text-[#A1A1AA] mb-5">
               Enter the 6-character Join Code given to you by your team leader or instructor.
             </p>
 
@@ -844,7 +844,7 @@ export default function StudentGroupsView({
 
             <form onSubmit={handleJoinWithCode} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-[#CBD5E1] mb-1">
+                <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
                   Group Join Code *
                 </label>
                 <input
@@ -853,22 +853,22 @@ export default function StudentGroupsView({
                   placeholder="e.g. GRP-482"
                   value={inputJoinCode}
                   onChange={(e) => setInputJoinCode(e.target.value.toUpperCase())}
-                  className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-3 text-center text-lg font-mono font-bold tracking-widest text-amber-400 placeholder-[#64748B] focus:border-amber-400 focus:outline-none uppercase"
+                  className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-3 text-center text-lg font-mono font-bold tracking-widest text-amber-400 placeholder-[#71717A] focus:border-amber-400 focus:outline-none uppercase"
                 />
               </div>
 
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-[#334155]">
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-[#2E2E34]">
                 <button
                   type="button"
                   onClick={() => setIsJoinModalOpen(false)}
-                  className="rounded-xl px-4 py-2 text-xs font-bold text-[#94A3B8] hover:text-white"
+                  className="rounded-xl px-4 py-2 text-xs font-bold text-[#A1A1AA] hover:text-white"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={joining || !inputJoinCode.trim()}
-                  className="rounded-xl bg-amber-400 px-5 py-2 text-xs font-bold text-slate-950 hover:bg-amber-300 transition-all shadow-md disabled:opacity-50"
+                  className="rounded-xl bg-amber-400 px-5 py-2 text-xs font-bold text-[#141416] hover:bg-amber-300 transition-all shadow-md disabled:opacity-50"
                 >
                   {joining ? "Joining..." : "Join Team"}
                 </button>

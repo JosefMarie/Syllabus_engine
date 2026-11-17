@@ -376,20 +376,20 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
     <div className="space-y-6 animate-in fade-in">
       {/* Toast Alert */}
       {toastMessage && (
-        <div className="fixed top-5 right-5 z-[9999] bg-cyan-500 text-slate-950 font-bold px-4 py-2.5 rounded-2xl shadow-2xl flex items-center space-x-2 animate-bounce">
+        <div className="fixed top-5 right-5 z-[9999] bg-[#EAEAE6] text-[#141416] font-bold px-4 py-2.5 rounded-2xl shadow-2xl flex items-center space-x-2 animate-bounce">
           <CheckCircle2 className="h-4 w-4" />
           <span>{toastMessage}</span>
         </div>
       )}
 
       {/* Header & Quick Stats */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#334155] pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2E2E34] pb-5">
         <div>
           <h2 className="text-base font-extrabold text-white flex items-center space-x-2">
             <span className="text-xl">💡</span>
             <span>Developer Tips &amp; Insights Studio</span>
           </h2>
-          <p className="text-xs text-[#94A3B8] mt-0.5">
+          <p className="text-xs text-[#A1A1AA] mt-0.5">
             Publish bite-sized programming wisdom, code comparison cards, and pro tricks visible to all students and public visitors.
           </p>
         </div>
@@ -399,7 +399,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
             href="/tips"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-mono font-bold bg-[#0B0F19] border border-[#334155] text-[#94A3B8] hover:text-white hover:border-cyan-400/50 transition-all shadow-sm"
+            className="inline-flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-mono font-bold bg-[#141416] border border-[#2E2E34] text-[#A1A1AA] hover:text-white hover:border-[#EAEAE6]/50 transition-all shadow-sm"
           >
             <Eye className="h-3.5 w-3.5" />
             <span>View Public Hub</span>
@@ -419,7 +419,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
 
           <button
             onClick={openCreateModal}
-            className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-500 transition-all shadow-lg shadow-cyan-500/20 active:scale-95"
+            className="inline-flex items-center space-x-2 px-4 py-2 rounded-xl text-xs font-bold text-[#141416] bg-emerald-500 hover:bg-emerald-500 transition-all shadow-lg shadow-black/25 active:scale-95"
           >
             <Plus className="h-4 w-4" />
             <span>Create New Tip</span>
@@ -429,40 +429,40 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
 
       {/* Summary KPI Badges */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4">
-          <span className="text-xs font-mono text-[#94A3B8] block">Total Cards</span>
+        <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-4">
+          <span className="text-xs font-mono text-[#A1A1AA] block">Total Cards</span>
           <span className="text-2xl font-black text-white font-mono mt-1">{tips.length}</span>
         </div>
-        <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4">
-          <span className="text-xs font-mono text-[#94A3B8] block">Published Live</span>
+        <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-4">
+          <span className="text-xs font-mono text-[#A1A1AA] block">Published Live</span>
           <span className="text-2xl font-black text-emerald-400 font-mono mt-1">
             {tips.filter(t => t.status === "published").length}
           </span>
         </div>
-        <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4">
-          <span className="text-xs font-mono text-[#94A3B8] block">Drafts</span>
+        <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-4">
+          <span className="text-xs font-mono text-[#A1A1AA] block">Drafts</span>
           <span className="text-2xl font-black text-amber-400 font-mono mt-1">
             {tips.filter(t => t.status === "draft").length}
           </span>
         </div>
-        <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4">
-          <span className="text-xs font-mono text-[#94A3B8] block">Tip of the Day</span>
-          <span className="text-xs font-bold text-cyan-300 font-mono mt-1 truncate block">
+        <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-4">
+          <span className="text-xs font-mono text-[#A1A1AA] block">Tip of the Day</span>
+          <span className="text-xs font-bold text-[#EAEAE6] font-mono mt-1 truncate block">
             {tips.find(t => t.isFeatured)?.title || "None Set"}
           </span>
         </div>
       </div>
 
       {/* Filter & Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#0B0F19]/60 border border-[#334155] p-3 rounded-2xl">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#141416]/60 border border-[#2E2E34] p-3 rounded-2xl">
         <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#94A3B8]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#A1A1AA]" />
           <input
             type="text"
             placeholder="Search tip titles or tags..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl bg-[#1E293B] border border-[#334155] pl-9 pr-3 py-1.5 text-xs text-white placeholder-[#64748B] focus:border-cyan-400 focus:outline-none"
+            className="w-full rounded-xl bg-[#1C1C1F] border border-[#2E2E34] pl-9 pr-3 py-1.5 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
           />
         </div>
 
@@ -470,7 +470,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
           <select
             value={filterLang}
             onChange={(e) => setFilterLang(e.target.value)}
-            className="rounded-xl bg-[#1E293B] border border-[#334155] px-3 py-1.5 text-xs font-mono text-[#CBD5E1] focus:border-cyan-400 focus:outline-none"
+            className="rounded-xl bg-[#1C1C1F] border border-[#2E2E34] px-3 py-1.5 text-xs font-mono text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
           >
             <option value="all">All Languages</option>
             <option value="python">Python</option>
@@ -487,7 +487,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
           <select
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="rounded-xl bg-[#1E293B] border border-[#334155] px-3 py-1.5 text-xs font-mono text-[#CBD5E1] focus:border-cyan-400 focus:outline-none"
+            className="rounded-xl bg-[#1C1C1F] border border-[#2E2E34] px-3 py-1.5 text-xs font-mono text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
           >
             <option value="all">All Statuses</option>
             <option value="published">Published</option>
@@ -498,25 +498,25 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
 
       {/* Tips Table */}
       {loading ? (
-        <div className="rounded-3xl border border-[#334155] bg-[#1E293B]/40 p-12 text-center text-xs font-mono text-[#94A3B8]">
-          <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent mb-3" />
+        <div className="rounded-3xl border border-[#2E2E34] bg-[#1C1C1F]/40 p-12 text-center text-xs font-mono text-[#A1A1AA]">
+          <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent mb-3" />
           Loading developer tips repository...
         </div>
       ) : filteredTips.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-[#334155] bg-[#1E293B]/20 p-12 text-center space-y-2">
-          <p className="text-xs text-[#94A3B8]">No developer tips found matching your filter criteria.</p>
+        <div className="rounded-3xl border border-dashed border-[#2E2E34] bg-[#1C1C1F]/20 p-12 text-center space-y-2">
+          <p className="text-xs text-[#A1A1AA]">No developer tips found matching your filter criteria.</p>
           <button
             onClick={openCreateModal}
-            className="text-xs font-bold font-mono text-cyan-400 hover:underline"
+            className="text-xs font-bold font-mono text-[#EAEAE6] hover:underline"
           >
             + Create your first tip
           </button>
         </div>
       ) : (
-        <div className="rounded-2xl border border-[#334155] bg-[#1E293B] overflow-hidden shadow-xl">
+        <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] overflow-hidden shadow-xl">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#0B0F19] text-[#94A3B8] font-mono border-b border-[#334155]">
+              <thead className="bg-[#141416] text-[#A1A1AA] font-mono border-b border-[#2E2E34]">
                 <tr>
                   <th className="px-4 py-3">Tip / Card Title</th>
                   <th className="px-4 py-3">Language</th>
@@ -526,16 +526,16 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                   <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#334155]/60 text-[#CBD5E1]">
+              <tbody className="divide-y divide-[#2E2E34]/60 text-[#EAEAE6]">
                 {filteredTips.map((tip) => {
                   const langMeta = LANGUAGE_METADATA[tip.language] || LANGUAGE_METADATA.general;
                   const diffBadge = DIFFICULTY_BADGES[tip.difficulty] || DIFFICULTY_BADGES.beginner;
 
                   return (
-                    <tr key={tip.id} className="hover:bg-[#0B0F19]/40 transition-colors">
+                    <tr key={tip.id} className="hover:bg-[#141416]/40 transition-colors">
                       <td className="px-4 py-3 max-w-sm">
                         <div className="font-bold text-white truncate">{tip.title}</div>
-                        <div className="text-[11px] text-[#94A3B8] truncate">{tip.summary}</div>
+                        <div className="text-[11px] text-[#A1A1AA] truncate">{tip.summary}</div>
                       </td>
 
                       <td className="px-4 py-3">
@@ -568,7 +568,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                           className={`p-1.5 rounded-lg border transition-all ${
                             tip.isFeatured
                               ? "bg-amber-500/20 border-amber-500/50 text-amber-400 shadow-md"
-                              : "bg-[#0B0F19] border-[#334155] text-slate-500 hover:text-amber-400"
+                              : "bg-[#141416] border-[#2E2E34] text-slate-500 hover:text-amber-400"
                           }`}
                         >
                           <Sparkles className="h-4 w-4" />
@@ -579,14 +579,14 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                         <div className="inline-flex items-center space-x-1.5">
                           <button
                             onClick={() => openEditModal(tip)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-cyan-400 hover:bg-[#0B0F19] transition-all"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-[#EAEAE6] hover:bg-[#141416] transition-all"
                             title="Edit Tip"
                           >
                             <Edit3 className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(tip.id, tip.title)}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-[#0B0F19] transition-all"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-[#141416] transition-all"
                             title="Delete Tip"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -607,10 +607,10 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
       {/* ========================================================================= */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in">
-          <div className="relative max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-[#334155] bg-[#0F172A] shadow-2xl flex flex-col">
+          <div className="relative max-h-[92vh] w-full max-w-4xl overflow-hidden rounded-3xl border border-[#2E2E34] bg-[#141416] shadow-2xl flex flex-col">
             
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/70 shrink-0">
               <h3 className="text-base font-extrabold text-white flex items-center space-x-2">
                 <span>{editingTip ? "Edit Developer Tip" : "Author New Developer Tip"}</span>
               </h3>
@@ -633,7 +633,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="p-1.5 rounded-xl text-[#94A3B8] hover:text-white bg-[#0B0F19] border border-[#334155]"
+                  className="p-1.5 rounded-xl text-[#A1A1AA] hover:text-white bg-[#141416] border border-[#2E2E34]"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -645,7 +645,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
               {/* Title & Summary */}
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8] block mb-1">
+                  <label className="text-xs font-mono text-[#A1A1AA] block mb-1">
                     Card Title *
                   </label>
                   <input
@@ -654,12 +654,12 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                     value={formTitle}
                     onChange={(e) => setFormTitle(e.target.value)}
                     placeholder="e.g. Python: Fast Lookups with Dictionary Comprehensions"
-                    className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] px-3.5 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
+                    className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] px-3.5 py-2 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8] block mb-1">
+                  <label className="text-xs font-mono text-[#A1A1AA] block mb-1">
                     Short Summary (1-2 sentences) *
                   </label>
                   <textarea
@@ -668,7 +668,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                     value={formSummary}
                     onChange={(e) => setFormSummary(e.target.value)}
                     placeholder="Brief overview explaining what problem this solves..."
-                    className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] px-3.5 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
+                    className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] px-3.5 py-2 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   />
                 </div>
               </div>
@@ -676,11 +676,11 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
               {/* Language, Category, Difficulty Row */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8] block mb-1">Language</label>
+                  <label className="text-xs font-mono text-[#A1A1AA] block mb-1">Language</label>
                   <select
                     value={formLanguage}
                     onChange={(e) => setFormLanguage(e.target.value as TipLanguage)}
-                    className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] px-3 py-2 text-xs font-mono text-white focus:border-cyan-400 focus:outline-none"
+                    className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] px-3 py-2 text-xs font-mono text-white focus:border-[#EAEAE6] focus:outline-none"
                   >
                     <option value="python">Python 🐍</option>
                     <option value="typescript">TypeScript ⚡</option>
@@ -696,11 +696,11 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                 </div>
 
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8] block mb-1">Category</label>
+                  <label className="text-xs font-mono text-[#A1A1AA] block mb-1">Category</label>
                   <select
                     value={formCategory}
                     onChange={(e) => setFormCategory(e.target.value as TipCategory)}
-                    className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] px-3 py-2 text-xs font-mono text-white focus:border-cyan-400 focus:outline-none"
+                    className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] px-3 py-2 text-xs font-mono text-white focus:border-[#EAEAE6] focus:outline-none"
                   >
                     <option value="syntax">Syntax Superpowers</option>
                     <option value="performance">Performance &amp; Scale</option>
@@ -713,11 +713,11 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                 </div>
 
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8] block mb-1">Difficulty</label>
+                  <label className="text-xs font-mono text-[#A1A1AA] block mb-1">Difficulty</label>
                   <select
                     value={formDifficulty}
                     onChange={(e) => setFormDifficulty(e.target.value as TipDifficulty)}
-                    className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] px-3 py-2 text-xs font-mono text-white focus:border-cyan-400 focus:outline-none"
+                    className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] px-3 py-2 text-xs font-mono text-white focus:border-[#EAEAE6] focus:outline-none"
                   >
                     <option value="beginner">Beginner</option>
                     <option value="intermediate">Intermediate</option>
@@ -729,7 +729,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
               {/* Tags & Why It Matters */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8] block mb-1">
+                  <label className="text-xs font-mono text-[#A1A1AA] block mb-1">
                     Tags (comma separated)
                   </label>
                   <input
@@ -737,12 +737,12 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                     value={formTags}
                     onChange={(e) => setFormTags(e.target.value)}
                     placeholder="python, clean-code, algorithms"
-                    className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] px-3.5 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
+                    className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] px-3.5 py-2 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="text-xs font-mono text-[#94A3B8] block mb-1">
+                  <label className="text-xs font-mono text-[#A1A1AA] block mb-1">
                     Why This Matters (1-liner punchline)
                   </label>
                   <input
@@ -750,31 +750,31 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                     value={formWhyItMatters}
                     onChange={(e) => setFormWhyItMatters(e.target.value)}
                     placeholder="e.g. Standard question in tech screening interviews."
-                    className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] px-3.5 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
+                    className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] px-3.5 py-2 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   />
                 </div>
               </div>
 
               {/* Visual Slideshow & Image Attachments Section */}
-              <div className="space-y-3 pt-2 border-t border-[#334155]">
+              <div className="space-y-3 pt-2 border-t border-[#2E2E34]">
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-xs font-mono font-bold text-white uppercase tracking-wider block flex items-center space-x-1.5">
-                      <ImageIcon className="h-4 w-4 text-cyan-400" />
+                      <ImageIcon className="h-4 w-4 text-[#EAEAE6]" />
                       <span>Visual Slideshow &amp; Image Attachments (Optional)</span>
                     </span>
-                    <p className="text-[11px] text-[#94A3B8]">
+                    <p className="text-[11px] text-[#A1A1AA]">
                       Upload diagrams, infographics, or screenshots. Multiple images become a swipeable slide deck.
                     </p>
                   </div>
                 </div>
 
                 {/* Upload & URL Input Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#0B0F19] p-3 rounded-2xl border border-[#334155]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-[#141416] p-3 rounded-2xl border border-[#2E2E34]">
                   {/* File Upload */}
                   <div>
-                    <label className="text-[11px] font-mono text-[#CBD5E1] block mb-1.5 flex items-center space-x-1">
-                      <Upload className="h-3 w-3 text-cyan-400" />
+                    <label className="text-[11px] font-mono text-[#EAEAE6] block mb-1.5 flex items-center space-x-1">
+                      <Upload className="h-3 w-3 text-[#EAEAE6]" />
                       <span>Upload Image File(s)</span>
                     </label>
                     <input
@@ -782,13 +782,13 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                       accept="image/*"
                       multiple
                       onChange={(e) => handleImageFiles(e.target.files)}
-                      className="w-full text-xs text-[#94A3B8] file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-mono file:bg-cyan-500/20 file:text-cyan-300 hover:file:bg-cyan-500/30 cursor-pointer"
+                      className="w-full text-xs text-[#A1A1AA] file:mr-2 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-mono file:bg-[#EAEAE6]/20 file:text-[#EAEAE6] hover:file:bg-[#EAEAE6]/30 cursor-pointer"
                     />
                   </div>
 
                   {/* Direct Image URL */}
                   <div>
-                    <label className="text-[11px] font-mono text-[#CBD5E1] block mb-1.5">
+                    <label className="text-[11px] font-mono text-[#EAEAE6] block mb-1.5">
                       Or Add by Image URL
                     </label>
                     <div className="flex items-center space-x-2">
@@ -797,12 +797,12 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                         placeholder="https://example.com/diagram.png"
                         value={imageUrlInput}
                         onChange={(e) => setImageUrlInput(e.target.value)}
-                        className="flex-1 rounded-xl bg-[#121826] border border-[#334155] px-3 py-1.5 text-xs text-white focus:border-cyan-400 focus:outline-none"
+                        className="flex-1 rounded-xl bg-[#121826] border border-[#2E2E34] px-3 py-1.5 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                       />
                       <button
                         type="button"
                         onClick={handleAddImageUrl}
-                        className="px-3 py-1.5 rounded-xl bg-[#1E293B] hover:bg-cyan-500 hover:text-slate-950 text-xs font-mono font-bold text-white border border-[#334155] transition-all"
+                        className="px-3 py-1.5 rounded-xl bg-[#1C1C1F] hover:bg-emerald-500 hover:text-[#141416] text-xs font-mono font-bold text-white border border-[#2E2E34] transition-all"
                       >
                         Add
                       </button>
@@ -813,7 +813,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                 {/* Attached Slides Preview & Captioning */}
                 {formImages.length > 0 && (
                   <div className="space-y-2 mt-2">
-                    <span className="text-[11px] font-mono text-[#94A3B8] block">
+                    <span className="text-[11px] font-mono text-[#A1A1AA] block">
                       {formImages.length} {formImages.length === 1 ? "Slide Attached" : "Slides Attached"} (Reorder with arrows):
                     </span>
 
@@ -821,12 +821,12 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                       {formImages.map((img, idx) => (
                         <div
                           key={idx}
-                          className="flex items-center space-x-3 rounded-xl border border-[#334155] bg-[#0B0F19] p-2.5 relative"
+                          className="flex items-center space-x-3 rounded-xl border border-[#2E2E34] bg-[#141416] p-2.5 relative"
                         >
-                          <div className="relative h-14 w-20 shrink-0 rounded-lg overflow-hidden border border-[#334155] bg-slate-950 flex items-center justify-center">
+                          <div className="relative h-14 w-20 shrink-0 rounded-lg overflow-hidden border border-[#2E2E34] bg-slate-950 flex items-center justify-center">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img src={img} alt={`Slide ${idx + 1}`} className="w-full h-full object-cover" />
-                            <span className="absolute bottom-0.5 right-0.5 px-1 rounded bg-black/80 text-[9px] font-mono text-cyan-300">
+                            <span className="absolute bottom-0.5 right-0.5 px-1 rounded bg-black/80 text-[9px] font-mono text-[#EAEAE6]">
                               #{idx + 1}
                             </span>
                           </div>
@@ -837,7 +837,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                               value={formImageCaptions[idx] || ""}
                               onChange={(e) => handleCaptionChange(idx, e.target.value)}
                               placeholder={`Slide ${idx + 1} Caption (Optional)`}
-                              className="w-full rounded-lg bg-[#121826] border border-[#334155] px-2 py-1 text-xs text-white focus:border-cyan-400 focus:outline-none"
+                              className="w-full rounded-lg bg-[#121826] border border-[#2E2E34] px-2 py-1 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                             />
                           </div>
 
@@ -846,7 +846,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                               type="button"
                               disabled={idx === 0}
                               onClick={() => handleMoveImage(idx, "up")}
-                              className="p-1 rounded text-[#94A3B8] hover:text-white disabled:opacity-30"
+                              className="p-1 rounded text-[#A1A1AA] hover:text-white disabled:opacity-30"
                               title="Move Slide Up"
                             >
                               <ArrowUp className="h-3.5 w-3.5" />
@@ -855,7 +855,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                               type="button"
                               disabled={idx === formImages.length - 1}
                               onClick={() => handleMoveImage(idx, "down")}
-                              className="p-1 rounded text-[#94A3B8] hover:text-white disabled:opacity-30"
+                              className="p-1 rounded text-[#A1A1AA] hover:text-white disabled:opacity-30"
                               title="Move Slide Down"
                             >
                               <ArrowDown className="h-3.5 w-3.5" />
@@ -877,12 +877,12 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
               </div>
 
               {/* Code Snippets Section (Optional) */}
-              <div className="space-y-4 pt-2 border-t border-[#334155]">
+              <div className="space-y-4 pt-2 border-t border-[#2E2E34]">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-mono font-bold text-white uppercase tracking-wider block">
                     Code Comparison (Optional)
                   </span>
-                  <span className="text-[11px] text-[#64748B] font-mono">
+                  <span className="text-[11px] text-[#71717A] font-mono">
                     Leave blank if this is a concept, diagram, or visual slide tip
                   </span>
                 </div>
@@ -899,7 +899,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                         value={formBadCodeTitle}
                         onChange={(e) => setFormBadCodeTitle(e.target.value)}
                         placeholder="Label"
-                        className="rounded-lg bg-[#0B0F19] border border-[#334155] px-2 py-0.5 text-[11px] text-white"
+                        className="rounded-lg bg-[#141416] border border-[#2E2E34] px-2 py-0.5 text-[11px] text-white"
                       />
                     </div>
                     <textarea
@@ -907,7 +907,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                       value={formBadCode}
                       onChange={(e) => setFormBadCode(e.target.value)}
                       placeholder="# The old / slow / verbose way..."
-                      className="w-full rounded-xl bg-[#0B0F19] border border-rose-500/30 p-3 text-xs font-mono text-[#CBD5E1] focus:border-rose-400 focus:outline-none"
+                      className="w-full rounded-xl bg-[#141416] border border-rose-500/30 p-3 text-xs font-mono text-[#EAEAE6] focus:border-rose-400 focus:outline-none"
                     />
                   </div>
 
@@ -922,7 +922,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                         value={formGoodCodeTitle}
                         onChange={(e) => setFormGoodCodeTitle(e.target.value)}
                         placeholder="Label"
-                        className="rounded-lg bg-[#0B0F19] border border-[#334155] px-2 py-0.5 text-[11px] text-white"
+                        className="rounded-lg bg-[#141416] border border-[#2E2E34] px-2 py-0.5 text-[11px] text-white"
                       />
                     </div>
                     <textarea
@@ -930,15 +930,15 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                       value={formGoodCode}
                       onChange={(e) => setFormGoodCode(e.target.value)}
                       placeholder="# The modern / idiomatic way..."
-                      className="w-full rounded-xl bg-[#0B0F19] border border-emerald-500/30 p-3 text-xs font-mono text-[#E2E8F0] focus:border-emerald-400 focus:outline-none"
+                      className="w-full rounded-xl bg-[#141416] border border-emerald-500/30 p-3 text-xs font-mono text-[#E2E8F0] focus:border-emerald-400 focus:outline-none"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Deep Dive Explanation (Markdown) */}
-              <div className="space-y-2 pt-2 border-t border-[#334155]">
-                <label className="text-xs font-mono text-[#94A3B8] block">
+              <div className="space-y-2 pt-2 border-t border-[#2E2E34]">
+                <label className="text-xs font-mono text-[#A1A1AA] block">
                   Detailed Explanation (Supports Markdown &amp; Bullet Points)
                 </label>
                 <textarea
@@ -946,13 +946,13 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                   value={formExplanation}
                   onChange={(e) => setFormExplanation(e.target.value)}
                   placeholder="### Why this works under the hood..."
-                  className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] p-3 text-xs text-[#CBD5E1] focus:border-cyan-400 focus:outline-none"
+                  className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] p-3 text-xs text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
                 />
               </div>
 
               {/* Documentation URL */}
               <div>
-                <label className="text-xs font-mono text-[#94A3B8] block mb-1">
+                <label className="text-xs font-mono text-[#A1A1AA] block mb-1">
                   Official Documentation URL (Optional)
                 </label>
                 <input
@@ -960,14 +960,14 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                   value={formDocsUrl}
                   onChange={(e) => setFormDocsUrl(e.target.value)}
                   placeholder="https://docs.python.org/..."
-                  className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] px-3.5 py-2 text-xs text-white focus:border-cyan-400 focus:outline-none"
+                  className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] px-3.5 py-2 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                 />
               </div>
 
               {/* Status & Featured Toggles */}
-              <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-[#334155]">
+              <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-[#2E2E34]">
                 <div className="flex items-center space-x-5">
-                  <label className="flex items-center space-x-2 text-xs font-mono text-[#CBD5E1] cursor-pointer">
+                  <label className="flex items-center space-x-2 text-xs font-mono text-[#EAEAE6] cursor-pointer">
                     <input
                       type="checkbox"
                       checked={formStatus === "published"}
@@ -992,7 +992,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                   <button
                     type="button"
                     onClick={() => setIsModalOpen(false)}
-                    className="px-4 py-2 rounded-xl text-xs font-bold text-[#94A3B8] hover:text-white bg-[#0B0F19] border border-[#334155]"
+                    className="px-4 py-2 rounded-xl text-xs font-bold text-[#A1A1AA] hover:text-white bg-[#141416] border border-[#2E2E34]"
                   >
                     Cancel
                   </button>
@@ -1000,7 +1000,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="px-6 py-2 rounded-xl text-xs font-extrabold text-slate-950 bg-cyan-400 hover:bg-cyan-500 transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                    className="px-6 py-2 rounded-xl text-xs font-extrabold text-[#141416] bg-emerald-500 hover:bg-emerald-500 transition-all shadow-lg active:scale-95 disabled:opacity-50"
                   >
                     {saving ? "Saving..." : (editingTip ? "Save Changes" : "Create Tip Card")}
                   </button>
@@ -1016,24 +1016,24 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
       {/* ========================================================================= */}
       {isGeminiModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in">
-          <div className="relative max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-3xl border border-purple-500/40 bg-[#0F172A] shadow-2xl flex flex-col">
+          <div className="relative max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-3xl border border-purple-500/40 bg-[#141416] shadow-2xl flex flex-col">
             
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-[#334155] px-6 py-4 bg-[#1E293B]/80 shrink-0">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/80 shrink-0">
               <div className="flex items-center space-x-2.5">
                 <div className="p-2 rounded-xl bg-purple-500/20 text-purple-300 border border-purple-500/30">
                   <Bot className="h-5 w-5" />
                 </div>
                 <div>
                   <h3 className="text-sm font-extrabold text-white">Google Gemini Tip Importer</h3>
-                  <p className="text-[11px] text-[#94A3B8] font-mono">Generate tips in Gemini, then paste the JSON here to autofill</p>
+                  <p className="text-[11px] text-[#A1A1AA] font-mono">Generate tips in Gemini, then paste the JSON here to autofill</p>
                 </div>
               </div>
 
               <button
                 type="button"
                 onClick={() => setIsGeminiModalOpen(false)}
-                className="p-1.5 rounded-xl text-[#94A3B8] hover:text-white bg-[#0B0F19] border border-[#334155]"
+                className="p-1.5 rounded-xl text-[#A1A1AA] hover:text-white bg-[#141416] border border-[#2E2E34]"
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1067,7 +1067,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                   </button>
                 </div>
 
-                <p className="text-[11px] text-[#CBD5E1] leading-relaxed">
+                <p className="text-[11px] text-[#EAEAE6] leading-relaxed">
                   Paste this prompt into Google Gemini along with any specific topic you want (e.g. <em>"Give me a tip on Python list comprehension vs generator expressions"</em> or <em>"A tip on Git rebase vs merge"</em>). Gemini will respond in the exact JSON format needed.
                 </p>
               </div>
@@ -1076,7 +1076,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
               <div className="space-y-2">
                 <label className="font-mono font-bold text-white block flex items-center justify-between">
                   <span>Step 2 &bull; Paste Gemini's JSON Output Below:</span>
-                  <span className="text-[10px] text-[#64748B] font-normal">Supports markdown code blocks or raw JSON</span>
+                  <span className="text-[10px] text-[#71717A] font-normal">Supports markdown code blocks or raw JSON</span>
                 </label>
 
                 <textarea
@@ -1087,7 +1087,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                     if (geminiParseError) setGeminiParseError(null);
                   }}
                   placeholder={'{\n  "title": "Python: Generator Expressions for Low Memory",\n  "summary": "...",\n  "language": "python",\n  "difficulty": "intermediate",\n  "goodCode": "...",\n  "explanation": "..."\n}'}
-                  className="w-full rounded-2xl bg-[#0B0F19] border border-[#334155] p-3.5 font-mono text-xs text-[#E2E8F0] focus:border-purple-400 focus:outline-none"
+                  className="w-full rounded-2xl bg-[#141416] border border-[#2E2E34] p-3.5 font-mono text-xs text-[#E2E8F0] focus:border-purple-400 focus:outline-none"
                 />
               </div>
 
@@ -1100,11 +1100,11 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
             </div>
 
             {/* Footer */}
-            <div className="border-t border-[#334155] px-6 py-4 bg-[#1E293B]/60 flex items-center justify-between shrink-0">
+            <div className="border-t border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/60 flex items-center justify-between shrink-0">
               <button
                 type="button"
                 onClick={() => setIsGeminiModalOpen(false)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-[#94A3B8] hover:text-white bg-[#0B0F19] border border-[#334155]"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-[#A1A1AA] hover:text-white bg-[#141416] border border-[#2E2E34]"
               >
                 Cancel
               </button>
@@ -1116,7 +1116,7 @@ export default function TipsManager({ adminUser }: TipsManagerProps) {
                   setIsModalOpen(true);
                 }}
                 disabled={!geminiPasteText.trim()}
-                className="inline-flex items-center space-x-2 px-6 py-2 rounded-xl text-xs font-extrabold text-slate-950 bg-gradient-to-r from-purple-400 to-cyan-400 hover:from-purple-500 hover:to-cyan-500 transition-all shadow-lg active:scale-95 disabled:opacity-40"
+                className="inline-flex items-center space-x-2 px-6 py-2 rounded-xl text-xs font-extrabold text-[#141416] bg-gradient-to-r from-purple-400 to-white hover:from-purple-500 hover:to-cyan-500 transition-all shadow-lg active:scale-95 disabled:opacity-40"
               >
                 <Sparkles className="h-4 w-4" />
                 <span>Parse &amp; Autofill Form</span>

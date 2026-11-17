@@ -234,16 +234,16 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
         <button
           onClick={() => setIsHistoryOpen(true)}
           title="Open real-time attention alerts"
-          className="relative inline-flex items-center space-x-1 sm:space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white hover:border-amber-500/50 shadow-sm transition-all shrink-0"
+          className="relative inline-flex items-center space-x-1 sm:space-x-1.5 rounded-xl border border-[#2E2E34] bg-[#1C1C1F] px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs font-semibold text-[#EAEAE6] hover:text-white hover:border-amber-500/50 shadow-sm transition-all shrink-0"
         >
           {alertHistory.length > 0 ? (
             <BellRing className="h-3.5 w-3.5 text-amber-400 animate-pulse shrink-0" />
           ) : (
-            <Bell className="h-3.5 w-3.5 text-[#94A3B8] shrink-0" />
+            <Bell className="h-3.5 w-3.5 text-[#A1A1AA] shrink-0" />
           )}
           <span className="hidden md:inline">Alerts</span>
           {alertHistory.length > 0 && (
-            <span className="ml-0.5 sm:ml-1 rounded-full bg-amber-500 px-1.5 py-0.2 text-[10px] font-bold text-slate-950 font-mono">
+            <span className="ml-0.5 sm:ml-1 rounded-full bg-amber-500 px-1.5 py-0.2 text-[10px] font-bold text-[#141416] font-mono">
               {alertHistory.length}
             </span>
           )}
@@ -254,8 +254,8 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
           title={soundEnabled ? "Mute alert chimes" : "Enable alert chimes"}
           className={`hidden sm:inline-flex items-center justify-center h-8 w-8 rounded-xl border transition-all shrink-0 ${
             soundEnabled
-              ? "border-[#334155] bg-[#1E293B] text-amber-400 hover:text-white"
-              : "border-[#334155] bg-[#1E293B]/60 text-[#64748B] hover:text-[#94A3B8]"
+              ? "border-[#2E2E34] bg-[#1C1C1F] text-amber-400 hover:text-white"
+              : "border-[#2E2E34] bg-[#1C1C1F]/60 text-[#71717A] hover:text-[#A1A1AA]"
           }`}
         >
           {soundEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
@@ -273,7 +273,7 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
                 className={`pointer-events-auto rounded-2xl border-2 p-4 text-white shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-5 duration-300 relative overflow-hidden ${
                   (toast.unfocusedCount || 0) >= 10
                     ? 'border-rose-500 bg-[#1E1015] shadow-rose-950/60'
-                    : 'border-amber-500/80 bg-[#0F172A] shadow-amber-950/50'
+                    : 'border-amber-500/80 bg-[#141416] shadow-amber-950/50'
                 }`}
               >
                 {/* Ambient glow accent */}
@@ -312,12 +312,12 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
                   </div>
 
                   <div className="flex items-center space-x-1">
-                    <span className="text-[10px] font-mono text-[#94A3B8]">
+                    <span className="text-[10px] font-mono text-[#A1A1AA]">
                       {toast.timeFormatted}
                     </span>
                     <button
                       onClick={() => dismissToast(toast.id)}
-                      className="rounded-lg p-1 text-[#94A3B8] hover:text-white hover:bg-slate-800 transition-colors"
+                      className="rounded-lg p-1 text-[#A1A1AA] hover:text-white hover:bg-slate-800 transition-colors"
                       title="Dismiss alert"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -325,19 +325,19 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
                   </div>
                 </div>
 
-                <p className="mt-2 text-xs text-[#CBD5E1] leading-relaxed">
+                <p className="mt-2 text-xs text-[#EAEAE6] leading-relaxed">
                   Clicked outside or switched away from active tab while on:{" "}
                   <strong className="text-amber-300 font-semibold">{toast.topicTitle}</strong>
                 </p>
 
-                <div className="mt-3 flex items-center justify-between pt-2 border-t border-[#334155]/60 gap-2">
-                  <span className="text-[10px] font-mono text-[#64748B] truncate max-w-[150px]">
+                <div className="mt-3 flex items-center justify-between pt-2 border-t border-[#2E2E34]/60 gap-2">
+                  <span className="text-[10px] font-mono text-[#71717A] truncate max-w-[150px]">
                     {toast.syllabusTitle}
                   </span>
 
                   <button
                     onClick={() => openMessaging(toast)}
-                    className="inline-flex items-center space-x-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-slate-950 hover:bg-amber-400 transition-all shadow-md active:scale-95"
+                    className="inline-flex items-center space-x-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-bold text-[#141416] hover:bg-amber-400 transition-all shadow-md active:scale-95"
                   >
                     <MessageSquare className="h-3 w-3" />
                     <span>Message Student</span>
@@ -350,15 +350,15 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
           {/* Alert History Drawer / Modal */}
           {isHistoryOpen && (
             <div className="fixed inset-0 z-[9999] flex items-start justify-end bg-black/60 p-4 sm:p-6 backdrop-blur-sm animate-in fade-in duration-150">
-              <div className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#0F172A] p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col mt-12">
-                <div className="flex items-center justify-between border-b border-[#334155] pb-3">
+              <div className="w-full max-w-md rounded-2xl border border-[#2E2E34] bg-[#141416] p-6 shadow-2xl space-y-4 max-h-[85vh] flex flex-col mt-12">
+                <div className="flex items-center justify-between border-b border-[#2E2E34] pb-3">
                   <div className="flex items-center space-x-2">
                     <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
                       <BellRing className="h-4 w-4" />
                     </div>
                     <div>
                       <h4 className="text-sm font-bold text-white">Student Attention Log</h4>
-                      <p className="text-[11px] text-[#94A3B8]">Real-time side window & unfocused events</p>
+                      <p className="text-[11px] text-[#A1A1AA]">Real-time side window & unfocused events</p>
                     </div>
                   </div>
 
@@ -368,21 +368,21 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
                       title={soundEnabled ? "Mute alert chimes" : "Enable alert chimes"}
                       className={`inline-flex items-center justify-center h-7 w-7 rounded-lg border text-xs transition-all ${
                         soundEnabled
-                          ? "border-[#334155] bg-[#1E293B] text-amber-400 hover:text-white"
-                          : "border-[#334155] bg-[#1E293B]/60 text-[#64748B] hover:text-[#94A3B8]"
+                          ? "border-[#2E2E34] bg-[#1C1C1F] text-amber-400 hover:text-white"
+                          : "border-[#2E2E34] bg-[#1C1C1F]/60 text-[#71717A] hover:text-[#A1A1AA]"
                       }`}
                     >
                       {soundEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
                     </button>
                     <button
                       onClick={() => setAlertHistory([])}
-                      className="text-xs text-[#94A3B8] hover:text-white px-2 py-1 rounded bg-[#1E293B] border border-[#334155]"
+                      className="text-xs text-[#A1A1AA] hover:text-white px-2 py-1 rounded bg-[#1C1C1F] border border-[#2E2E34]"
                     >
                       Clear
                     </button>
                     <button
                       onClick={() => setIsHistoryOpen(false)}
-                      className="rounded-lg p-1.5 text-[#94A3B8] hover:text-white hover:bg-slate-800 transition-colors"
+                      className="rounded-lg p-1.5 text-[#A1A1AA] hover:text-white hover:bg-slate-800 transition-colors"
                     >
                       <X className="h-4 w-4" />
                     </button>
@@ -396,9 +396,9 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
                   </div>
                 )}
 
-                <div className="flex-1 overflow-y-auto space-y-2 pr-1 divide-y divide-[#334155]/40">
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1 divide-y divide-[#2E2E34]/40">
                   {alertHistory.length === 0 ? (
-                    <div className="py-12 text-center text-xs text-[#94A3B8]">
+                    <div className="py-12 text-center text-xs text-[#A1A1AA]">
                       <CheckCircle2 className="mx-auto h-8 w-8 text-[#10B981]/50 mb-2" />
                       No students currently unfocused. All active students are engaged.
                     </div>
@@ -409,12 +409,12 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
                           <div className="flex items-center space-x-1.5">
                             <span className="h-2 w-2 rounded-full bg-amber-400" />
                             <span className="text-xs font-bold text-white">{item.studentName}</span>
-                            <span className="text-[10px] font-mono text-[#64748B]">({item.timeFormatted})</span>
+                            <span className="text-[10px] font-mono text-[#71717A]">({item.timeFormatted})</span>
                           </div>
-                          <p className="text-[11px] text-[#94A3B8]">
+                          <p className="text-[11px] text-[#A1A1AA]">
                             Unfocused on: <span className="text-amber-300 font-medium">{item.topicTitle}</span>
                           </p>
-                          <p className="text-[10px] text-[#64748B]">{item.syllabusTitle}</p>
+                          <p className="text-[10px] text-[#71717A]">{item.syllabusTitle}</p>
                         </div>
 
                         <button
@@ -422,7 +422,7 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
                             setIsHistoryOpen(false);
                             openMessaging(item);
                           }}
-                          className="shrink-0 inline-flex items-center space-x-1 rounded-lg bg-[#1E293B] border border-[#334155] px-2.5 py-1 text-[11px] font-semibold text-amber-400 hover:bg-amber-500 hover:text-slate-950 transition-all shadow-sm"
+                          className="shrink-0 inline-flex items-center space-x-1 rounded-lg bg-[#1C1C1F] border border-[#2E2E34] px-2.5 py-1 text-[11px] font-semibold text-amber-400 hover:bg-amber-500 hover:text-[#141416] transition-all shadow-sm"
                         >
                           <MessageSquare className="h-3 w-3" />
                           <span>Message</span>
@@ -438,8 +438,8 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
           {/* Quick Direct Messaging Modal */}
           {messagingTarget && (
             <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm animate-in fade-in duration-150">
-              <div className="w-full max-w-lg rounded-2xl border border-amber-500/50 bg-[#1E293B] p-6 shadow-2xl space-y-4">
-                <div className="flex items-center justify-between border-b border-[#334155] pb-3">
+              <div className="w-full max-w-lg rounded-2xl border border-amber-500/50 bg-[#1C1C1F] p-6 shadow-2xl space-y-4">
+                <div className="flex items-center justify-between border-b border-[#2E2E34] pb-3">
                   <div className="flex items-center space-x-2.5">
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
                       <Send className="h-4 w-4" />
@@ -448,7 +448,7 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
                       <h4 className="text-sm font-bold text-white">
                         Send Real-Time Alert to {messagingTarget.studentName}
                       </h4>
-                      <p className="text-[11px] text-[#94A3B8]">
+                      <p className="text-[11px] text-[#A1A1AA]">
                         This notification will pop up on the student's screen with an audio chime in real time.
                       </p>
                     </div>
@@ -456,7 +456,7 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
 
                   <button
                     onClick={() => setMessagingTarget(null)}
-                    className="rounded-lg p-1 text-[#94A3B8] hover:text-white hover:bg-slate-800 transition-colors"
+                    className="rounded-lg p-1 text-[#A1A1AA] hover:text-white hover:bg-slate-800 transition-colors"
                   >
                     <X className="h-4 w-4" />
                   </button>
@@ -469,19 +469,19 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    <div className="rounded-xl bg-[#0B0F19] p-3 border border-[#334155] text-xs space-y-1">
-                      <div className="flex items-center justify-between text-[11px] text-[#94A3B8]">
+                    <div className="rounded-xl bg-[#141416] p-3 border border-[#2E2E34] text-xs space-y-1">
+                      <div className="flex items-center justify-between text-[11px] text-[#A1A1AA]">
                         <span>Current Subtopic:</span>
                         <strong className="text-white">{messagingTarget.topicTitle}</strong>
                       </div>
-                      <div className="flex items-center justify-between text-[11px] text-[#94A3B8]">
+                      <div className="flex items-center justify-between text-[11px] text-[#A1A1AA]">
                         <span>Syllabus:</span>
-                        <span className="text-[#CBD5E1] truncate max-w-[240px]">{messagingTarget.syllabusTitle}</span>
+                        <span className="text-[#EAEAE6] truncate max-w-[240px]">{messagingTarget.syllabusTitle}</span>
                       </div>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-mono text-[#94A3B8] mb-1.5">
+                      <label className="block text-xs font-mono text-[#A1A1AA] mb-1.5">
                         Message to Student
                       </label>
                       <textarea
@@ -489,7 +489,7 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
                         value={customMessage}
                         onChange={(e) => setCustomMessage(e.target.value)}
                         placeholder="Enter message for the student..."
-                        className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] p-3 text-xs text-white placeholder-[#64748B] focus:border-amber-400 focus:outline-none leading-relaxed"
+                        className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] p-3 text-xs text-white placeholder-[#71717A] focus:border-amber-400 focus:outline-none leading-relaxed"
                       />
                     </div>
 
@@ -498,24 +498,24 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
                       <button
                         type="button"
                         onClick={() => setCustomMessage(`Hi ${messagingTarget.studentName}, please return to your syllabus tab. Your study timer is currently paused.`)}
-                        className="rounded-lg border border-[#334155] bg-[#0B0F19] px-2.5 py-1 text-[11px] text-[#CBD5E1] hover:text-white hover:border-amber-400 transition-all"
+                        className="rounded-lg border border-[#2E2E34] bg-[#141416] px-2.5 py-1 text-[11px] text-[#EAEAE6] hover:text-white hover:border-amber-400 transition-all"
                       >
                         Reminder: Return to Tab
                       </button>
                       <button
                         type="button"
                         onClick={() => setCustomMessage(`Hi ${messagingTarget.studentName}, please stay focused on "${messagingTarget.topicTitle}" to complete your required topic minutes.`)}
-                        className="rounded-lg border border-[#334155] bg-[#0B0F19] px-2.5 py-1 text-[11px] text-[#CBD5E1] hover:text-white hover:border-amber-400 transition-all"
+                        className="rounded-lg border border-[#2E2E34] bg-[#141416] px-2.5 py-1 text-[11px] text-[#EAEAE6] hover:text-white hover:border-amber-400 transition-all"
                       >
                         Focus Warning
                       </button>
                     </div>
 
-                    <div className="flex items-center justify-end space-x-2 pt-3 border-t border-[#334155]">
+                    <div className="flex items-center justify-end space-x-2 pt-3 border-t border-[#2E2E34]">
                       <button
                         type="button"
                         onClick={() => setMessagingTarget(null)}
-                        className="rounded-xl border border-[#334155] px-4 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white transition-all"
+                        className="rounded-xl border border-[#2E2E34] px-4 py-2 text-xs font-semibold text-[#EAEAE6] hover:text-white transition-all"
                       >
                         Cancel
                       </button>
@@ -523,7 +523,7 @@ export default function AdminPresenceAlert({ adminUser }: AdminPresenceAlertProp
                         type="button"
                         disabled={sending || !customMessage.trim()}
                         onClick={handleSendMessage}
-                        className="inline-flex items-center space-x-1.5 rounded-xl bg-amber-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-amber-400 disabled:opacity-50 transition-all shadow-md"
+                        className="inline-flex items-center space-x-1.5 rounded-xl bg-amber-500 px-4 py-2 text-xs font-bold text-[#141416] hover:bg-amber-400 disabled:opacity-50 transition-all shadow-md"
                       >
                         {sending ? (
                           <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-950 border-t-transparent" />

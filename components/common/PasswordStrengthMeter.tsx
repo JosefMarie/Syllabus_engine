@@ -27,7 +27,7 @@ export function calculatePasswordStrength(password: string) {
 
   if (score <= 1) return { score: 1, label: "Weak", color: "bg-rose-500", textColor: "text-rose-400", checks };
   if (score === 2) return { score: 2, label: "Fair", color: "bg-amber-500", textColor: "text-amber-400", checks };
-  if (score === 3) return { score: 3, label: "Good", color: "bg-cyan-400", textColor: "text-cyan-400", checks };
+  if (score === 3) return { score: 3, label: "Good", color: "bg-[#EAEAE6]", textColor: "text-[#EAEAE6]", checks };
   return { score: 4, label: "Strong", color: "bg-emerald-400", textColor: "text-emerald-400", checks };
 }
 
@@ -45,7 +45,7 @@ export default function PasswordStrengthMeter({ password, showRules = true }: Pa
             <div
               key={step}
               className={`h-1.5 rounded-full transition-all duration-300 ${
-                step <= score ? color : "bg-[#334155]/60"
+                step <= score ? color : "bg-[#2E2E34]/60"
               }`}
             />
           ))}
@@ -57,7 +57,7 @@ export default function PasswordStrengthMeter({ password, showRules = true }: Pa
 
       {/* Rules Breakdown Checklist */}
       {showRules && checks && (
-        <div className="grid grid-cols-2 gap-x-2 gap-y-1 pt-1 text-[10px] font-mono text-[#94A3B8]">
+        <div className="grid grid-cols-2 gap-x-2 gap-y-1 pt-1 text-[10px] font-mono text-[#A1A1AA]">
           <div className={`flex items-center space-x-1.5 ${checks.hasLength ? "text-emerald-400" : ""}`}>
             {checks.hasLength ? <Check className="h-3 w-3 shrink-0" /> : <X className="h-3 w-3 shrink-0 opacity-40" />}
             <span>Min. 6 chars</span>

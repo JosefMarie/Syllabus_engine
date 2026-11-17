@@ -4208,7 +4208,11 @@ export function subscribeToStudentExamAttempts(
 }
 
 // AUTO-GRADING ENGINE
-export function calculateAutoGrade(exam: Exam, answers: Record<string, any>): {
+export function calculateAutoGrade(
+  exam: Exam,
+  answers: Record<string, any>,
+  drawnQuestionIds?: string[]
+): {
   score: number;
   maxScore: number;
   percentage: number;
@@ -4217,11 +4221,18 @@ export function calculateAutoGrade(exam: Exam, answers: Record<string, any>): {
   hasSubjectiveQuestions: boolean;
 } {
   let score = 0;
-  let maxScore = exam.totalPoints || 0;
+  const activeQuestions =
+    drawnQuestionIds && drawnQuestionIds.length > 0
+      ? exam.questions.filter((q) => drawnQuestionIds.includes(q.id))
+      : exam.questions;
+  let maxScore =
+    drawnQuestionIds && drawnQuestionIds.length > 0
+      ? activeQuestions.reduce((acc, q) => acc + (q.points || 1), 0)
+      : exam.totalPoints || activeQuestions.reduce((acc, q) => acc + (q.points || 1), 0);
   const questionGrades: Record<string, QuestionGrade> = {};
   let hasSubjectiveQuestions = false;
 
-  exam.questions.forEach((q) => {
+  activeQuestions.forEach((q) => {
     const studentAns = answers[q.id];
     const points = q.points || 1;
 

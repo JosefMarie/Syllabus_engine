@@ -87,11 +87,11 @@ export async function getAllStudentPresences(): Promise<Record<string, StudentPr
     }
   }
 
-  // Determine offline threshold (2 minutes = 120000ms)
+  // Determine offline threshold (4 minutes = 240000ms to pair with 3-minute keep-alive)
   const nowMs = Date.now();
   Object.keys(map).forEach((uid) => {
     const lastMs = new Date(map[uid].lastActive).getTime();
-    if (nowMs - lastMs > 120000) {
+    if (nowMs - lastMs > 240000) {
       map[uid].state = 'offline';
     }
   });
@@ -125,7 +125,7 @@ export function subscribeToStudentPresences(
           const nowMs = Date.now();
           Object.keys(map).forEach((uid) => {
             const lastMs = new Date(map[uid].lastActive).getTime();
-            if (nowMs - lastMs > 120000) {
+            if (nowMs - lastMs > 240000) {
               map[uid].state = 'offline';
             }
           });

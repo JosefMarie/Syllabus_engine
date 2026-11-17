@@ -85,7 +85,7 @@ export default function CodeQuestionRenderer({
                         }
                       }}
                       placeholder={blankMeta?.placeholder || `___${blankId}___`}
-                      className="px-2 py-0.5 rounded-lg border border-cyan-500/50 bg-[#0B0F19] text-cyan-300 font-bold font-mono text-xs focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 focus:bg-[#07131e] outline-none shadow-inner min-w-[70px] max-w-[160px] text-center transition-all"
+                      className="px-2 py-0.5 rounded-lg border border-[#EAEAE6]/50 bg-[#141416] text-[#EAEAE6] font-bold font-mono text-xs focus:border-[#EAEAE6] focus:ring-1 focus:ring-[#EAEAE6] focus:bg-[#07131e] outline-none shadow-inner min-w-[70px] max-w-[160px] text-center transition-all"
                     />
                   );
                 }
@@ -128,35 +128,35 @@ export default function CodeQuestionRenderer({
     return (
       <div className="space-y-3">
         {/* Code Editor Frame */}
-        <div className="rounded-2xl border border-[#334155] bg-[#030712] overflow-hidden shadow-2xl">
+        <div className="rounded-2xl border border-[#2E2E34] bg-[#030712] overflow-hidden shadow-2xl">
           {/* Editor Header Bar */}
-          <div className="flex items-center justify-between px-4 py-2 border-b border-[#334155]/60 bg-[#0B0F19]">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-[#2E2E34]/60 bg-[#141416]">
             <div className="flex items-center space-x-2">
               <span className="h-2.5 w-2.5 rounded-full bg-rose-500/80 inline-block" />
               <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80 inline-block" />
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80 inline-block" />
-              <span className="text-[11px] font-mono text-[#94A3B8] ml-2 flex items-center space-x-1">
-                <Code2 className="h-3.5 w-3.5 text-cyan-400" />
+              <span className="text-[11px] font-mono text-[#A1A1AA] ml-2 flex items-center space-x-1">
+                <Code2 className="h-3.5 w-3.5 text-[#EAEAE6]" />
                 <span>exercise.{language === "python" ? "py" : language === "javascript" ? "js" : language === "sql" ? "sql" : "ts"}</span>
               </span>
             </div>
 
-            <span className="rounded bg-[#1E293B] px-2 py-0.5 text-[10px] font-mono uppercase font-bold text-cyan-300 border border-[#334155]">
+            <span className="rounded bg-[#1C1C1F] px-2 py-0.5 text-[10px] font-mono uppercase font-bold text-[#EAEAE6] border border-[#2E2E34]">
               {language}
             </span>
           </div>
 
           {/* Editor Code Canvas */}
-          <div className="p-4 overflow-x-auto space-y-0.5 font-mono selection:bg-cyan-500/30">
+          <div className="p-4 overflow-x-auto space-y-0.5 font-mono selection:bg-[#EAEAE6]/30">
             {lines.map((line, lIdx) => renderLineWithBlanks(line, lIdx))}
           </div>
         </div>
 
         {/* Instructions / Blanks Checklist helper */}
         {question.codeBlanks && question.codeBlanks.length > 0 && mode === "take" && (
-          <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-[#94A3B8]">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono text-[#A1A1AA]">
             <span className="text-slate-400 font-bold flex items-center space-x-1">
-              <HelpCircle className="h-3 w-3 text-cyan-400" />
+              <HelpCircle className="h-3 w-3 text-[#EAEAE6]" />
               <span>Blanks to fill:</span>
             </span>
             {question.codeBlanks.map((b, idx) => {
@@ -167,7 +167,7 @@ export default function CodeQuestionRenderer({
                   className={`px-2 py-0.5 rounded-lg border text-[10px] font-bold transition-all ${
                     isFilled
                       ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                      : "border-[#334155] bg-[#0B0F19] text-slate-400"
+                      : "border-[#2E2E34] bg-[#141416] text-slate-400"
                   }`}
                 >
                   Blank #{idx + 1} {isFilled ? "✓" : "..."}
@@ -216,9 +216,9 @@ export default function CodeQuestionRenderer({
 
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between text-xs text-[#94A3B8]">
+        <div className="flex items-center justify-between text-xs text-[#A1A1AA]">
           <span className="flex items-center space-x-1.5 font-mono">
-            <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+            <Sparkles className="h-3.5 w-3.5 text-[#EAEAE6]" />
             <span>Arrange the scrambled lines of code into the correct execution sequence:</span>
           </span>
 
@@ -226,7 +226,7 @@ export default function CodeQuestionRenderer({
             <button
               type="button"
               onClick={handleResetOrder}
-              className="text-[11px] font-mono text-cyan-400 hover:underline flex items-center space-x-1"
+              className="text-[11px] font-mono text-[#EAEAE6] hover:underline flex items-center space-x-1"
             >
               <RotateCcw className="h-3 w-3" />
               <span>Shuffle</span>
@@ -242,16 +242,16 @@ export default function CodeQuestionRenderer({
             return (
               <div
                 key={idx}
-                className={`flex items-center justify-between rounded-xl border p-3 bg-[#0B0F19] transition-all font-mono text-xs ${
+                className={`flex items-center justify-between rounded-xl border p-3 bg-[#141416] transition-all font-mono text-xs ${
                   mode === "take"
-                    ? "border-[#334155] hover:border-cyan-500/50"
+                    ? "border-[#2E2E34] hover:border-[#EAEAE6]/50"
                     : isTargetLine
                       ? "border-emerald-500/40 bg-emerald-500/5 text-emerald-200"
                       : "border-rose-500/40 bg-rose-500/5 text-rose-200"
                 }`}
               >
                 <div className="flex items-center space-x-3 flex-1 overflow-x-auto mr-3">
-                  <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-[#1E293B] text-[10px] font-bold text-cyan-300 shrink-0">
+                  <span className="flex h-5 w-5 items-center justify-center rounded-lg bg-[#1C1C1F] text-[10px] font-bold text-[#EAEAE6] shrink-0">
                     {idx + 1}
                   </span>
                   <span className="text-white whitespace-pre font-mono">
@@ -265,7 +265,7 @@ export default function CodeQuestionRenderer({
                       type="button"
                       disabled={idx === 0}
                       onClick={() => handleMoveLine(idx, idx - 1)}
-                      className="p-1.5 rounded-lg border border-[#334155] bg-[#1E293B] text-[#94A3B8] hover:text-white hover:border-cyan-400 disabled:opacity-30 transition-all"
+                      className="p-1.5 rounded-lg border border-[#2E2E34] bg-[#1C1C1F] text-[#A1A1AA] hover:text-white hover:border-[#EAEAE6] disabled:opacity-30 transition-all"
                       title="Move line up"
                     >
                       <ArrowUp className="h-3.5 w-3.5" />
@@ -274,7 +274,7 @@ export default function CodeQuestionRenderer({
                       type="button"
                       disabled={idx === currentOrder.length - 1}
                       onClick={() => handleMoveLine(idx, idx + 1)}
-                      className="p-1.5 rounded-lg border border-[#334155] bg-[#1E293B] text-[#94A3B8] hover:text-white hover:border-cyan-400 disabled:opacity-30 transition-all"
+                      className="p-1.5 rounded-lg border border-[#2E2E34] bg-[#1C1C1F] text-[#A1A1AA] hover:text-white hover:border-[#EAEAE6] disabled:opacity-30 transition-all"
                       title="Move line down"
                     >
                       <ArrowDown className="h-3.5 w-3.5" />
@@ -301,16 +301,16 @@ export default function CodeQuestionRenderer({
         </div>
 
         {/* Live Program Preview */}
-        <div className="rounded-2xl border border-[#334155] bg-[#030712] p-4 space-y-1.5">
-          <div className="flex items-center justify-between border-b border-[#334155]/60 pb-1.5 mb-2">
-            <span className="text-[10px] font-mono uppercase font-bold text-[#64748B] flex items-center space-x-1">
+        <div className="rounded-2xl border border-[#2E2E34] bg-[#030712] p-4 space-y-1.5">
+          <div className="flex items-center justify-between border-b border-[#2E2E34]/60 pb-1.5 mb-2">
+            <span className="text-[10px] font-mono uppercase font-bold text-[#71717A] flex items-center space-x-1">
               <Play className="h-3 w-3 text-emerald-400" />
               <span>Resulting Program Code Preview:</span>
             </span>
-            <span className="text-[10px] font-mono text-[#94A3B8]">{language}</span>
+            <span className="text-[10px] font-mono text-[#A1A1AA]">{language}</span>
           </div>
 
-          <pre className="text-xs font-mono text-cyan-200 overflow-x-auto whitespace-pre leading-relaxed">
+          <pre className="text-xs font-mono text-[#EAEAE6] overflow-x-auto whitespace-pre leading-relaxed">
             {currentOrder.join("\n")}
           </pre>
         </div>
@@ -331,15 +331,15 @@ export default function CodeQuestionRenderer({
     return (
       <div className="space-y-4">
         {/* Code Canvas */}
-        <div className="rounded-2xl border border-[#334155] bg-[#030712] overflow-hidden shadow-2xl">
-          <div className="flex items-center justify-between px-4 py-2 border-b border-[#334155]/60 bg-[#0B0F19]">
+        <div className="rounded-2xl border border-[#2E2E34] bg-[#030712] overflow-hidden shadow-2xl">
+          <div className="flex items-center justify-between px-4 py-2 border-b border-[#2E2E34]/60 bg-[#141416]">
             <div className="flex items-center space-x-2">
               <span className="h-2.5 w-2.5 rounded-full bg-rose-500/80 inline-block" />
               <span className="h-2.5 w-2.5 rounded-full bg-amber-500/80 inline-block" />
               <span className="h-2.5 w-2.5 rounded-full bg-emerald-500/80 inline-block" />
-              <span className="text-[11px] font-mono text-[#94A3B8] ml-2">code_to_evaluate.{language === "python" ? "py" : "js"}</span>
+              <span className="text-[11px] font-mono text-[#A1A1AA] ml-2">code_to_evaluate.{language === "python" ? "py" : "js"}</span>
             </div>
-            <span className="rounded bg-[#1E293B] px-2 py-0.5 text-[10px] font-mono uppercase font-bold text-cyan-300 border border-[#334155]">
+            <span className="rounded bg-[#1C1C1F] px-2 py-0.5 text-[10px] font-mono uppercase font-bold text-[#EAEAE6] border border-[#2E2E34]">
               {language}
             </span>
           </div>
@@ -357,8 +357,8 @@ export default function CodeQuestionRenderer({
         </div>
 
         {/* Terminal Stdout Prediction Box */}
-        <div className="rounded-2xl border border-[#334155] bg-[#0B0F19] p-4 space-y-2">
-          <div className="flex items-center space-x-2 text-xs font-mono text-cyan-400 font-bold">
+        <div className="rounded-2xl border border-[#2E2E34] bg-[#141416] p-4 space-y-2">
+          <div className="flex items-center space-x-2 text-xs font-mono text-[#EAEAE6] font-bold">
             <Terminal className="h-4 w-4" />
             <span>Predicted Terminal Output (stdout / return value):</span>
           </div>
@@ -373,13 +373,13 @@ export default function CodeQuestionRenderer({
                   if (onChange) onChange(e.target.value);
                 }}
                 placeholder="Type the exact output here (e.g. 42 or true or Hello, World)..."
-                className="w-full rounded-xl border border-[#334155] bg-[#030712] pl-8 pr-4 py-2.5 text-xs font-mono text-emerald-400 font-bold focus:border-[#06B6D4] focus:outline-none"
+                className="w-full rounded-xl border border-[#2E2E34] bg-[#030712] pl-8 pr-4 py-2.5 text-xs font-mono text-emerald-400 font-bold focus:border-[#EAEAE6] focus:outline-none"
               />
             </div>
           ) : (
             <div className="space-y-2">
-              <div className="rounded-xl border border-[#334155] bg-[#030712] p-3 text-xs font-mono">
-                <span className="text-[10px] text-[#94A3B8] block mb-1">Your Prediction:</span>
+              <div className="rounded-xl border border-[#2E2E34] bg-[#030712] p-3 text-xs font-mono">
+                <span className="text-[10px] text-[#A1A1AA] block mb-1">Your Prediction:</span>
                 <span className={isCorrect ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
                   &gt; {enteredVal || "(No output entered)"}
                 </span>

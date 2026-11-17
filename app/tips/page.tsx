@@ -134,30 +134,30 @@ function TipsContent() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#070B14] text-[#E2E8F0] selection:bg-cyan-500/30 selection:text-white flex flex-col">
+    <div className="min-h-screen bg-[#070B14] text-[#E2E8F0] selection:bg-[#EAEAE6]/30 selection:text-white flex flex-col">
       {/* Top Ambient Glow */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-full max-w-7xl h-96 bg-gradient-to-b from-cyan-500/10 via-purple-500/5 to-transparent blur-3xl pointer-events-none -z-10" />
 
       {/* Navigation Header */}
-      <header className="sticky top-0 z-40 border-b border-[#334155]/80 bg-[#070B14]/85 backdrop-blur-xl px-4 sm:px-8 py-3.5 flex items-center justify-between">
+      <header className="sticky top-0 z-40 border-b border-[#2E2E34]/80 bg-[#070B14]/85 backdrop-blur-xl px-4 sm:px-8 py-3.5 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           <Link
             href="/"
-            className="inline-flex items-center space-x-1.5 text-xs font-mono font-semibold text-[#94A3B8] hover:text-white transition-colors bg-[#0B0F19] border border-[#334155] px-3 py-1.5 rounded-xl hover:border-cyan-400/50"
+            className="inline-flex items-center space-x-1.5 text-xs font-mono font-semibold text-[#A1A1AA] hover:text-white transition-colors bg-[#141416] border border-[#2E2E34] px-3 py-1.5 rounded-xl hover:border-[#EAEAE6]/50"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Back to Platform</span>
           </Link>
 
           <div className="flex items-center space-x-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 text-white font-black text-sm shadow-lg shadow-cyan-500/20">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-tr from-cyan-500 to-indigo-600 text-white font-black text-sm shadow-lg shadow-black/25">
               💡
             </span>
             <div>
               <h1 className="text-sm font-extrabold text-white tracking-tight">
                 Developer Tips &amp; Insights
               </h1>
-              <p className="text-[10px] text-[#94A3B8] font-mono hidden sm:block">
+              <p className="text-[10px] text-[#A1A1AA] font-mono hidden sm:block">
                 Curated programming superpowers &bull; Publicly Accessible
               </p>
             </div>
@@ -170,7 +170,7 @@ function TipsContent() {
             className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-semibold border transition-all ${
               showBookmarksOnly
                 ? "bg-amber-500/20 border-amber-500/50 text-amber-300 shadow-md"
-                : "bg-[#0B0F19] border-[#334155] text-[#94A3B8] hover:text-white"
+                : "bg-[#141416] border-[#2E2E34] text-[#A1A1AA] hover:text-white"
             }`}
           >
             <Bookmark className={`h-3.5 w-3.5 ${showBookmarksOnly ? "fill-current" : ""}`} />
@@ -179,7 +179,7 @@ function TipsContent() {
 
           <Link
             href="/admin"
-            className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-mono font-semibold bg-[#0B0F19] border border-[#334155] text-[#94A3B8] hover:text-cyan-400 hover:border-cyan-400/50 transition-all"
+            className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-mono font-semibold bg-[#141416] border border-[#2E2E34] text-[#A1A1AA] hover:text-[#EAEAE6] hover:border-[#EAEAE6]/50 transition-all"
           >
             <span>Admin</span>
           </Link>
@@ -190,11 +190,11 @@ function TipsContent() {
       <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-8 space-y-8">
         
         {/* Hero Section */}
-        <div className="relative rounded-3xl border border-[#334155] bg-gradient-to-r from-[#0F172A] via-[#1E293B]/70 to-[#0F172A] p-6 sm:p-10 shadow-2xl overflow-hidden">
-          <div className="absolute top-0 right-0 w-80 h-80 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="relative rounded-3xl border border-[#2E2E34] bg-gradient-to-r from-[#141416] via-[#1C1C1F]/70 to-[#141416] p-6 sm:p-10 shadow-2xl overflow-hidden">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-[#EAEAE6]/10 rounded-full blur-3xl pointer-events-none" />
           
           <div className="max-w-2xl space-y-3 relative z-10">
-            <div className="inline-flex items-center space-x-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-3.5 py-1 text-xs font-mono text-cyan-300">
+            <div className="inline-flex items-center space-x-2 rounded-full border border-[#EAEAE6]/30 bg-[#EAEAE6]/10 px-3.5 py-1 text-xs font-mono text-[#EAEAE6]">
               <Sparkles className="h-3.5 w-3.5" />
               <span>Free Engineering Knowledge Hub</span>
             </div>
@@ -203,20 +203,20 @@ function TipsContent() {
               Level Up Your Code with Daily Developer Tips
             </h2>
 
-            <p className="text-xs sm:text-sm text-[#94A3B8] leading-relaxed">
+            <p className="text-xs sm:text-sm text-[#A1A1AA] leading-relaxed">
               Explore bite-sized pro tricks, idiomatic syntax patterns, terminal wizardry, and performance optimizations across modern languages.
             </p>
           </div>
 
           {/* Quick Search Bar inside Hero */}
           <div className="mt-6 max-w-xl relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#94A3B8]" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A1A1AA]" />
             <input
               type="text"
               placeholder="Search tips, code snippets, tags (e.g. python, async, git)..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-2xl bg-[#0B0F19]/90 border border-[#334155] pl-10 pr-10 py-3 text-xs sm:text-sm text-white placeholder-[#64748B] focus:border-cyan-400 focus:outline-none shadow-inner"
+              className="w-full rounded-2xl bg-[#141416]/90 border border-[#2E2E34] pl-10 pr-10 py-3 text-xs sm:text-sm text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none shadow-inner"
             />
             {search && (
               <button
@@ -237,8 +237,8 @@ function TipsContent() {
               onClick={() => setSelectedLanguage("all")}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold transition-all shrink-0 border ${
                 selectedLanguage === "all"
-                  ? "bg-cyan-400 text-slate-950 border-cyan-400 shadow-md shadow-cyan-500/20"
-                  : "bg-[#0B0F19] text-[#94A3B8] border-[#334155] hover:text-white hover:border-[#475569]"
+                  ? "bg-[#EAEAE6] text-[#141416] border-[#EAEAE6] shadow-md shadow-black/25"
+                  : "bg-[#141416] text-[#A1A1AA] border-[#2E2E34] hover:text-white hover:border-[#3F3F46]"
               }`}
             >
               All Languages
@@ -254,7 +254,7 @@ function TipsContent() {
                   className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-mono font-semibold transition-all shrink-0 border ${
                     isSelected
                       ? `${meta.bg} ${meta.border} ${meta.color} font-bold shadow-md`
-                      : "bg-[#0B0F19] text-[#94A3B8] border-[#334155] hover:text-white hover:border-[#475569]"
+                      : "bg-[#141416] text-[#A1A1AA] border-[#2E2E34] hover:text-white hover:border-[#3F3F46]"
                   }`}
                 >
                   <span>{meta.icon}</span>
@@ -265,13 +265,13 @@ function TipsContent() {
           </div>
 
           {/* Secondary Sub-Filters (Difficulty, Category, Active Count) */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-[#334155]/60 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-[#2E2E34]/60 text-xs">
             <div className="flex flex-wrap items-center gap-2">
               {/* Difficulty Dropdown */}
               <select
                 value={selectedDifficulty}
                 onChange={(e) => setSelectedDifficulty(e.target.value)}
-                className="rounded-xl bg-[#0B0F19] border border-[#334155] px-3 py-1.5 text-xs font-mono text-[#CBD5E1] focus:border-cyan-400 focus:outline-none"
+                className="rounded-xl bg-[#141416] border border-[#2E2E34] px-3 py-1.5 text-xs font-mono text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
               >
                 <option value="all">All Difficulties</option>
                 <option value="beginner">Beginner Friendly</option>
@@ -283,7 +283,7 @@ function TipsContent() {
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="rounded-xl bg-[#0B0F19] border border-[#334155] px-3 py-1.5 text-xs font-mono text-[#CBD5E1] focus:border-cyan-400 focus:outline-none"
+                className="rounded-xl bg-[#141416] border border-[#2E2E34] px-3 py-1.5 text-xs font-mono text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
               >
                 <option value="all">All Categories</option>
                 <option value="syntax">Syntax Superpowers</option>
@@ -310,7 +310,7 @@ function TipsContent() {
               )}
             </div>
 
-            <span className="text-xs font-mono text-[#64748B]">
+            <span className="text-xs font-mono text-[#71717A]">
               Showing <strong className="text-white">{filteredTips.length}</strong> of {tips.length} tips
             </span>
           </div>
@@ -318,15 +318,15 @@ function TipsContent() {
 
         {/* Loading State */}
         {loading ? (
-          <div className="rounded-3xl border border-[#334155] bg-[#1E293B]/40 p-16 text-center text-xs font-mono text-[#94A3B8]">
-            <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent mb-3" />
+          <div className="rounded-3xl border border-[#2E2E34] bg-[#1C1C1F]/40 p-16 text-center text-xs font-mono text-[#A1A1AA]">
+            <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent mb-3" />
             Loading developer knowledge cards...
           </div>
         ) : filteredTips.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-[#334155] bg-[#1E293B]/20 p-16 text-center space-y-3">
-            <Code2 className="mx-auto h-12 w-12 text-[#64748B]" />
+          <div className="rounded-3xl border border-dashed border-[#2E2E34] bg-[#1C1C1F]/20 p-16 text-center space-y-3">
+            <Code2 className="mx-auto h-12 w-12 text-[#71717A]" />
             <h3 className="text-base font-bold text-white">No developer tips matched your filters</h3>
-            <p className="text-xs text-[#94A3B8] max-w-sm mx-auto">
+            <p className="text-xs text-[#A1A1AA] max-w-sm mx-auto">
               Try adjusting your search query, difficulty, or language selection to discover more cards.
             </p>
           </div>
@@ -347,7 +347,7 @@ function TipsContent() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-[#334155]/80 py-8 text-center text-xs text-[#64748B] font-mono mt-12 bg-[#070B14]">
+      <footer className="border-t border-[#2E2E34]/80 py-8 text-center text-xs text-[#71717A] font-mono mt-12 bg-[#070B14]">
         <p>Built for students, aspiring engineers, and passionate programmers &bull; Updated weekly</p>
       </footer>
 
@@ -368,7 +368,7 @@ function TipsContent() {
 export default function TipsPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen bg-[#070B14] flex items-center justify-center text-cyan-400 text-xs font-mono">
+      <div className="min-h-screen bg-[#070B14] flex items-center justify-center text-[#EAEAE6] text-xs font-mono">
         Loading Developer Hub...
       </div>
     }>

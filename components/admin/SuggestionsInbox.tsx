@@ -40,7 +40,7 @@ interface SuggestionsInboxProps {
 
 export const STATUS_METADATA: Record<SuggestionStatus, { label: string; badge: string; dot: string }> = {
   new: { label: "New", badge: "bg-amber-500/15 text-amber-300 border-amber-500/30", dot: "bg-amber-400" },
-  in_review: { label: "Under Review", badge: "bg-cyan-500/15 text-cyan-300 border-cyan-500/30", dot: "bg-cyan-400" },
+  in_review: { label: "Under Review", badge: "bg-[#EAEAE6]/15 text-[#EAEAE6] border-[#EAEAE6]/30", dot: "bg-[#EAEAE6]" },
   planned: { label: "Planned", badge: "bg-purple-500/15 text-purple-300 border-purple-500/30", dot: "bg-purple-400" },
   implemented: { label: "Implemented", badge: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", dot: "bg-emerald-400" },
   resolved: { label: "Resolved", badge: "bg-teal-500/15 text-teal-400 border-teal-500/30", dot: "bg-teal-400" },
@@ -187,13 +187,13 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
   return (
     <div className="space-y-6 animate-in fade-in">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#334155] pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#2E2E34] pb-5">
         <div>
           <h2 className="text-base font-extrabold text-white flex items-center space-x-2">
             <span className="text-xl">📬</span>
             <span>Student Suggestions &amp; Feedback Inbox</span>
           </h2>
-          <p className="text-xs text-[#94A3B8] mt-0.5">
+          <p className="text-xs text-[#A1A1AA] mt-0.5">
             Review, prioritize, and respond to suggestions, feature requests, and bug reports sent by students and visitors.
           </p>
         </div>
@@ -201,12 +201,12 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-4">
-          <span className="text-xs font-mono text-[#94A3B8] block">Total Received</span>
+        <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-4">
+          <span className="text-xs font-mono text-[#A1A1AA] block">Total Received</span>
           <span className="text-2xl font-black text-white font-mono mt-1">{suggestions.length}</span>
         </div>
 
-        <div className="rounded-2xl border border-amber-500/30 bg-[#1E293B] p-4">
+        <div className="rounded-2xl border border-amber-500/30 bg-[#1C1C1F] p-4">
           <span className="text-xs font-mono text-amber-300 block flex items-center space-x-1.5">
             <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
             <span>New &amp; Unread</span>
@@ -214,27 +214,27 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
           <span className="text-2xl font-black text-amber-400 font-mono mt-1">{newCount}</span>
         </div>
 
-        <div className="rounded-2xl border border-cyan-500/30 bg-[#1E293B] p-4">
-          <span className="text-xs font-mono text-cyan-300 block">Under Review</span>
-          <span className="text-2xl font-black text-cyan-400 font-mono mt-1">{inReviewCount}</span>
+        <div className="rounded-2xl border border-[#EAEAE6]/30 bg-[#1C1C1F] p-4">
+          <span className="text-xs font-mono text-[#EAEAE6] block">Under Review</span>
+          <span className="text-2xl font-black text-[#EAEAE6] font-mono mt-1">{inReviewCount}</span>
         </div>
 
-        <div className="rounded-2xl border border-emerald-500/30 bg-[#1E293B] p-4">
+        <div className="rounded-2xl border border-emerald-500/30 bg-[#1C1C1F] p-4">
           <span className="text-xs font-mono text-emerald-300 block">Resolved / Done</span>
           <span className="text-2xl font-black text-emerald-400 font-mono mt-1">{resolvedCount}</span>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#0B0F19]/60 border border-[#334155] p-3 rounded-2xl">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-[#141416]/60 border border-[#2E2E34] p-3 rounded-2xl">
         <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#94A3B8]" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#A1A1AA]" />
           <input
             type="text"
             placeholder="Search suggestions or student names..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-xl bg-[#1E293B] border border-[#334155] pl-9 pr-3 py-1.5 text-xs text-white placeholder-[#64748B] focus:border-cyan-400 focus:outline-none"
+            className="w-full rounded-xl bg-[#1C1C1F] border border-[#2E2E34] pl-9 pr-3 py-1.5 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
           />
         </div>
 
@@ -242,7 +242,7 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="rounded-xl bg-[#1E293B] border border-[#334155] px-3 py-1.5 text-xs font-mono text-[#CBD5E1] focus:border-cyan-400 focus:outline-none"
+            className="rounded-xl bg-[#1C1C1F] border border-[#2E2E34] px-3 py-1.5 text-xs font-mono text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
           >
             <option value="all">All Categories</option>
             <option value="feature_request">💡 Feature Request</option>
@@ -255,7 +255,7 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-xl bg-[#1E293B] border border-[#334155] px-3 py-1.5 text-xs font-mono text-[#CBD5E1] focus:border-cyan-400 focus:outline-none"
+            className="rounded-xl bg-[#1C1C1F] border border-[#2E2E34] px-3 py-1.5 text-xs font-mono text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
           >
             <option value="all">All Statuses</option>
             <option value="new">New (Unread)</option>
@@ -268,15 +268,15 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
 
       {/* Suggestions List */}
       {loading ? (
-        <div className="rounded-3xl border border-[#334155] bg-[#1E293B]/40 p-12 text-center text-xs font-mono text-[#94A3B8]">
-          <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent mb-3" />
+        <div className="rounded-3xl border border-[#2E2E34] bg-[#1C1C1F]/40 p-12 text-center text-xs font-mono text-[#A1A1AA]">
+          <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent mb-3" />
           Loading suggestion box submissions...
         </div>
       ) : filtered.length === 0 ? (
-        <div className="rounded-3xl border border-dashed border-[#334155] bg-[#1E293B]/20 p-12 text-center space-y-2">
-          <Inbox className="mx-auto h-12 w-12 text-[#64748B]" />
+        <div className="rounded-3xl border border-dashed border-[#2E2E34] bg-[#1C1C1F]/20 p-12 text-center space-y-2">
+          <Inbox className="mx-auto h-12 w-12 text-[#71717A]" />
           <h3 className="text-base font-bold text-white">No suggestions found</h3>
-          <p className="text-xs text-[#94A3B8]">
+          <p className="text-xs text-[#A1A1AA]">
             {suggestions.length === 0 
               ? "Your suggestion box is clean! When students submit ideas or bug reports, they will show up here."
               : "No submissions matched your filter criteria."}
@@ -295,8 +295,8 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
                 key={item.id}
                 className={`rounded-2xl border transition-all ${
                   item.status === "new"
-                    ? "border-amber-500/40 bg-gradient-to-r from-[#1E293B] to-[#1E293B]/80 shadow-lg"
-                    : "border-[#334155] bg-[#1E293B] hover:border-[#475569]"
+                    ? "border-amber-500/40 bg-gradient-to-r from-[#1C1C1F] to-[#1C1C1F]/80 shadow-lg"
+                    : "border-[#2E2E34] bg-[#1C1C1F] hover:border-[#3F3F46]"
                 } p-4 sm:p-5 space-y-3`}
               >
                 {/* Header Row */}
@@ -339,7 +339,7 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
 
                     {/* Upvotes Counter */}
                     {(item.upvotes ?? 0) > 0 && (
-                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold bg-cyan-500/15 text-cyan-300 border border-cyan-500/30">
+                      <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold bg-[#EAEAE6]/15 text-[#EAEAE6] border border-[#EAEAE6]/30">
                         <ThumbsUp className="h-3 w-3" />
                         <span>{item.upvotes}</span>
                       </span>
@@ -354,26 +354,26 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
                     )}
 
                     {/* Date */}
-                    <span className="text-[11px] font-mono text-[#64748B]">
+                    <span className="text-[11px] font-mono text-[#71717A]">
                       {new Date(item.createdAt).toLocaleDateString()} at {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
 
                   {/* Student / Author Badge */}
                   <div className="flex items-center space-x-2">
-                    <span className="text-xs font-mono text-[#CBD5E1] flex items-center space-x-1.5 bg-[#0B0F19] px-2.5 py-1 rounded-xl border border-[#334155]">
+                    <span className="text-xs font-mono text-[#EAEAE6] flex items-center space-x-1.5 bg-[#141416] px-2.5 py-1 rounded-xl border border-[#2E2E34]">
                       <span>{item.isAnonymous ? "🕶️" : "👤"}</span>
                       <strong className={item.isAnonymous ? "text-amber-300" : "text-white"}>
                         {item.studentName || "Anonymous"}
                       </strong>
                       {item.studentLevel && (
-                        <span className="text-[#06B6D4]">({item.studentLevel})</span>
+                        <span className="text-[#EAEAE6]">({item.studentLevel})</span>
                       )}
                     </span>
 
                     <button
                       onClick={() => handleDelete(item.id, item.title)}
-                      className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-[#0B0F19] transition-all"
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-rose-400 hover:bg-[#141416] transition-all"
                       title="Delete Suggestion"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -386,15 +386,15 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
                   <h4 className="text-sm font-extrabold text-white tracking-tight">
                     {item.title}
                   </h4>
-                  <p className="text-xs text-[#CBD5E1] mt-1.5 leading-relaxed whitespace-pre-wrap">
+                  <p className="text-xs text-[#EAEAE6] mt-1.5 leading-relaxed whitespace-pre-wrap">
                     {item.message}
                   </p>
                 </div>
 
                 {/* Official Faculty Reply (Student-Facing) */}
-                <div className="pt-2 border-t border-[#334155]/60 space-y-2">
+                <div className="pt-2 border-t border-[#2E2E34]/60 space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-mono font-bold text-cyan-400 uppercase tracking-wider flex items-center space-x-1.5">
+                    <span className="text-[11px] font-mono font-bold text-[#EAEAE6] uppercase tracking-wider flex items-center space-x-1.5">
                       <MessageSquare className="h-3 w-3" />
                       <span>Official Reply to Student (Visible in Student Dashboard)</span>
                     </span>
@@ -406,8 +406,8 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
                   </div>
 
                   {item.adminReply && (
-                    <div className="rounded-xl bg-[#0B0F19] border border-cyan-500/30 p-2.5 text-xs text-cyan-200">
-                      <div className="font-mono text-[10px] text-cyan-400 mb-1">Current Reply:</div>
+                    <div className="rounded-xl bg-[#141416] border border-[#EAEAE6]/30 p-2.5 text-xs text-[#EAEAE6]">
+                      <div className="font-mono text-[10px] text-[#EAEAE6] mb-1">Current Reply:</div>
                       <p className="italic">{item.adminReply}</p>
                     </div>
                   )}
@@ -418,13 +418,13 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
                       placeholder={item.adminReply ? "Edit or update your reply to the student..." : "Write a response to the student (e.g., 'Thank you! We have added this to the syllabus.')..."}
                       value={editingReplies[item.id] !== undefined ? editingReplies[item.id] : ""}
                       onChange={(e) => setEditingReplies(prev => ({ ...prev, [item.id]: e.target.value }))}
-                      className="flex-1 rounded-xl bg-[#0B0F19] border border-[#334155] p-2 text-xs text-white placeholder-[#64748B] focus:border-cyan-400 focus:outline-none resize-none"
+                      className="flex-1 rounded-xl bg-[#141416] border border-[#2E2E34] p-2 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none resize-none"
                     />
                     <button
                       type="button"
                       onClick={() => handleSendReply(item.id)}
                       disabled={sendingReplyId === item.id || !editingReplies[item.id]?.trim()}
-                      className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-mono font-bold text-slate-950 bg-cyan-400 hover:bg-cyan-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0 active:scale-95 self-end"
+                      className="inline-flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-mono font-bold text-[#141416] bg-emerald-500 hover:bg-cyan-300 disabled:opacity-40 disabled:cursor-not-allowed transition-all shrink-0 active:scale-95 self-end"
                     >
                       {sendingReplyId === item.id ? (
                         <>
@@ -442,9 +442,9 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
                 </div>
 
                 {/* Internal Teacher Notes Accordion */}
-                <div className="pt-2 border-t border-[#334155]/60">
+                <div className="pt-2 border-t border-[#2E2E34]/60">
                   <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[11px] font-mono font-bold text-[#94A3B8] uppercase tracking-wider">
+                    <span className="text-[11px] font-mono font-bold text-[#A1A1AA] uppercase tracking-wider">
                       Teacher Private Notes &amp; Action Plan (Faculty Eyes Only)
                     </span>
                     {item.adminNotes && (
@@ -458,12 +458,12 @@ export default function SuggestionsInbox({ adminUser }: SuggestionsInboxProps) {
                       placeholder="e.g. Added to sprint backlog, or discussed in faculty meeting..."
                       value={noteValue}
                       onChange={(e) => setEditingNotes(prev => ({ ...prev, [item.id]: e.target.value }))}
-                      className="flex-1 rounded-xl bg-[#0B0F19] border border-[#334155] px-3 py-1.5 text-xs text-white placeholder-[#64748B] focus:border-cyan-400 focus:outline-none"
+                      className="flex-1 rounded-xl bg-[#141416] border border-[#2E2E34] px-3 py-1.5 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:outline-none"
                     />
                     <button
                       onClick={() => handleSaveNotes(item.id)}
                       disabled={savingNoteId === item.id}
-                      className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-slate-950 bg-slate-300 hover:bg-white transition-all shrink-0 active:scale-95"
+                      className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl text-xs font-mono font-bold text-[#141416] bg-slate-300 hover:bg-white transition-all shrink-0 active:scale-95"
                     >
                       {savingNoteId === item.id ? (
                         <>

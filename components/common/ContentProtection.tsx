@@ -146,11 +146,11 @@ export default function ContentProtection({
       </div>
 
       {isWindowBlurred && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#0B0F19]/80 backdrop-blur-lg">
-          <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-6 text-center shadow-2xl max-w-sm">
-            <Lock className="mx-auto h-10 w-10 text-[#06B6D4] mb-3" />
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-[#141416]/80 backdrop-blur-lg">
+          <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-6 text-center shadow-2xl max-w-sm">
+            <Lock className="mx-auto h-10 w-10 text-[#EAEAE6] mb-3" />
             <h3 className="text-sm font-bold text-white">Content Protected</h3>
-            <p className="mt-1 text-xs text-[#94A3B8]">
+            <p className="mt-1 text-xs text-[#A1A1AA]">
               Syllabus material is blurred while window is unfocused or screenshot tool is active. Click back to resume reading.
             </p>
           </div>

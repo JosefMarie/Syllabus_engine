@@ -315,7 +315,7 @@ export default function StudentAcademicStanding({
     if (score === null) return { label: "Orientation Phase", color: "bg-slate-500/20 text-slate-300 border-slate-500/30" };
     if (score >= 85) return { label: "First Class / High Distinction", color: "bg-emerald-500/20 text-emerald-300 border-emerald-500/40" };
     if (score >= 75) return { label: "Distinction Standing", color: "bg-teal-500/20 text-teal-300 border-teal-500/40" };
-    if (score >= 60) return { label: "Good Academic Standing", color: "bg-cyan-500/20 text-cyan-300 border-cyan-500/40" };
+    if (score >= 60) return { label: "Good Academic Standing", color: "bg-[#EAEAE6]/20 text-[#EAEAE6] border-[#EAEAE6]/40" };
     if (score >= 50) return { label: "Satisfactory Pass", color: "bg-amber-500/20 text-amber-300 border-amber-500/40" };
     return { label: "Academic Support Required", color: "bg-rose-500/20 text-rose-300 border-rose-500/40" };
   };
@@ -324,15 +324,15 @@ export default function StudentAcademicStanding({
 
   return (
     <>
-      <div className="rounded-3xl border border-cyan-500/30 bg-[#1E293B]/75 backdrop-blur-xl p-5 sm:p-6 shadow-2xl relative overflow-hidden mb-6">
+      <div className="rounded-3xl border border-[#EAEAE6]/30 bg-[#1C1C1F]/75 backdrop-blur-xl p-5 sm:p-6 shadow-2xl relative overflow-hidden mb-6">
         {/* Background ambient glow */}
-        <div className="absolute -top-24 -right-24 h-56 w-56 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none" />
+        <div className="absolute -top-24 -right-24 h-56 w-56 rounded-full bg-[#EAEAE6]/10 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-24 -left-24 h-56 w-56 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />
 
         {/* Header Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#334155]/60 pb-4 mb-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#2E2E34]/60 pb-4 mb-5">
           <div className="flex items-center space-x-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 border border-cyan-500/30 text-cyan-400">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-500/20 to-teal-500/20 border border-[#EAEAE6]/30 text-[#EAEAE6]">
               <GraduationCap className="h-6 w-6" />
             </div>
             <div>
@@ -344,7 +344,7 @@ export default function StudentAcademicStanding({
                   {standing.label}
                 </span>
               </div>
-              <p className="text-xs text-[#94A3B8]">
+              <p className="text-xs text-[#A1A1AA]">
                 {currentUser.fullName} • {currentUser.level} Class Cohort
               </p>
             </div>
@@ -352,9 +352,9 @@ export default function StudentAcademicStanding({
 
           <div className="flex items-center space-x-3">
             {cumulativeGrade !== null && (
-              <div className="flex items-center space-x-2 bg-[#0B0F19]/50 backdrop-blur-md border border-cyan-500/30 rounded-2xl px-4 py-2">
-                <span className="text-[11px] text-[#94A3B8] font-semibold">Cumulative Grade:</span>
-                <span className="text-xl font-black font-mono text-cyan-300">
+              <div className="flex items-center space-x-2 bg-[#141416]/50 backdrop-blur-md border border-[#EAEAE6]/30 rounded-2xl px-4 py-2">
+                <span className="text-[11px] text-[#A1A1AA] font-semibold">Cumulative Grade:</span>
+                <span className="text-xl font-black font-mono text-[#EAEAE6]">
                   {cumulativeGrade}%
                 </span>
               </div>
@@ -362,7 +362,7 @@ export default function StudentAcademicStanding({
 
             <button
               onClick={() => setShowReportCard(true)}
-              className="inline-flex items-center space-x-1.5 rounded-xl border border-cyan-500/40 bg-cyan-500/10 px-3.5 py-2 text-xs font-mono font-bold text-cyan-300 hover:bg-cyan-500/20 transition-all shadow-sm"
+              className="inline-flex items-center space-x-1.5 rounded-xl border border-[#EAEAE6]/40 bg-[#EAEAE6]/10 px-3.5 py-2 text-xs font-mono font-bold text-[#EAEAE6] hover:bg-[#EAEAE6]/20 transition-all shadow-sm"
               title="View & Print Official Academic Transcript"
             >
               <FileText className="h-3.5 w-3.5" />
@@ -376,22 +376,22 @@ export default function StudentAcademicStanding({
           {/* Metric 1: Course Progress */}
           <div 
             onClick={() => onTabChange?.("courses")}
-            className="rounded-2xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 hover:border-cyan-500/40 transition-all cursor-pointer group"
+            className="rounded-2xl border border-[#2E2E34]/70 bg-[#141416]/50 backdrop-blur-md p-3.5 hover:border-[#EAEAE6]/40 transition-all cursor-pointer group"
           >
-            <div className="flex items-center justify-between text-[#94A3B8] mb-1.5">
+            <div className="flex items-center justify-between text-[#A1A1AA] mb-1.5">
               <span className="text-[11px] font-bold">Curriculum Topics</span>
-              <BookOpen className="h-4 w-4 text-cyan-400 group-hover:scale-110 transition-transform" />
+              <BookOpen className="h-4 w-4 text-[#EAEAE6] group-hover:scale-110 transition-transform" />
             </div>
             <div className="text-xl sm:text-2xl font-black font-mono text-white mb-1">
               {progressPercent}%
             </div>
-            <div className="w-full bg-[#1E293B] h-1.5 rounded-full overflow-hidden mb-1.5">
+            <div className="w-full bg-[#1C1C1F] h-1.5 rounded-full overflow-hidden mb-1.5">
               <div 
-                className="bg-cyan-500 h-full rounded-full transition-all duration-500" 
+                className="bg-[#EAEAE6] h-full rounded-full transition-all duration-500" 
                 style={{ width: `${progressPercent}%` }} 
               />
             </div>
-            <span className="text-[10px] text-[#64748B] block truncate">
+            <span className="text-[10px] text-[#71717A] block truncate">
               {completedSubtopicsCount} of {totalSubtopicsCount} topics read
             </span>
           </div>
@@ -399,22 +399,22 @@ export default function StudentAcademicStanding({
           {/* Metric 2: Exam Average */}
           <div 
             onClick={() => onTabChange?.("exams")}
-            className="rounded-2xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 hover:border-purple-500/40 transition-all cursor-pointer group"
+            className="rounded-2xl border border-[#2E2E34]/70 bg-[#141416]/50 backdrop-blur-md p-3.5 hover:border-purple-500/40 transition-all cursor-pointer group"
           >
-            <div className="flex items-center justify-between text-[#94A3B8] mb-1.5">
+            <div className="flex items-center justify-between text-[#A1A1AA] mb-1.5">
               <span className="text-[11px] font-bold">Exam Average</span>
               <FileQuestion className="h-4 w-4 text-purple-400 group-hover:scale-110 transition-transform" />
             </div>
             <div className="text-xl sm:text-2xl font-black font-mono text-purple-300 mb-1">
               {examAvg !== null ? `${examAvg}%` : "—"}
             </div>
-            <div className="w-full bg-[#1E293B] h-1.5 rounded-full overflow-hidden mb-1.5">
+            <div className="w-full bg-[#1C1C1F] h-1.5 rounded-full overflow-hidden mb-1.5">
               <div 
                 className="bg-purple-500 h-full rounded-full transition-all duration-500" 
                 style={{ width: `${examAvg || 0}%` }} 
               />
             </div>
-            <span className="text-[10px] text-[#64748B] block truncate">
+            <span className="text-[10px] text-[#71717A] block truncate">
               {examAvg !== null ? "Quizzes & official assessments" : "No exam attempts yet"}
             </span>
           </div>
@@ -422,22 +422,22 @@ export default function StudentAcademicStanding({
           {/* Metric 3: Group Presentation Defense */}
           <div 
             onClick={() => onTabChange?.("groups")}
-            className="rounded-2xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 hover:border-emerald-500/40 transition-all cursor-pointer group"
+            className="rounded-2xl border border-[#2E2E34]/70 bg-[#141416]/50 backdrop-blur-md p-3.5 hover:border-emerald-500/40 transition-all cursor-pointer group"
           >
-            <div className="flex items-center justify-between text-[#94A3B8] mb-1.5">
+            <div className="flex items-center justify-between text-[#A1A1AA] mb-1.5">
               <span className="text-[11px] font-bold">Live Defense</span>
               <Award className="h-4 w-4 text-emerald-400 group-hover:scale-110 transition-transform" />
             </div>
             <div className="text-xl sm:text-2xl font-black font-mono text-emerald-300 mb-1">
               {presentationAvg !== null ? `${presentationAvg}%` : "—"}
             </div>
-            <div className="w-full bg-[#1E293B] h-1.5 rounded-full overflow-hidden mb-1.5">
+            <div className="w-full bg-[#1C1C1F] h-1.5 rounded-full overflow-hidden mb-1.5">
               <div 
                 className="bg-emerald-500 h-full rounded-full transition-all duration-500" 
                 style={{ width: `${presentationAvg || 0}%` }} 
               />
             </div>
-            <span className="text-[10px] text-[#64748B] block truncate">
+            <span className="text-[10px] text-[#71717A] block truncate">
               {presentationAvg !== null ? "PowerPoint & slide defense" : "Pending class presentation"}
             </span>
           </div>
@@ -445,22 +445,22 @@ export default function StudentAcademicStanding({
           {/* Metric 4: Assignment Marks & Submissions */}
           <div 
             onClick={() => onTabChange?.("assignments")}
-            className="rounded-2xl border border-[#334155]/70 bg-[#0B0F19]/50 backdrop-blur-md p-3.5 hover:border-amber-500/40 transition-all cursor-pointer group"
+            className="rounded-2xl border border-[#2E2E34]/70 bg-[#141416]/50 backdrop-blur-md p-3.5 hover:border-amber-500/40 transition-all cursor-pointer group"
           >
-            <div className="flex items-center justify-between text-[#94A3B8] mb-1.5">
+            <div className="flex items-center justify-between text-[#A1A1AA] mb-1.5">
               <span className="text-[11px] font-bold">Assignment Marks</span>
               <Layers className="h-4 w-4 text-amber-400 group-hover:scale-110 transition-transform" />
             </div>
             <div className="text-xl sm:text-2xl font-black font-mono text-amber-300 mb-1">
               {assignmentAvg !== null ? `${assignmentAvg}%` : submissionCount > 0 ? `${submissionCount} Sub.` : "—"}
             </div>
-            <div className="w-full bg-[#1E293B] h-1.5 rounded-full overflow-hidden mb-1.5">
+            <div className="w-full bg-[#1C1C1F] h-1.5 rounded-full overflow-hidden mb-1.5">
               <div 
                 className="bg-amber-500 h-full rounded-full transition-all duration-500" 
                 style={{ width: `${assignmentAvg !== null ? assignmentAvg : Math.min(100, submissionCount * 25)}%` }} 
               />
             </div>
-            <span className="text-[10px] text-[#64748B] block truncate">
+            <span className="text-[10px] text-[#71717A] block truncate">
               {gradedAssignmentCount > 0
                 ? `${gradedAssignmentCount} graded • ${submissionCount} submitted`
                 : `${submissionCount} submitted deliverables`}
@@ -472,17 +472,17 @@ export default function StudentAcademicStanding({
       {/* Official Academic Report Card Modal */}
       {showReportCard && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 p-3 sm:p-6 backdrop-blur-md animate-in fade-in">
-          <div className="max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-3xl border border-[#334155] bg-[#0F172A] shadow-2xl flex flex-col">
-            <div className="flex items-center justify-between border-b border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
+          <div className="max-h-[92vh] w-full max-w-2xl overflow-hidden rounded-3xl border border-[#2E2E34] bg-[#141416] shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/70 shrink-0">
               <div className="flex items-center space-x-2.5">
-                <GraduationCap className="h-5 w-5 text-cyan-400" />
+                <GraduationCap className="h-5 w-5 text-[#EAEAE6]" />
                 <h3 className="text-sm font-extrabold text-white">
                   Official Academic Transcript &amp; Performance Summary
                 </h3>
               </div>
               <button
                 onClick={() => setShowReportCard(false)}
-                className="rounded-xl p-1.5 text-[#94A3B8] hover:text-white hover:bg-slate-800"
+                className="rounded-xl p-1.5 text-[#A1A1AA] hover:text-white hover:bg-slate-800"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -490,14 +490,14 @@ export default function StudentAcademicStanding({
 
             <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
               {/* Report Header */}
-              <div className="border-b border-[#334155] pb-5 text-center space-y-2">
-                <div className="inline-flex items-center space-x-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 px-3 py-1 text-[11px] font-mono font-bold text-cyan-300">
+              <div className="border-b border-[#2E2E34] pb-5 text-center space-y-2">
+                <div className="inline-flex items-center space-x-1.5 rounded-full bg-[#EAEAE6]/10 border border-[#EAEAE6]/30 px-3 py-1 text-[11px] font-mono font-bold text-[#EAEAE6]">
                   <Sparkles className="h-3 w-3" />
                   <span>Syllabus Engine Academic Record</span>
                 </div>
                 <h2 className="text-2xl font-black text-white">{currentUser.fullName}</h2>
-                <p className="text-xs text-[#94A3B8] font-mono">
-                  Username: <span className="text-white">@{currentUser.username}</span> &bull; Level: <span className="text-cyan-400 font-bold">{currentUser.level}</span>
+                <p className="text-xs text-[#A1A1AA] font-mono">
+                  Username: <span className="text-white">@{currentUser.username}</span> &bull; Level: <span className="text-[#EAEAE6] font-bold">{currentUser.level}</span>
                 </p>
                 <div className="pt-2">
                   <span className={`text-xs font-mono font-bold px-3 py-1 rounded-full border ${standing.color}`}>
@@ -507,26 +507,26 @@ export default function StudentAcademicStanding({
               </div>
 
               {/* Composite Grade Highlight */}
-              <div className="rounded-2xl border border-cyan-500/40 bg-cyan-500/10 p-5 flex items-center justify-between">
+              <div className="rounded-2xl border border-[#EAEAE6]/40 bg-[#EAEAE6]/10 p-5 flex items-center justify-between">
                 <div>
-                  <div className="text-xs font-mono uppercase text-cyan-300 font-bold">Cumulative Weighted Score</div>
-                  <div className="text-[11px] text-[#94A3B8] mt-0.5">Based on Exams (35%), Assignments (25%), Oral Defense (25%), Syllabus (15%)</div>
+                  <div className="text-xs font-mono uppercase text-[#EAEAE6] font-bold">Cumulative Weighted Score</div>
+                  <div className="text-[11px] text-[#A1A1AA] mt-0.5">Based on Exams (35%), Assignments (25%), Oral Defense (25%), Syllabus (15%)</div>
                 </div>
-                <div className="text-3xl font-black font-mono text-cyan-300">
+                <div className="text-3xl font-black font-mono text-[#EAEAE6]">
                   {cumulativeGrade !== null ? `${cumulativeGrade}%` : "N/A"}
                 </div>
               </div>
 
               {/* Assessment Breakdown Table */}
               <div className="space-y-3">
-                <h4 className="text-xs font-bold font-mono text-[#CBD5E1] uppercase tracking-wider">Evaluation Pillar Breakdown</h4>
-                <div className="rounded-2xl border border-[#334155] bg-[#1E293B] overflow-hidden divide-y divide-[#334155]">
+                <h4 className="text-xs font-bold font-mono text-[#EAEAE6] uppercase tracking-wider">Evaluation Pillar Breakdown</h4>
+                <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] overflow-hidden divide-y divide-[#2E2E34]">
                   <div className="p-3.5 flex items-center justify-between text-xs">
                     <div className="flex items-center space-x-2">
-                      <BookOpen className="h-4 w-4 text-cyan-400" />
+                      <BookOpen className="h-4 w-4 text-[#EAEAE6]" />
                       <span className="text-white font-medium">Curriculum Topics Completed</span>
                     </div>
-                    <span className="font-mono font-bold text-cyan-300">{progressPercent}% ({completedSubtopicsCount}/{totalSubtopicsCount})</span>
+                    <span className="font-mono font-bold text-[#EAEAE6]">{progressPercent}% ({completedSubtopicsCount}/{totalSubtopicsCount})</span>
                   </div>
 
                   <div className="p-3.5 flex items-center justify-between text-xs">
@@ -562,10 +562,10 @@ export default function StudentAcademicStanding({
               {/* Subject-by-Subject Marks Breakdown (Exams & Assignments) */}
               {subjectMarksBreakdown.length > 0 && (
                 <div className="space-y-3">
-                  <h4 className="text-xs font-bold font-mono text-[#CBD5E1] uppercase tracking-wider">
+                  <h4 className="text-xs font-bold font-mono text-[#EAEAE6] uppercase tracking-wider">
                     Subject-by-Subject Marks (Exams &amp; Assignments)
                   </h4>
-                  <div className="rounded-2xl border border-[#334155] bg-[#1E293B] overflow-hidden divide-y divide-[#334155]">
+                  <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] overflow-hidden divide-y divide-[#2E2E34]">
                     {subjectMarksBreakdown.map((subj) => {
                       const examCourseAvg =
                         subj.examScores.length > 0
@@ -580,7 +580,7 @@ export default function StudentAcademicStanding({
                         <div key={subj.courseCode} className="p-3.5 space-y-2">
                           <div className="flex flex-wrap items-center justify-between gap-2">
                             <div>
-                              <span className="rounded bg-cyan-500/15 border border-cyan-500/30 px-2 py-0.5 text-[10px] font-mono font-bold text-cyan-300 mr-2">
+                              <span className="rounded bg-[#EAEAE6]/15 border border-[#EAEAE6]/30 px-2 py-0.5 text-[10px] font-mono font-bold text-[#EAEAE6] mr-2">
                                 {subj.courseCode}
                               </span>
                               <span className="text-xs font-bold text-white">{subj.courseTitle}</span>
@@ -599,7 +599,7 @@ export default function StudentAcademicStanding({
                               {subj.assignmentScores.map((asg, i) => (
                                 <span
                                   key={i}
-                                  className="inline-flex items-center space-x-1 rounded-md bg-[#0B0F19] border border-[#334155] px-2 py-0.5 text-[10px] font-mono text-[#CBD5E1]"
+                                  className="inline-flex items-center space-x-1 rounded-md bg-[#141416] border border-[#2E2E34] px-2 py-0.5 text-[10px] font-mono text-[#EAEAE6]"
                                 >
                                   <span className="truncate max-w-[140px]">{asg.title}:</span>
                                   <strong className="text-emerald-400">
@@ -617,15 +617,15 @@ export default function StudentAcademicStanding({
               )}
 
               {/* Footer Note */}
-              <p className="text-[10px] text-center text-[#64748B] font-mono">
+              <p className="text-[10px] text-center text-[#71717A] font-mono">
                 Record generated on {new Date().toLocaleDateString(undefined, { dateStyle: 'full' })} &bull; Official Digital Verification Token: {currentUser.uid.slice(0, 10).toUpperCase()}
               </p>
             </div>
 
-            <div className="flex justify-between border-t border-[#334155] px-6 py-4 bg-[#1E293B]/70 shrink-0">
+            <div className="flex justify-between border-t border-[#2E2E34] px-6 py-4 bg-[#1C1C1F]/70 shrink-0">
               <button
                 onClick={() => window.print()}
-                className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-slate-800 px-4 py-2 text-xs font-mono font-bold text-white hover:bg-slate-700 transition-all"
+                className="inline-flex items-center space-x-1.5 rounded-xl border border-[#2E2E34] bg-slate-800 px-4 py-2 text-xs font-mono font-bold text-white hover:bg-slate-700 transition-all"
               >
                 <Printer className="h-3.5 w-3.5" />
                 <span>Print Transcript</span>
@@ -633,7 +633,7 @@ export default function StudentAcademicStanding({
 
               <button
                 onClick={() => setShowReportCard(false)}
-                className="rounded-xl bg-[#06B6D4] px-6 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all shadow-md"
+                className="rounded-xl bg-emerald-500 px-6 py-2 text-xs font-bold text-[#141416] hover:bg-emerald-400 hover:text-[#141416] transition-all shadow-md"
               >
                 Close
               </button>

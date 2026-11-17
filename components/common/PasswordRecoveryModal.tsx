@@ -117,21 +117,21 @@ export default function PasswordRecoveryModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4 animate-in fade-in duration-200">
       <div 
-        className="w-full max-w-md rounded-3xl border border-cyan-500/40 bg-[#1E293B]/90 backdrop-blur-2xl p-6 sm:p-7 shadow-2xl shadow-cyan-950/40 relative overflow-hidden"
+        className="w-full max-w-md rounded-3xl border border-[#EAEAE6]/40 bg-[#1C1C1F]/90 backdrop-blur-2xl p-6 sm:p-7 shadow-2xl shadow-cyan-950/40 relative overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Glow halo */}
-        <div className="absolute -top-20 -right-20 h-44 w-44 rounded-full bg-cyan-500/15 blur-3xl pointer-events-none" />
+        <div className="absolute -top-20 -right-20 h-44 w-44 rounded-full bg-[#EAEAE6]/15 blur-3xl pointer-events-none" />
 
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[#334155]/60 pb-3.5 mb-4">
+        <div className="flex items-center justify-between border-b border-[#2E2E34]/60 pb-3.5 mb-4">
           <div className="flex items-center space-x-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[#EAEAE6]/20 text-[#EAEAE6] border border-[#EAEAE6]/30">
               <KeyRound className="h-4 w-4" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-white">Student Account Recovery</h3>
-              <span className="text-[10px] font-mono text-[#94A3B8]">
+              <span className="text-[10px] font-mono text-[#A1A1AA]">
                 {step === "request" ? "Step 1 of 2: Request Code" : step === "verify" ? "Step 2 of 2: Create New Password" : "Reset Complete"}
               </span>
             </div>
@@ -139,7 +139,7 @@ export default function PasswordRecoveryModal({
 
           <button
             onClick={onClose}
-            className="rounded-lg p-1 text-[#94A3B8] hover:text-white hover:bg-[#334155]/60 transition-colors"
+            className="rounded-lg p-1 text-[#A1A1AA] hover:text-white hover:bg-[#2E2E34]/60 transition-colors"
           >
             <X className="h-4 w-4" />
           </button>
@@ -155,23 +155,23 @@ export default function PasswordRecoveryModal({
         {/* STEP 1: REQUEST CODE */}
         {step === "request" && (
           <form onSubmit={handleRequestCode} className="space-y-4">
-            <p className="text-xs text-[#94A3B8] leading-relaxed">
+            <p className="text-xs text-[#A1A1AA] leading-relaxed">
               Enter your student username or school email address. We will generate a one-time 6-digit recovery code for your account.
             </p>
 
             <div>
-              <label className="text-xs font-mono text-[#CBD5E1] block mb-1">
+              <label className="text-xs font-mono text-[#EAEAE6] block mb-1">
                 Student Username or Email *
               </label>
               <div className="relative">
-                <User className="absolute left-3.5 top-3 h-4 w-4 text-[#64748B]" />
+                <User className="absolute left-3.5 top-3 h-4 w-4 text-[#71717A]" />
                 <input
                   type="text"
                   required
                   value={identifier}
                   onChange={(e) => setIdentifier(e.target.value)}
                   placeholder="e.g. josef_m or josef@school.edu"
-                  className="w-full rounded-xl border border-[#334155]/70 bg-[#0B0F19]/60 backdrop-blur-md py-2.5 pl-10 pr-3 text-xs text-white placeholder-[#64748B] focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 focus:outline-none transition-all"
+                  className="w-full rounded-xl border border-[#2E2E34]/70 bg-[#141416]/60 backdrop-blur-md py-2.5 pl-10 pr-3 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:ring-2 focus:ring-[#EAEAE6]/30 focus:outline-none transition-all"
                 />
               </div>
             </div>
@@ -190,14 +190,14 @@ export default function PasswordRecoveryModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl border border-[#334155]/70 bg-[#1E293B]/70 px-4 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white transition-all"
+                className="rounded-xl border border-[#2E2E34]/70 bg-[#1C1C1F]/70 px-4 py-2 text-xs font-semibold text-[#EAEAE6] hover:text-white transition-all"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex items-center space-x-1.5 rounded-xl bg-cyan-500 px-4 py-2 text-xs font-bold text-slate-950 hover:bg-cyan-400 transition-all shadow-lg disabled:opacity-50"
+                className="inline-flex items-center space-x-1.5 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-[#141416] hover:bg-emerald-500 transition-all shadow-lg disabled:opacity-50"
               >
                 <span>{loading ? "Generating..." : "Generate Code"}</span>
                 <ArrowRight className="h-3.5 w-3.5" />
@@ -210,19 +210,19 @@ export default function PasswordRecoveryModal({
         {step === "verify" && (
           <form onSubmit={handleResetPassword} className="space-y-4">
             {generatedCode && (
-              <div className="rounded-2xl border border-cyan-500/40 bg-cyan-500/10 p-3.5 flex items-center justify-between">
+              <div className="rounded-2xl border border-[#EAEAE6]/40 bg-[#EAEAE6]/10 p-3.5 flex items-center justify-between">
                 <div>
-                  <span className="block text-[10px] font-mono text-[#94A3B8] uppercase">
+                  <span className="block text-[10px] font-mono text-[#A1A1AA] uppercase">
                     Your One-Time Recovery Code:
                   </span>
-                  <span className="text-xl font-mono font-black text-cyan-300 tracking-wider">
+                  <span className="text-xl font-mono font-black text-[#EAEAE6] tracking-wider">
                     {generatedCode}
                   </span>
                 </div>
                 <button
                   type="button"
                   onClick={() => handleCopy(generatedCode)}
-                  className="inline-flex items-center space-x-1 rounded-lg border border-cyan-500/40 bg-cyan-500/20 px-2.5 py-1 text-xs font-mono font-bold text-cyan-200 hover:bg-cyan-500/30 transition-all"
+                  className="inline-flex items-center space-x-1 rounded-lg border border-[#EAEAE6]/40 bg-[#EAEAE6]/20 px-2.5 py-1 text-xs font-mono font-bold text-[#EAEAE6] hover:bg-[#EAEAE6]/30 transition-all"
                 >
                   {copiedCode ? <Check className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
                   <span>{copiedCode ? "Copied" : "Copy"}</span>
@@ -231,7 +231,7 @@ export default function PasswordRecoveryModal({
             )}
 
             <div>
-              <label className="text-xs font-mono text-[#CBD5E1] block mb-1">
+              <label className="text-xs font-mono text-[#EAEAE6] block mb-1">
                 6-Digit Recovery Code *
               </label>
               <input
@@ -241,28 +241,28 @@ export default function PasswordRecoveryModal({
                 value={recoveryCode}
                 onChange={(e) => setRecoveryCode(e.target.value)}
                 placeholder="123456"
-                className="w-full rounded-xl border border-[#334155]/70 bg-[#0B0F19]/60 backdrop-blur-md py-2.5 px-3 text-center text-sm font-mono tracking-widest text-white placeholder-[#64748B] focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 focus:outline-none"
+                className="w-full rounded-xl border border-[#2E2E34]/70 bg-[#141416]/60 backdrop-blur-md py-2.5 px-3 text-center text-sm font-mono tracking-widest text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:ring-2 focus:ring-[#EAEAE6]/30 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="text-xs font-mono text-[#CBD5E1] block mb-1">
+              <label className="text-xs font-mono text-[#EAEAE6] block mb-1">
                 New Password *
               </label>
               <div className="relative">
-                <Lock className="absolute left-3.5 top-3 h-4 w-4 text-[#64748B]" />
+                <Lock className="absolute left-3.5 top-3 h-4 w-4 text-[#71717A]" />
                 <input
                   type={showPassword ? "text" : "password"}
                   required
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Min. 6 characters"
-                  className="w-full rounded-xl border border-[#334155]/70 bg-[#0B0F19]/60 backdrop-blur-md py-2.5 pl-10 pr-10 text-xs text-white placeholder-[#64748B] focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 focus:outline-none"
+                  className="w-full rounded-xl border border-[#2E2E34]/70 bg-[#141416]/60 backdrop-blur-md py-2.5 pl-10 pr-10 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:ring-2 focus:ring-[#EAEAE6]/30 focus:outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 text-[#94A3B8] hover:text-white"
+                  className="absolute right-3 top-2.5 text-[#A1A1AA] hover:text-white"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -272,7 +272,7 @@ export default function PasswordRecoveryModal({
             </div>
 
             <div>
-              <label className="text-xs font-mono text-[#CBD5E1] block mb-1">
+              <label className="text-xs font-mono text-[#EAEAE6] block mb-1">
                 Confirm New Password *
               </label>
               <input
@@ -281,7 +281,7 @@ export default function PasswordRecoveryModal({
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Re-enter password"
-                className="w-full rounded-xl border border-[#334155]/70 bg-[#0B0F19]/60 backdrop-blur-md py-2.5 px-3 text-xs text-white placeholder-[#64748B] focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 focus:outline-none"
+                className="w-full rounded-xl border border-[#2E2E34]/70 bg-[#141416]/60 backdrop-blur-md py-2.5 px-3 text-xs text-white placeholder-[#71717A] focus:border-[#EAEAE6] focus:ring-2 focus:ring-[#EAEAE6]/30 focus:outline-none"
               />
             </div>
 
@@ -289,7 +289,7 @@ export default function PasswordRecoveryModal({
               <button
                 type="button"
                 onClick={() => setStep("request")}
-                className="text-xs font-mono text-[#94A3B8] hover:text-white transition-colors"
+                className="text-xs font-mono text-[#A1A1AA] hover:text-white transition-colors"
               >
                 &larr; Back to request
               </button>
@@ -297,7 +297,7 @@ export default function PasswordRecoveryModal({
               <button
                 type="submit"
                 disabled={loading}
-                className="inline-flex items-center space-x-1.5 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 px-4 py-2 text-xs font-bold text-slate-950 hover:brightness-110 transition-all shadow-lg disabled:opacity-50"
+                className="inline-flex items-center space-x-1.5 rounded-xl bg-gradient-to-r from-[#EAEAE6] to-[#D4D4D0] px-4 py-2 text-xs font-bold text-[#141416] hover:brightness-110 transition-all shadow-lg disabled:opacity-50"
               >
                 <ShieldCheck className="h-4 w-4" />
                 <span>{loading ? "Updating..." : "Update Password"}</span>
@@ -314,7 +314,7 @@ export default function PasswordRecoveryModal({
             </div>
 
             <h4 className="text-base font-bold text-white">Password Updated Successfully!</h4>
-            <p className="text-xs text-[#94A3B8] leading-relaxed">
+            <p className="text-xs text-[#A1A1AA] leading-relaxed">
               Your password has been securely reset. You can now sign into your student account immediately.
             </p>
 
@@ -324,7 +324,7 @@ export default function PasswordRecoveryModal({
                 onPasswordResetSuccess(identifier);
                 onClose();
               }}
-              className="inline-flex w-full items-center justify-center space-x-2 rounded-xl bg-cyan-500 py-2.5 text-xs font-bold text-slate-950 hover:bg-cyan-400 transition-all shadow-lg"
+              className="inline-flex w-full items-center justify-center space-x-2 rounded-xl bg-emerald-500 py-2.5 text-xs font-bold text-[#141416] hover:bg-emerald-500 transition-all shadow-lg"
             >
               <span>Continue to Log In</span>
               <ArrowRight className="h-4 w-4" />

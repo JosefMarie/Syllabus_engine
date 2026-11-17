@@ -29,7 +29,7 @@ interface DeveloperTipCardProps {
 
 export const LANGUAGE_METADATA: Record<TipLanguage, { name: string; color: string; bg: string; border: string; icon: string }> = {
   python: { name: "Python", color: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/30", icon: "🐍" },
-  typescript: { name: "TypeScript", color: "text-cyan-400", bg: "bg-cyan-500/10", border: "border-cyan-500/30", icon: "⚡" },
+  typescript: { name: "TypeScript", color: "text-[#EAEAE6]", bg: "bg-[#EAEAE6]/10", border: "border-[#EAEAE6]/30", icon: "⚡" },
   javascript: { name: "JavaScript", color: "text-yellow-300", bg: "bg-yellow-500/10", border: "border-yellow-500/30", icon: "🟨" },
   dart: { name: "Dart / Flutter", color: "text-blue-400", bg: "bg-blue-500/10", border: "border-blue-500/30", icon: "🎯" },
   rust: { name: "Rust", color: "text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/30", icon: "🦀" },
@@ -91,8 +91,8 @@ export default function DeveloperTipCard({
   return (
     <div className={`flex flex-col justify-between rounded-3xl border ${
       tip.isFeatured 
-        ? "border-cyan-500/60 bg-gradient-to-b from-[#1E293B] via-[#0F172A] to-[#0B0F19] shadow-2xl ring-1 ring-cyan-500/30" 
-        : "border-[#334155] bg-[#1E293B]/90 hover:border-[#06B6D4]/50 shadow-xl"
+        ? "border-[#EAEAE6]/60 bg-gradient-to-b from-[#1C1C1F] via-[#141416] to-[#141416] shadow-2xl ring-1 ring-[#EAEAE6]/30" 
+        : "border-[#2E2E34] bg-[#1C1C1F]/90 hover:border-[#EAEAE6]/50 shadow-xl"
     } p-5 sm:p-6 transition-all duration-300 group relative overflow-hidden backdrop-blur-md`}>
       
       {/* Top ambient glow stripe */}
@@ -131,7 +131,7 @@ export default function DeveloperTipCard({
             <button
               onClick={handleShare}
               title={shared ? "Link Copied!" : "Share this tip"}
-              className="p-2 rounded-xl text-[#94A3B8] hover:text-white bg-[#0B0F19]/60 hover:bg-[#0B0F19] border border-[#334155] transition-all relative"
+              className="p-2 rounded-xl text-[#A1A1AA] hover:text-white bg-[#141416]/60 hover:bg-[#141416] border border-[#2E2E34] transition-all relative"
             >
               {shared ? <Check className="h-4 w-4 text-emerald-400" /> : <Share2 className="h-4 w-4" />}
             </button>
@@ -142,7 +142,7 @@ export default function DeveloperTipCard({
               className={`p-2 rounded-xl border transition-all ${
                 isBookmarked
                   ? "bg-amber-500/20 border-amber-500/50 text-amber-400 shadow-md"
-                  : "bg-[#0B0F19]/60 hover:bg-[#0B0F19] border-[#334155] text-[#94A3B8] hover:text-white"
+                  : "bg-[#141416]/60 hover:bg-[#141416] border-[#2E2E34] text-[#A1A1AA] hover:text-white"
               }`}
             >
               <Bookmark className={`h-4 w-4 ${isBookmarked ? "fill-current" : ""}`} />
@@ -151,18 +151,18 @@ export default function DeveloperTipCard({
         </div>
 
         {/* Title */}
-        <h3 className="text-base sm:text-lg font-extrabold text-white tracking-tight leading-snug group-hover:text-cyan-300 transition-colors">
+        <h3 className="text-base sm:text-lg font-extrabold text-white tracking-tight leading-snug group-hover:text-[#EAEAE6] transition-colors">
           {tip.title}
         </h3>
 
         {/* Summary */}
-        <p className="text-xs text-[#94A3B8] mt-2 line-clamp-2 leading-relaxed">
+        <p className="text-xs text-[#A1A1AA] mt-2 line-clamp-2 leading-relaxed">
           {tip.summary}
         </p>
 
         {/* Media / Slideshow Carousel (If tip has images) */}
         {hasImages && (
-          <div className="mt-4 rounded-2xl border border-[#334155] bg-[#0B0F19] overflow-hidden shadow-inner relative group/carousel">
+          <div className="mt-4 rounded-2xl border border-[#2E2E34] bg-[#141416] overflow-hidden shadow-inner relative group/carousel">
             <div className="relative aspect-video w-full bg-slate-950 flex items-center justify-center overflow-hidden">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -181,7 +181,7 @@ export default function DeveloperTipCard({
                       e.stopPropagation();
                       setCurrentImgIndex((prev) => (prev > 0 ? prev - 1 : images.length - 1));
                     }}
-                    className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/70 hover:bg-cyan-500 text-white hover:text-slate-950 border border-white/20 transition-all opacity-80 hover:opacity-100 shadow-lg"
+                    className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/70 hover:bg-emerald-500 text-white hover:text-[#141416] border border-white/20 transition-all opacity-80 hover:opacity-100 shadow-lg"
                     title="Previous Slide"
                   >
                     <ChevronLeft className="h-4 w-4" />
@@ -193,14 +193,14 @@ export default function DeveloperTipCard({
                       e.stopPropagation();
                       setCurrentImgIndex((prev) => (prev < images.length - 1 ? prev + 1 : 0));
                     }}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/70 hover:bg-cyan-500 text-white hover:text-slate-950 border border-white/20 transition-all opacity-80 hover:opacity-100 shadow-lg"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/70 hover:bg-emerald-500 text-white hover:text-[#141416] border border-white/20 transition-all opacity-80 hover:opacity-100 shadow-lg"
                     title="Next Slide"
                   >
                     <ChevronRight className="h-4 w-4" />
                   </button>
 
                   {/* Slide Counter Badge */}
-                  <div className="absolute bottom-2 right-2 px-2.5 py-0.5 rounded-full bg-black/75 border border-white/20 text-[10px] font-mono text-cyan-300 backdrop-blur-md">
+                  <div className="absolute bottom-2 right-2 px-2.5 py-0.5 rounded-full bg-black/75 border border-white/20 text-[10px] font-mono text-[#EAEAE6] backdrop-blur-md">
                     {currentImgIndex + 1} / {images.length} slides
                   </div>
 
@@ -215,7 +215,7 @@ export default function DeveloperTipCard({
                           setCurrentImgIndex(idx);
                         }}
                         className={`h-1.5 rounded-full transition-all ${
-                          idx === currentImgIndex ? "w-4 bg-cyan-400" : "w-1.5 bg-white/40 hover:bg-white/80"
+                          idx === currentImgIndex ? "w-4 bg-[#EAEAE6]" : "w-1.5 bg-white/40 hover:bg-white/80"
                         }`}
                       />
                     ))}
@@ -226,7 +226,7 @@ export default function DeveloperTipCard({
 
             {/* Optional Slide Caption */}
             {tip.imageCaptions && tip.imageCaptions[currentImgIndex] && (
-              <div className="px-3 py-1.5 text-[11px] font-mono text-[#94A3B8] border-t border-[#334155]/60 bg-[#121826] truncate">
+              <div className="px-3 py-1.5 text-[11px] font-mono text-[#A1A1AA] border-t border-[#2E2E34]/60 bg-[#121826] truncate">
                 {tip.imageCaptions[currentImgIndex]}
               </div>
             )}
@@ -235,9 +235,9 @@ export default function DeveloperTipCard({
 
         {/* Interactive Code Box (If tip has code) */}
         {hasCode && (
-          <div className="mt-4 rounded-2xl border border-[#334155] bg-[#0B0F19] overflow-hidden shadow-inner">
+          <div className="mt-4 rounded-2xl border border-[#2E2E34] bg-[#141416] overflow-hidden shadow-inner">
             {/* Code Header with Toggle Tabs & Copy Button */}
-            <div className="flex items-center justify-between border-b border-[#334155] px-3 py-2 bg-[#121826]">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] px-3 py-2 bg-[#121826]">
               <div className="flex items-center space-x-1.5">
                 <button
                   type="button"
@@ -245,7 +245,7 @@ export default function DeveloperTipCard({
                   className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
                     activeCodeTab === "good"
                       ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm"
-                      : "text-[#94A3B8] hover:text-white"
+                      : "text-[#A1A1AA] hover:text-white"
                   }`}
                 >
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
@@ -259,7 +259,7 @@ export default function DeveloperTipCard({
                     className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all ${
                       activeCodeTab === "bad"
                         ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm"
-                        : "text-[#94A3B8] hover:text-white"
+                        : "text-[#A1A1AA] hover:text-white"
                     }`}
                   >
                     <XCircle className="h-3.5 w-3.5 text-rose-400" />
@@ -271,7 +271,7 @@ export default function DeveloperTipCard({
               <button
                 onClick={handleCopyCode}
                 type="button"
-                className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[11px] font-mono text-[#94A3B8] hover:text-white bg-[#1E293B] border border-[#334155] hover:border-cyan-400/50 transition-all"
+                className="inline-flex items-center space-x-1 px-2.5 py-1 rounded-lg text-[11px] font-mono text-[#A1A1AA] hover:text-white bg-[#1C1C1F] border border-[#2E2E34] hover:border-[#EAEAE6]/50 transition-all"
               >
                 {copied ? (
                   <>
@@ -288,14 +288,14 @@ export default function DeveloperTipCard({
             </div>
 
             {/* Code Body */}
-            <div className="p-3.5 font-mono text-xs overflow-x-auto text-[#E2E8F0] leading-relaxed max-h-48 selection:bg-cyan-500/30">
+            <div className="p-3.5 font-mono text-xs overflow-x-auto text-[#E2E8F0] leading-relaxed max-h-48 selection:bg-[#EAEAE6]/30">
               <pre>
                 <code>{currentCode}</code>
               </pre>
             </div>
 
             {/* Sub-label under code */}
-            <div className={`px-3 py-1.5 text-[11px] font-mono border-t border-[#334155]/60 flex items-center justify-between ${
+            <div className={`px-3 py-1.5 text-[11px] font-mono border-t border-[#2E2E34]/60 flex items-center justify-between ${
               activeCodeTab === "good" ? "text-emerald-400/80 bg-emerald-950/20" : "text-rose-400/80 bg-rose-950/20"
             }`}>
               <span className="truncate">{currentTitle}</span>
@@ -306,11 +306,11 @@ export default function DeveloperTipCard({
 
         {/* Pure Concept Card (If neither code nor images) */}
         {!hasCode && !hasImages && (
-          <div className="mt-4 rounded-2xl border border-cyan-500/20 bg-gradient-to-br from-cyan-950/20 via-[#0B0F19] to-[#0F172A] p-4 text-xs text-[#CBD5E1] leading-relaxed shadow-inner">
-            <span className="text-[11px] font-mono font-bold text-cyan-400 uppercase tracking-wider block mb-1.5 flex items-center space-x-1.5">
+          <div className="mt-4 rounded-2xl border border-[#EAEAE6]/20 bg-gradient-to-br from-cyan-950/20 via-[#141416] to-[#141416] p-4 text-xs text-[#EAEAE6] leading-relaxed shadow-inner">
+            <span className="text-[11px] font-mono font-bold text-[#EAEAE6] uppercase tracking-wider block mb-1.5 flex items-center space-x-1.5">
               <span>💡 Core Insight</span>
             </span>
-            <p className="line-clamp-4 text-[#94A3B8]">
+            <p className="line-clamp-4 text-[#A1A1AA]">
               {tip.whyItMatters || tip.explanation || tip.summary}
             </p>
           </div>
@@ -322,7 +322,7 @@ export default function DeveloperTipCard({
             {tip.tags.map((tag) => (
               <span
                 key={tag}
-                className="rounded-md bg-[#0B0F19] border border-[#334155]/70 px-2 py-0.5 text-[10px] font-mono text-[#94A3B8]"
+                className="rounded-md bg-[#141416] border border-[#2E2E34]/70 px-2 py-0.5 text-[10px] font-mono text-[#A1A1AA]"
               >
                 #{tag}
               </span>
@@ -332,14 +332,14 @@ export default function DeveloperTipCard({
       </div>
 
       {/* Footer Details & Explore Button */}
-      <div className="mt-5 pt-4 border-t border-[#334155] flex items-center justify-between gap-3">
-        <span className="text-[11px] font-mono text-[#64748B]">
+      <div className="mt-5 pt-4 border-t border-[#2E2E34] flex items-center justify-between gap-3">
+        <span className="text-[11px] font-mono text-[#71717A]">
           {tip.authorName || "Faculty Instructor"}
         </span>
 
         <button
           onClick={() => onOpenDeepDive(tip)}
-          className="inline-flex items-center space-x-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500 text-cyan-400 hover:text-slate-950 px-3.5 py-1.5 text-xs font-bold font-mono transition-all border border-cyan-500/30 hover:border-cyan-400 active:scale-95"
+          className="inline-flex items-center space-x-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500 text-[#EAEAE6] hover:text-[#141416] px-3.5 py-1.5 text-xs font-bold font-mono transition-all border border-[#EAEAE6]/30 hover:border-[#EAEAE6] active:scale-95"
         >
           <span>Deep Dive</span>
           <ArrowRight className="h-3.5 w-3.5" />

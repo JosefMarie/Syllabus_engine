@@ -129,17 +129,11 @@ export default function StudentProgressManager() {
       setPresences(livePresences);
     });
 
-    // 2. Subscribe to instant real-time student topic time records (onSnapshot + local events)
-    const unsubTimeRecords = subscribeToStudentTopicTimeRecords((liveRecords) => {
-      setTimeRecords(liveRecords);
-    });
-
-    // 3. Load full data on mount (syllabi, trades, progress summaries)
+    // 2. Load full data on mount (syllabi, trades, progress summaries)
     loadData();
 
     return () => {
       unsubPresences();
-      unsubTimeRecords();
     };
   }, []);
 
@@ -154,17 +148,15 @@ export default function StudentProgressManager() {
         getAllTrades(),
         getAllStudentPresences(),
         getAllSyllabi(),
-        getAllStudentTopicTimeRecords(),
       ]);
 
       const results: any = await Promise.race([fetchPromise, timeoutPromise]);
       if (results) {
-        const [summaries, allTrades, livePresences, allSyllabi, allTimeRecords] = results;
+        const [summaries, allTrades, livePresences, allSyllabi] = results;
         if (summaries) setStudents(summaries);
         if (allTrades) setTrades(allTrades);
         if (livePresences) setPresences(livePresences);
         if (allSyllabi) setSyllabi(allSyllabi);
-        if (allTimeRecords) setTimeRecords(allTimeRecords);
       }
     } catch (err) {
       console.warn("loadData encountered an issue, staying on current/local data:", err);
@@ -575,30 +567,30 @@ export default function StudentProgressManager() {
   return (
     <div className="space-y-6">
       {/* Top Main Navigation Header with Tab Switcher */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-[#334155] pb-4 gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-[#2E2E34] pb-4 gap-4">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#06B6D4]/20 text-[#06B6D4]">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#EAEAE6]/20 text-[#EAEAE6]">
               {activeTab === 'time_reports' ? <Clock className="h-4 w-4" /> : <Users className="h-4 w-4" />}
             </span>
             <h3 className="text-xl font-extrabold text-white tracking-tight">
               Student Progress & Learning Analytics Center
             </h3>
           </div>
-          <p className="text-xs text-[#94A3B8] mt-1">
+          <p className="text-xs text-[#A1A1AA] mt-1">
             Active topic duration (away time excluded), syllabus engagement charts, real-time focus states, and student reports.
           </p>
         </div>
 
         <div className="flex items-center space-x-3">
           {/* Main View Mode Selector */}
-          <div className="flex items-center rounded-xl bg-[#0B0F19] p-1 border border-[#334155]">
+          <div className="flex items-center rounded-xl bg-[#141416] p-1 border border-[#2E2E34]">
             <button
               onClick={() => setActiveTab('time_reports')}
               className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'time_reports'
-                  ? 'bg-[#06B6D4] text-slate-950 shadow-md'
-                  : 'text-[#94A3B8] hover:text-white'
+                  ? 'bg-emerald-500 text-[#141416] shadow-md'
+                  : 'text-[#A1A1AA] hover:text-white'
               }`}
             >
               <Clock className="h-3.5 w-3.5" />
@@ -609,8 +601,8 @@ export default function StudentProgressManager() {
               onClick={() => setActiveTab('attention')}
               className={`flex items-center space-x-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
                 activeTab === 'attention'
-                  ? 'bg-[#06B6D4] text-slate-950 shadow-md'
-                  : 'text-[#94A3B8] hover:text-white'
+                  ? 'bg-emerald-500 text-[#141416] shadow-md'
+                  : 'text-[#A1A1AA] hover:text-white'
               }`}
             >
               <Users className="h-3.5 w-3.5" />
@@ -621,7 +613,7 @@ export default function StudentProgressManager() {
           <button
             onClick={loadData}
             title="Refresh records from database"
-            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#1E293B] px-3 py-2 text-xs font-semibold text-[#CBD5E1] hover:text-white transition-all shadow"
+            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#2E2E34] bg-[#1C1C1F] px-3 py-2 text-xs font-semibold text-[#EAEAE6] hover:text-white transition-all shadow"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
             <span className="hidden sm:inline">Refresh</span>
@@ -645,10 +637,10 @@ export default function StudentProgressManager() {
       {activeTab === 'time_reports' && (
         <div className="space-y-6">
           {/* Away Time Guarantee Banner */}
-          <div className="rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-slate-900/40 p-4 shadow-xl">
+          <div className="rounded-2xl border border-[#EAEAE6]/30 bg-gradient-to-r from-cyan-950/40 via-slate-900/60 to-slate-900/40 p-4 shadow-xl">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex items-center space-x-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/20 text-[#06B6D4]">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#EAEAE6]/20 text-[#EAEAE6]">
                   <Clock className="h-5 w-5" />
                 </div>
                 <div>
@@ -658,7 +650,7 @@ export default function StudentProgressManager() {
                       Away Time Filter Active
                     </span>
                   </h4>
-                  <p className="text-xs text-[#94A3B8] mt-0.5">
+                  <p className="text-xs text-[#A1A1AA] mt-0.5">
                     Time is calculated in <strong>minutes</strong> strictly during active student reading. Moments where the student switched tabs, blurred the window, or was idle for &gt;1 minute are <strong>automatically excluded</strong>.
                   </p>
                 </div>
@@ -669,7 +661,7 @@ export default function StudentProgressManager() {
                   onClick={handleClearTimeRecords}
                   disabled={clearingTime}
                   title="Remove all topic time records and reset analytics to fresh 0m"
-                  className="inline-flex items-center space-x-1.5 rounded-xl bg-[#1E293B] border border-rose-500/30 text-rose-300 hover:bg-rose-500/20 hover:border-rose-500/60 px-3 py-2 text-xs font-bold transition-all shadow"
+                  className="inline-flex items-center space-x-1.5 rounded-xl bg-[#1C1C1F] border border-rose-500/30 text-rose-300 hover:bg-rose-500/20 hover:border-rose-500/60 px-3 py-2 text-xs font-bold transition-all shadow"
                 >
                   <Trash2 className="h-3.5 w-3.5 text-rose-400" />
                   <span>{clearingTime ? "Resetting..." : "Start Fresh (Clear Time)"}</span>
@@ -677,7 +669,7 @@ export default function StudentProgressManager() {
 
                 <button
                   onClick={handleExportCSV}
-                  className="inline-flex items-center space-x-2 rounded-xl bg-[#1E293B] border border-[#334155] px-3.5 py-2 text-xs font-bold text-[#CBD5E1] hover:text-white hover:border-[#06B6D4] transition-all shadow"
+                  className="inline-flex items-center space-x-2 rounded-xl bg-[#1C1C1F] border border-[#2E2E34] px-3.5 py-2 text-xs font-bold text-[#EAEAE6] hover:text-white hover:border-[#EAEAE6] transition-all shadow"
                 >
                   <FileSpreadsheet className="h-4 w-4 text-[#10B981]" />
                   <span>Export Report (CSV)</span>
@@ -688,32 +680,32 @@ export default function StudentProgressManager() {
 
           {/* Quick KPI Overview Stat Cards */}
           <div className="grid gap-4 sm:grid-cols-4">
-            <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5 shadow-lg flex items-center justify-between">
+            <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-5 shadow-lg flex items-center justify-between">
               <div>
-                <span className="text-xs font-mono font-bold text-[#94A3B8] uppercase tracking-wider block mb-1">
+                <span className="text-xs font-mono font-bold text-[#A1A1AA] uppercase tracking-wider block mb-1">
                   Total Active Learning Time
                 </span>
                 <span className="text-2xl sm:text-3xl font-extrabold text-white font-mono">
                   {formatTimeDisplay(totalFilteredMinutes)}
                 </span>
-                <span className="text-[11px] text-cyan-400 block mt-1">
+                <span className="text-[11px] text-[#EAEAE6] block mt-1">
                   In selected filter window
                 </span>
               </div>
-              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#06B6D4]/20 text-[#06B6D4]">
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#EAEAE6]/20 text-[#EAEAE6]">
                 <Clock className="h-5 w-5" />
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5 shadow-lg flex items-center justify-between">
+            <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-5 shadow-lg flex items-center justify-between">
               <div>
-                <span className="text-xs font-mono font-bold text-[#94A3B8] uppercase tracking-wider block mb-1">
+                <span className="text-xs font-mono font-bold text-[#A1A1AA] uppercase tracking-wider block mb-1">
                   Avg. Focus Time / Student
                 </span>
                 <span className="text-2xl sm:text-3xl font-extrabold text-[#10B981] font-mono">
                   {averageMinutesPerStudent} mins
                 </span>
-                <span className="text-[11px] text-[#94A3B8] block mt-1">
+                <span className="text-[11px] text-[#A1A1AA] block mt-1">
                   Across {activeStudentsCount} active students
                 </span>
               </div>
@@ -722,15 +714,15 @@ export default function StudentProgressManager() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5 shadow-lg flex items-center justify-between">
+            <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-5 shadow-lg flex items-center justify-between">
               <div>
-                <span className="text-xs font-mono font-bold text-[#94A3B8] uppercase tracking-wider block mb-1">
+                <span className="text-xs font-mono font-bold text-[#A1A1AA] uppercase tracking-wider block mb-1">
                   Most Studied Topic
                 </span>
                 <span className="text-sm font-bold text-amber-300 line-clamp-1 block">
                   {topTopic ? topTopic.topicTitle : "None yet"}
                 </span>
-                <span className="text-[11px] text-[#94A3B8] block mt-1 font-mono">
+                <span className="text-[11px] text-[#A1A1AA] block mt-1 font-mono">
                   {topTopic ? `${topTopic.totalMinutes} mins spent` : "No activity"}
                 </span>
               </div>
@@ -739,15 +731,15 @@ export default function StudentProgressManager() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5 shadow-lg flex items-center justify-between">
+            <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-5 shadow-lg flex items-center justify-between">
               <div>
-                <span className="text-xs font-mono font-bold text-[#94A3B8] uppercase tracking-wider block mb-1">
+                <span className="text-xs font-mono font-bold text-[#A1A1AA] uppercase tracking-wider block mb-1">
                   Active Students Studied
                 </span>
                 <span className="text-2xl sm:text-3xl font-extrabold text-white font-mono">
                   {activeStudentsCount} / {students.length}
                 </span>
-                <span className="text-[11px] text-[#94A3B8] block mt-1">
+                <span className="text-[11px] text-[#A1A1AA] block mt-1">
                   Enrolled student body
                 </span>
               </div>
@@ -760,10 +752,10 @@ export default function StudentProgressManager() {
           {/* ==================================================== */}
           {/* COMPREHENSIVE MULTI-DIMENSIONAL FILTER TOOLBAR */}
           {/* ==================================================== */}
-          <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5 shadow-lg space-y-4">
-            <div className="flex items-center justify-between border-b border-[#334155] pb-3">
-              <span className="text-xs font-mono font-bold text-[#94A3B8] uppercase flex items-center space-x-2">
-                <Filter className="h-4 w-4 text-[#06B6D4]" />
+          <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-5 shadow-lg space-y-4">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] pb-3">
+              <span className="text-xs font-mono font-bold text-[#A1A1AA] uppercase flex items-center space-x-2">
+                <Filter className="h-4 w-4 text-[#EAEAE6]" />
                 <span>Filter Learning Time Reports by Date, Syllabus, Topic & Student</span>
               </span>
               
@@ -777,7 +769,7 @@ export default function StudentProgressManager() {
                   setCustomStartDate("");
                   setCustomEndDate("");
                 }}
-                className="text-[11px] text-[#06B6D4] hover:underline font-mono"
+                className="text-[11px] text-[#EAEAE6] hover:underline font-mono"
               >
                 Reset All Filters
               </button>
@@ -786,13 +778,13 @@ export default function StudentProgressManager() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
               {/* Date Filter Presets */}
               <div>
-                <label className="block text-[11px] font-mono text-[#94A3B8] mb-1">
+                <label className="block text-[11px] font-mono text-[#A1A1AA] mb-1">
                   Date Range
                 </label>
                 <select
                   value={reportDatePreset}
                   onChange={(e) => setReportDatePreset(e.target.value as DateRangePreset)}
-                  className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] px-3 py-2 text-xs font-semibold text-[#CBD5E1] focus:border-[#06B6D4] focus:outline-none"
+                  className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] px-3 py-2 text-xs font-semibold text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
                 >
                   <option value="all">All Dates</option>
                   <option value="today">Today</option>
@@ -804,7 +796,7 @@ export default function StudentProgressManager() {
 
               {/* Syllabus Filter */}
               <div>
-                <label className="block text-[11px] font-mono text-[#94A3B8] mb-1">
+                <label className="block text-[11px] font-mono text-[#A1A1AA] mb-1">
                   Syllabus
                 </label>
                 <select
@@ -813,7 +805,7 @@ export default function StudentProgressManager() {
                     setReportSyllabusId(e.target.value);
                     setReportTopicId("all"); // reset topic when syllabus changes
                   }}
-                  className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] px-3 py-2 text-xs font-semibold text-[#CBD5E1] focus:border-[#06B6D4] focus:outline-none truncate"
+                  className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] px-3 py-2 text-xs font-semibold text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none truncate"
                 >
                   <option value="all">All Syllabi</option>
                   {syllabi.map((s) => (
@@ -826,13 +818,13 @@ export default function StudentProgressManager() {
 
               {/* Topic Filter */}
               <div>
-                <label className="block text-[11px] font-mono text-[#94A3B8] mb-1">
+                <label className="block text-[11px] font-mono text-[#A1A1AA] mb-1">
                   Topic
                 </label>
                 <select
                   value={reportTopicId}
                   onChange={(e) => setReportTopicId(e.target.value)}
-                  className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] px-3 py-2 text-xs font-semibold text-[#CBD5E1] focus:border-[#06B6D4] focus:outline-none truncate"
+                  className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] px-3 py-2 text-xs font-semibold text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none truncate"
                 >
                   <option value="all">All Topics ({availableTopics.length})</option>
                   {availableTopics.map((t) => (
@@ -845,13 +837,13 @@ export default function StudentProgressManager() {
 
               {/* Student Filter (Single student or all) */}
               <div>
-                <label className="block text-[11px] font-mono text-[#94A3B8] mb-1">
+                <label className="block text-[11px] font-mono text-[#A1A1AA] mb-1">
                   Student View
                 </label>
                 <select
                   value={reportStudentId}
                   onChange={(e) => setReportStudentId(e.target.value)}
-                  className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] px-3 py-2 text-xs font-semibold text-[#CBD5E1] focus:border-[#06B6D4] focus:outline-none truncate"
+                  className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] px-3 py-2 text-xs font-semibold text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none truncate"
                 >
                   <option value="all">All Students (Row by Row)</option>
                   {students.map((st) => (
@@ -864,17 +856,17 @@ export default function StudentProgressManager() {
 
               {/* Search input */}
               <div>
-                <label className="block text-[11px] font-mono text-[#94A3B8] mb-1">
+                <label className="block text-[11px] font-mono text-[#A1A1AA] mb-1">
                   Search Query
                 </label>
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#94A3B8]" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[#A1A1AA]" />
                   <input
                     type="text"
                     value={reportSearch}
                     onChange={(e) => setReportSearch(e.target.value)}
                     placeholder="Student name, topic..."
-                    className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] pl-8 pr-3 py-2 text-xs text-white placeholder-[#94A3B8] focus:border-[#06B6D4] focus:outline-none"
+                    className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] pl-8 pr-3 py-2 text-xs text-white placeholder-[#A1A1AA] focus:border-[#EAEAE6] focus:outline-none"
                   />
                 </div>
               </div>
@@ -882,27 +874,27 @@ export default function StudentProgressManager() {
 
             {/* Custom Date Pickers when 'custom' is selected */}
             {reportDatePreset === "custom" && (
-              <div className="pt-2 border-t border-[#334155]/60 flex flex-wrap items-center gap-3 bg-[#0B0F19]/40 p-3 rounded-xl">
-                <span className="text-xs font-mono text-[#94A3B8] flex items-center space-x-1.5">
-                  <Calendar className="h-3.5 w-3.5 text-[#06B6D4]" />
+              <div className="pt-2 border-t border-[#2E2E34]/60 flex flex-wrap items-center gap-3 bg-[#141416]/40 p-3 rounded-xl">
+                <span className="text-xs font-mono text-[#A1A1AA] flex items-center space-x-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-[#EAEAE6]" />
                   <span>Specify Custom Date Bounds:</span>
                 </span>
                 <div className="flex items-center space-x-2">
-                  <label className="text-[11px] text-[#94A3B8]">From:</label>
+                  <label className="text-[11px] text-[#A1A1AA]">From:</label>
                   <input
                     type="date"
                     value={customStartDate}
                     onChange={(e) => setCustomStartDate(e.target.value)}
-                    className="rounded-lg bg-[#0B0F19] border border-[#334155] px-2.5 py-1 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                    className="rounded-lg bg-[#141416] border border-[#2E2E34] px-2.5 py-1 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   />
                 </div>
                 <div className="flex items-center space-x-2">
-                  <label className="text-[11px] text-[#94A3B8]">To:</label>
+                  <label className="text-[11px] text-[#A1A1AA]">To:</label>
                   <input
                     type="date"
                     value={customEndDate}
                     onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="rounded-lg bg-[#0B0F19] border border-[#334155] px-2.5 py-1 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                    className="rounded-lg bg-[#141416] border border-[#2E2E34] px-2.5 py-1 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                   />
                 </div>
               </div>
@@ -914,21 +906,21 @@ export default function StudentProgressManager() {
           {/* ==================================================== */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Chart 1: Topic Engagement Bar Chart */}
-            <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5 shadow-lg space-y-4">
-              <div className="flex items-center justify-between border-b border-[#334155] pb-3">
+            <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-5 shadow-lg space-y-4">
+              <div className="flex items-center justify-between border-b border-[#2E2E34] pb-3">
                 <div className="flex items-center space-x-2">
-                  <BarChart3 className="h-4 w-4 text-[#06B6D4]" />
+                  <BarChart3 className="h-4 w-4 text-[#EAEAE6]" />
                   <h4 className="text-sm font-bold text-white">
                     Topic Engagement Breakdown (Active Minutes)
                   </h4>
                 </div>
-                <span className="text-[11px] font-mono text-[#94A3B8]">
+                <span className="text-[11px] font-mono text-[#A1A1AA]">
                   Top {topicEngagementChartData.length} Topics
                 </span>
               </div>
 
               {topicEngagementChartData.length === 0 ? (
-                <div className="py-12 text-center text-xs text-[#94A3B8]">
+                <div className="py-12 text-center text-xs text-[#A1A1AA]">
                   No topic learning activity recorded under this filter criteria.
                 </div>
               ) : (
@@ -941,13 +933,13 @@ export default function StudentProgressManager() {
                         <div key={item.topicId} className="space-y-1.5">
                           <div className="flex items-center justify-between text-xs">
                             <div className="flex items-center space-x-2 truncate max-w-[75%]">
-                              <span className="font-mono text-[10px] text-[#06B6D4] font-bold">
+                              <span className="font-mono text-[10px] text-[#EAEAE6] font-bold">
                                 #{idx + 1}
                               </span>
-                              <span className="font-semibold text-[#CBD5E1] truncate" title={item.topicTitle}>
+                              <span className="font-semibold text-[#EAEAE6] truncate" title={item.topicTitle}>
                                 {item.topicTitle}
                               </span>
-                              <span className="text-[10px] text-[#94A3B8] font-mono shrink-0 hidden sm:inline">
+                              <span className="text-[10px] text-[#A1A1AA] font-mono shrink-0 hidden sm:inline">
                                 ({item.studentCount} students)
                               </span>
                             </div>
@@ -956,9 +948,9 @@ export default function StudentProgressManager() {
                             </div>
                           </div>
 
-                          <div className="h-2.5 w-full rounded-full bg-[#0B0F19] overflow-hidden border border-[#334155]">
+                          <div className="h-2.5 w-full rounded-full bg-[#141416] overflow-hidden border border-[#2E2E34]">
                             <div
-                              className="h-full rounded-full bg-gradient-to-r from-[#06B6D4] to-[#10B981] transition-all duration-500"
+                              className="h-full rounded-full bg-gradient-to-r from-[#EAEAE6] to-[#10B981] transition-all duration-500"
                               style={{ width: `${Math.max(5, percentage)}%` }}
                             />
                           </div>
@@ -971,21 +963,21 @@ export default function StudentProgressManager() {
             </div>
 
             {/* Chart 2: Student Learning Time Comparison Chart */}
-            <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5 shadow-lg space-y-4">
-              <div className="flex items-center justify-between border-b border-[#334155] pb-3">
+            <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-5 shadow-lg space-y-4">
+              <div className="flex items-center justify-between border-b border-[#2E2E34] pb-3">
                 <div className="flex items-center space-x-2">
                   <Award className="h-4 w-4 text-amber-400" />
                   <h4 className="text-sm font-bold text-white">
                     Student Active Time Ranking (Minutes)
                   </h4>
                 </div>
-                <span className="text-[11px] font-mono text-[#94A3B8]">
+                <span className="text-[11px] font-mono text-[#A1A1AA]">
                   Comparing Students
                 </span>
               </div>
 
               {studentComparisonChartData.length === 0 || studentComparisonChartData.every(s => s.totalActiveMinutes === 0) ? (
-                <div className="py-12 text-center text-xs text-[#94A3B8]">
+                <div className="py-12 text-center text-xs text-[#A1A1AA]">
                   No student learning time recorded for this selection.
                 </div>
               ) : (
@@ -999,7 +991,7 @@ export default function StudentProgressManager() {
                           <div className="flex items-center justify-between text-xs">
                             <div className="flex items-center space-x-2 truncate max-w-[70%]">
                               <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-mono font-bold ${
-                                idx === 0 ? 'bg-amber-500 text-slate-950' : idx === 1 ? 'bg-slate-300 text-slate-950' : 'bg-[#0B0F19] text-[#CBD5E1] border border-[#334155]'
+                                idx === 0 ? 'bg-amber-500 text-[#141416]' : idx === 1 ? 'bg-slate-300 text-[#141416]' : 'bg-[#141416] text-[#EAEAE6] border border-[#2E2E34]'
                               }`}>
                                 {idx + 1}
                               </span>
@@ -1007,7 +999,7 @@ export default function StudentProgressManager() {
                                 {st.studentName}
                               </span>
                               {st.studentLevel && (
-                                <span className="rounded bg-[#06B6D4]/15 px-1.5 py-0.5 text-[9px] font-mono text-[#06B6D4] font-bold border border-[#06B6D4]/30 hidden sm:inline">
+                                <span className="rounded bg-[#EAEAE6]/15 px-1.5 py-0.5 text-[9px] font-mono text-[#EAEAE6] font-bold border border-[#EAEAE6]/30 hidden sm:inline">
                                   {st.studentLevel}
                                 </span>
                               )}
@@ -1017,7 +1009,7 @@ export default function StudentProgressManager() {
                             </div>
                           </div>
 
-                          <div className="h-2.5 w-full rounded-full bg-[#0B0F19] overflow-hidden border border-[#334155]">
+                          <div className="h-2.5 w-full rounded-full bg-[#141416] overflow-hidden border border-[#2E2E34]">
                             <div
                               className="h-full rounded-full bg-gradient-to-r from-amber-500 to-[#10B981] transition-all duration-500"
                               style={{ width: `${Math.max(4, percentage)}%` }}
@@ -1035,36 +1027,36 @@ export default function StudentProgressManager() {
           {/* ==================================================== */}
           {/* STUDENT-BY-STUDENT REPORT TABLE IN ROWS */}
           {/* ==================================================== */}
-          <div className="rounded-2xl border border-[#334155] bg-[#1E293B] shadow-lg overflow-hidden space-y-0">
-            <div className="p-5 border-b border-[#334155] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#0B0F19]/40">
+          <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] shadow-lg overflow-hidden space-y-0">
+            <div className="p-5 border-b border-[#2E2E34] flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#141416]/40">
               <div>
                 <h4 className="text-base font-bold text-white flex items-center space-x-2">
-                  <Users className="h-4 w-4 text-[#06B6D4]" />
+                  <Users className="h-4 w-4 text-[#EAEAE6]" />
                   <span>Student Active Learning Reports (Student-by-Student Rows)</span>
                 </h4>
-                <p className="text-xs text-[#94A3B8] mt-0.5">
+                <p className="text-xs text-[#A1A1AA] mt-0.5">
                   Detailed active minutes per student broken down by specific syllabus topics with away-time pauses filtered out.
                 </p>
               </div>
 
-              <div className="text-xs font-mono text-[#94A3B8]">
+              <div className="text-xs font-mono text-[#A1A1AA]">
                 Showing <strong className="text-white">{studentRowsReport.length}</strong> student rows
               </div>
             </div>
 
             {loading && studentRowsReport.length === 0 ? (
-              <div className="py-20 text-center text-[#94A3B8]">
-                <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-3" />
+              <div className="py-20 text-center text-[#A1A1AA]">
+                <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent mb-3" />
                 Aggregating active learning minutes and topic logs...
               </div>
             ) : studentRowsReport.length === 0 ? (
-              <div className="py-16 text-center text-[#94A3B8]">
+              <div className="py-16 text-center text-[#A1A1AA]">
                 No student reports matching the selected filters.
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs hidden md:table">
-                  <thead className="border-b border-[#334155] bg-[#0B0F19]/70 font-mono text-[#94A3B8] uppercase">
+                  <thead className="border-b border-[#2E2E34] bg-[#141416]/70 font-mono text-[#A1A1AA] uppercase">
                     <tr>
                       <th className="px-6 py-4">Student</th>
                       <th className="px-6 py-4">Trade & Level</th>
@@ -1076,15 +1068,15 @@ export default function StudentProgressManager() {
                       <th className="px-6 py-4 text-right">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#334155]">
+                  <tbody className="divide-y divide-[#2E2E34]">
                     {studentRowsReport.map((st) => (
-                      <tr key={st.userId} className="hover:bg-[#0B0F19]/30 transition-colors">
+                      <tr key={st.userId} className="hover:bg-[#141416]/30 transition-colors">
                         {/* Student Details */}
                         <td className="px-6 py-4">
                           <div className="font-bold text-white text-sm">
                             {st.studentName}
                           </div>
-                          <div className="text-[11px] text-[#94A3B8] font-mono flex items-center space-x-2 mt-0.5">
+                          <div className="text-[11px] text-[#A1A1AA] font-mono flex items-center space-x-2 mt-0.5">
                             <span>@{st.studentUsername || 'student'}</span>
                             {st.studentEmail && (
                               <span>• {st.studentEmail}</span>
@@ -1094,10 +1086,10 @@ export default function StudentProgressManager() {
 
                         {/* Trade & Level */}
                         <td className="px-6 py-4">
-                          <div className="font-semibold text-[#CBD5E1]">
+                          <div className="font-semibold text-[#EAEAE6]">
                             {tradesMap[st.studentTradeId] || 'General'}
                           </div>
-                          <span className="inline-block mt-1 rounded bg-[#06B6D4]/15 px-2 py-0.5 font-mono text-[10px] text-[#06B6D4] font-bold border border-[#06B6D4]/30">
+                          <span className="inline-block mt-1 rounded bg-[#EAEAE6]/15 px-2 py-0.5 font-mono text-[10px] text-[#EAEAE6] font-bold border border-[#EAEAE6]/30">
                             {st.studentLevel || 'Level 4'}
                           </span>
                         </td>
@@ -1109,7 +1101,7 @@ export default function StudentProgressManager() {
                               {st.syllabiTitles.map((title, idx) => (
                                 <span
                                   key={idx}
-                                  className="inline-block rounded-md bg-[#0B0F19] px-2 py-1 text-[11px] font-semibold text-[#CBD5E1] border border-[#334155] line-clamp-1 max-w-[200px]"
+                                  className="inline-block rounded-md bg-[#141416] px-2 py-1 text-[11px] font-semibold text-[#EAEAE6] border border-[#2E2E34] line-clamp-1 max-w-[200px]"
                                   title={title}
                                 >
                                   {title}
@@ -1130,10 +1122,10 @@ export default function StudentProgressManager() {
                               {st.topics.slice(0, 4).map((tp) => (
                                 <span
                                   key={tp.topicId}
-                                  className="inline-flex items-center space-x-1.5 rounded-lg bg-[#0B0F19] border border-[#334155] px-2.5 py-1 text-[11px]"
+                                  className="inline-flex items-center space-x-1.5 rounded-lg bg-[#141416] border border-[#2E2E34] px-2.5 py-1 text-[11px]"
                                   title={`${tp.topicTitle}: ${tp.minutes} active minutes`}
                                 >
-                                  <span className="text-[#CBD5E1] font-medium max-w-[130px] truncate">
+                                  <span className="text-[#EAEAE6] font-medium max-w-[130px] truncate">
                                     {tp.topicTitle}
                                   </span>
                                   <span className="font-mono font-bold text-[#10B981] bg-[#10B981]/15 px-1.5 py-0.2 rounded">
@@ -1150,7 +1142,7 @@ export default function StudentProgressManager() {
                                     records: st.records,
                                     totalMinutes: st.totalActiveMinutes
                                   })}
-                                  className="inline-flex items-center text-[10px] font-mono text-[#06B6D4] hover:underline font-bold px-1"
+                                  className="inline-flex items-center text-[10px] font-mono text-[#EAEAE6] hover:underline font-bold px-1"
                                 >
                                   +{st.topics.length - 4} more topics
                                 </button>
@@ -1166,10 +1158,10 @@ export default function StudentProgressManager() {
                         {/* Total Active Time */}
                         <td className="px-6 py-4">
                           <div className="font-mono text-sm font-extrabold text-white flex items-center space-x-1.5">
-                            <Clock className="h-3.5 w-3.5 text-[#06B6D4]" />
+                            <Clock className="h-3.5 w-3.5 text-[#EAEAE6]" />
                             <span>{st.totalActiveMinutes} mins</span>
                           </div>
-                          <span className="text-[10px] font-mono text-[#94A3B8] block mt-0.5">
+                          <span className="text-[10px] font-mono text-[#A1A1AA] block mt-0.5">
                             {st.totalActiveMinutes >= 60 ? formatTimeDisplay(st.totalActiveMinutes) : 'Active focus'}
                           </span>
                         </td>
@@ -1211,8 +1203,8 @@ export default function StudentProgressManager() {
 
                         {/* Active Sessions */}
                         <td className="px-6 py-4">
-                          <span className="inline-flex items-center space-x-1 rounded-md bg-[#0B0F19] px-2.5 py-1 text-[11px] font-mono font-bold text-[#CBD5E1] border border-[#334155]">
-                            <Calendar className="h-3 w-3 text-[#06B6D4]" />
+                          <span className="inline-flex items-center space-x-1 rounded-md bg-[#141416] px-2.5 py-1 text-[11px] font-mono font-bold text-[#EAEAE6] border border-[#2E2E34]">
+                            <Calendar className="h-3 w-3 text-[#EAEAE6]" />
                             <span>{st.activeDaysCount} {st.activeDaysCount === 1 ? 'day' : 'days'}</span>
                           </span>
                         </td>
@@ -1227,7 +1219,7 @@ export default function StudentProgressManager() {
                               records: st.records,
                               totalMinutes: st.totalActiveMinutes
                             })}
-                            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-1.5 text-xs font-semibold text-[#06B6D4] hover:border-[#06B6D4] hover:text-white transition-all shadow-md"
+                            className="inline-flex items-center space-x-1.5 rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-1.5 text-xs font-semibold text-[#EAEAE6] hover:border-[#EAEAE6] hover:text-white transition-all shadow-md"
                           >
                             <span>Detailed Log</span>
                             <ChevronRight className="h-3.5 w-3.5" />
@@ -1239,33 +1231,33 @@ export default function StudentProgressManager() {
                 </table>
 
                 {/* Mobile Responsive Cards */}
-                <div className="md:hidden divide-y divide-[#334155]">
+                <div className="md:hidden divide-y divide-[#2E2E34]">
                   {studentRowsReport.map((st) => (
-                    <div key={st.userId} className="p-4 space-y-3 bg-[#1E293B]">
+                    <div key={st.userId} className="p-4 space-y-3 bg-[#1C1C1F]">
                       <div className="flex items-start justify-between gap-2">
                         <div>
                           <div className="font-bold text-white text-sm">{st.studentName}</div>
-                          <div className="text-[11px] text-[#94A3B8] font-mono">
+                          <div className="text-[11px] text-[#A1A1AA] font-mono">
                             @{st.studentUsername || 'student'}
                             {st.studentEmail && ` • ${st.studentEmail}`}
                           </div>
                         </div>
-                        <span className="rounded bg-[#06B6D4]/15 px-2 py-0.5 font-mono text-[10px] text-[#06B6D4] font-bold border border-[#06B6D4]/30 shrink-0">
+                        <span className="rounded bg-[#EAEAE6]/15 px-2 py-0.5 font-mono text-[10px] text-[#EAEAE6] font-bold border border-[#EAEAE6]/30 shrink-0">
                           {st.studentLevel || 'Level 4'}
                         </span>
                       </div>
 
                       <div className="grid grid-cols-2 gap-2 text-[11px]">
-                        <div className="rounded-xl bg-[#0B0F19] p-2.5 border border-[#334155]">
-                          <span className="text-[#94A3B8] block text-[10px] uppercase font-mono">Active Focus</span>
+                        <div className="rounded-xl bg-[#141416] p-2.5 border border-[#2E2E34]">
+                          <span className="text-[#A1A1AA] block text-[10px] uppercase font-mono">Active Focus</span>
                           <div className="font-mono text-sm font-extrabold text-white flex items-center gap-1.5 mt-0.5">
-                            <Clock className="h-3.5 w-3.5 text-[#06B6D4]" />
+                            <Clock className="h-3.5 w-3.5 text-[#EAEAE6]" />
                             <span>{st.totalActiveMinutes} mins</span>
                           </div>
                         </div>
 
-                        <div className="rounded-xl bg-[#0B0F19] p-2.5 border border-[#334155]">
-                          <span className="text-[#94A3B8] block text-[10px] uppercase font-mono">Strikes Status</span>
+                        <div className="rounded-xl bg-[#141416] p-2.5 border border-[#2E2E34]">
+                          <span className="text-[#A1A1AA] block text-[10px] uppercase font-mono">Strikes Status</span>
                           <div className="mt-0.5">
                             {st.unfocusedCount >= 10 ? (
                               <span className="text-rose-400 font-mono font-bold text-xs">10/10 Suspended</span>
@@ -1281,7 +1273,7 @@ export default function StudentProgressManager() {
                       {st.topics.length > 0 && (
                         <div className="flex flex-wrap gap-1">
                           {st.topics.slice(0, 3).map((tp) => (
-                            <span key={tp.topicId} className="inline-flex items-center space-x-1 rounded-md bg-[#0B0F19] px-2 py-0.5 text-[10px] text-[#CBD5E1] border border-[#334155]">
+                            <span key={tp.topicId} className="inline-flex items-center space-x-1 rounded-md bg-[#141416] px-2 py-0.5 text-[10px] text-[#EAEAE6] border border-[#2E2E34]">
                               <span className="max-w-[120px] truncate">{tp.topicTitle}</span>
                               <span className="text-[#10B981] font-mono font-bold">{Math.round(tp.minutes)}m</span>
                             </span>
@@ -1313,7 +1305,7 @@ export default function StudentProgressManager() {
                             records: st.records,
                             totalMinutes: st.totalActiveMinutes
                           })}
-                          className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#0B0F19] px-3.5 py-1.5 text-xs font-semibold text-[#06B6D4] hover:text-white"
+                          className="inline-flex items-center space-x-1.5 rounded-xl border border-[#2E2E34] bg-[#141416] px-3.5 py-1.5 text-xs font-semibold text-[#EAEAE6] hover:text-white"
                         >
                           <span>Detailed Log</span>
                           <ChevronRight className="h-3.5 w-3.5" />
@@ -1335,7 +1327,7 @@ export default function StudentProgressManager() {
         <div className="space-y-6">
           {/* Top Actions & Broadcast */}
           <div className="flex items-center justify-between">
-            <span className="text-xs font-mono font-bold text-[#94A3B8] uppercase">
+            <span className="text-xs font-mono font-bold text-[#A1A1AA] uppercase">
               Live Real-Time Tab Presences & Attention Monitoring
             </span>
 
@@ -1345,7 +1337,7 @@ export default function StudentProgressManager() {
                   setMessagingTarget('behind');
                   setMessageText("Notice: You are currently behind on your assigned syllabus modules. Please log in and review your subtopic learning outcomes.");
                 }}
-                className="inline-flex items-center space-x-2 rounded-xl bg-amber-500 px-3.5 py-2 text-xs font-bold text-slate-950 hover:bg-amber-400 transition-all shadow-lg"
+                className="inline-flex items-center space-x-2 rounded-xl bg-amber-500 px-3.5 py-2 text-xs font-bold text-[#141416] hover:bg-amber-400 transition-all shadow-lg"
               >
                 <AlertTriangle className="h-4 w-4" />
                 <span>Notify All Behind ({behindCount})</span>
@@ -1355,15 +1347,15 @@ export default function StudentProgressManager() {
 
           {/* Overview Stat Cards with Live Attention Status */}
           <div className="grid gap-4 sm:grid-cols-5">
-            <div className="rounded-2xl border border-[#334155] bg-[#1E293B] p-5 shadow-lg flex items-center justify-between">
+            <div className="rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-5 shadow-lg flex items-center justify-between">
               <div>
-                <span className="text-xs font-mono font-bold text-[#94A3B8] uppercase tracking-wider block mb-1">
+                <span className="text-xs font-mono font-bold text-[#A1A1AA] uppercase tracking-wider block mb-1">
                   Total Enrolled
                 </span>
                 <span className="text-3xl font-extrabold text-white font-mono">{students.length}</span>
-                <span className="text-[11px] text-[#94A3B8] block mt-1">Enrolled students</span>
+                <span className="text-[11px] text-[#A1A1AA] block mt-1">Enrolled students</span>
               </div>
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#06B6D4]/20 text-[#06B6D4]">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EAEAE6]/20 text-[#EAEAE6]">
                 <Users className="h-5 w-5" />
               </div>
             </div>
@@ -1374,7 +1366,7 @@ export default function StudentProgressManager() {
                   🟢 Active Focus
                 </span>
                 <span className="text-3xl font-extrabold text-[#10B981] font-mono">{activeLearningCount}</span>
-                <span className="text-[11px] text-[#94A3B8] block mt-1">Focused & interacting</span>
+                <span className="text-[11px] text-[#A1A1AA] block mt-1">Focused & interacting</span>
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#10B981]/20 text-[#10B981]">
                 <Radio className="h-5 w-5 animate-pulse" />
@@ -1387,7 +1379,7 @@ export default function StudentProgressManager() {
                   🟡 Side Window
                 </span>
                 <span className="text-3xl font-extrabold text-amber-400 font-mono">{tabUnfocusedCount}</span>
-                <span className="text-[11px] text-[#94A3B8] block mt-1">Clicked outside window</span>
+                <span className="text-[11px] text-[#A1A1AA] block mt-1">Clicked outside window</span>
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-500/20 text-amber-400">
                 <EyeOff className="h-5 w-5" />
@@ -1400,7 +1392,7 @@ export default function StudentProgressManager() {
                   🟠 Idle (&gt;1 min)
                 </span>
                 <span className="text-3xl font-extrabold text-orange-400 font-mono">{idleCount}</span>
-                <span className="text-[11px] text-[#94A3B8] block mt-1">No mouse / key input</span>
+                <span className="text-[11px] text-[#A1A1AA] block mt-1">No mouse / key input</span>
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-500/20 text-orange-400">
                 <Clock className="h-5 w-5" />
@@ -1409,11 +1401,11 @@ export default function StudentProgressManager() {
 
             <div className="rounded-2xl border border-slate-700 bg-slate-800/40 p-5 shadow-lg flex items-center justify-between">
               <div>
-                <span className="text-xs font-mono font-bold text-[#94A3B8] uppercase tracking-wider block mb-1">
+                <span className="text-xs font-mono font-bold text-[#A1A1AA] uppercase tracking-wider block mb-1">
                   ⚪ Offline
                 </span>
                 <span className="text-3xl font-extrabold text-slate-400 font-mono">{offlineCount}</span>
-                <span className="text-[11px] text-[#94A3B8] block mt-1">Inactive &gt; 2 mins</span>
+                <span className="text-[11px] text-[#A1A1AA] block mt-1">Inactive &gt; 2 mins</span>
               </div>
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-700/30 text-slate-400">
                 <Clock className="h-5 w-5" />
@@ -1422,15 +1414,15 @@ export default function StudentProgressManager() {
           </div>
 
           {/* Filter & Search Bar */}
-          <div className="flex flex-col sm:flex-row items-center gap-4 bg-[#1E293B] p-4 rounded-2xl border border-[#334155]">
+          <div className="flex flex-col sm:flex-row items-center gap-4 bg-[#1C1C1F] p-4 rounded-2xl border border-[#2E2E34]">
             <div className="relative flex-1 w-full">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#94A3B8]" />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[#A1A1AA]" />
               <input
                 type="text"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Filter students by name, email, or username..."
-                className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] pl-10 pr-4 py-2 text-xs text-white placeholder-[#94A3B8] focus:border-[#06B6D4] focus:outline-none"
+                className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] pl-10 pr-4 py-2 text-xs text-white placeholder-[#A1A1AA] focus:border-[#EAEAE6] focus:outline-none"
               />
             </div>
 
@@ -1438,7 +1430,7 @@ export default function StudentProgressManager() {
               <select
                 value={selectedTrade}
                 onChange={(e) => setSelectedTrade(e.target.value)}
-                className="rounded-xl bg-[#0B0F19] border border-[#334155] px-3 py-2 text-xs font-semibold text-[#CBD5E1] focus:border-[#06B6D4] focus:outline-none"
+                className="rounded-xl bg-[#141416] border border-[#2E2E34] px-3 py-2 text-xs font-semibold text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none"
               >
                 <option value="all">All Academic Trades</option>
                 {trades.map((t) => (
@@ -1449,7 +1441,7 @@ export default function StudentProgressManager() {
               <select
                 value={selectedLevel}
                 onChange={(e) => setSelectedLevel(e.target.value)}
-                className="rounded-xl bg-[#0B0F19] border border-[#334155] px-3 py-2 text-xs font-semibold text-[#CBD5E1] focus:border-[#06B6D4] focus:outline-none font-mono"
+                className="rounded-xl bg-[#141416] border border-[#2E2E34] px-3 py-2 text-xs font-semibold text-[#EAEAE6] focus:border-[#EAEAE6] focus:outline-none font-mono"
               >
                 <option value="all">All Levels</option>
                 <option value="Level 3">Level 3</option>
@@ -1461,27 +1453,27 @@ export default function StudentProgressManager() {
 
           {/* Student Progress & Live Presence Table */}
           {loading && filteredStudents.length === 0 ? (
-            <div className="py-20 text-center text-[#94A3B8]">
-              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#06B6D4] border-t-transparent mb-3" />
+            <div className="py-20 text-center text-[#A1A1AA]">
+              <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#EAEAE6] border-t-transparent mb-3" />
               Analyzing student progress matrices and live tab presence...
             </div>
           ) : filteredStudents.length === 0 ? (
-            <div className="py-16 text-center text-[#94A3B8] bg-[#1E293B]/40 rounded-2xl border border-[#334155]">
+            <div className="py-16 text-center text-[#A1A1AA] bg-[#1C1C1F]/40 rounded-2xl border border-[#2E2E34]">
               No approved students matching the selected trade and level filter.
             </div>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-[#334155] bg-[#1E293B] shadow-xl overscroll-x-contain">
+            <div className="overflow-x-auto rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] shadow-xl overscroll-x-contain">
               {/* Mobile swipe indicator banner */}
-              <div className="flex sm:hidden items-center justify-between px-4 py-2 bg-[#0B0F19]/80 border-b border-[#334155] text-[11px] text-[#06B6D4] font-mono sticky left-0">
+              <div className="flex sm:hidden items-center justify-between px-4 py-2 bg-[#141416]/80 border-b border-[#2E2E34] text-[11px] text-[#EAEAE6] font-mono sticky left-0">
                 <span className="flex items-center space-x-1.5">
                   <span className="animate-pulse font-bold">⇄</span>
                   <span>Swipe horizontally to view full student matrix</span>
                 </span>
-                <span className="text-[#94A3B8] text-[10px] uppercase font-bold">7 Columns</span>
+                <span className="text-[#A1A1AA] text-[10px] uppercase font-bold">7 Columns</span>
               </div>
 
               <table className="w-full min-w-[950px] text-left text-xs">
-                <thead className="border-b border-[#334155] bg-[#0B0F19]/50 font-mono text-[#94A3B8] uppercase">
+                <thead className="border-b border-[#2E2E34] bg-[#141416]/50 font-mono text-[#A1A1AA] uppercase">
                   <tr>
                     <th className="px-6 py-4 whitespace-nowrap min-w-[200px]">Student Profile</th>
                     <th className="px-6 py-4 whitespace-nowrap min-w-[190px]">Live Attention Status</th>
@@ -1492,7 +1484,7 @@ export default function StudentProgressManager() {
                     <th className="px-6 py-4 text-right whitespace-nowrap min-w-[160px]">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#334155]">
+                <tbody className="divide-y divide-[#2E2E34]">
                   {filteredStudents.map((st) => {
                     const presence = presences[st.userId];
                     const presenceState = presence?.state || 'offline';
@@ -1500,12 +1492,12 @@ export default function StudentProgressManager() {
                     const isSuspended = strikes >= 10;
 
                     return (
-                      <tr key={st.userId} className="hover:bg-[#0B0F19]/30 transition-colors">
+                      <tr key={st.userId} className="hover:bg-[#141416]/30 transition-colors">
                         <td className="px-6 py-4 whitespace-nowrap min-w-[200px]">
                           <div className="font-bold text-white text-sm flex items-center space-x-2">
                             <span>{st.fullName}</span>
                           </div>
-                          <div className="text-[11px] text-[#94A3B8] font-mono flex items-center space-x-2 mt-0.5">
+                          <div className="text-[11px] text-[#A1A1AA] font-mono flex items-center space-x-2 mt-0.5">
                             <span>@{st.username}</span>
                             {st.email ? (
                               <span>• {st.email}</span>
@@ -1527,7 +1519,7 @@ export default function StudentProgressManager() {
                                 <span>Actively Interacting</span>
                               </span>
                               {presence?.currentSubtopicTitle && (
-                                <span className="text-[10px] text-[#94A3B8] line-clamp-1 mt-0.5 font-mono">
+                                <span className="text-[10px] text-[#A1A1AA] line-clamp-1 mt-0.5 font-mono">
                                   Reading: {presence.currentSubtopicTitle}
                                 </span>
                               )}
@@ -1538,7 +1530,7 @@ export default function StudentProgressManager() {
                                 <span className="h-2.5 w-2.5 rounded-full bg-orange-400"></span>
                                 <span>Idle (No Input &gt;1m)</span>
                               </span>
-                              <span className="text-[10px] text-[#94A3B8] mt-0.5 font-mono">
+                              <span className="text-[10px] text-[#A1A1AA] mt-0.5 font-mono">
                                 Window open but no input
                               </span>
                             </div>
@@ -1598,23 +1590,23 @@ export default function StudentProgressManager() {
                         </td>
 
                         <td className="px-6 py-4 whitespace-nowrap min-w-[140px]">
-                          <div className="font-semibold text-[#CBD5E1]">
+                          <div className="font-semibold text-[#EAEAE6]">
                             {tradesMap[st.tradeId] || 'General'}
                           </div>
-                          <span className="inline-block mt-1 rounded bg-[#06B6D4]/15 px-2 py-0.5 font-mono text-[10px] text-[#06B6D4] font-bold border border-[#06B6D4]/30">
+                          <span className="inline-block mt-1 rounded bg-[#EAEAE6]/15 px-2 py-0.5 font-mono text-[10px] text-[#EAEAE6] font-bold border border-[#EAEAE6]/30">
                             {st.level}
                           </span>
                         </td>
 
                         <td className="px-6 py-4 min-w-[180px]">
                           <div className="flex items-center justify-between text-xs font-mono mb-1.5">
-                            <span className="text-[#CBD5E1]">
+                            <span className="text-[#EAEAE6]">
                               {st.completedSubtopicsCount} / {st.totalSubtopicsCount}
                             </span>
                             <span className="font-bold text-white">{st.progressPercent}%</span>
                           </div>
 
-                          <div className="h-2 w-full rounded-full bg-[#0B0F19] overflow-hidden border border-[#334155]">
+                          <div className="h-2 w-full rounded-full bg-[#141416] overflow-hidden border border-[#2E2E34]">
                             <div
                               className={`h-full transition-all ${
                                 st.totalSubtopicsCount === 0
@@ -1623,7 +1615,7 @@ export default function StudentProgressManager() {
                                   ? 'bg-amber-500'
                                   : st.progressPercent >= 70
                                   ? 'bg-[#10B981]'
-                                  : 'bg-[#06B6D4]'
+                                  : 'bg-[#EAEAE6]'
                               }`}
                               style={{ width: `${st.totalSubtopicsCount === 0 ? 0 : Math.max(5, st.progressPercent)}%` }}
                             />
@@ -1647,7 +1639,7 @@ export default function StudentProgressManager() {
                               <span>On Track</span>
                             </span>
                           ) : (
-                            <span className="inline-flex items-center space-x-1 rounded-full bg-[#06B6D4]/15 px-2.5 py-1 text-[11px] font-bold text-[#06B6D4] border border-[#06B6D4]/30">
+                            <span className="inline-flex items-center space-x-1 rounded-full bg-[#EAEAE6]/15 px-2.5 py-1 text-[11px] font-bold text-[#EAEAE6] border border-[#EAEAE6]/30">
                               <Clock className="h-3 w-3" />
                               <span>In Progress</span>
                             </span>
@@ -1662,7 +1654,7 @@ export default function StudentProgressManager() {
                                 setActiveTab('time_reports');
                               }}
                               title="View time spent report for this student"
-                              className="inline-flex items-center space-x-1 rounded-xl border border-[#334155] bg-[#0B0F19] px-2.5 py-1.5 text-xs font-semibold text-[#10B981] hover:border-[#10B981] transition-all"
+                              className="inline-flex items-center space-x-1 rounded-xl border border-[#2E2E34] bg-[#141416] px-2.5 py-1.5 text-xs font-semibold text-[#10B981] hover:border-[#10B981] transition-all"
                             >
                               <Clock className="h-3.5 w-3.5" />
                               <span>Time</span>
@@ -1673,7 +1665,7 @@ export default function StudentProgressManager() {
                                 setMessagingTarget(st);
                                 setMessageText(`Hi ${st.fullName}, here is a quick note regarding your syllabus progress...`);
                               }}
-                              className="inline-flex items-center space-x-1.5 rounded-xl border border-[#334155] bg-[#0B0F19] px-3 py-1.5 text-xs font-semibold text-[#06B6D4] hover:border-[#06B6D4] hover:text-white transition-all shadow-md"
+                              className="inline-flex items-center space-x-1.5 rounded-xl border border-[#2E2E34] bg-[#141416] px-3 py-1.5 text-xs font-semibold text-[#EAEAE6] hover:border-[#EAEAE6] hover:text-white transition-all shadow-md"
                             >
                               <Send className="h-3.5 w-3.5" />
                               <span>Message</span>
@@ -1695,24 +1687,24 @@ export default function StudentProgressManager() {
       {/* ========================================================================= */}
       {selectedStudentDetail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-2xl border border-[#334155] bg-[#1E293B] p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-[#334155] pb-3 shrink-0">
+          <div className="w-full max-w-2xl rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-6 shadow-2xl space-y-4 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] pb-3 shrink-0">
               <div className="flex items-center space-x-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#06B6D4]/20 text-[#06B6D4]">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#EAEAE6]/20 text-[#EAEAE6]">
                   <Clock className="h-5 w-5" />
                 </div>
                 <div>
                   <h4 className="text-base font-bold text-white">
                     {selectedStudentDetail.studentName} — Active Time Log
                   </h4>
-                  <p className="text-xs text-[#94A3B8] font-mono">
+                  <p className="text-xs text-[#A1A1AA] font-mono">
                     Total Active Time: <span className="text-[#10B981] font-bold">{selectedStudentDetail.totalMinutes} mins</span> ({formatTimeDisplay(selectedStudentDetail.totalMinutes)})
                   </p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedStudentDetail(null)}
-                className="text-[#94A3B8] hover:text-white rounded-lg p-1"
+                className="text-[#A1A1AA] hover:text-white rounded-lg p-1"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -1720,13 +1712,13 @@ export default function StudentProgressManager() {
 
             <div className="overflow-y-auto flex-1 pr-1 space-y-3">
               {selectedStudentDetail.records.length === 0 ? (
-                <div className="py-12 text-center text-xs text-[#94A3B8]">
+                <div className="py-12 text-center text-xs text-[#A1A1AA]">
                   No active learning records found for this student in the current date/syllabus filter.
                 </div>
               ) : (
-                <div className="rounded-xl border border-[#334155] bg-[#0B0F19] overflow-hidden">
+                <div className="rounded-xl border border-[#2E2E34] bg-[#141416] overflow-hidden">
                   <table className="w-full text-left text-xs">
-                    <thead className="border-b border-[#334155] bg-[#1E293B] font-mono text-[#94A3B8] uppercase text-[11px]">
+                    <thead className="border-b border-[#2E2E34] bg-[#1C1C1F] font-mono text-[#A1A1AA] uppercase text-[11px]">
                       <tr>
                         <th className="px-4 py-3">Date</th>
                         <th className="px-4 py-3">Syllabus & Topic</th>
@@ -1734,17 +1726,17 @@ export default function StudentProgressManager() {
                         <th className="px-4 py-3 text-right">Active Time (Minutes)</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#334155]">
+                    <tbody className="divide-y divide-[#2E2E34]">
                       {selectedStudentDetail.records.map((r) => (
-                        <tr key={r.id} className="hover:bg-[#1E293B]/30">
-                          <td className="px-4 py-3 font-mono text-[#CBD5E1] whitespace-nowrap">
+                        <tr key={r.id} className="hover:bg-[#1C1C1F]/30">
+                          <td className="px-4 py-3 font-mono text-[#EAEAE6] whitespace-nowrap">
                             {r.date}
                           </td>
                           <td className="px-4 py-3">
                             <div className="font-bold text-white text-xs">{r.topicTitle}</div>
-                            <div className="text-[10px] text-[#94A3B8] line-clamp-1">{r.syllabusTitle}</div>
+                            <div className="text-[10px] text-[#A1A1AA] line-clamp-1">{r.syllabusTitle}</div>
                           </td>
-                          <td className="px-4 py-3 text-[11px] text-[#CBD5E1]">
+                          <td className="px-4 py-3 text-[11px] text-[#EAEAE6]">
                             {r.subtopicTitle || 'Overview'}
                           </td>
                           <td className="px-4 py-3 text-right font-mono font-bold text-[#10B981]">
@@ -1758,13 +1750,13 @@ export default function StudentProgressManager() {
               )}
             </div>
 
-            <div className="pt-3 border-t border-[#334155] flex items-center justify-between shrink-0">
-              <span className="text-[11px] text-[#94A3B8] font-mono">
+            <div className="pt-3 border-t border-[#2E2E34] flex items-center justify-between shrink-0">
+              <span className="text-[11px] text-[#A1A1AA] font-mono">
                 Away & idle &gt;1m time is strictly omitted from recorded minutes
               </span>
               <button
                 onClick={() => setSelectedStudentDetail(null)}
-                className="rounded-xl bg-[#334155] hover:bg-slate-600 px-4 py-2 text-xs font-bold text-white transition-all"
+                className="rounded-xl bg-[#2E2E34] hover:bg-slate-600 px-4 py-2 text-xs font-bold text-white transition-all"
               >
                 Close
               </button>
@@ -1778,10 +1770,10 @@ export default function StudentProgressManager() {
       {/* ========================================================================= */}
       {messagingTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-[#334155] bg-[#1E293B] p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[#334155] pb-3">
+          <div className="w-full max-w-lg rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-[#2E2E34] pb-3">
               <div className="flex items-center space-x-2">
-                <MessageSquare className="h-5 w-5 text-[#06B6D4]" />
+                <MessageSquare className="h-5 w-5 text-[#EAEAE6]" />
                 <h4 className="text-base font-bold text-white">
                   {messagingTarget === 'behind'
                     ? `Broadcast Message to ${behindCount} Students`
@@ -1790,14 +1782,14 @@ export default function StudentProgressManager() {
               </div>
               <button
                 onClick={() => setMessagingTarget(null)}
-                className="text-[#94A3B8] hover:text-white text-xs font-mono"
+                className="text-[#A1A1AA] hover:text-white text-xs font-mono"
               >
                 Cancel
               </button>
             </div>
 
             <div>
-              <label className="block text-xs font-mono text-[#94A3B8] mb-2">
+              <label className="block text-xs font-mono text-[#A1A1AA] mb-2">
                 Message Content (Student will see this upon login / refresh):
               </label>
               <textarea
@@ -1805,19 +1797,19 @@ export default function StudentProgressManager() {
                 onChange={(e) => setMessageText(e.target.value)}
                 rows={4}
                 placeholder="Write message to student (e.g. Hi Josef Marie, great work on LO1!)..."
-                className="w-full rounded-xl bg-[#0B0F19] border border-[#334155] p-3 text-xs text-white placeholder-[#94A3B8] focus:border-[#06B6D4] focus:outline-none leading-relaxed"
+                className="w-full rounded-xl bg-[#141416] border border-[#2E2E34] p-3 text-xs text-white placeholder-[#A1A1AA] focus:border-[#EAEAE6] focus:outline-none leading-relaxed"
               />
             </div>
 
             <div className="flex items-center justify-between pt-2">
-              <span className="text-[11px] text-[#94A3B8] font-mono">
+              <span className="text-[11px] text-[#A1A1AA] font-mono">
                 Delivered via in-app alert banner
               </span>
 
               <button
                 onClick={handleSendMessage}
                 disabled={sending || !messageText.trim()}
-                className="inline-flex items-center space-x-2 rounded-xl bg-[#06B6D4] px-4 py-2 text-xs font-bold text-slate-950 hover:bg-[#0891B2] hover:text-white transition-all disabled:opacity-50 shadow-lg"
+                className="inline-flex items-center space-x-2 rounded-xl bg-emerald-500 px-4 py-2 text-xs font-bold text-[#141416] hover:bg-emerald-400 hover:text-[#141416] transition-all disabled:opacity-50 shadow-lg"
               >
                 <Send className="h-4 w-4" />
                 <span>{sending ? "Sending..." : "Dispatch Notification"}</span>

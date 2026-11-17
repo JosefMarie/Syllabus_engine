@@ -108,24 +108,24 @@ export default function RestrictionsControl({ adminUser, compact = false }: Rest
         {/* Modal Dialog */}
         {isModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in">
-            <div className="w-full max-w-md rounded-2xl border border-[#334155] bg-[#1E293B] p-6 shadow-2xl space-y-5">
-              <div className="flex items-start justify-between border-b border-[#334155] pb-4">
+            <div className="w-full max-w-md rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-6 shadow-2xl space-y-5">
+              <div className="flex items-start justify-between border-b border-[#2E2E34] pb-4">
                 <div className="flex items-center space-x-2.5">
-                  <div className={`p-2 rounded-xl ${isPaused ? "bg-purple-500/20 text-purple-400" : "bg-cyan-500/20 text-[#06B6D4]"}`}>
+                  <div className={`p-2 rounded-xl ${isPaused ? "bg-purple-500/20 text-purple-400" : "bg-[#EAEAE6]/20 text-[#EAEAE6]"}`}>
                     {isPaused ? <Users className="h-5 w-5" /> : <ShieldAlert className="h-5 w-5" />}
                   </div>
                   <div>
                     <h3 className="text-base font-extrabold text-white">
                       {isPaused ? "Re-Enable Strict Focus Restrictions?" : "Pause Restrictions for Group Work?"}
                     </h3>
-                    <p className="text-xs text-[#94A3B8]">
+                    <p className="text-xs text-[#A1A1AA]">
                       {isPaused ? "Switch from Group Work back to Strict Study" : "Allow students to collaborate freely"}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="rounded-lg p-1.5 text-[#94A3B8] hover:text-white hover:bg-[#334155]"
+                  className="rounded-lg p-1.5 text-[#A1A1AA] hover:text-white hover:bg-[#2E2E34]"
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -139,11 +139,11 @@ export default function RestrictionsControl({ adminUser, compact = false }: Rest
                     </p>
                   </div>
 
-                  <p className="text-xs text-[#CBD5E1] leading-relaxed">
+                  <p className="text-xs text-[#EAEAE6] leading-relaxed">
                     Re-enabling strict restrictions will re-activate:
                   </p>
 
-                  <ul className="text-xs text-[#94A3B8] space-y-1.5 list-disc list-inside">
+                  <ul className="text-xs text-[#A1A1AA] space-y-1.5 list-disc list-inside">
                     <li><strong className="text-white">10 Side-window strikes</strong> leading to automatic disciplinary suspension.</li>
                     <li><strong className="text-white">3-Minute continuous timeout</strong> for unfocused or abandoned reading.</li>
                     <li><strong className="text-white">Anti-copy &amp; screen blur</strong> content protection.</li>
@@ -158,13 +158,13 @@ export default function RestrictionsControl({ adminUser, compact = false }: Rest
                   </div>
 
                   <div>
-                    <label className="block text-xs font-bold text-[#CBD5E1] mb-1.5">
+                    <label className="block text-xs font-bold text-[#EAEAE6] mb-1.5">
                       Select Group Work Activity / Reason:
                     </label>
                     <select
                       value={selectedReason}
                       onChange={(e) => setSelectedReason(e.target.value)}
-                      className="w-full rounded-xl border border-[#334155] bg-[#0B0F19] p-2.5 text-xs text-white focus:border-[#06B6D4] focus:outline-none"
+                      className="w-full rounded-xl border border-[#2E2E34] bg-[#141416] p-2.5 text-xs text-white focus:border-[#EAEAE6] focus:outline-none"
                     >
                       <option value="Group Work & Collaborative Projects">Group Work &amp; Collaborative Projects</option>
                       <option value="Lab Exercise & Multi-Tab Research">Lab Exercise &amp; Multi-Tab Research</option>
@@ -173,23 +173,23 @@ export default function RestrictionsControl({ adminUser, compact = false }: Rest
                     </select>
                   </div>
 
-                  <div className="rounded-xl bg-[#0B0F19] border border-[#334155] p-3 text-xs space-y-1.5">
+                  <div className="rounded-xl bg-[#141416] border border-[#2E2E34] p-3 text-xs space-y-1.5">
                     <div className="flex items-center space-x-2 text-emerald-400 font-semibold">
                       <CheckCircle2 className="h-4 w-4 shrink-0" />
                       <span>Live Presence Still Active</span>
                     </div>
-                    <p className="text-[11px] text-[#94A3B8]">
+                    <p className="text-[11px] text-[#A1A1AA]">
                       You will still be able to see who is online, what topic they are on, and active study time. Only the 10 strikes and 3-minute suspensions will be paused.
                     </p>
                   </div>
                 </div>
               )}
 
-              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-[#334155]">
+              <div className="flex items-center justify-end space-x-3 pt-3 border-t border-[#2E2E34]">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#94A3B8] hover:text-white bg-[#0B0F19] border border-[#334155]"
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-[#A1A1AA] hover:text-white bg-[#141416] border border-[#2E2E34]"
                 >
                   Cancel
                 </button>
@@ -198,7 +198,7 @@ export default function RestrictionsControl({ adminUser, compact = false }: Rest
                   type="button"
                   disabled={loading}
                   onClick={() => handleToggle(!isPaused)}
-                  className={`inline-flex items-center space-x-1.5 px-5 py-2 rounded-xl text-xs font-bold text-slate-950 transition-all shadow-lg ${
+                  className={`inline-flex items-center space-x-1.5 px-5 py-2 rounded-xl text-xs font-bold text-[#141416] transition-all shadow-lg ${
                     isPaused
                       ? "bg-emerald-400 hover:bg-emerald-300"
                       : "bg-purple-400 hover:bg-purple-300"
@@ -219,8 +219,8 @@ export default function RestrictionsControl({ adminUser, compact = false }: Rest
   return (
     <div className={`rounded-2xl border p-4 sm:p-5 transition-all shadow-xl ${
       isPaused 
-        ? "border-purple-500/50 bg-gradient-to-br from-purple-950/40 to-[#1E293B]" 
-        : "border-[#334155] bg-[#1E293B]/90"
+        ? "border-purple-500/50 bg-gradient-to-br from-purple-950/40 to-[#1C1C1F]" 
+        : "border-[#2E2E34] bg-[#1C1C1F]/90"
     }`}>
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-start space-x-3">
@@ -240,7 +240,7 @@ export default function RestrictionsControl({ adminUser, compact = false }: Rest
                 {isPaused ? "RESTRICTIONS PAUSED" : "ACTIVE"}
               </span>
             </div>
-            <p className="text-xs text-[#94A3B8] mt-1 leading-relaxed max-w-2xl">
+            <p className="text-xs text-[#A1A1AA] mt-1 leading-relaxed max-w-2xl">
               {isPaused ? (
                 <>
                   The <strong className="text-white">10-strike focus rule</strong> and <strong className="text-white">3-minute timeout suspension</strong> are currently disabled so students can collaborate freely. Real-time online attendance &amp; reading progress remain fully active.
@@ -257,7 +257,7 @@ export default function RestrictionsControl({ adminUser, compact = false }: Rest
         <button
           onClick={() => handleToggle(!isPaused)}
           disabled={loading}
-          className={`inline-flex items-center space-x-2 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-950 transition-all shadow-lg shrink-0 ${
+          className={`inline-flex items-center space-x-2 rounded-xl px-4 py-2.5 text-xs font-bold text-[#141416] transition-all shadow-lg shrink-0 ${
             isPaused
               ? "bg-emerald-400 hover:bg-emerald-300"
               : "bg-purple-400 hover:bg-purple-300"
