@@ -5586,4 +5586,68 @@ export function subscribeToChallengeSubmissions(callback: (subs: ChallengeSubmis
   return () => {};
 }
 
+// ============================================================================
+// CUSTOMIZED CALENDAR EVENTS & TASKS
+// ============================================================================
+import type { CalendarEvent } from "@/types/calendar";
+
+const CALENDAR_EVENTS_STORAGE_KEY = "syllabus_platform_calendar_events_v1";
+
+export function getLocalCalendarEvents(): CalendarEvent[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem(CALENDAR_EVENTS_STORAGE_KEY);
+    return raw ? (JSON.parse(raw) as CalendarEvent[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function getCalendarEvents(): Promise<CalendarEvent[]> {
+  let list: CalendarEvent[] = getLocalCalendarEvents();
+  if (isFirebaseConfigured && db) {
+    try {
+      const snap = await getDocs(collection(db, "calendar_events"));
+      const fetched = snap.docs.map((d) => ({ ...d.data(), id: d.id } as CalendarEvent));
+      list = fetched.sort((a, b) => a.date.localeCompare(b.date));
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(CALENDAR_EVENTS_STORAGE_KEY, JSON.stringify(list));
+        } catch {}
+      }
+    } catch (err) {
+      console.warn("getCalendarEvents Firestore error:", err);
+    }
+  }
+  return list;
+}
+
+export async function saveCalendarEvent(ev: CalendarEvent): Promise<void> {
+  const cleanEv = JSON.parse(JSON.stringify(ev));
+  if (typeof window !== "undefined") {
+    try {
+      const current = getLocalCalendarEvents();
+      const idx = current.findIndex((item) => item.id === ev.id);
+      const next = idx >= 0 ? current.map((item) => (item.id === ev.id ? ev : item)) : [ev, ...current];
+      localStorage.setItem(CALENDAR_EVENTS_STORAGE_KEY, JSON.stringify(next));
+    } catch {}
+  }
+  if (isFirebaseConfigured && db) {
+    await setDoc(doc(db, "calendar_events", ev.id), cleanEv);
+  }
+}
+
+export async function deleteCalendarEvent(id: string): Promise<void> {
+  if (typeof window !== "undefined") {
+    try {
+      const next = getLocalCalendarEvents().filter((item) => item.id !== id);
+      localStorage.setItem(CALENDAR_EVENTS_STORAGE_KEY, JSON.stringify(next));
+    } catch {}
+  }
+  if (isFirebaseConfigured && db) {
+    await deleteDoc(doc(db, "calendar_events", id));
+  }
+}
+
+
 

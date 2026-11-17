@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import PWAProvider from "@/components/common/PWAProvider";
 import CommandPalette from "@/components/common/CommandPalette";
-import GeometricBackground from "@/components/common/GeometricBackground";
 
 export const viewport: Viewport = {
   themeColor: "#141416",
@@ -59,7 +58,6 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-[#141416] text-[#EAEAE6] antialiased selection:bg-[#EAEAE6] selection:text-[#141416] relative min-h-screen">
-        <GeometricBackground />
         <PWAProvider>
           <CommandPalette />
           {children}

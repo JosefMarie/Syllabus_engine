@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { SystemRestrictionsConfig } from "@/types/restrictions";
 import { 
   getSystemRestrictions, 
@@ -106,9 +107,9 @@ export default function RestrictionsControl({ adminUser, compact = false }: Rest
         </button>
 
         {/* Modal Dialog */}
-        {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in">
-            <div className="w-full max-w-md rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-6 shadow-2xl space-y-5">
+        {isModalOpen && typeof document !== "undefined" && createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm animate-in fade-in overflow-y-auto">
+            <div className="w-full max-w-md max-h-[90vh] overflow-y-auto rounded-2xl border border-[#2E2E34] bg-[#1C1C1F] p-6 shadow-2xl space-y-5 my-auto">
               <div className="flex items-start justify-between border-b border-[#2E2E34] pb-4">
                 <div className="flex items-center space-x-2.5">
                   <div className={`p-2 rounded-xl ${isPaused ? "bg-purple-500/20 text-purple-400" : "bg-[#EAEAE6]/20 text-[#EAEAE6]"}`}>
@@ -209,7 +210,8 @@ export default function RestrictionsControl({ adminUser, compact = false }: Rest
                 </button>
               </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
       </>
     );

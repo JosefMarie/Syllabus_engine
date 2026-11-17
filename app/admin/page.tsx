@@ -26,12 +26,12 @@ const MasterGradebook = dynamic(() => import("@/components/admin/MasterGradebook
 import AdminPresenceAlert from "@/components/admin/AdminPresenceAlert";
 import RestrictionsControl from "@/components/admin/RestrictionsControl";
 import { downloadSyllabusAsJSON, downloadSyllabusAsText, downloadAllSyllabiAsJSON } from "@/lib/exportSyllabus";
-import { 
-  ShieldCheck, 
-  Plus, 
-  Trash2, 
-  Edit3, 
-  Eye, 
+import {
+  ShieldCheck,
+  Plus,
+  Trash2,
+  Edit3,
+  Eye,
   ArrowLeft,
   Briefcase,
   UserCheck,
@@ -59,15 +59,17 @@ import {
   PanelLeftOpen,
   ChevronDown,
   TrendingUp,
-  RefreshCw
+  RefreshCw,
+  CalendarDays
 } from "lucide-react";
+import CalendarManager from "@/components/admin/CalendarManager";
 import Link from "next/link";
 
 export default function AdminDashboardPage() {
   const router = useRouter();
 
   const [adminUser, setAdminUser] = useState<UserProfile | null>(null);
-  const [activeTab, setActiveTab] = useState<'syllabi' | 'trades' | 'students' | 'progress' | 'assignments' | 'groups' | 'exams' | 'gradebook'>('syllabi');
+  const [activeTab, setActiveTab] = useState<'syllabi' | 'trades' | 'students' | 'progress' | 'assignments' | 'groups' | 'exams' | 'gradebook' | 'calendar'>('syllabi');
   const [syllabi, setSyllabi] = useState<Syllabus[]>(() => getLocalSyllabi());
   const [trades, setTrades] = useState<Trade[]>(() => getLocalTrades());
   const [pendingCount, setPendingCount] = useState(() => {
@@ -94,7 +96,7 @@ export default function AdminDashboardPage() {
       const next = !prev;
       try {
         localStorage.setItem("syllabus_admin_sidebar_collapsed", next ? "1" : "0");
-      } catch {}
+      } catch { }
       return next;
     });
   };
@@ -272,7 +274,7 @@ export default function AdminDashboardPage() {
     );
   }
 
-  type AdminTabId = 'syllabi' | 'trades' | 'students' | 'progress' | 'assignments' | 'groups' | 'exams' | 'gradebook';
+  type AdminTabId = 'syllabi' | 'trades' | 'students' | 'progress' | 'assignments' | 'groups' | 'exams' | 'gradebook' | 'calendar';
 
   const navSections: Array<{
     title: string;
@@ -286,42 +288,43 @@ export default function AdminDashboardPage() {
       pulse?: boolean;
     }>;
   }> = [
-    {
-      title: "Curriculum",
-      items: [
-        {
-          id: "syllabi",
-          label: "Course Syllabi",
-          icon: BookOpen,
-          badgeText: String(syllabi.length),
-          badgeTone: "cyan"
-        },
-        { id: "trades", label: "Academic Trades", icon: Briefcase }
-      ]
-    },
-    {
-      title: "Students & Grading",
-      items: [
-        { id: "assignments", label: "Class Assignments", icon: Award },
-        { id: "exams", label: "Exams & Quizzes", icon: FileQuestion },
-        { id: "gradebook", label: "Master Gradebook", icon: GraduationCap, iconClass: "text-emerald-400" },
-        { id: "groups", label: "Student Groups", icon: Users },
-        {
-          id: "students",
-          label: "Student Approvals",
-          icon: UserCheck,
-          badgeText: pendingCount > 0 ? `${pendingCount} Pending` : undefined,
-          badgeTone: "amber"
-        }
-      ]
-    },
-    {
-      title: "Live Classroom Control",
-      items: [
-        { id: "progress", label: "Online & Focus Monitor", icon: TrendingUp, iconClass: "text-[#EAEAE6]" }
-      ]
-    }
-  ];
+      {
+        title: "Curriculum",
+        items: [
+          {
+            id: "syllabi",
+            label: "Course Syllabi",
+            icon: BookOpen,
+            badgeText: String(syllabi.length),
+            badgeTone: "cyan"
+          },
+          { id: "trades", label: "Academic Trades", icon: Briefcase }
+        ]
+      },
+      {
+        title: "Students & Grading",
+        items: [
+          { id: "assignments", label: "Class Assignments", icon: Award },
+          { id: "exams", label: "Exams & Quizzes", icon: FileQuestion },
+          { id: "gradebook", label: "Master Gradebook", icon: GraduationCap, iconClass: "text-emerald-400" },
+          { id: "groups", label: "Student Groups", icon: Users },
+          {
+            id: "students",
+            label: "Student Approvals",
+            icon: UserCheck,
+            badgeText: pendingCount > 0 ? `${pendingCount} Pending` : undefined,
+            badgeTone: "amber"
+          }
+        ]
+      },
+      {
+        title: "Live Classroom Control",
+        items: [
+          { id: "progress", label: "Online & Focus Monitor", icon: TrendingUp, iconClass: "text-[#EAEAE6]" },
+          { id: "calendar", label: "Calendar & Events", icon: CalendarDays, iconClass: "text-emerald-400" }
+        ]
+      }
+    ];
 
   const activeNavItem =
     navSections.flatMap((sec) => sec.items).find((item) => item.id === activeTab) ||
@@ -343,10 +346,10 @@ export default function AdminDashboardPage() {
               item.badgeTone === "rose"
                 ? "bg-rose-500 text-white"
                 : item.badgeTone === "amber"
-                ? "bg-amber-400 text-[#141416]"
-                : isActive
-                ? "bg-[#141416] text-[#EAEAE6]"
-                : "bg-[#27272B] text-[#EAEAE6] border border-[#323238]";
+                  ? "bg-amber-400 text-[#141416]"
+                  : isActive
+                    ? "bg-[#141416] text-[#EAEAE6]"
+                    : "bg-[#27272B] text-[#EAEAE6] border border-[#323238]";
 
             return (
               <button
@@ -357,28 +360,24 @@ export default function AdminDashboardPage() {
                   setActiveTab(item.id);
                   if (isMobileDrawer) setMobileNavOpen(false);
                 }}
-                className={`relative w-full flex items-center ${
-                  collapsed ? "justify-center px-2 py-2.5" : "justify-between px-3.5 py-2.5"
-                } rounded-full text-xs font-bold transition-all ${
-                  isActive
+                className={`relative w-full flex items-center ${collapsed ? "justify-center px-2 py-2.5" : "justify-between px-3.5 py-2.5"
+                  } rounded-full text-xs font-bold transition-all ${isActive
                     ? "bg-[#EAEAE6] text-[#141416] shadow-sm"
                     : "text-[#A1A1AA] hover:text-white hover:bg-[#27272B]"
-                }`}
+                  }`}
               >
                 <div className="flex items-center space-x-2.5 min-w-0">
                   <Icon
-                    className={`h-4 w-4 shrink-0 ${
-                      isActive ? "text-[#141416]" : "text-[#A1A1AA]"
-                    } ${item.pulse ? "animate-pulse" : ""}`}
+                    className={`h-4 w-4 shrink-0 ${isActive ? "text-[#141416]" : "text-[#A1A1AA]"
+                      } ${item.pulse ? "animate-pulse" : ""}`}
                   />
                   {!collapsed && <span className="truncate">{item.label}</span>}
                 </div>
 
                 {!collapsed && item.badgeText && (
                   <span
-                    className={`ml-2 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-mono font-extrabold ${badgeClasses} ${
-                      item.pulse ? "animate-pulse" : ""
-                    }`}
+                    className={`ml-2 shrink-0 rounded-full px-2 py-0.5 text-[10px] font-mono font-extrabold ${badgeClasses} ${item.pulse ? "animate-pulse" : ""
+                      }`}
                   >
                     {item.badgeText}
                   </span>
@@ -386,9 +385,8 @@ export default function AdminDashboardPage() {
 
                 {collapsed && item.badgeText && item.badgeTone !== "cyan" && (
                   <span
-                    className={`absolute top-1.5 right-1.5 h-2 w-2 rounded-full ${
-                      item.badgeTone === "rose" ? "bg-rose-500" : "bg-amber-400"
-                    } ${item.pulse ? "animate-ping" : ""}`}
+                    className={`absolute top-1.5 right-1.5 h-2 w-2 rounded-full ${item.badgeTone === "rose" ? "bg-rose-500" : "bg-amber-400"
+                      } ${item.pulse ? "animate-ping" : ""}`}
                   />
                 )}
               </button>
@@ -573,9 +571,8 @@ export default function AdminDashboardPage() {
       <div className="flex flex-1 min-w-0">
         {/* Desktop Collapsible Sidebar */}
         <aside
-          className={`hidden lg:flex flex-col shrink-0 border-r border-[#2E2E34] bg-[#1C1C1F] sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto transition-all duration-200 ${
-            sidebarCollapsed ? "w-[72px]" : "w-64"
-          }`}
+          className={`hidden lg:flex flex-col shrink-0 border-r border-[#2E2E34] bg-[#1C1C1F] sticky top-16 h-[calc(100vh-4rem)] overflow-y-auto transition-all duration-200 ${sidebarCollapsed ? "w-[72px]" : "w-64"
+            }`}
         >
           {renderSidebarContent(sidebarCollapsed, false)}
         </aside>
@@ -584,175 +581,175 @@ export default function AdminDashboardPage() {
         <main className="flex-1 min-w-0 px-3 sm:px-6 lg:px-8 py-5 sm:py-7">
           <div className="mx-auto max-w-7xl">
 
-        {/* TAB 1: SYLLABI MANAGEMENT (OFF-WHITE EDITORIAL SHEET MATCHING Design.jpeg) */}
-        {activeTab === 'syllabi' && (
-          <div className="rounded-[28px] bg-[#EAEAE6] text-[#141416] p-5 sm:p-8 shadow-2xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#D4D4CE] pb-5 gap-3 sm:gap-4">
-              <div>
-                <span className="inline-block rounded-full bg-[#141416] text-[#EAEAE6] px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider mb-2">
-                  Curriculum Management
-                </span>
-                <h2 className="text-xl sm:text-2xl font-extrabold text-[#141416] tracking-tight">
-                  Course Syllabi Management
-                </h2>
-                <p className="mt-1 text-xs text-[#52525B]">
-                  Manage published Software Development syllabi or parse new course documents with Gemini AI.
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
-                <button
-                  onClick={() => downloadAllSyllabiAsJSON(syllabi)}
-                  className="inline-flex items-center space-x-1.5 rounded-full bg-[#141416] px-3.5 py-1.5 font-sans text-xs font-bold text-[#EAEAE6] hover:bg-[#27272B] transition-all shrink-0"
-                  title="Export all course syllabi as a single JSON backup"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  <span>Export All (JSON)</span>
-                </button>
-                <span className="rounded-full bg-white px-3 py-1.5 text-[#141416] border border-[#D4D4CE] font-bold shrink-0">
-                  Published: {syllabi.filter(s => s.status === 'published').length}
-                </span>
-                <span className="rounded-full bg-white px-3 py-1.5 text-[#52525B] border border-[#D4D4CE] font-bold shrink-0">
-                  Drafts: {syllabi.filter(s => s.status === 'draft').length}
-                </span>
-              </div>
-            </div>
-
-            {loading ? (
-              <div className="py-20 text-center text-[#52525B]">
-                <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#141416] border-t-transparent mb-3" />
-                Loading Course Syllabi...
-              </div>
-            ) : syllabi.length === 0 ? (
-              <div className="py-20 text-center text-[#52525B] bg-white rounded-2xl border border-[#D4D4CE] mt-6 p-6">
-                <BookOpen className="mx-auto h-12 w-12 text-[#71717A] mb-3" />
-                <p className="font-bold text-[#141416]">No Syllabi Found</p>
-                <p className="text-xs mt-1 mb-4">Get started by creating your first syllabus.</p>
-                <Link
-                  href="/admin/builder"
-                  className="inline-flex items-center space-x-2 rounded-full bg-emerald-500 px-5 py-2.5 text-xs font-bold text-[#141416] hover:bg-emerald-400 transition-all shadow-lg"
-                >
-                  <Plus className="h-4 w-4" />
-                  <span>Create First Syllabus</span>
-                </Link>
-              </div>
-            ) : (
-              <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {syllabi.map((syllabus) => (
-                  <div
-                    key={syllabus.id}
-                    className="flex flex-col justify-between rounded-[22px] border border-[#D4D4CE] bg-white p-4 shadow-sm hover:border-[#141416] hover:shadow-xl transition-all"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="rounded-full bg-[#EAEAE6] px-2.5 py-1 font-mono text-[10px] font-bold text-[#141416]">
-                          {syllabus.courseCode}
-                        </span>
-                        <span
-                          className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold font-mono uppercase ${
-                            syllabus.status === "published"
-                              ? "bg-[#141416] text-[#EAEAE6]"
-                              : "bg-amber-500/20 text-amber-800 border border-amber-500/30"
-                          }`}
-                        >
-                          {syllabus.status}
-                        </span>
-                      </div>
-
-                      <div className="rounded-2xl bg-[#18181B] text-[#EAEAE6] p-4 min-h-[104px] flex flex-col justify-between mb-3">
-                        <div className="flex items-center justify-between text-[10px] font-mono text-[#A1A1AA]">
-                          <span>{syllabus.learningOutcomes?.length || 0} Outcomes</span>
-                          {syllabus.level && <span className="text-white font-bold">{syllabus.level}</span>}
-                        </div>
-                        <h3 className="text-sm font-extrabold text-white line-clamp-2 mt-2">{syllabus.title}</h3>
-                      </div>
-
-                      <p className="text-xs text-[#52525B] line-clamp-2 leading-relaxed px-1">
-                        {syllabus.description}
-                      </p>
-                    </div>
-
-                    <div className="mt-4 flex flex-wrap items-center justify-end gap-1.5 border-t border-[#E4E4DE] pt-3">
-                      <button
-                        onClick={() => downloadSyllabusAsText(syllabus)}
-                        className="inline-flex items-center space-x-1 rounded-full border border-[#D4D4CE] bg-[#EAEAE6] px-2.5 py-1 text-[11px] font-semibold text-[#141416] hover:border-[#141416]"
-                        title="Download Formatted Text Document (.txt)"
-                      >
-                        <FileText className="h-3 w-3" />
-                        <span>Doc</span>
-                      </button>
-
-                      <button
-                        onClick={() => downloadSyllabusAsJSON(syllabus)}
-                        className="inline-flex items-center space-x-1 rounded-full border border-[#D4D4CE] bg-[#EAEAE6] px-2.5 py-1 text-[11px] font-semibold text-[#141416] hover:border-[#141416]"
-                        title="Download Raw JSON Data (.json)"
-                      >
-                        <FileCode className="h-3 w-3" />
-                        <span>JSON</span>
-                      </button>
-
-                      <Link
-                        href={`/syllabus/view?id=${syllabus.id}`}
-                        target="_blank"
-                        className="inline-flex items-center space-x-1 rounded-full border border-[#D4D4CE] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#141416] hover:border-[#141416]"
-                      >
-                        <Eye className="h-3 w-3" />
-                        <span>View</span>
-                      </Link>
-
-                      <Link
-                        href={`/admin/builder?id=${syllabus.id}`}
-                        className="inline-flex items-center space-x-1 rounded-full bg-emerald-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-emerald-500 transition-colors"
-                      >
-                        <Edit3 className="h-3 w-3" />
-                        <span>Edit</span>
-                      </Link>
-
-                      <button
-                        onClick={() => handleDelete(syllabus.id, syllabus.title)}
-                        className="rounded-full bg-rose-500 p-1.5 text-white hover:bg-rose-600 transition-colors shadow-sm"
-                        title="Permanently Delete Syllabus"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
+            {/* TAB 1: SYLLABI MANAGEMENT (OFF-WHITE EDITORIAL SHEET MATCHING Design.jpeg) */}
+            {activeTab === 'syllabi' && (
+              <div className="rounded-[28px] bg-[#EAEAE6] text-[#141416] p-5 sm:p-8 shadow-2xl">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-[#D4D4CE] pb-5 gap-3 sm:gap-4">
+                  <div>
+                    <span className="inline-block rounded-full bg-[#141416] text-[#EAEAE6] px-3 py-1 text-[10px] font-mono font-bold uppercase tracking-wider mb-2">
+                      Curriculum Management
+                    </span>
+                    <h2 className="text-xl sm:text-2xl font-extrabold text-[#141416] tracking-tight">
+                      Course Syllabi Management
+                    </h2>
+                    <p className="mt-1 text-xs text-[#52525B]">
+                      Manage published Software Development syllabi or parse new course documents with Gemini AI.
+                    </p>
                   </div>
-                ))}
+
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-mono">
+                    <button
+                      onClick={() => downloadAllSyllabiAsJSON(syllabi)}
+                      className="inline-flex items-center space-x-1.5 rounded-full bg-[#141416] px-3.5 py-1.5 font-sans text-xs font-bold text-[#EAEAE6] hover:bg-[#27272B] transition-all shrink-0"
+                      title="Export all course syllabi as a single JSON backup"
+                    >
+                      <Download className="h-3.5 w-3.5" />
+                      <span>Export All (JSON)</span>
+                    </button>
+                    <span className="rounded-full bg-white px-3 py-1.5 text-[#141416] border border-[#D4D4CE] font-bold shrink-0">
+                      Published: {syllabi.filter(s => s.status === 'published').length}
+                    </span>
+                    <span className="rounded-full bg-white px-3 py-1.5 text-[#52525B] border border-[#D4D4CE] font-bold shrink-0">
+                      Drafts: {syllabi.filter(s => s.status === 'draft').length}
+                    </span>
+                  </div>
+                </div>
+
+                {loading ? (
+                  <div className="py-20 text-center text-[#52525B]">
+                    <div className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-[#141416] border-t-transparent mb-3" />
+                    Loading Course Syllabi...
+                  </div>
+                ) : syllabi.length === 0 ? (
+                  <div className="py-20 text-center text-[#52525B] bg-white rounded-2xl border border-[#D4D4CE] mt-6 p-6">
+                    <BookOpen className="mx-auto h-12 w-12 text-[#71717A] mb-3" />
+                    <p className="font-bold text-[#141416]">No Syllabi Found</p>
+                    <p className="text-xs mt-1 mb-4">Get started by creating your first syllabus.</p>
+                    <Link
+                      href="/admin/builder"
+                      className="inline-flex items-center space-x-2 rounded-full bg-emerald-500 px-5 py-2.5 text-xs font-bold text-[#141416] hover:bg-emerald-400 transition-all shadow-lg"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Create First Syllabus</span>
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="mt-6 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    {syllabi.map((syllabus) => (
+                      <div
+                        key={syllabus.id}
+                        className="flex flex-col justify-between rounded-[22px] border border-[#D4D4CE] bg-white p-4 shadow-sm hover:border-[#141416] hover:shadow-xl transition-all"
+                      >
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="rounded-full bg-[#EAEAE6] px-2.5 py-1 font-mono text-[10px] font-bold text-[#141416]">
+                              {syllabus.courseCode}
+                            </span>
+                            <span
+                              className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold font-mono uppercase ${syllabus.status === "published"
+                                ? "bg-[#141416] text-[#EAEAE6]"
+                                : "bg-amber-500/20 text-amber-800 border border-amber-500/30"
+                                }`}
+                            >
+                              {syllabus.status}
+                            </span>
+                          </div>
+
+                          <div className="rounded-2xl bg-[#18181B] text-[#EAEAE6] p-4 min-h-[104px] flex flex-col justify-between mb-3">
+                            <div className="flex items-center justify-between text-[10px] font-mono text-[#A1A1AA]">
+                              <span>{syllabus.learningOutcomes?.length || 0} Outcomes</span>
+                              {syllabus.level && <span className="text-white font-bold">{syllabus.level}</span>}
+                            </div>
+                            <h3 className="text-sm font-extrabold text-white line-clamp-2 mt-2">{syllabus.title}</h3>
+                          </div>
+
+                          <p className="text-xs text-[#52525B] line-clamp-2 leading-relaxed px-1">
+                            {syllabus.description}
+                          </p>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap items-center justify-end gap-1.5 border-t border-[#E4E4DE] pt-3">
+                          <button
+                            onClick={() => downloadSyllabusAsText(syllabus)}
+                            className="inline-flex items-center space-x-1 rounded-full border border-[#D4D4CE] bg-[#EAEAE6] px-2.5 py-1 text-[11px] font-semibold text-[#141416] hover:border-[#141416]"
+                            title="Download Formatted Text Document (.txt)"
+                          >
+                            <FileText className="h-3 w-3" />
+                            <span>Doc</span>
+                          </button>
+
+                          <button
+                            onClick={() => downloadSyllabusAsJSON(syllabus)}
+                            className="inline-flex items-center space-x-1 rounded-full border border-[#D4D4CE] bg-[#EAEAE6] px-2.5 py-1 text-[11px] font-semibold text-[#141416] hover:border-[#141416]"
+                            title="Download Raw JSON Data (.json)"
+                          >
+                            <FileCode className="h-3 w-3" />
+                            <span>JSON</span>
+                          </button>
+
+                          <Link
+                            href={`/syllabus/view?id=${syllabus.id}`}
+                            target="_blank"
+                            className="inline-flex items-center space-x-1 rounded-full border border-[#D4D4CE] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#141416] hover:border-[#141416]"
+                          >
+                            <Eye className="h-3 w-3" />
+                            <span>View</span>
+                          </Link>
+
+                          <Link
+                            href={`/admin/builder?id=${syllabus.id}`}
+                            className="inline-flex items-center space-x-1 rounded-full bg-emerald-600 px-3 py-1 text-[11px] font-bold text-white hover:bg-emerald-500 transition-colors"
+                          >
+                            <Edit3 className="h-3 w-3" />
+                            <span>Edit</span>
+                          </Link>
+
+                          <button
+                            onClick={() => handleDelete(syllabus.id, syllabus.title)}
+                            className="rounded-full bg-rose-500 p-1.5 text-white hover:bg-rose-600 transition-colors shadow-sm"
+                            title="Permanently Delete Syllabus"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
-          </div>
-        )}
 
-        {activeTab !== 'syllabi' && (
-          <div className="rounded-[28px] bg-[#1C1C1F] border border-[#2E2E34] p-4 sm:p-6 shadow-2xl">
-            {activeTab === 'trades' && <TradesManager />}
-            {activeTab === 'students' && <StudentApprovals />}
-            {activeTab === 'progress' && <StudentProgressManager />}
-            {activeTab === 'assignments' && (
-              <AssignmentManager 
-                syllabi={syllabi} 
-                trades={trades} 
-                adminEmail={adminUser?.email} 
-              />
+            {activeTab !== 'syllabi' && (
+              <div className="rounded-[28px] bg-[#1C1C1F] border border-[#2E2E34] p-4 sm:p-6 shadow-2xl">
+                {activeTab === 'trades' && <TradesManager />}
+                {activeTab === 'students' && <StudentApprovals />}
+                {activeTab === 'progress' && <StudentProgressManager />}
+                {activeTab === 'assignments' && (
+                  <AssignmentManager
+                    syllabi={syllabi}
+                    trades={trades}
+                    adminEmail={adminUser?.email}
+                  />
+                )}
+                {activeTab === 'exams' && (
+                  <ExamManager
+                    syllabi={syllabi}
+                    trades={trades}
+                    adminUser={adminUser}
+                  />
+                )}
+                {activeTab === 'groups' && (
+                  <GroupManager
+                    syllabi={syllabi}
+                    trades={trades}
+                    adminEmail={adminUser?.email}
+                    adminUser={adminUser}
+                  />
+                )}
+                {activeTab === 'gradebook' && <MasterGradebook adminUser={adminUser} trades={trades} />}
+                {activeTab === 'calendar' && <CalendarManager adminUser={adminUser} syllabi={syllabi} />}
+              </div>
             )}
-            {activeTab === 'exams' && (
-              <ExamManager
-                syllabi={syllabi}
-                trades={trades}
-                adminUser={adminUser}
-              />
-            )}
-            {activeTab === 'groups' && (
-              <GroupManager
-                syllabi={syllabi}
-                trades={trades}
-                adminEmail={adminUser?.email}
-                adminUser={adminUser}
-              />
-            )}
-            {activeTab === 'gradebook' && <MasterGradebook adminUser={adminUser} trades={trades} />}
-          </div>
-        )}
           </div>
         </main>
       </div>

@@ -5,6 +5,8 @@ import { Syllabus } from "@/types/syllabus";
 import { UserProfile, StudentLevel } from "@/types/auth";
 import { getAllSyllabi, getAllTrades, getSubtopicProgress, getSubtopicProgressAsync, subscribeToUserProfile, getLocalSyllabi, getLocalTrades } from "@/lib/db";
 import { getStoredSession, saveStoredSession, updateUserEmail, logoutStudent, getAdminSession } from "@/lib/auth";
+import SiteFooter from "@/components/common/SiteFooter";
+import LiveDateTimeCalendarPill from "@/components/common/LiveDateTimeCalendarPill";
 import { 
   BookOpen, 
   Sparkles, 
@@ -408,17 +410,7 @@ export default function CatalogPage() {
               )}
 
               <div className="flex items-center space-x-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, ctrlKey: true }));
-                  }}
-                  className="hidden lg:inline-flex items-center space-x-1.5 rounded-full border border-[#323238] bg-[#141416] px-3 py-1.5 text-xs text-[#A1A1AA] hover:text-white hover:border-[#52525B] transition-all"
-                  title="Quick Search (Cmd+K)"
-                >
-                  <Search className="h-3.5 w-3.5" />
-                  <span>⌘K</span>
-                </button>
+                <LiveDateTimeCalendarPill currentUser={currentUser} />
 
                 {currentUser && <NotificationBell userId={currentUser.uid} />}
 
@@ -922,6 +914,8 @@ export default function CatalogPage() {
             )}
           </main>
         </div>
+
+        <SiteFooter />
 
         {navigatingSyllabusId && (
           <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center space-x-3 rounded-full border border-[#323238] bg-[#141416] px-5 py-2.5 shadow-2xl">

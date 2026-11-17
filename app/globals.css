@@ -324,4 +324,48 @@ code, pre, .font-mono {
   animation: shake 0.38s ease-in-out;
 }
 
+/* Interactive SVG Line-Drawing Micro-Interaction for Lucide & Inline Stroke Icons */
+@keyframes lucide-sketch {
+  0% {
+    stroke-dashoffset: 90;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  :is(button, a, .group, .icon-draw):hover svg.lucide:not(.animate-spin) :is(path, circle, rect, line, polyline, polygon),
+  .icon-draw:hover svg:not(.animate-spin) :is(path, circle, rect, line, polyline, polygon) {
+    stroke-dasharray: 90;
+    stroke-dashoffset: 0;
+    animation: lucide-sketch 0.6s ease-in-out both;
+  }
+
+  :is(button, a, .group, .icon-draw):hover svg.lucide:not(.animate-spin) :is(path, circle, rect, line, polyline, polygon):nth-child(2),
+  .icon-draw:hover svg:not(.animate-spin) :is(path, circle, rect, line, polyline, polygon):nth-child(2) {
+    animation-delay: 55ms;
+  }
+
+  :is(button, a, .group, .icon-draw):hover svg.lucide:not(.animate-spin) :is(path, circle, rect, line, polyline, polygon):nth-child(3),
+  .icon-draw:hover svg:not(.animate-spin) :is(path, circle, rect, line, polyline, polygon):nth-child(3) {
+    animation-delay: 110ms;
+  }
+
+  :is(button, a, .group, .icon-draw):hover svg.lucide:not(.animate-spin) :is(path, circle, rect, line, polyline, polygon):nth-child(4),
+  .icon-draw:hover svg:not(.animate-spin) :is(path, circle, rect, line, polyline, polygon):nth-child(4) {
+    animation-delay: 165ms;
+  }
+
+  :is(button, a, .group, .icon-draw):hover svg.lucide:not(.animate-spin) :is(path, circle, rect, line, polyline, polygon):nth-child(5),
+  .icon-draw:hover svg:not(.animate-spin) :is(path, circle, rect, line, polyline, polygon):nth-child(5) {
+    animation-delay: 220ms;
+  }
+
+  :is(button, a, .group, .icon-draw):hover svg.lucide:not(.animate-spin) :is(path, circle, rect, line, polyline, polygon):nth-child(6),
+  .icon-draw:hover svg:not(.animate-spin) :is(path, circle, rect, line, polyline, polygon):nth-child(6) {
+    animation-delay: 275ms;
+  }
+}
+
 
