@@ -479,11 +479,7 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
       if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
         const arrayBuffer = await file.arrayBuffer();
         const pdfjsLib = await import("pdfjs-dist");
-        try {
-          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-        } catch {
-          pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
-        }
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         let extractedText = "";
@@ -1174,11 +1170,23 @@ export default function AssignmentManager({ syllabi, trades, adminEmail }: Assig
           gradeFeedback.trim(),
           adminEmail || "Josef Marie"
         );
-        await loadAllData();
-        if (selectedAssignment) {
-          const freshSubs = await getSubmissionsForAssignment(selectedAssignment.id);
-          setSubmissions(freshSubs);
-        }
+        const nowIso = new Date().toISOString();
+        const memberUids = new Set(
+          (gradingSubmission.groupMembers || []).map((m) => m.uid).concat(gradingSubmission.studentUid)
+        );
+        const applyLocalUpdate = (s: AssignmentSubmission) =>
+          s.assignmentId === gradingSubmission.assignmentId && memberUids.has(s.studentUid)
+            ? {
+                ...s,
+                status: "graded" as const,
+                score: Number(gradeScore),
+                feedback: gradeFeedback.trim(),
+                gradedAt: nowIso,
+                gradedBy: adminEmail || "Josef Marie"
+              }
+            : s;
+        setSubmissions((prev) => prev.map(applyLocalUpdate));
+        setAllSubmissionsList((prev) => prev.map(applyLocalUpdate));
       } else {
         const updated: AssignmentSubmission = {
           ...gradingSubmission,

@@ -464,8 +464,8 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      alert("File size exceeds 5MB limit. Please attach a smaller file.");
+    if (file.size > 1024 * 1024) {
+      alert("File size exceeds the 1MB limit. Please remove screenshots/images or attach a smaller text-based file (Max 1MB).");
       e.target.value = "";
       return;
     }
@@ -1237,7 +1237,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
 
               <div>
                 <label className="block text-xs font-bold text-[#EAEAE6] mb-1">
-                  Attach Readable Document or Code File (PDF, DOCX, MD, TXT, JSON, CSV, Source Code, Image — Max 5MB, No .zip)
+                  Attach Readable Document or Code File (PDF, DOCX, MD, TXT, JSON, CSV, Source Code — Max 1MB, No screenshots inside PDFs)
                 </label>
                 <div className="flex items-center space-x-3">
                   <label 
@@ -1703,7 +1703,7 @@ export default function StudentAssignmentsView({ currentUser, syllabi = [] }: St
                             className="inline-flex items-center space-x-2 rounded-xl border border-[#2E2E34] bg-[#141416] px-4 py-2 text-xs font-semibold text-[#EAEAE6] hover:text-white hover:border-[#EAEAE6] cursor-pointer transition-all"
                           >
                             <Upload className="h-4 w-4 text-[#EAEAE6]" />
-                            <span>{selectedFile ? "Change Selected File" : "Choose File (Max 5MB)"}</span>
+                            <span>{selectedFile ? "Change Selected File" : "Choose File (Max 1MB — No screenshots in PDF)"}</span>
                             <input
                               type="file"
                               accept={ACCEPT_FILE_ATTRIBUTE}

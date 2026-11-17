@@ -3123,10 +3123,12 @@ export async function saveAssignmentSubmission(submission: AssignmentSubmission)
     } catch (e) {}
   }
 
-  // 2. Firestore
+  // 2. Firestore (race against 4s timeout so slow network ACKs never freeze UI; persistentLocalCache syncs in background)
   if (isFirebaseConfigured && db) {
     try {
-      await setDoc(doc(db, "submissions", submission.id), sanitized, { merge: true });
+      const writePromise = setDoc(doc(db, "submissions", submission.id), sanitized, { merge: true });
+      const timeoutPromise = new Promise<void>((resolve) => setTimeout(resolve, 4000));
+      await Promise.race([writePromise, timeoutPromise]);
     } catch (e) {
       console.error("Firestore saveAssignmentSubmission error:", e);
     }
@@ -3711,21 +3713,22 @@ export async function gradeGroupSubmission(
   };
   await saveAssignmentSubmission(updatedSubmission);
 
-  // 2. Cascade score & feedback across all group members
+  // 2. Cascade score & feedback across all group members in parallel
   if (submission.groupMembers && submission.groupMembers.length > 0) {
-    for (const member of submission.groupMembers) {
-      if (member.uid === submission.studentUid) continue; // already saved as primary
-
-      const memberSubId = `${submission.assignmentId}_${member.uid}`;
-      const memberSubmission: AssignmentSubmission = {
-        ...updatedSubmission,
-        id: memberSubId,
-        studentUid: member.uid,
-        studentName: member.fullName,
-        studentUsername: member.username
-      };
-      await saveAssignmentSubmission(memberSubmission);
-    }
+    const memberWrites = submission.groupMembers
+      .filter((member) => member.uid !== submission.studentUid)
+      .map((member) => {
+        const memberSubId = `${submission.assignmentId}_${member.uid}`;
+        const memberSubmission: AssignmentSubmission = {
+          ...updatedSubmission,
+          id: memberSubId,
+          studentUid: member.uid,
+          studentName: member.fullName,
+          studentUsername: member.username
+        };
+        return saveAssignmentSubmission(memberSubmission);
+      });
+    await Promise.all(memberWrites);
   }
 }
 

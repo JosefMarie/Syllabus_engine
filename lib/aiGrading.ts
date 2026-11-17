@@ -330,11 +330,7 @@ export async function extractPdfTextFromBase64(base64Url: string): Promise<strin
     const bytes = base64ToUint8Array(base64Url);
     if (bytes.byteLength === 0) return "";
     const pdfjsLib = await import("pdfjs-dist");
-    try {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-    } catch {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.js`;
-    }
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
     const pdf = await pdfjsLib.getDocument({ data: bytes }).promise;
     let extractedText = "";
