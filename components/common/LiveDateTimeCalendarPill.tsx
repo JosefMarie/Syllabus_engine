@@ -116,7 +116,7 @@ export default function LiveDateTimeCalendarPill({ currentUser }: LiveDateTimeCa
           setSelectedDateKey(toDateKey(new Date()));
           setIsOpen(true);
         }}
-        className="inline-flex items-center space-x-2 rounded-full border border-[#323238] bg-[#141416] px-3.5 py-1.5 text-xs text-[#EAEAE6] hover:border-emerald-500/50 hover:bg-[#1C1C1F] transition-all shadow-sm"
+        className="glow-border inline-flex items-center space-x-2 rounded-full border border-[#323238] bg-[#141416] px-3.5 py-1.5 text-xs text-[#EAEAE6] hover:bg-[#1C1C1F] transition-all shadow-sm"
         title="Click to open Academic Calendar & Tasks"
       >
         <CalendarDays className="h-3.5 w-3.5 text-emerald-400 shrink-0" />

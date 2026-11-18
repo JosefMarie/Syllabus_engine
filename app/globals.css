@@ -368,4 +368,78 @@ code, pre, .font-mono {
   }
 }
 
+/* Global Multi-Colored Rotating Glowing Border Micro-Interaction */
+@property --glow-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes glow-border-spin {
+  to {
+    --glow-angle: 360deg;
+  }
+}
+
+.glow-border {
+  position: relative;
+  isolation: isolate;
+}
+
+.glow-border::before,
+.glow-border::after {
+  content: "";
+  position: absolute;
+  border-radius: inherit;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.32s ease;
+  background: conic-gradient(
+    from var(--glow-angle),
+    #10b981,
+    #06b6d4,
+    #8b5cf6,
+    #f43f5e,
+    #f59e0b,
+    #10b981
+  );
+}
+
+/* Crisp multi-colored perimeter border */
+.glow-border::before {
+  inset: 0;
+  padding: 1.5px;
+  z-index: 2;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+}
+
+/* Soft outer blurred glow matching the border colors */
+.glow-border::after {
+  inset: -3px;
+  z-index: -1;
+  filter: blur(12px);
+}
+
+.glow-border:hover::before,
+.glow-border:focus-visible::before {
+  opacity: 1;
+}
+
+.glow-border:hover::after,
+.glow-border:focus-visible::after {
+  opacity: 0.48;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .glow-border:hover::before,
+  .glow-border:hover::after,
+  .glow-border:focus-visible::before,
+  .glow-border:focus-visible::after {
+    animation: glow-border-spin 3.2s linear infinite;
+  }
+}
+
 

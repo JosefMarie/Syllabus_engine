@@ -435,7 +435,7 @@ export default function CatalogPage() {
                     <Link
                       href="/auth/login"
                       prefetch={false}
-                      className="inline-flex items-center space-x-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-3.5 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500 hover:text-[#141416] transition-all"
+                      className="glow-border inline-flex items-center space-x-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-3.5 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500 hover:text-[#141416] transition-all"
                     >
                       <LogIn className="h-3.5 w-3.5" />
                       <span>Student Login</span>
@@ -444,7 +444,7 @@ export default function CatalogPage() {
                     <Link
                       href="/auth/register"
                       prefetch={false}
-                      className="inline-flex items-center space-x-1.5 rounded-full bg-emerald-500 px-3.5 py-1.5 text-xs font-bold text-[#141416] hover:bg-emerald-400 transition-all shadow-sm"
+                      className="glow-border inline-flex items-center space-x-1.5 rounded-full bg-emerald-500 px-3.5 py-1.5 text-xs font-bold text-[#141416] hover:bg-emerald-400 transition-all shadow-sm"
                     >
                       <UserPlus className="h-3.5 w-3.5" />
                       <span>Register</span>
@@ -456,7 +456,7 @@ export default function CatalogPage() {
                   <Link
                     href={adminUser ? "/admin" : "/admin/login"}
                     prefetch={false}
-                    className="inline-flex items-center space-x-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500 hover:text-[#141416] transition-all"
+                    className="glow-border inline-flex items-center space-x-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/15 px-3 py-1.5 text-xs font-bold text-emerald-300 hover:bg-emerald-500 hover:text-[#141416] transition-all"
                   >
                     <ShieldCheck className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">Teacher Portal</span>
@@ -855,7 +855,7 @@ export default function CatalogPage() {
                               } catch (e) {}
                             }
                           }}
-                          className={`group flex flex-col justify-between rounded-[22px] bg-white border p-4 transition-all ${
+                          className={`glow-border group flex flex-col justify-between rounded-[22px] bg-white border p-4 transition-all ${
                             idx % 3 === 1 ? "lg:translate-y-3" : ""
                           } ${
                             isNavigatingThis

@@ -8,7 +8,7 @@ export default function SiteFooter() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="mt-6 rounded-[28px] border border-[#2E2E34] bg-[#1C1C1F] p-6 sm:p-10 text-[#EAEAE6] shadow-2xl">
+    <footer className="glow-border mt-6 rounded-[28px] border border-[#2E2E34] bg-[#1C1C1F] p-6 sm:p-10 text-[#EAEAE6] shadow-2xl">
       <div className="grid grid-cols-1 gap-8 md:grid-cols-12 pb-8 border-b border-[#2E2E34]">
         {/* Brand & Platform Description */}
         <div className="md:col-span-6 space-y-4">
